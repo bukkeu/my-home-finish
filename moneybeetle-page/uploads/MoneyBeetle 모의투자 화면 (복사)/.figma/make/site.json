@@ -1,0 +1,10 @@
+{
+  "description": "사회초년생이 가상 기업의 주식에 게임머니를 투자하며 턴별 시세와 뉴스를 살펴보고, 매매와 투자 판단을 연습하는 금융 학습 플랫폼입니다.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

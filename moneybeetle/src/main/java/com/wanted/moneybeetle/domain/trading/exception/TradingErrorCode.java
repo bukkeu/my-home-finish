@@ -1,0 +1,10 @@
+package com.wanted.moneybeetle.domain.trading.exception;
+
+/* comment.
+*   담당 : DBA ② (모의투자)
+*   NO_RUNNING_SEASON, ALREADY_JOINED, JOIN_CLOSED, NOT_ENOUGH_QUANTITY, STALE_TURN_PRICE, MARKET_HOLIDAY,
+*   SEASON_CLOSED, RANKING_NOT_PUBLISHED, NEXT_TURN_NOT_READY, PAST_TURN_LOCKED, CSV_INVALID, INVALID_STATUS_TRANSITION
+*  */
+public enum TradingErrorCode {
+
+}

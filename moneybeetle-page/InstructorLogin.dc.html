@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+html{background:#F7FAF3}
+body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+input:focus{outline:none}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#F7FAF3;color:#263B1A;font-family:'Pretendard',system-ui,sans-serif">
+  <div style="flex:1;display:flex;flex-direction:column">
+    <main style="flex:1;display:flex;flex-direction:column;padding:40px clamp(24px,6vw,120px) 48px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <a href="Main.dc.html" style="display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:44px;width:auto;display:block"></a>
+        <a href="Main.dc.html" aria-label="닫기" style="color:#263B1A;display:grid;place-items:center;width:44px;height:44px">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </a>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;width:min(520px,100%);margin:48px auto 0">
+        <span style="align-self:flex-start;font-size:13px;font-weight:700;padding:5px 12px;border-radius:999px;background:#263B1A;color:#9fe870;margin-bottom:14px">강사 센터</span>
+        <h1 style="margin:0;font-weight:800;font-size:40px;letter-spacing:-0.03em;color:#263B1A">강사 로그인</h1>
+        <p style="margin:16px 0 0;font-size:16px;line-height:1.7;color:#687161">처음이신가요? <a href="InstructorSignup.dc.html" style="font-weight:800;color:#263B1A;text-decoration:underline;text-decoration-color:#9fe870;text-decoration-thickness:3px;text-underline-offset:3px">강사 회원가입</a></p>
+
+        <form onSubmit="{{ submit }}" style="margin-top:40px;display:flex;flex-direction:column">
+          <label style="font-size:17px;color:#687161">강사 계정 이메일</label>
+          <input type="email" value="{{ email }}" onChange="{{ setEmail }}" placeholder="teacher@moneybeetle.kr" style="margin-top:10px;height:56px;border:2px solid #263B1A;border-radius:12px;padding:0 18px;font-size:19px;font-family:inherit;box-sizing:border-box;color:#263B1A">
+          <label style="font-size:17px;color:#687161;margin-top:22px">비밀번호</label>
+          <div style="margin-top:10px;position:relative">
+            <input type="{{ pwType }}" value="{{ pw }}" onChange="{{ setPw }}" placeholder="비밀번호" style="width:100%;height:56px;border:2px solid #263B1A;border-radius:12px;padding:0 80px 0 18px;font-size:19px;font-family:inherit;box-sizing:border-box">
+            <button type="button" onClick="{{ togglePw }}" style="all:unset;cursor:pointer;position:absolute;right:18px;top:0;height:56px;display:flex;align-items:center;font-size:15px;color:#687161">{{ pwToggle }}</button>
+          </div>
+          <sc-if value="{{ error }}"><span style="margin-top:12px;font-size:15px;color:#b3261e">{{ error }}</span></sc-if>
+          <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;font-size:15px">
+            <button type="button" onClick="{{ toggleKeep }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;color:#687161">
+              <span style="width:22px;height:22px;border-radius:50%;background:{{ keepBg }};border:2px solid #263B1A;display:grid;place-items:center;color:#263B1A;font-size:13px">{{ keepMark }}</span>로그인 상태 유지</button>
+            <span aria-disabled="true" title="준비 중인 기능이에요" style="color:#A3AB9C;cursor:not-allowed">비밀번호 찾기 (준비 중)</span>
+          </div>
+          <button type="submit" style="all:unset;box-sizing:border-box;cursor:pointer;margin-top:28px;height:58px;border-radius:999px;background:#9fe870;color:#263B1A;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center" style-hover="background:#8fd85f" style-active="background:#7fc84f">로그인</button>
+        </form>
+
+        <div style="margin-top:32px;padding:16px 18px;border-radius:14px;background:#F7FAF3;font-size:14px;line-height:1.7;color:#687161;word-break:keep-all">강사 로그인은 이메일과 비밀번호로만 할 수 있어요.<br>학생 계정으로는 강사 화면에 들어올 수 없어요.</div>
+        <p style="margin:24px 0 0;font-size:15px;color:#687161">학생이신가요? <a href="UserLogin.dc.html" style="font-weight:700;color:#263B1A;text-decoration:underline">학생 로그인</a></p>
+      </div>
+    </main>
+  </div>
+
+  <div style="position:sticky;bottom:0;background:#263B1A;color:#fff;display:flex;align-items:center;justify-content:center;gap:16px;padding:22px 20px;font-size:clamp(14px,1.5vw,22px);flex-wrap:wrap;text-align:center">
+    <span style="background:#9fe870;color:#263B1A;font-weight:700;border-radius:6px;padding:4px 10px;font-size:0.85em">안내</span>
+    <span>강사 센터는 강사 권한이 있는 계정만 이용할 수 있어요</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { email: '', pw: '', show: false, keep: true, error: '' };
+  renderVals() {
+    const s = this.state, set = k => e => this.setState({ [k]: e.target.value, error: '' });
+    return {
+      email: s.email, pw: s.pw, error: s.error,
+      setEmail: set('email'), setPw: set('pw'),
+      pwType: s.show ? 'text' : 'password', pwToggle: s.show ? '숨기기' : '보기',
+      togglePw: () => this.setState(x => ({ show: !x.show })),
+      keepBg: s.keep ? '#9fe870' : 'transparent', keepMark: s.keep ? '✓' : '',
+      toggleKeep: () => this.setState(x => ({ keep: !x.keep })),
+      submit: e => {
+        e.preventDefault();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) return this.setState({ error: '이메일 주소를 확인해 주세요' });
+        if (s.pw.length < 8) return this.setState({ error: '비밀번호를 8자 이상 입력해 주세요' });
+        try { localStorage.setItem('mb-role', 'instructor'); } catch (err) {} location.href = 'InstructorDashboard.dc.html';
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

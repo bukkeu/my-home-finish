@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>flow test</title>
+<style>body{font:13px/1.4 system-ui;margin:12px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}.ok{background:#e6f7d9}.bad{background:#fde2e2}.warn{background:#fff4cc}iframe{width:1280px;height:800px;border:1px solid #999;position:absolute;left:-3000px;top:0}</style>
+</head><body>
+<h3 id="st">running…</h3>
+<table><thead><tr><th>#</th><th>흐름</th><th>결과</th><th>도착/메모</th></tr></thead><tbody id="tb"></tbody></table>
+<iframe id="f"></iframe>
+<script>
+const F = document.getElementById('f'), TB = document.getElementById('tb');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rows = []; let n = 0;
+function add(name, cls, note) { n++; const tr = document.createElement('tr'); tr.className = cls; tr.innerHTML = `<td>${n}</td><td>${name}</td><td>${cls === 'ok' ? '정상' : cls === 'bad' ? '오류' : '확인 필요'}</td><td>${note}</td>`; TB.appendChild(tr); rows.push([n, name, cls, note]); }
+function load(url) { return new Promise(res => { let done = false; F.onload = async () => { if (done) return; done = true; await sleep(1800); res(); }; F.src = '../' + url; setTimeout(() => { if (!done) { done = true; res(); } }, 9000); }); }
+function waitNav(prev, ms = 6000) { return new Promise(res => { const t0 = Date.now(); const iv = setInterval(async () => { let p = ''; try { p = F.contentWindow.location.href; } catch (e) {} if ((p !== prev && F.contentDocument && F.contentDocument.readyState === 'complete') || Date.now() - t0 > ms) { clearInterval(iv); await sleep(1500); res(p); } }, 150); }); }
+const W = () => F.contentWindow, D = () => F.contentDocument;
+const page = () => { try { return decodeURIComponent(W().location.pathname.split('/').pop() + W().location.search + W().location.hash); } catch (e) { return '?'; } };
+function byText(sel, txt) { return [...D().querySelectorAll(sel)].find(e => e.textContent.replace(/\s+/g, ' ').includes(txt)); }
+function setVal(el, v) { const proto = Object.getPrototypeOf(el); const s = Object.getOwnPropertyDescriptor(proto, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+async function clickNav(name, url, finder, expect) {
+  try {
+    await load(url); const el = finder(); if (!el) { add(name, 'bad', `요소 없음 (${url})`); return; }
+    const prev = W().location.href; el.click(); const p = await waitNav(prev);
+    const got = page(); const ok = expect.test(got); add(name, ok ? 'ok' : (p === prev ? 'bad' : 'bad'), (p === prev ? '클릭 후 이동 없음 · ' : '') + got);
+  } catch (e) { add(name, 'bad', 'ERR ' + e.message); }
+}
+async function login(name, url, email, pw, expect) {
+  try {
+    await load(url);
+    const em = D().querySelector('input[type=email]'), pwi = D().querySelector('input[type=password]');
+    if (!em || !pwi) { add(name, 'bad', '입력창 없음'); return; }
+    setVal(em, email); setVal(pwi, pw); await sleep(300);
+    const btn = D().querySelector('button[type=submit]') || byText('button', '로그인');
+    const prev = W().location.href; btn.click(); await waitNav(prev, 7000);
+    const got = page(); add(name, expect.test(got) ? 'ok' : 'bad', got);
+  } catch (e) { add(name, 'bad', 'ERR ' + e.message); }
+}
+(async () => {
+  await load('UserHome-vr2.dc.html');
+  const hist = [...D().querySelectorAll('a[href*="title="]')].map(a => ({ href: a.getAttribute('href'), t: decodeURIComponent((a.getAttribute('href').match(/title=([^&]+)/) || [])[1] || '') }));
+  for (const h of hist) { await load(h.href); await sleep(400); const h1 = D().querySelector('h1'); const shown = h1 ? h1.textContent.trim() : '(제목 없음)'; add('학습 기록 → ' + h.t, shown === h.t ? 'ok' : 'bad', '표시된 강의: ' + shown); }
+  await load('UserHome-vr2.dc.html'); const miss = byText('a', '단리와 복리'); add('학습 기록 → 단리와 복리', miss && /UserLectureCategory/.test(miss.getAttribute('href')) ? 'warn' : 'bad', miss ? '강의 없음 → 강의 목록 이동, "강의 준비 중" 표시' : '행 없음');
+  await clickNav('강사 대시보드 → 강의 생성 (버튼)', 'InstructorDashboard.dc.html', () => byText('button', '강의 생성') || byText('button', '새 강의'), /InstructorCourseCreate/);
+  await clickNav('AdminDashboard 트레이닝 운영 → 모의 투자 운영', 'AdminDashboard.dc.html?view=training', () => D().querySelector('main a[href="AdminTradingManagement.dc.html"]') || [...D().querySelectorAll('a[href="AdminTradingManagement.dc.html"]')].pop(), /AdminTradingManagement/);
+  await clickNav('AdminDashboard 트레이닝 운영 → 모의 청약 운영', 'AdminDashboard.dc.html?view=training', () => [...D().querySelectorAll('a[href="AdminHousingManagement.dc.html"]')].pop(), /AdminHousingManagement/);
+  await clickNav('Drawer 메뉴 → 모의 청약 (AdminTrading)', 'AdminTradingManagement.dc.html', () => { D().querySelector('button[aria-label="메뉴"]').click(); return D().querySelector('[data-mb-drawer] a[href="AdminHousingManagement.dc.html"]'); }, /AdminHousingManagement/);
+  await clickNav('Drawer 메뉴 → 모의 투자 (AdminHousing)', 'AdminHousingManagement.dc.html', () => { D().querySelector('button[aria-label="메뉴"]').click(); return D().querySelector('[data-mb-drawer] a[href="AdminTradingManagement.dc.html"]'); }, /AdminTradingManagement/);
+  document.getElementById('st').textContent = 'done';
+  window.__results = rows;
+})();
+</script>
+</body></html>

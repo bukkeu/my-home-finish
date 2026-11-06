@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./mb-drawer.js"></script>
+<script src="./mb-search.js"></script>
+<script src="mb-notify.js"></script>
+<link rel="stylesheet" href="_ds/industry-3114b2da-1ad2-4267-99fa-40225130da98/styles.css">
+<script src="_ds/industry-3114b2da-1ad2-4267-99fa-40225130da98/_ds_bundle.js"></script>
+<script src="./mb-config.js"></script>
+<script src="housing/store.js"></script>
+
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+:root{--color-bg:#ffffff;--color-surface:#F7FAF3;--color-text:#263B1A;--color-divider:#D5E1CC;
+--color-accent:#9fe870;--color-accent-100:#EAF7D8;--color-accent-200:#B9EF8E;--color-accent-300:#B9EF8E;--color-accent-400:#9fe870;--color-accent-500:#8fd85f;--color-accent-600:#7fc84f;--color-accent-700:#263B1A;--color-accent-800:#263B1A;--color-accent-900:#1B2B12;
+--color-neutral-200:#D5E1CC;--color-neutral-300:#D5E1CC;--color-neutral-600:#687161;--color-neutral-700:#687161;--color-neutral-800:#263B1A;
+--font-heading:"Pretendard",system-ui,sans-serif;--font-body:"Pretendard",system-ui,sans-serif;--font-heading-weight:800}
+html{background:var(--color-bg)}
+body{margin:0;min-height:100%;background:var(--color-bg);font-family:var(--font-body)}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:800;letter-spacing:-0.035em;color:var(--color-text)}
+a{color:var(--color-accent-800)}a:hover{color:var(--color-accent-900)}
+.blueprint>.corner{display:none}
+.btn{border-radius:999px;font-family:var(--font-body);font-weight:600}
+.btn-primary{background:var(--color-accent-400);color:var(--color-accent-800);font-weight:700;border-color:transparent}
+.btn-primary:hover{background:var(--color-accent-500)}.btn-primary:active{background:var(--color-accent-600)}
+.btn-secondary{background:var(--color-accent-100);border-color:transparent;color:var(--color-accent-800);font-weight:700}
+.btn-secondary:hover{background:var(--color-accent-200)}
+.card,.card.blueprint{border:1.5px dashed var(--color-divider);border-radius:16px;overflow:hidden}
+.blueprint{border-radius:16px}
+.tag{border-radius:999px;font-weight:600}
+.tag-accent{background:var(--color-accent-400);color:var(--color-accent-800)}
+.card-kicker{color:var(--color-accent-700);font-weight:600}
+.tag-outline{border-color:#F2C14E;background:rgba(242,193,78,.18);color:#263B1A}
+.card-title{font-family:var(--font-heading);font-weight:800;letter-spacing:-0.02em;color:var(--color-text)}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;color:var(--color-text);background:var(--color-bg)">
+
+<div style="position:sticky;top:0;align-self:flex-start;width:0;height:0;z-index:40;overflow:visible">
+<button class="btn btn-ghost btn-icon" onClick="{{ toggleSidebar }}" aria-label="메뉴" style="color:var(--color-text);position:absolute;top:22px;left:16px;width:40px;height:40px">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+</button>
+<a href="UserHome-vr2.dc.html" style="position:absolute;top:25px;left:64px;display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:34px;width:auto;max-width:172px;object-fit:contain;display:block"></a>
+</div>
+<div data-mb-overlay="1" data-open="{{ sidebarOpen }}" onClick="{{ toggleSidebar }}" aria-hidden="true" style="position:fixed;inset:0;z-index:55;background:rgba(38,59,26,.38);transition:opacity 180ms ease-out;opacity:{{ mbOverlayOp }};pointer-events:{{ mbOverlayPe }}"></div>
+<aside data-mb-drawer="1" data-open="{{ sidebarOpen }}" aria-label="메뉴" style="position:fixed;top:0;left:0;bottom:0;z-index:60;width:min(300px,85vw);box-sizing:border-box;background:#fff;border-radius:0 20px 20px 0;box-shadow:8px 0 40px rgba(38,59,26,.16);transition:transform 250ms cubic-bezier(.22,.61,.36,1);transform:{{ mbDrawerT }};visibility:{{ mbDrawerVis }};display:flex;flex-direction:column;gap:20px;padding:24px 16px;overflow-y:auto;overflow-x:hidden">
+  <div style="position:sticky;top:-24px;z-index:5;flex:none;height:64px;margin:-24px -16px 0;padding:0 12px 0 20px;background:#fff;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box"><a href="Main.dc.html" style="display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:30px;width:auto;max-width:160px;object-fit:contain;display:block"></a><button data-mb-close="1" onClick="{{ toggleSidebar }}" aria-label="메뉴 닫기" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:999px;display:grid;place-items:center;color:#263B1A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+
+  <div class="blueprint" style="padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;width:100%;min-width:0;margin:0">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:14px">민</div>
+      <div style="display:flex;flex-direction:column;line-height:1.3">
+        <span style="font-weight:500;font-size:14px">{{ nickname }}</span>
+        <span style="font-size:12px;color:var(--color-neutral-700);display:flex;align-items:center;gap:4px;white-space:nowrap">Lv.{{ level }}<span style="display:inline-block;padding:1px 8px;border-radius:999px;background:{{ houseBg }};color:#263B1A;font-weight:700;font-size:11px">{{ house }}</span><span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px"><img src="assets/cash-coin2.png" alt="캐시" style="width:13px;height:13px;flex:none">{{ cashText }}</span></span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-neutral-700)"><span>경험치</span><span>{{ exp }} / 150 XP</span></div>
+      <div style="height:4px;background:var(--color-neutral-200)"><div style="height:100%;background:var(--color-accent);width:{{ expPct }}"></div></div>
+      <span style="font-size:11px;color:var(--color-neutral-700);display:flex;align-items:center;gap:3px;white-space:nowrap">Lv.{{ nextLevel }} 달성 시<img src="assets/cash-coin2.png" alt="캐시" style="width:12px;height:12px;flex:none;margin-left:2px">{{ levelUpCash }} 지급</span>
+    </div>
+  </div>
+
+  <nav style="display:flex;flex-direction:column;gap:2px;font-size:14px">
+    <a href="UserHome-vr2.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>홈</a>
+
+    <button data-mb-keep="1" onClick="{{ toggleLecture }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"></path><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"></path></svg>
+      <span style="flex:1">강의</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ lectureCaret }}</span>
+    </button>
+    <sc-if value="{{ lectureOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="UserLectureCategory.dc.html?cat=money" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">돈 굴리기</a>
+        <a href="UserLectureCategory.dc.html?cat=estate" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">부동산</a>
+      </div>
+    </sc-if>
+
+    <button data-mb-keep="1" onClick="{{ toggleTraining }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 6-6"></path></svg>
+      <span style="flex:1">트레이닝</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ trainingCaret }}</span>
+    </button>
+    <sc-if value="{{ trainingOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="{{ invHref }}" onClick="{{ invClick }}" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800);display:flex;align-items:center;gap:6px"><sc-if value="{{ invLocked }}"><img src="uploads/lock.png" alt="잠김" style="width:14px;height:14px;object-fit:contain;flex:none"></sc-if><span>모의 투자</span>
+          <sc-if value="{{ invLocked }}"><span style="font-size:11px;color:var(--color-neutral-600)">· Lv.{{ invReq }}부터</span></sc-if></a>
+        <a href="UserDemoHousingSubscription.dc.html" onClick="{{ subClick }}" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800);display:flex;align-items:center;gap:6px"><sc-if value="{{ subLocked }}"><img src="uploads/lock.png" alt="잠김" style="width:14px;height:14px;object-fit:contain;flex:none"></sc-if><span>모의 청약</span>
+          <sc-if value="{{ subLocked }}"><span style="font-size:11px;color:var(--color-neutral-600)">· Lv.{{ subReq }}부터</span></sc-if></a>
+      </div>
+    </sc-if>
+
+    <button data-mb-keep="1" onClick="{{ toggleMy }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <span style="flex:1">내 학습</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ myCaret }}</span>
+    </button>
+    <sc-if value="{{ myOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="UserMyPage.dc.html#tab-wrong" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">퀴즈 오답노트</a>
+        <a href="UserMyPage.dc.html#tab-scrap" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">강의 스크랩</a>
+        <a href="UserMyPage.dc.html#tab-history" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">시청기록 · 학습완료</a>
+      </div>
+    </sc-if>
+    
+    <a href="UserInquiry.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>문의 게시판</a>
+    <a href="UserMyPage.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:var(--color-accent-800);background:var(--color-accent-100);font-weight:500">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>마이페이지</a>
+  </nav>
+</aside>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+  <header style="display:flex;align-items:center;gap:12px;padding:20px 40px;position:sticky;top:0;z-index:30;background:var(--color-bg)">
+    <sc-if value="{{ sidebarClosed }}" hint-placeholder-val="{{ false }}"><div style="width:200px;height:40px;flex:none"></div></sc-if>
+    <form action="UserSearch.dc.html" method="get" style="flex:1;min-width:0;display:flex;justify-content:center;margin:0"><label style="width:100%;max-width:480px;height:44px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 18px;border-radius:999px;background:#fff;border:1.5px solid var(--color-divider)" style-focus-within="border-color:#9fe870"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#263B1A" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input name="q" type="search" placeholder="강의, Q&A, 게시판 검색" style="all:unset;flex:1;min-width:0;font-size:15px;color:var(--color-text)"></label></form>
+    <button class="btn btn-secondary" onClick="{{ openWords }}" style="font-size: 13px; font-weight: 600">오늘의 경제단어</button>
+    <span class="tag tag-neutral" style="font-size:13px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px"><img src="assets/cash-coin2.png" alt="캐시" style="width:18px;height:18px;flex:none">{{ cashText }}</span>
+    <button data-mb-bell="1" aria-label="알림" style="all:unset;cursor:pointer;position:relative;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></button>
+    <a href="UserMyPage.dc.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;font-size:14px;font-weight:500">
+      <span style="width:34px;height:34px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:13px">민</span>{{ nickname }}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 6 6 6-6 6"></path></svg>
+    </a>
+  </header>
+
+  <main style="padding:24px clamp(20px,3vw,56px) 64px;width:100%;box-sizing:border-box;max-width:none;display:flex;flex-direction:column;gap:32px">
+    <h1 style="margin:0;font-size:36px">마이페이지</h1>
+
+    <section class="card blueprint" style="padding:24px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:20px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:none">
+        <label onMouseEnter="{{ avatarIn }}" onMouseLeave="{{ avatarOut }}" style="position:relative;width:72px;height:72px;border-radius:50%;overflow:hidden;cursor:pointer;display:block">
+          <input type="file" accept="image/*" onChange="{{ pickPhoto }}" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none">
+          <sc-if value="{{ noPhoto }}" hint-placeholder-val="{{ true }}"><div style="width:100%;height:100%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:24px">민</div></sc-if>
+          <sc-if value="{{ photo }}"><img src="{{ photo }}" alt="프로필 사진" style="width:100%;height:100%;object-fit:cover;display:block"></sc-if>
+          <sc-if value="{{ avatarHover }}"><div style="position:absolute;inset:0;background:rgba(38,59,26,.55);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:600">사진 변경</div></sc-if>
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+        <span style="font-weight:700;font-size:20px">{{ nickname }}</span>
+        <span style="font-size:14px;color:var(--color-neutral-700)">minji@gmail.com · 구글 로그인</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+          <span class="tag tag-accent">Lv.{{ level }}</span><span class="tag" style="background:{{ houseBg }};color:#263B1A;font-weight:700">{{ house }}</span><span class="tag tag-neutral">{{ exp }} / 150 XP</span>
+          <span class="tag tag-neutral" style="display:inline-flex;align-items:center;gap:4px"><img src="assets/cash-coin2.png" alt="캐시" style="width:13px;height:13px;flex:none">{{ cashText }}</span>
+          <span class="tag tag-neutral">{{ streak }}일째 출석 중</span>
+        </div>
+      </div>
+      <sc-if value="{{ hasAwards }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:6px">
+        <span class="card-kicker">수상내역</span>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+          <sc-for list="{{ awards }}" as="a" hint-placeholder-count="3"><sc-if value="{{ a.medal }}" hint-placeholder-val="{{ true }}"><span role="img" aria-label="{{ a.label }}" title="{{ a.label }}" style="position:relative;display:inline-block;flex:none;width:40px;height:40px;background-image:url(assets/medals.png);background-size:300% 100%;background-repeat:no-repeat;background-position:{{ a.pos }}"><span aria-hidden="true" style="position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:42%;height:42%;border-radius:50%;background:{{ a.discBg }};color:{{ a.numColor }};font-size:{{ a.numSize }};font-weight:800;line-height:1;display:grid;place-items:center;font-variant-numeric:tabular-nums">{{ a.season }}</span></span></sc-if></sc-for>
+        </div>
+      </div></sc-if>
+    </section>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <sc-if value="{{ t.active }}"><button class="btn btn-primary" onClick="{{ t.go }}" style="padding:9px 18px">{{ t.label }}</button></sc-if>
+        <sc-if value="{{ t.idle }}"><button class="btn btn-secondary" onClick="{{ t.go }}" style="padding:9px 18px">{{ t.label }}</button></sc-if>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ tabAccount }}" hint-placeholder-val="{{ true }}">
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
+        <div class="card blueprint" style="padding:24px;gap:16px">
+          <div class="card-title" style="font-size:20px">개인정보 설정</div>
+          <div class="field" style="display:flex;flex-direction:column">
+            <label>아이디 (이메일)</label>
+            <input class="input" value="minji@gmail.com" disabled="" style="border-radius:10px;opacity:.6">
+            <span style="font-size:12px;color:var(--color-neutral-700);margin-top:4px">아이디는 개인정보 보호를 위해 변경할 수 없어요.</span>
+          </div>
+          <div class="field" style="display:flex;flex-direction:column">
+            <label>닉네임</label>
+            <input class="input" value="민지" style="border-radius:10px">
+          </div>
+          <div class="field" style="display:flex;flex-direction:column">
+            <label>생년월일</label>
+            <input class="input" type="text" value="2001.05.14" readonly="" aria-readonly="true" tabindex="-1" style="border-radius:10px;background:var(--color-neutral-100,#F2F4EF);color:#687161;cursor:not-allowed">
+            <span style="font-size:12px;color:#687161;margin-top:4px">생년월일은 변경할 수 없어요.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px"><span class="tag tag-accent">본인인증 완료</span></div>
+          <button class="btn btn-primary" onClick="{{ save }}" style="align-self:flex-start;padding:9px 18px">{{ saveLabel }}</button>
+        </div>
+        <div class="card blueprint" style="padding:24px;gap:16px">
+          <div class="card-title" style="font-size:20px">비밀번호 변경</div>
+            <div class="field" style="display:flex;flex-direction:column">
+              <label>현재 비밀번호</label>
+              <div style="position:relative">
+                <input class="input" type="{{ pwType1 }}" placeholder="8자 이상, 영문·숫자·특수문자" style="border-radius:10px;padding-right:44px">
+                <button class="btn btn-ghost btn-icon" onClick="{{ togglePw1 }}" aria-label="비밀번호 보기" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);color:var(--color-neutral-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+              </div>
+            </div>
+            <div class="field" style="display:flex;flex-direction:column">
+              <label>새 비밀번호</label>
+              <div style="position:relative">
+                <input class="input" type="{{ pwType2 }}" placeholder="8자 이상, 영문·숫자·특수문자" style="border-radius:10px;padding-right:44px">
+                <button class="btn btn-ghost btn-icon" onClick="{{ togglePw2 }}" aria-label="비밀번호 보기" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);color:var(--color-neutral-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+              </div>
+            </div>
+            <div class="field" style="display:flex;flex-direction:column">
+              <label>새 비밀번호 확인</label>
+              <div style="position:relative">
+                <input class="input" type="{{ pwType3 }}" placeholder="8자 이상, 영문·숫자·특수문자" style="border-radius:10px;padding-right:44px">
+                <button class="btn btn-ghost btn-icon" onClick="{{ togglePw3 }}" aria-label="비밀번호 보기" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);color:var(--color-neutral-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+              </div>
+            </div>
+          <button class="btn btn-primary" style="align-self:flex-start;padding:9px 18px">비밀번호 변경</button>
+        </div>
+      </section>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-ghost" onClick="{{ openWithdraw }}" style="color:#B3261E">탈퇴하기</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabCash }}">
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+          <div class="card blueprint" style="padding:18px;gap:4px"><span style="font-size:13px;color:var(--color-neutral-700)">보유 캐시</span><span style="font-size:24px;font-weight:800;display:flex;align-items:center;gap:8px"><img src="assets/cash-coin2.png" alt="캐시" style="width:26px;height:26px;flex:none">{{ cashText }}</span></div>
+          <div class="card blueprint" style="padding:18px;gap:4px;background:#EAF7D8"><span style="font-size:13px;color:#3d6120;font-weight:700">이번 달 적립</span><span style="font-size:24px;font-weight:800;color:#3d6120">+{{ cInSum }}</span></div>
+          <div class="card blueprint" style="padding:18px;gap:4px"><span style="font-size:13px;color:#8A5A00;font-weight:700">이번 달 사용</span><span style="font-size:24px;font-weight:800;color:#8A5A00">−{{ cOutSum }}</span></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ cFilters }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.go }}" style="all:unset;cursor:pointer;padding:7px 16px;border-radius:999px;font-size:14px;font-weight:700;background:{{ f.bg }};color:#263B1A;border:1.5px solid {{ f.line }}">{{ f.label }}</button></sc-for>
+        </div>
+        <div class="card blueprint" style="padding:6px 20px">
+          <sc-for list="{{ cRows }}" as="r" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--color-divider)">
+              <span style="width:52px;text-align:center;font-size:12px;font-weight:800;padding:4px 0;border-radius:999px;background:{{ r.bg }};color:{{ r.fg }}">{{ r.kind }}</span>
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:15px;font-weight:600">{{ r.title }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ r.date }}</span></span>
+              <span style="font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ r.fg }}">{{ r.amount }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ tabHousing }}" hint-placeholder-val="{{ false }}">
+      <section id="housing-account" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:240px">
+            <div class="card-title" style="font-size:22px">나의 청약통장</div>
+            <span style="font-size:14px;color:var(--color-neutral-700);word-break:keep-all">출석·학습·레벨업으로 모은 가상 캐시를 납입해 회차와 인정금액을 쌓아요.<br>레벨과 상관없이 이용할 수 있어요.</span>
+          </div>
+          <a href="UserDemoHousingSubscription.dc.html" class="btn btn-secondary" style="text-decoration:none">모의 청약 보러 가기</a>
+        </div>
+        <div style="background:#263B1A;color:#fff;border-radius:20px;padding:clamp(18px,3vw,28px);display:flex;flex-direction:column;gap:20px;box-shadow:0 12px 32px rgba(38,59,26,.18)">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:20px 24px">
+            <sc-for list="{{ hMain }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span style="font-size:13px;color:#B9EF8E;font-weight:600">{{ a.label }}</span><span style="font-size:clamp(20px,2.4vw,28px);font-weight:800;letter-spacing:-0.02em;color:{{ a.color }};display:flex;align-items:center;gap:8px"><sc-if value="{{ a.cash }}"><img src="assets/cash-coin2.png" alt="캐시" style="width:1em;height:1em;flex:none"></sc-if>{{ a.value }}</span></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px 28px;padding-top:16px;border-top:1px solid rgba(185,239,142,.3)">
+            <sc-for list="{{ hSub }}" as="a" hint-placeholder-count="2">
+              <span style="display:flex;gap:8px;align-items:center;font-size:14px"><span style="color:#B9EF8E">{{ a.label }}</span><b style="color:{{ a.color }}">{{ a.value }}</b></span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#EAF7D8;font-size:13px;line-height:1.6">
+          <span style="font-weight:800;flex:none">안내</span>
+          <span style="word-break:keep-all">실제 청약통장은 한 달에 한 번 납입한 것을 1회차로 인정하지만, MoneyBeetle에서는 학습을 위해 <b>하루 1회 납입을 1회차로</b> 인정해요.<br>한 번에 20,000~500,000 캐시를 넣을 수 있고, 회차 인정금액은 하루 최대 250,000 캐시예요.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:stretch">
+          <div class="card blueprint" style="padding:22px;gap:14px;min-width:0">
+            <span style="font-weight:800;font-size:18px">납입하기</span>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:13px;color:var(--color-neutral-700)">납입 금액 · 보유 캐시 {{ hCash }}</span>
+              <div style="position:relative">
+                <input type="text" inputmode="numeric" value="{{ hDepInput }}" onChange="{{ hSetDep }}" placeholder="20,000" style="width:100%;box-sizing:border-box;height:52px;border:1.5px solid {{ hDepBorder }};border-radius:12px;padding:0 64px 0 16px;font-size:20px;font-weight:700;font-family:inherit;color:#263B1A;background:#fff">
+                <span style="position:absolute;right:16px;top:0;height:52px;display:flex;align-items:center;font-size:14px;color:var(--color-neutral-700)">캐시</span>
+              </div>
+            </label>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+              <sc-for list="{{ hQuick }}" as="q" hint-placeholder-count="4"><button class="btn btn-secondary" onClick="{{ q.set }}" style="font-size:13px;padding:6px 4px;min-width:0;width:100%;justify-content:center">{{ q.label }}</button></sc-for>
+            </div>
+            <sc-if value="{{ hDepError }}"><span style="font-size:13px;color:#B3261E;font-weight:600">{{ hDepError }}</span></sc-if>
+            <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
+              <sc-for list="{{ hDepCalc }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.label }}</span><span style="font-weight:700;color:{{ r.color }}">{{ r.value }}</span></div>
+              </sc-for>
+            </div>
+            <span style="font-size:12px;color:var(--color-neutral-700);line-height:1.5;word-break:keep-all">인정 한도를 넘는 금액도 통장 잔액에는 그대로 쌓여요.<br>회차 인정금액에는 250,000 캐시까지만 반영돼요.</span>
+            <button class="btn btn-primary" onClick="{{ hAskDep }}" disabled="{{ hDepOff }}" style="height:48px;font-size:16px;opacity:{{ hDepOpacity }}">납입하기</button>
+          </div>
+          <div class="card blueprint" style="padding:22px;gap:12px;min-width:0">
+            <span style="font-weight:800;font-size:18px">납입 내역</span>
+            <sc-if value="{{ hNoHist }}"><span style="font-size:13px;color:var(--color-neutral-700);padding:20px 0;text-align:center">아직 납입 내역이 없어요.</span></sc-if>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:0;font-size:13px">
+              <span style="padding:8px 0;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider)">날짜 · 회차</span><span style="padding:8px 0 8px 20px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider);text-align:right">적립</span><span style="padding:8px 0 8px 20px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider);text-align:right">인정</span>
+              <sc-for list="{{ hHist }}" as="r" hint-placeholder-count="3">
+                <span style="padding:10px 0;border-bottom:1px solid var(--color-divider)">{{ r.date }} · {{ r.count }}회차</span>
+                <span style="padding:10px 0 10px 20px;border-bottom:1px solid var(--color-divider);text-align:right;font-weight:600">{{ r.amount }}</span>
+                <span style="padding:10px 0 10px 20px;border-bottom:1px solid var(--color-divider);text-align:right;font-weight:600">{{ r.rec }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ tabScrap }}">
+      <section class="card blueprint" style="padding:6px 20px">
+        <sc-for list="{{ scraps }}" as="c" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--color-divider)">
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span class="card-kicker" style="font-size:12px">{{ c.cat }}</span><span style="font-size:16px;font-weight:700;text-wrap:pretty">{{ c.title }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ c.meta }}</span></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><a href="UserLectureCategory.dc.html" class="btn btn-secondary" style="text-decoration:none">강의 보기</a><button class="btn btn-ghost" style="color:var(--color-neutral-700)">스크랩 해제</button></div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ tabWrong }}">
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px;font-weight:700"><span style="padding:5px 14px;border-radius:999px;background:#FFF0D6;color:#8A5A00">미극복 {{ wLeft }}</span><span style="padding:5px 14px;border-radius:999px;background:#EAF7D8;color:#3d6120">극복 완료 {{ wDoneN }}</span></div>
+        <sc-for list="{{ wrongs }}" as="q" hint-placeholder-count="3">
+          <div class="card blueprint" style="padding:20px;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px"><span class="card-kicker" style="flex:1">{{ q.cat }}</span><span style="font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;background:{{ q.stBg }};color:{{ q.stFg }}">{{ q.status }}</span></div>
+            <div class="card-title" style="font-size:18px">{{ q.q }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:14px">
+              <span style="color:var(--color-neutral-700);flex:none">내 답: {{ q.mine }}</span>
+              <span style="color:var(--color-accent-800);font-weight:600;flex:none">정답: {{ q.answer }}</span>
+            </div>
+            <p style="margin:0;font-size:14px;color:var(--color-neutral-800);text-wrap:pretty">{{ q.why }}</p>
+            <sc-if value="{{ q.open }}">
+              <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:var(--color-surface)">
+                <span style="font-size:13px;font-weight:700">정답을 골라 보세요</span>
+                <sc-for list="{{ q.choices }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.pick }}" style="all:unset;cursor:pointer;box-sizing:border-box;padding:11px 16px;border-radius:12px;background:#fff;border:1.5px solid var(--color-divider);font-size:14px" style-hover="border-color:#9fe870">{{ c.label }}</button></sc-for>
+                <sc-if value="{{ q.miss }}"><span style="font-size:13px;font-weight:700;color:#B3261E">아쉬워요, 다시 골라 보세요.</span></sc-if>
+              </div>
+            </sc-if>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-if value="{{ q.canRetry }}"><button class="btn btn-secondary" onClick="{{ q.toggle }}" style="align-self:flex-start">{{ q.retryLabel }}</button></sc-if>
+              <sc-if value="{{ q.done }}"><button class="btn btn-ghost" onClick="{{ q.reset }}" style="color:var(--color-neutral-700)">다시 풀기</button></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ tabQna }}">
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <div class="card blueprint" style="padding:22px;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="flex:1;min-width:200px;font-weight:800;font-size:18px">Q&amp;A·문의 글 모음 · {{ qCount }}건</span>
+            <a href="UserInquiry.dc.html" class="btn btn-primary" style="height:44px;padding:0 22px;text-decoration:none;display:inline-flex;align-items:center">문의 게시판 가기</a>
+          </div>
+          <span style="font-size:13px;color:var(--color-neutral-700);line-height:1.6;word-break:keep-all">내가 남긴 Q&amp;A와 문의 게시판 글을 한곳에서 모아 봐요.<br>새 문의는 문의 게시판에서 작성할 수 있어요.</span>
+        </div>
+        <div class="card blueprint" style="padding:22px;gap:12px">
+          <sc-if value="{{ qEmpty }}"><span style="font-size:13px;color:var(--color-neutral-700);padding:18px 0;text-align:center">아직 남긴 문의가 없어요.</span></sc-if>
+          <sc-for list="{{ qRows }}" as="q" hint-placeholder-count="2">
+            <div style="border:1px solid var(--color-divider);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;background:var(--color-bg)">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ q.stBg }}">{{ q.status }}</span><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;border:1px solid var(--color-divider);background:#fff">{{ q.src }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ q.date }}</span></div>
+              <span style="font-size:15px;font-weight:700">{{ q.title }}</span>
+              <sc-if value="{{ q.hasLecture }}"><span style="font-size:12px;color:var(--color-neutral-700)">강의 · {{ q.lectureTitle }}</span></sc-if>
+              <span style="font-size:14px;line-height:1.6;white-space:pre-wrap">{{ q.body }}</span>
+              <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px"><sc-for list="{{ q.replies }}" as="a" hint-placeholder-count="0"><div style="border-left:3px solid #9fe870;background:#fff;padding:10px 14px;border-radius:0 10px 10px 0;font-size:14px;line-height:1.6"><b style="font-size:12px;color:#4E8A24">{{ a.by }}</b><br>{{ a.text }}</div></sc-for></div><sc-if value="{{ q.hasLecture }}"><a href="{{ q.href }}" class="btn btn-secondary" style="margin-left:auto;text-decoration:none;white-space:nowrap">해당 강의 보러 가기</a></sc-if></div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ tabHistory }}">
+      <section class="card blueprint" style="padding:6px 20px">
+        <sc-for list="{{ history }}" as="r" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--color-divider)">
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span class="card-kicker" style="font-size:12px">{{ r.cat }}</span><span style="font-size:16px;font-weight:700;text-wrap:pretty">{{ r.title }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ r.meta }}</span></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span style="font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;background:{{ r.bg }}">{{ r.status }}</span><a href="UserLectureCategory.dc.html" class="btn btn-secondary" style="text-decoration:none">강의 보기</a></div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+  </main>
+  <sc-if value="{{ hConfirm }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ hCloseDep }}" style="z-index:60">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(420px,100%);border-radius:20px;padding:26px;gap:14px;background:var(--color-bg)">
+        <span style="font-weight:800;font-size:20px">{{ hAmtText }} 캐시를 납입할까요?</span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ hDepCalc }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.label }}</span><span style="font-weight:700;color:{{ r.color }}">{{ r.value }}</span></div>
+          </sc-for>
+        </div>
+        <span style="font-size:12px;color:var(--color-neutral-700)">오늘 납입하면 {{ hNextCount }}회차로 인정되고, 내일부터 다시 납입할 수 있어요.</span>
+        <div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ hCloseDep }}">취소</button><button class="btn btn-primary" onClick="{{ hDoDep }}">납입하기</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ hToast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:70;background:#263B1A;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100vw - 32px);text-align:center">{{ hToast }}</div>
+  </sc-if>
+  <sc-if value="{{ lockOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeLock }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(400px,100%);border-radius:20px;padding:28px;gap:14px;background:var(--color-bg);align-items:center;text-align:center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="11" width="16" height="10"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span style="font-weight:800;font-size:20px">{{ lockName }}은(는) Lv.{{ lockReq }}부터 열려요</span>
+        <span style="font-size:14px;color:var(--color-neutral-700);word-break:keep-all">지금은 Lv.{{ level }} {{ house }}예요.<br>강의를 완료하고 경험치를 모아 보세요.</span>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn btn-secondary" onClick="{{ closeLock }}">닫기</button>
+          <a href="UserLectureCategory.dc.html" class="btn btn-primary" onClick="{{ closeLock }}" style="text-decoration:none">강의 들으러 가기</a>
+          <sc-if value="{{ lockIsSub }}"><a href="UserDemoHousingSubscription.dc.html" class="btn btn-secondary" style="text-decoration:none">미리 둘러보기</a></sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ withdrawOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeWithdraw }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(440px,100%);border-radius:20px;padding:28px;gap:12px;background:var(--color-bg)">
+        <div class="dialog-title" style="font-weight:700">정말 탈퇴하시겠어요?</div>
+        <div class="dialog-body">보유 캐시, 레벨, 스크랩, 오답노트, 랭킹 기록이 모두 삭제되며 복구할 수 없어요.</div>
+        <div class="dialog-actions">
+          <button class="btn btn-secondary" onClick="{{ closeWithdraw }}">취소</button>
+          <button class="btn btn-primary" onClick="{{ closeWithdraw }}">탈퇴하기</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ wordsOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeWords }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(520px,100%);border-radius:20px;padding:28px;gap:16px;background:var(--color-bg);max-height:calc(100vh - 32px);overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="tag tag-accent" style="width: 119px; height: 33px; font-size: 15px">오늘의 경제단어</span>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-icon" onClick="{{ closeWords }}" aria-label="닫기" style="color:var(--color-text)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ words }}" as="w" hint-placeholder-count="5">
+            <div style="padding:12px 0;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px">
+              <span style="font-family:var(--font-heading);font-weight:700;font-size:17px">{{ w.term }}</span>
+              <span style="font-size:14px;line-height:1.5;color:var(--color-neutral-800);text-wrap:pretty">{{ w.desc }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="dialog-actions" style="margin-top:0">
+          <button class="btn btn-ghost" onClick="{{ hideToday }}" style="color:var(--color-neutral-700)">오늘 하루 보지 않기</button>
+          <button class="btn btn-primary" onClick="{{ closeWords }}">확인</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;nickname&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;민지&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;level&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;사용자 상태&quot;},&quot;streak&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:0,&quot;max&quot;:30,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;사용자 상태&quot;},&quot;invReq&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:8,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;잠금 레벨&quot;},&quot;subReq&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;잠금 레벨&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    this._hon = () => this.forceUpdate();
+    window.addEventListener('mb-housing-change', this._hon);
+    this._hash = () => {
+      const hs = window.location.hash, m = hs.match(/^#tab-(account|housing|scrap|wrong|history|qna)$/);
+      const t = hs === '#housing-account' ? 'housing' : m ? m[1] : null;
+      if (t) this.setState({ tab: t });
+    };
+    this._hash();
+    window.addEventListener('hashchange', this._hash);
+    this.autoAttend();
+    this._at = setInterval(() => this.autoAttend(), 60000);
+  }
+  autoAttend() {
+    const f = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const now = new Date(), today = f(now), y = new Date(now); y.setDate(y.getDate() - 1);
+    let r = {};
+    try { r = JSON.parse(localStorage.getItem('mb-attendance') || '{}'); } catch (e) {}
+    if (r.last === today) { if (this.state.streak !== r.streak || !this.state.checkedIn) this.setState({ streak: r.streak, checkedIn: true }); return; }
+    const n = r.last === f(y) ? (r.streak || 0) + 1 : 1;
+    localStorage.setItem('mb-attendance', JSON.stringify({ last: today, streak: n }));
+    this.setState(x => ({ streak: n, checkedIn: true, cash: x.cash + (n >= 5 ? 100 : 0) }));
+  }
+  componentWillUnmount() { window.removeEventListener('mb-housing-change', this._hon); window.removeEventListener('hashchange', this._hash); clearTimeout(this._ht); clearInterval(this._at); }
+  // 나의 청약통장 — 데이터는 housing/store.js(모의 청약 페이지와 공유)
+  housingVals() {
+    const H = window.MBHousing, s = this.state;
+    if (!H) return { hAccInfo: [], hDepCalc: [], hQuick: [], hHist: [], hNoHist: true, hDepOff: true };
+    const db = H.get(), acc = db.account, T = H.TODAY, fmt = n => Number(n || 0).toLocaleString('ko-KR');
+    const fmtD = d => { const x = new Date(d + 'T00:00:00'); return x.getFullYear() + '.' + String(x.getMonth() + 1).padStart(2, '0') + '.' + String(x.getDate()).padStart(2, '0') + '(' + '일월화수목금토'[x.getDay()] + ')'; };
+    const amt = parseInt(String(s.hDep || '').replace(/\D/g, ''), 10) || 0;
+    const p = H.depositPreview(amt), todayPaid = acc.last === T;
+    const calc = [
+      { label: '납입 예정금액', value: fmt(amt) + ' 캐시', color: '#263B1A' },
+      { label: '실제 통장 적립금액', value: fmt(amt) + ' 캐시', color: '#263B1A' },
+      { label: '이번 납입 인정금액', value: fmt(p.rec) + ' 캐시', color: '#3d6120' },
+      { label: '납입 후 예상 잔액', value: fmt(p.after) + ' 캐시', color: '#263B1A' }];
+    const flash = m => { clearTimeout(this._ht); this.setState({ hToastMsg: m }); this._ht = setTimeout(() => this.setState({ hToastMsg: null }), 2600); };
+    const hInfo = [
+        { label: '청약통장 잔액', value: fmt(acc.balance) + ' 캐시', color: '#263B1A' }, { label: '누적 납입금액', value: fmt(acc.total) + ' 캐시', color: '#263B1A' },
+        { label: '누적 인정금액', value: fmt(acc.recognized) + ' 캐시', color: '#3d6120' }, { label: '인정 납입 회차', value: acc.count + '회차', color: '#263B1A' },
+        { label: '최근 납입일', value: fmtD(acc.last), color: '#263B1A' }, { label: '오늘 납입 여부', value: todayPaid ? '납입 완료' : '미납입', color: todayPaid ? '#3d6120' : '#B26A00' }];
+    return {
+      hAccInfo: hInfo,
+      hMain: [0,1,2,3].map(i => { const x = hInfo[i]; const c = / 캐시$/.test(x.value); return { label: x.label, value: c ? x.value.replace(/ 캐시$/, '') : x.value, cash: c, color: i === 2 ? '#B9EF8E' : '#fff' }; }), hSub: [4,5].map(i => { const x = hInfo[i]; return { label: x.label, value: x.value, color: i === 5 && !todayPaid ? '#F2C14E' : '#fff' }; }),
+      hCash: fmt(db.user.cash) + ' 캐시', hDepInput: s.hDep || '',
+      hSetDep: e => { const v = e.target.value.replace(/\D/g, ''); this.setState({ hDep: v ? fmt(parseInt(v, 10)) : '' }); },
+      hQuick: [20000, 100000, 250000, 400000].map(v => ({ label: fmt(v), set: () => this.setState({ hDep: fmt(v) }) })),
+      hDepError: p.error, hDepBorder: p.error ? '#B3261E' : '#263B1A', hDepCalc: calc,
+      hDepOff: !!p.error || !amt, hDepOpacity: (!!p.error || !amt) ? 0.45 : 1, hAmtText: fmt(amt), hNextCount: acc.count + 1,
+      hAskDep: () => { if (!p.error && amt) this.setState({ hConfirmOpen: true }); },
+      hConfirm: !!s.hConfirmOpen, hCloseDep: () => this.setState({ hConfirmOpen: false }),
+      hDoDep: () => {
+        const r = H.deposit(amt);
+        this.setState({ hConfirmOpen: false, hDep: '' });
+        flash(r.ok ? fmt(amt) + ' 캐시를 납입했어요 · ' + r.count + '회차 인정' + (r.excess ? ' (인정 ' + fmt(r.rec) + ' 캐시)' : '') : r.error);
+      },
+      hHist: acc.history.map(x => ({ date: fmtD(x.date), count: x.count, amount: fmt(x.amount), rec: fmt(x.rec) })), hNoHist: acc.history.length === 0,
+      hToast: s.hToastMsg || null
+    };
+  }
+  state = { lock: null, sidebarOpen: false, lectureOpen: true, trainingOpen: true, myOpen: false, streak: null, checkedIn: false, cash: 12400, wordsOpen: false, tab: 'account', pw1: false, pw2: false, pw3: false, withdrawOpen: false, saved: false };
+  wrongList() {
+    const s = this.state, done = s.wDone || {}, open = s.wOpen, miss = s.wMiss || {};
+    const raw = [
+      { cat: '예적금 › 이자 계산', q: '연 4% 예금에 100만 원을 1년 맡기면 세후 이자는?', mine: '40,000원', answer: '33,840원', other: '36,000원', why: '이자소득세 15.4%가 원천징수되어 40,000원 중 6,160원이 빠집니다.' },
+      { cat: '주식 › 한국주식', q: '정해 둔 가격에만 체결되는 주문 방식은?', mine: '시장가 주문', answer: '지정가 주문', other: '예약 주문', why: '시장가는 현재 가격으로 즉시 체결되고, 지정가는 원하는 가격에 도달해야 체결됩니다.' },
+      { cat: '부동산 › 청약', q: '청약 가점 항목이 아닌 것은?', mine: '부양가족 수', answer: '연소득', other: '무주택 기간', why: '가점은 무주택 기간, 부양가족 수, 청약통장 가입 기간으로 산정합니다.' }
+    ];
+    const set = o => this.setState(o);
+    return raw.map((x, i) => {
+      const d = i in done ? done[i] : i === 2, isOpen = open === i;
+      return { cat: x.cat, q: x.q, mine: x.mine, answer: x.answer, why: x.why, done: d, canRetry: !d, open: isOpen && !d, miss: isOpen && !!miss[i],
+        status: d ? '극복 완료' : '미극복', stBg: d ? '#EAF7D8' : '#FFF0D6', stFg: d ? '#3d6120' : '#8A5A00',
+        retryLabel: isOpen ? '접기' : '다시 풀기', toggle: () => set({ wOpen: isOpen ? null : i }),
+        reset: () => set({ wDone: { ...done, [i]: false }, wOpen: i, wMiss: {} }),
+        choices: [x.mine, x.answer, x.other].map(o => ({ label: o, pick: () => o === x.answer ? set({ wDone: { ...done, [i]: true }, wOpen: null, wMiss: {} }) : set({ wMiss: { ...miss, [i]: true } }) })) };
+    });
+  }
+  cashVals() {
+    const f = this.state.cFilter || 'all';
+    const all = [
+      { kind: '적립', title: '출석 체크 · 연속 출석 보상', date: '2026.11.03', amt: 1000 },
+      { kind: '사용', title: '청약통장 납입', date: '2026.11.02', amt: -20000 },
+      { kind: '적립', title: '강의 완료 · 금리와 채권 가격', date: '2026.11.02', amt: 3000 },
+      { kind: '적립', title: '퀴즈 통과 · 단리와 복리', date: '2026.11.01', amt: 3000 },
+      { kind: '사용', title: '모의 투자 시즌 참가', date: '2026.10.30', amt: -5000 },
+      { kind: '적립', title: '레벨업 보상 · Lv.4', date: '2026.10.29', amt: 4000 }
+    ];
+    const n = v => Math.abs(v).toLocaleString('ko-KR');
+    const rows = all.filter(r => f === 'all' || (f === 'in' ? r.amt > 0 : r.amt < 0));
+    return {
+      cInSum: n(all.filter(r => r.amt > 0).reduce((a, r) => a + r.amt, 0)), cOutSum: n(all.filter(r => r.amt < 0).reduce((a, r) => a + r.amt, 0)),
+      cFilters: [['all', '전체'], ['in', '적립'], ['out', '사용']].map(([k, l]) => ({ label: l, bg: f === k ? '#9fe870' : '#fff', line: f === k ? '#9fe870' : 'var(--color-divider)', go: () => this.setState({ cFilter: k }) })),
+      cRows: rows.map(r => ({ kind: r.kind, title: r.title, date: r.date, amount: (r.amt > 0 ? '+' : '−') + n(r.amt), bg: r.amt > 0 ? '#EAF7D8' : '#FFF0D6', fg: r.amt > 0 ? '#3d6120' : '#8A5A00' }))
+    };
+  }
+  qnaVals() {
+    const rd = k => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
+    /* __seedFix */ try { const sv = rd('mb-my-qna'); if (sv) { let ch = false; sv.forEach(q => { if (q.id === 1 && q.title === '청약통장은 언제부터 납입할 수 있나요?' && !q.lecture) { q.lecture = { cat: 'estate', sub: 1, title: '청약통장 기초와 가점 계산' }; ch = true; } }); if (ch) localStorage.setItem('mb-my-qna', JSON.stringify(sv)); } } catch (e) {}
+    const legacy = rd('mb-my-qna') || [{ id: 1, title: '청약통장은 언제부터 납입할 수 있나요?', body: '레벨 제한이 있는지 궁금해요.', date: '2026.11.01', lecture: { cat: 'estate', sub: 1, title: '청약통장 기초와 가점 계산' }, answer: { by: '관리자', text: '청약통장 납입은 레벨과 상관없이 하루 1회 가능해요.' } }];
+    const inq = rd('mb-inquiry-v1') || [];
+    const ans = x => { const out = []; if (x.answer) out.push({ by: (x.answer.by || '답변'), text: typeof x.answer === 'string' ? x.answer : (x.answer.text || '') }); (x.comments || []).forEach(c => out.push({ by: c.admin ? '관리자·강사' : '나', text: c.body })); return out; };
+    const rows = inq.map(q => ({ title: q.title, body: q.hidden ? '관리자에 의해 숨김 처리된 글이에요' : q.body, date: q.date, src: '문의 게시판' + (q.private ? ' · 비공개' : ''), href: '', lectureTitle: '', hasLecture: false, status: q.hidden ? '숨김' : q.answer ? '답변 완료' : '답변 대기', stBg: q.hidden ? '#EEF0EC' : q.answer ? '#9fe870' : '#FFF0D6', replies: ans(q) }))
+      .concat(legacy.map(q => ({ title: q.title, body: q.body, date: q.date, src: 'Q&A', href: (q.lecture && q.lecture.cat && q.lecture.sub && q.lecture.title) ? 'UserLectureDetail.dc.html?cat=' + encodeURIComponent(q.lecture.cat) + '&sub=' + encodeURIComponent(q.lecture.sub) + '&title=' + encodeURIComponent(q.lecture.title) : '', lectureTitle: q.lecture && q.lecture.title ? q.lecture.title : '', hasLecture: !!(q.lecture && q.lecture.cat && q.lecture.sub && q.lecture.title), status: q.answer ? '답변 완료' : '답변 대기', stBg: q.answer ? '#9fe870' : '#FFF0D6', replies: q.answer ? [{ by: q.answer.by, text: q.answer.text }] : [] })))
+      .sort((x, y) => String(y.date).localeCompare(String(x.date)));
+    return { qCount: rows.length, qEmpty: rows.length === 0, qRows: rows };
+  }
+  renderVals() { const __v = this.__rv(); const l = Number(__v.level) || 1; __v.houseBg = l >= 17 ? '#F2C14E' : l >= 12 ? '#9fe870' : l >= 4 ? '#B9EF8E' : '#EAF7D8'; return __v; }
+  __rv() {
+    const p = this.props, level = p.level ?? 4, invReq = p.invReq ?? 8, subReq = p.subReq ?? 12;
+    const house = level <= 3 ? '고시원' : level <= 7 ? '원룸' : level <= 11 ? '투룸' : level <= 16 ? '아파트' : '내 집';
+    const streak = this.state.streak ?? (p.streak ?? 4), s = this.state;
+    const tog = k => () => this.setState(x => ({ [k]: !x[k] }));
+    const caret = v => (v ? '▲' : '▼');
+    const shown = Math.max(7, streak);
+    const dots = Array.from({ length: 7 }, (_, i) => { const on = i < Math.min(streak, 7); return { on, off: !on }; });
+    return {
+      avatarHover: !!s.avatarHover, avatarIn: () => this.setState({ avatarHover: true }), avatarOut: () => this.setState({ avatarHover: false }),
+      photo: s.photo || null, noPhoto: !s.photo,
+      pickPhoto: e => { const f = e.target.files && e.target.files[0]; if (f) this.setState({ photo: URL.createObjectURL(f) }); },
+      house, nickname: p.nickname ?? '민지', level, invReq, subReq,
+      invLocked: level < invReq, subLocked: level < subReq, invHref: level < invReq ? '#' : 'UserDemoTrading.dc.html',
+      lockOpen: !!this.state.lock, lockIsSub: !!this.state.lock && this.state.lock.name === '모의 청약', lockName: this.state.lock ? this.state.lock.name : '', lockReq: this.state.lock ? this.state.lock.req : '',
+      closeLock: e => { if (e) e.preventDefault(); this.setState({ lock: null }); },
+      invClick: e => { if (level < invReq) { e.preventDefault(); this.setState({ lock: { name: '모의 투자', req: invReq } }); } },
+      subClick: e => { if (level < subReq) { e.preventDefault(); this.setState({ lock: { name: '모의 청약', req: subReq } }); } }, invOpen: level >= invReq,
+      exp: 90, expPct: '60%', nextLevel: Math.min(level + 1, 20), levelUpCash: (Math.min(level + 1, 20) * 1000).toLocaleString(), deposits: 18,
+      cashText: s.cash.toLocaleString(), streak, streakDots: dots,
+      streakNote: streak >= 5 ? '5일 이상 연속 출석 중 · 매일 캐시 100 지급' : `${5 - streak}일 더 출석하면 매일 캐시를 받아요`,
+      checkedIn: s.checkedIn, checkLabel: s.checkedIn ? '오늘 출석 완료' : '출석 체크',
+      checkIn: () => this.autoAttend(),
+      tabs: [['account','계정 설정'],['cash','캐시 내역'],['housing','나의 청약통장'],['wrong','퀴즈 오답노트'],['scrap','강의 스크랩'],['history','학습 기록'],['qna','Q&A·문의 모음']].map(([k,l]) => ({ label: l, active: s.tab === k, idle: s.tab !== k, go: () => this.setState({ tab: k }) })),
+      tabAccount: s.tab === 'account', tabCash: s.tab === 'cash', ...this.cashVals(), tabHousing: s.tab === 'housing', ...this.housingVals(), tabScrap: s.tab === 'scrap', tabWrong: s.tab === 'wrong', wLeft: this.wrongList().filter(x => !x.done).length, wDoneN: this.wrongList().filter(x => x.done).length, tabHistory: s.tab === 'history', tabQna: s.tab === 'qna', ...this.qnaVals(),
+      pwType1: s.pw1 ? 'text' : 'password', pwType2: s.pw2 ? 'text' : 'password', pwType3: s.pw3 ? 'text' : 'password',
+      togglePw1: tog('pw1'), togglePw2: tog('pw2'), togglePw3: tog('pw3'),
+      save: () => this.setState({ saved: true }), saveLabel: s.saved ? '저장됨' : '변경사항 저장',
+      withdrawOpen: s.withdrawOpen, openWithdraw: () => this.setState({ withdrawOpen: true }), closeWithdraw: () => this.setState({ withdrawOpen: false }),
+      scraps: [
+        { cat: '돈 굴리기 › 월급 관리', title: '월급명세서 읽기: 세전과 세후', meta: '12분 · 3월 2일 스크랩' },
+        { cat: '돈 굴리기 › 주식', title: '미국주식 양도소득세와 배당소득세', meta: '18분 · 2월 27일 스크랩' },
+        { cat: '부동산 › 전·월세', title: '전세사기 예방 체크리스트', meta: '15분 · 2월 20일 스크랩' },
+        { cat: '돈 굴리기 › ETF·분산 투자', title: '리밸런싱은 언제 할까', meta: '10분 · 2월 11일 스크랩' }
+      ],
+      wrongs: this.wrongList(),
+      history: [
+        { title: '금리와 채권 가격', cat: 'ETF·분산 투자', meta: '진도 62% · 오늘 시청', status: '시청 중', bg: '#FFF0D6' },
+        { title: '예금과 적금의 차이', cat: '예적금', meta: '진도 100% · 11월 1일 완료', status: '학습완료', bg: '#9fe870' },
+        { title: '통장 나누기', cat: '월급 관리', meta: '진도 100% · 10월 29일 완료', status: '학습완료', bg: '#9fe870' },
+        { title: '코스피와 코스닥', cat: '주식', meta: '진도 35% · 10월 27일 시청', status: '시청 중', bg: '#FFF0D6' },
+        { title: '청약 자격', cat: '청약', meta: '진도 100% · 10월 25일 완료', status: '학습완료', bg: '#9fe870' }
+      ],
+      wordsOpen: s.wordsOpen, openWords: () => this.setState({ wordsOpen: true }), closeWords: () => this.setState({ wordsOpen: false }), stop: e => e.stopPropagation(),
+      hideToday: () => { localStorage.setItem('mb-words-hide', new Date().toDateString()); this.setState({ wordsOpen: false }); },
+      sidebarOpen: s.sidebarOpen, sidebarClosed: true, mbDrawerT: this.state.sidebarOpen ? 'none' : 'translateX(-102%)', mbDrawerVis: this.state.sidebarOpen ? 'visible' : 'hidden', mbOverlayOp: this.state.sidebarOpen ? 1 : 0, mbOverlayPe: this.state.sidebarOpen ? 'auto' : 'none', toggleSidebar: tog('sidebarOpen'),
+      lectureOpen: s.lectureOpen, toggleLecture: tog('lectureOpen'), lectureCaret: caret(s.lectureOpen),
+      trainingOpen: s.trainingOpen, toggleTraining: tog('trainingOpen'), trainingCaret: caret(s.trainingOpen),
+      myOpen: s.myOpen, toggleMy: tog('myOpen'), myCaret: caret(s.myOpen),
+      words: [
+        { term: '복리', desc: '원금에 붙은 이자에도 다시 이자가 붙는 방식.' },
+        { term: '실수령액', desc: '세전 급여에서 4대보험과 소득세를 뺀 금액.' },
+        { term: '배당', desc: '기업이 이익의 일부를 주주에게 나눠 주는 것.' },
+        { term: '리밸런싱', desc: '정해 둔 자산 비중으로 포트폴리오를 다시 맞추는 일.' },
+        { term: '청약 가점', desc: '무주택 기간·부양가족·통장 가입 기간으로 매기는 점수.' }
+      ],
+      capital: ['월급 관리', '예적금', '주식', 'ETF·분산 투자'],
+      estate: ['청약', '전·월세', '대출'],
+      ranking: [
+        { rank: 1, name: '복리왕', ret: '+38.2%' }, { rank: 2, name: '적립식', ret: '+31.7%' },
+        { rank: 3, name: '나스닥러', ret: '+27.4%' }, { rank: 4, name: '배당요정', ret: '+22.9%' },
+        { rank: 5, name: '분산투자', ret: '+19.1%' }
+      ],
+            awards: [{ season: 5, rank: 1 }, { season: 4, rank: 2 }, { season: 3, rank: 3 }, { season: 2, rank: 10 }].filter(a => a.rank <= 3).sort((a, b) => b.season - a.season).map(a => ({ ...a, medal: a.rank <= 3, chip: a.rank > 3, pos: ['0% 50%', '50% 50%', '100% 50%'][a.rank - 1] || '', seasonText: '시즌 ' + a.season, text: '시즌 ' + a.season + ' · ' + a.rank + '위', label: '시즌 ' + a.season + ' · ' + a.rank + '위', discBg: ['#F4C542', '#D9DCE3', '#E3A06F'][a.rank - 1], numColor: ['#5A3E0A', '#44474F', '#5B2E14'][a.rank - 1], numSize: String(a.season).length > 1 ? '12px' : '16px' })),
+      hasAwards: [{ season: 5, rank: 1 }, { season: 4, rank: 2 }, { season: 3, rank: 3 }, { season: 2, rank: 10 }].some(a => a.rank <= 3)
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./mb-sidebar-resize.js"></script>
+<script src="./mb-drawer.js"></script>
+<script src="./mb-config.js"></script>
+<script src="housing/store.js"></script>
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+:root{--color-divider:#D5E1CC}
+html{background:#F7FAF3}
+body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+input:focus,select:focus{outline:none;border-color:#263B1A !important;box-shadow:0 0 0 3px #EAF7D8}
+button:disabled{opacity:.45;cursor:not-allowed !important}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;box-sizing:border-box;background:#F7FAF3;color:#263B1A;font-family:'Pretendard',system-ui,sans-serif;letter-spacing:-0.01em">
+
+<sc-if value="{{ denied }}" hint-placeholder-val="{{ false }}">
+  <div style="width:100%;min-height:100vh;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:24px;background:#F7FAF3">
+    <div style="width:min(480px,100%);box-sizing:border-box;background:#fff;border:1.5px dashed #D5E1CC;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+      <img src="assets/logo.png" alt="Money Beetle" style="height:34px;width:auto">
+      <span style="width:52px;height:52px;border-radius:50%;background:#F9DEDC;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+      <h1 style="margin:0;font-size:24px;font-weight:900;letter-spacing:-0.04em">관리자만 접근할 수 있어요</h1>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#687161;word-break:keep-all">현재 계정에는 관리자 권한이 없어요.<br>학습과 모의 청약은 사용자 페이지에서 이용해 주세요.</p>
+      <a href="UserHome-vr2.dc.html" style="height:46px;padding:0 24px;border-radius:999px;background:#9fe870;color:#263B1A;font-weight:800;text-decoration:none;display:inline-flex;align-items:center">사용자 홈으로 가기</a>
+      <div style="width:100%;margin-top:10px;padding:14px;border-radius:12px;background:#FFFBEF;border:1px solid #F2C14E;display:flex;flex-direction:column;gap:8px;text-align:left">
+        <span style="font-size:12px;font-weight:800">디자인 미리보기 전용</span>
+        <span style="font-size:12px;line-height:1.6;color:#263B1A">실제 인증·역할 시스템이 아직 연결되지 않았어요. 아래 버튼은 화면 확인을 위한 임시 전환이며 보안 기능이 아니에요. 실제 서비스에서는 서버가 로그인 계정의 관리자 역할을 확인하고, 관리자 API도 서버에서 권한을 검증해야 해요.</span>
+        <button onClick="{{ previewAdmin }}" style="all:unset;cursor:pointer;align-self:flex-start;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px;background:#263B1A;color:#9fe870">관리자 화면 미리보기</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ allowed }}" hint-placeholder-val="{{ true }}">
+<aside data-mb-pinned="1" aria-label="모의 청약 관리 메뉴" style="position:sticky;top:0;flex:none;width:clamp(208px,19vw,280px);height:100vh;box-sizing:border-box;background:#fff;border-right:1px solid #D5E1CC;display:flex;flex-direction:column;gap:20px;padding:24px 16px;overflow-y:auto;overflow-x:hidden;z-index:35">
+  <a href="Main.dc.html" style="display:block;text-decoration:none;padding:0 6px"><img src="assets/logo.png" alt="Money Beetle" style="height:32px;width:auto;max-width:170px;object-fit:contain;display:block"></a>
+  <div style="padding:14px;display:flex;flex-direction:column;gap:10px;border:1.5px dashed #D5E1CC;border-radius:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:40px;height:40px;border-radius:50%;background:#263B1A;color:#9fe870;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none">운</div>
+      <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0"><span style="font-weight:700;font-size:14px">김운영</span><span style="font-size:12px;color:#687161">관리자 · 모의 청약 운영</span></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #D5E1CC;font-size:12px"><span style="font-weight:600">결과 산정 대기</span><span style="font-weight:800">{{ hTodo }}건</span></div>
+  </div>
+  <span style="padding:0 10px;font-size:12px;font-weight:800;letter-spacing:.06em;color:#687161">모의 청약 관리</span>
+  <nav style="display:flex;flex-direction:column;gap:2px;margin-top:-12px">
+    <sc-for list="{{ hnav }}" as="n" hint-placeholder-count="4">
+      <button onClick="{{ n.go }}" aria-current="{{ n.cur }}" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;font-size:15px;color:#263B1A;background:{{ n.bg }};font-weight:{{ n.fw }}" style-hover="background:#EAF7D8">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><sc-for list="{{ n.icon }}" as="d"><path d="{{ d }}"></path></sc-for></svg>
+        <span style="flex:1">{{ n.label }}</span>
+        <sc-if value="{{ n.badge }}"><span style="min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:999px;background:#E5484D;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center">{{ n.badge }}</span></sc-if>
+      </button>
+    </sc-for>
+  </nav>
+  <div style="flex:1"></div>
+  <a href="AdminDashboard.dc.html?view=invest" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border:1px solid #D5E1CC;font-size:14px;font-weight:600;color:#263B1A;text-decoration:none" style-hover="background:#F7FAF3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>관리자 대시보드로</a>
+</aside>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+  <header style="display:flex;align-items:center;gap:12px;padding:20px clamp(16px,3vw,40px);position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #EEF1EA;flex-wrap:wrap">
+        <div style="flex:1"></div>
+    <span style="font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;background:#FFFBEF;border:1px solid #F2C14E">미리보기 권한 · 실제 인증 아님</span>
+    <span style="font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;background:#263B1A;color:#9fe870">관리자 모드</span>
+    <button onClick="{{ exitPreview }}" style="all:unset;cursor:pointer;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;background:#EAF7D8">미리보기 종료</button>
+  </header>
+
+  <main style="padding:20px clamp(16px,3vw,56px) 80px;width:100%;max-width:1440px;box-sizing:border-box;display:flex;flex-direction:column;gap:22px">
+    <section style="display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:12px;font-weight:800;letter-spacing:.08em">ADMIN · 모의 청약</span>
+      <h1 style="margin:0;font-size:clamp(28px,3.4vw,36px);font-weight:900;letter-spacing:-0.045em">{{ pageTitle }}</h1>
+      <p style="margin:0;font-size:15px;color:#687161">{{ pageDesc }}</p>
+    </section>
+
+    <sc-if value="{{ vDash }}" hint-placeholder-val="{{ true }}">
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px">
+        <sc-for list="{{ stats }}" as="x" hint-placeholder-count="6">
+          <button onClick="{{ x.go }}" style="all:unset;box-sizing:border-box;cursor:pointer;background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:6px" style-hover="border-color:#9fe870">
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#687161"><span style="width:8px;height:8px;border-radius:50%;background:{{ x.dot }}"></span>{{ x.label }}</span>
+            <span style="font-size:28px;font-weight:900;letter-spacing:-0.03em">{{ x.value }}</span>
+            <span style="font-size:12px;color:#687161">{{ x.sub }}</span>
+          </button>
+        </sc-for>
+      </section>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start">
+        <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:800;font-size:17px;flex:1">관리자 작업 현황</span><span style="font-size:13px;font-weight:700">{{ workTotal }}건</span></div>
+          <sc-for list="{{ workGroups }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800"><span style="width:8px;height:8px;border-radius:50%;background:{{ g.dot }}"></span><span style="flex:1">{{ g.label }}</span><span style="color:#687161;font-weight:700">{{ g.count }}건</span></div>
+              <sc-if value="{{ g.empty }}"><span style="font-size:12px;color:#9AA393;padding:8px 0 4px 16px">해당 공고가 없어요.</span></sc-if>
+              <sc-for list="{{ g.items }}" as="t">
+                <button onClick="{{ t.go }}" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 12px;margin-top:6px;border-radius:12px;background:#F7FAF3;flex-wrap:wrap" style-hover="background:#EAF7D8">
+                  <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:150px"><b style="font-size:14px">{{ t.name }}</b><span style="font-size:12px;color:#687161">{{ t.note }}</span></span>
+                  <span style="font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px;background:#9fe870">{{ t.action }} →</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-for>
+        </section>
+        <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-weight:800;font-size:17px;margin-bottom:6px">최근 청약 공고</span>
+          <sc-if value="{{ noRecent }}"><span style="font-size:13px;color:#687161;padding:12px 0">등록된 공고가 없어요.</span></sc-if>
+          <sc-for list="{{ recentNotices }}" as="n" hint-placeholder-count="5">
+            <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid #EEF1EA">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ n.typeBg }};border:1px solid {{ n.typeBd }}">{{ n.typeLabel }}</span>
+                <span style="font-weight:700;font-size:14px;flex:1;min-width:0">{{ n.name }}</span>
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:{{ n.stBg }}">{{ n.status }}</span>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;font-weight:700">
+                <span style="padding:2px 8px;border-radius:4px;background:rgba(59,130,246,.14);color:#1E3A8A">공고 {{ n.post }}</span>
+                <span style="padding:2px 8px;border-radius:4px;background:rgba(245,158,11,.18);color:#78350F">마감 {{ n.close }}</span>
+                <span style="padding:2px 8px;border-radius:4px;background:rgba(16,185,129,.16);color:#064E3B">발표 {{ n.announce }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{ goNotices }}" style="all:unset;cursor:pointer;align-self:flex-start;margin-top:8px;font-size:13px;font-weight:700;text-decoration:underline">청약 공고 관리로</button>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ vNotices }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <section style="box-sizing:border-box;background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-weight:800;font-size:18px">{{ formTitle }}</span>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">아파트 단지명<input value="{{ form.name }}" onChange="{{ fName }}" placeholder="예: 그린숲 행복주택" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff"></label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">청약 유형<select value="{{ form.type }}" onChange="{{ fType }}" disabled="{{ lockCore }}" style="opacity:{{ lockOp }};height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 10px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;width:100%"><option value="public">공공</option><option value="private">민간</option></select></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">거주지역<select value="{{ form.region }}" onChange="{{ fRegion }}" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 10px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;width:100%"><sc-for list="{{ regions }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">세부 위치<input value="{{ form.district }}" onChange="{{ fDistrict }}" placeholder="예: 마포구 상암동" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">전용면적(㎡)<input inputmode="numeric" value="{{ form.area }}" onChange="{{ fArea }}" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">분양가(캐시)<input inputmode="numeric" value="{{ form.price }}" onChange="{{ fPrice }}" placeholder="320,000,000" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">공급 세대 수<input inputmode="numeric" value="{{ form.units }}" onChange="{{ fUnits }}" disabled="{{ lockCore }}" placeholder="120" style="opacity:{{ lockOp }};height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">공고 게시일<input type="date" value="{{ form.post }}" onChange="{{ fPost }}" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 8px;font-family:inherit;font-size:13px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">청약 신청 마감일<input type="date" value="{{ form.close }}" onChange="{{ fClose }}" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 8px;font-family:inherit;font-size:13px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687161">당첨자 발표일<input type="date" value="{{ form.announce }}" onChange="{{ fAnnounce }}" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 8px;font-family:inherit;font-size:13px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box"></label>
+          </div>
+          <label style="display:flex;align-items:center;gap:12px;font-size:13px;cursor:pointer;padding:10px 12px;border:1.5px dashed #D5E1CC;border-radius:12px">
+            <input type="file" accept="image/*" onChange="{{ fImg }}" style="display:none">
+            <sc-if value="{{ form.img }}"><div style="width:56px;height:40px;flex:none;border-radius:6px;background-size:cover;background-position:center;background-image:{{ formImgBg }}"></div></sc-if>
+            <span style="font-weight:700">아파트 이미지 올리기</span><span style="color:#687161">{{ formImgText }}</span>
+          </label>
+          <div style="padding:10px 12px;border-radius:12px;background:#EAF7D8;font-size:12px;line-height:1.6">공고를 게시하면 게시 시점부터 바로 신청을 받아요. 상태는 날짜에 맞춰 자동으로 정해지고(게시일이 미래면 예정), 목록에서 직접 바꿀 수도 있어요. 신청 조건(Lv.12 이상·자격 판정)은 그대로 적용돼요.</div>
+          <sc-if value="{{ lockCore }}"><div style="padding:10px 12px;border-radius:12px;background:#FFF0D6;font-size:12px;line-height:1.6">신청자가 있는 공고라 청약 유형과 공급 세대 수는 바꿀 수 없어요. 신청 이력과 당첨 결과를 지키기 위한 제한이에요.</div></sc-if>
+          <sc-if value="{{ formErr }}"><span style="font-size:13px;color:#B3261E;font-weight:600">{{ formErr }}</span></sc-if>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button onClick="{{ saveForm }}" style="all:unset;cursor:pointer;height:44px;padding:0 22px;border-radius:999px;background:#9fe870;font-weight:800;display:inline-flex;align-items:center">{{ formSave }}</button>
+            <sc-if value="{{ editing }}"><button onClick="{{ cancelEdit }}" style="all:unset;cursor:pointer;height:44px;padding:0 18px;border-radius:999px;background:#EAF7D8;font-weight:700;display:inline-flex;align-items:center">수정 취소</button></sc-if>
+          </div>
+        </section>
+        <section style="box-sizing:border-box;background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:4px;min-width:0">
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px">
+            <span style="font-weight:800;font-size:18px">등록된 공고 {{ noticeCount }}건</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{ nStatusChips }}" as="c" hint-placeholder-count="5">
+                <button onClick="{{ c.go }}" style="all:unset;box-sizing:border-box;cursor:pointer;height:32px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:{{ c.fw }};background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.line }}">{{ c.label }}<span style="opacity:.7">{{ c.n }}</span></button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input value="{{ nQ }}" onChange="{{ setNQ }}" placeholder="단지명 검색" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;flex:1;min-width:140px;border-radius:999px;padding:0 16px">
+              <select value="{{ nFilter }}" onChange="{{ setNFilter }}" aria-label="청약 유형" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;border-radius:999px"><option>전체</option><option>공공</option><option>민간</option></select>
+            </div>
+          </div>
+          <sc-if value="{{ noNotices }}"><div style="padding:28px 12px;text-align:center;font-size:13px;color:#687161;border-top:1px solid #EEF1EA">조건에 맞는 공고가 없어요.</div></sc-if>
+          <sc-for list="{{ noticeRows }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:14px 0;border-top:1px solid #EEF1EA;opacity:{{ a.rowOp }}">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ a.typeBg }};border:1px solid {{ a.typeBd }}">{{ a.typeLabel }}</span>
+                <span style="font-weight:800;font-size:15px">{{ a.name }}</span>
+                <sc-if value="{{ a.hidden }}"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#E4E7E0">비공개</span></sc-if>
+                <div style="flex:1"></div>
+                <select value="{{ a.status }}" onChange="{{ a.setStatus }}" disabled="{{ a.statusOff }}" aria-label="공고 상태" style="height:32px;border:1.5px solid #D5E1CC;border-radius:999px;padding:0 10px;font-family:inherit;font-size:12px;font-weight:700;background:{{ a.stBg }};color:#263B1A"><option>모집 예정</option><option>모집 중</option><option>모집 마감</option><option disabled="{{ a.pubOptOff }}">발표 완료</option></select>
+              </div>
+              <span style="font-size:12px;color:#687161;line-height:1.5">{{ a.meta }}</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;font-weight:700">
+                <span style="padding:2px 8px;border-radius:4px;background:rgba(59,130,246,.14);color:#1E3A8A">공고 {{ a.post }}</span>
+                <span style="padding:2px 8px;border-radius:4px;background:rgba(245,158,11,.18);color:#78350F">마감 {{ a.close }}</span>
+                <span style="padding:2px 8px;border-radius:4px;background:rgba(16,185,129,.16);color:#064E3B">발표 {{ a.announce }}</span>
+              </div>
+              <sc-if value="{{ a.hasLock }}"><span style="font-size:12px;color:#8A4B00;font-weight:600">{{ a.lockNote }}</span></sc-if>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button onClick="{{ a.edit }}" disabled="{{ a.editOff }}" style="all:unset;cursor:{{ a.editCur }};opacity:{{ a.editOp }};font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:#EAF7D8">수정</button>
+                <button onClick="{{ a.viewApps }}" style="all:unset;cursor:pointer;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:#EAF7D8">신청 현황 {{ a.appCount }}건</button>
+                <button onClick="{{ a.toggleHide }}" style="all:unset;cursor:pointer;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:#EAF7D8">{{ a.hideLabel }}</button>
+                <button onClick="{{ a.del }}" disabled="{{ a.delOff }}" title="{{ a.delTip }}" style="all:unset;cursor:{{ a.delCur }};opacity:{{ a.delOp }};font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:#F9DEDC;color:#8A1C14">삭제</button>
+              </div>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ vApps }}" hint-placeholder-val="{{ false }}">
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px">
+        <div style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;font-weight:700;color:#687161">회원 신청 건수</span>
+          <span style="font-size:28px;font-weight:900;letter-spacing:-0.03em">{{ appCount }}건</span>
+          <span style="font-size:12px;color:#687161">실제 MoneyBeetle 회원이 제출한 신청 · {{ appScope }}</span>
+        </div>
+        <div style="background:#F7FAF3;border:1.5px dashed #D5E1CC;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;font-weight:700;color:#687161">가상 경쟁자 수 <span style="font-size:11px;padding:1px 7px;border-radius:999px;background:#E4E7E0;margin-left:4px">시뮬레이션 설정값</span></span>
+          <span style="font-size:28px;font-weight:900;letter-spacing:-0.03em;color:#687161">{{ virtualTotal }}명</span>
+          <span style="font-size:12px;color:#687161;word-break:keep-all">판정 비교용 가상 신청자예요.<br>아래 신청자 목록에는 포함되지 않아요.</span>
+        </div>
+      </section>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:8px">
+        <input value="{{ aQ }}" onChange="{{ setAQ }}" placeholder="공고명 검색" aria-label="공고명 검색" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;width:100%">
+        <select value="{{ appNotice }}" onChange="{{ setAppNotice }}" aria-label="공고" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;width:100%"><option value="all">전체 공고</option><sc-for list="{{ noticeOpts }}" as="o"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select>
+        <select value="{{ aType }}" onChange="{{ setAType }}" aria-label="청약 유형" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;width:100%"><option>전체 유형</option><option>공공</option><option>민간</option></select>
+        <select value="{{ aStatus }}" onChange="{{ setAStatus }}" aria-label="신청 상태" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;width:100%"><option>전체 상태</option><option>접수 완료</option><option>발표 대기</option><option>산정 완료(미발표)</option><option>당첨</option><option>예비 당첨</option><option>탈락</option></select>
+        <input type="date" value="{{ aDate }}" onChange="{{ setADate }}" aria-label="신청일" style="height:40px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A;min-width:0;box-sizing:border-box;width:100%">
+        <sc-if value="{{ aFiltered }}"><button onClick="{{ resetAF }}" style="all:unset;cursor:pointer;height:40px;padding:0 14px;border-radius:12px;background:#EAF7D8;font-size:13px;font-weight:700;text-align:center">필터 초기화</button></sc-if>
+      </div>
+      <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;overflow:hidden">
+        <div style="overflow-x:auto">
+          <div style="min-width:1180px">
+            <div style="display:grid;grid-template-columns:1.2fr .9fr 1.5fr .5fr .5fr .9fr .6fr .9fr .6fr 1.1fr 1fr;gap:10px;padding:12px 20px;background:#F7FAF3;font-size:12px;font-weight:700;color:#687161;border-bottom:1px solid #D5E1CC">
+              <span>접수번호</span><span>신청자</span><span>신청 단지</span><span>유형</span><span>레벨</span><span>가상 혼인</span><span>납입 회차</span><span>인정금액</span><span>가점(임시)</span><span>신청일</span><span>신청 상태</span>
+            </div>
+            <sc-if value="{{ noAppRows }}"><div style="padding:32px;text-align:center;font-size:13px;color:#687161">조건에 맞는 신청이 없어요.</div></sc-if>
+            <sc-for list="{{ appRows }}" as="a" hint-placeholder-count="4">
+              <button onClick="{{ a.open }}" style="all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:1.2fr .9fr 1.5fr .5fr .5fr .9fr .6fr .9fr .6fr 1.1fr 1fr;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid #EEF1EA;font-size:13px" style-hover="background:#F7FAF3">
+                <span style="font-size:12px;color:#687161;font-variant-numeric:tabular-nums">{{ a.receipt }}</span>
+                <b>{{ a.nickname }}</b>
+                <span>{{ a.noticeName }}</span>
+                <span style="justify-self:start;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ a.typeBg }};border:1px solid {{ a.typeBd }}">{{ a.typeLabel }}</span>
+                <span>Lv.{{ a.level }}</span>
+                <span>{{ a.marital }}</span>
+                <span>{{ a.countText }}</span>
+                <span>{{ a.recText }}</span>
+                <span style="font-weight:700">{{ a.score }}점</span>
+                <span style="color:#687161">{{ a.at }}</span>
+                <span style="justify-self:start;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ a.stBg }}">{{ a.statusText }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+      <span style="font-size:12px;color:#687161;word-break:keep-all">행을 누르면 상세 정보를 볼 수 있어요.<br>신청 당시 레벨·혼인 상태·통장 상태·가점은 신청 기록에 고정 저장돼요.<br>회원끼리 경쟁하지 않고 각자 가상 경쟁자와 비교돼요.</span>
+    </sc-if>
+
+    <sc-if value="{{ vResults }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:12px 16px;border-radius:12px;background:#FFFBEF;border:1px solid #F2C14E;font-size:13px;line-height:1.6">커트라인과 가점은 <b>임시 시뮬레이션 값</b>이에요. 공공·민간 가점 기준이 확정되면 바뀌어요. 가상 경쟁률은 (가상 경쟁자 + 체험 회원 1명) ÷ 공급 세대 수로 계산해요.</div>
+      <sc-if value="{{ noResults }}"><div style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:32px;text-align:center;font-size:13px;color:#687161">등록된 공고가 없어요.</div></sc-if>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ resultRows }}" as="r" hint-placeholder-count="3">
+          <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ r.typeBg }};border:1px solid {{ r.typeBd }}">{{ r.typeLabel }}</span>
+              <span style="font-weight:800;font-size:16px">{{ r.name }}</span>
+              <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ r.stBg }}">{{ r.status }}</span>
+              <div style="flex:1"></div>
+              <span style="font-size:12px;color:#687161;font-weight:600">{{ r.dateLabel }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+              <sc-for list="{{ r.steps }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:{{ p.bg }};color:{{ p.fg }};font-size:12px;font-weight:800;min-width:0"><span style="width:18px;height:18px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:10px;background:{{ p.dotBg }};color:{{ p.dotFg }}">{{ p.mark }}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.label }}</span></div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:10px;font-size:13px">
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="color:#687161;font-size:12px">공급 세대</span><b>{{ r.units }}세대</b></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="color:#687161;font-size:12px">회원 신청</span><b>{{ r.apps }}건</b></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="color:#687161;font-size:12px">가상 경쟁자</span><b style="color:#687161">{{ r.competitors }}명</b></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="color:#687161;font-size:12px">가상 경쟁률</span><b>{{ r.rate }}</b></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="color:#687161;font-size:12px">가점제 커트라인 · 임시</span><b>{{ r.cutline }}점</b></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="color:#687161;font-size:12px">산정 상태</span><b>{{ r.summary }}</b></div>
+            </div>
+            <sc-if value="{{ r.showReview }}">
+              <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;background:#F7FAF3;border:1px dashed #D5E1CC">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:800;font-size:14px;flex:1">{{ r.reviewTitle }}</span><span style="font-size:12px;color:#687161">당첨 방식 · {{ r.method }}</span></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px">
+                  <sc-for list="{{ r.reviewStats }}" as="k"><div style="display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:10px;background:{{ k.bg }}"><span style="font-size:11px;font-weight:700;color:#687161">{{ k.label }}</span><b style="font-size:18px">{{ k.value }}</b></div></sc-for>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:{{ r.sumColor }}">{{ r.sumText }}</span>
+                <sc-if value="{{ r.hasReviewApps }}">
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{ r.reviewApps }}" as="v"><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #E6ECE0;font-size:13px"><b style="min-width:80px">{{ v.nickname }}</b><span style="flex:1;color:#687161">신청 당시 가점 {{ v.score }}점 · 커트라인 {{ v.cut }}점</span><span style="font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:{{ v.bg }}">{{ v.label }}</span></div></sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+            <span style="font-size:12px;color:{{ r.hintColor }};font-weight:600">{{ r.hint }}</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button onClick="{{ r.compute }}" disabled="{{ r.computeOff }}" style="all:unset;cursor:{{ r.cCur }};opacity:{{ r.cOp }};font-size:13px;font-weight:700;padding:8px 16px;border-radius:999px;background:{{ r.cBg }};border:1.5px solid {{ r.cLine }}">{{ r.computeLabel }}</button>
+              <button onClick="{{ r.publish }}" disabled="{{ r.publishOff }}" style="all:unset;cursor:{{ r.pCur }};opacity:{{ r.pOp }};font-size:13px;font-weight:800;padding:8px 16px;border-radius:999px;background:{{ r.pBg }};border:1.5px solid {{ r.pLine }}">{{ r.publishLabel }}</button>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+      <span style="font-size:12px;color:#687161;line-height:1.6;word-break:keep-all">처리 순서: 모집 마감 → 결과 산정 → 결과 검토 → 결과 발표.<br>회원마다 같은 가상 경쟁자 기준으로 따로 판정하고, 회원끼리 당첨 자리를 나누지 않아요.<br>발표 전에는 회원 화면에 당첨 여부가 보이지 않고, 발표 후에는 결과를 바꿀 수 없어요.</span>
+    </sc-if>
+
+    <sc-if value="{{ vInq }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select value="{{ inqFilter }}" onChange="{{ setInqFilter }}" style="height:40px;border:1.5px solid #D5E1CC;border-radius:999px;padding:0 14px;font-family:inherit;font-size:14px;background:#fff;color:#263B1A"><option>전체</option><option>신고 의심</option><option>숨김</option><option>삭제</option></select>
+        <span style="flex:1"></span><span style="font-size:13px;font-weight:600">문의 {{ inqCount }}건</span>
+      </div>
+      <div style="padding:12px 16px;border-radius:12px;background:#EAF7D8;font-size:13px;line-height:1.6">작성 제한은 제목 50자 · 내용 1,000자 · 하루 10개예요. 금칙어·외부 연락처·광고 문구가 감지된 글에는 '의심' 표시가 붙어요. 숨기면 사용자 화면에 "관리자에 의해 숨김 처리된 글이에요"가 표시되고, 모든 처리는 작업 기록에 남아요.</div>
+      <sc-if value="{{ noInq }}"><div style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:32px;text-align:center;font-size:13px;color:#687161">해당하는 문의가 없어요.</div></sc-if>
+      <sc-for list="{{ inqRows }}" as="q" hint-placeholder-count="3">
+        <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:{{ q.roleBg }}">{{ q.role }}</span>
+            <span style="font-weight:800;font-size:14px">{{ q.author }}</span><span style="font-size:12px;color:#687161">{{ q.course }} · {{ q.date }}</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ q.stBg }}">{{ q.status }}</span>
+          </div>
+          <span style="font-weight:700;font-size:15px">{{ q.title }}</span>
+          <span style="font-size:13px;line-height:1.6;color:#3a4a30;white-space:pre-wrap">{{ q.body }}</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <sc-for list="{{ q.flags }}" as="f"><span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;background:#F9DEDC;color:#8A1C14">의심 · {{ f }}</span></sc-for>
+            <span style="font-size:12px;color:{{ q.limitColor }}">{{ q.limitText }}</span>
+          </div>
+          <sc-if value="{{ q.showUserView }}"><div style="padding:9px 12px;border-radius:10px;background:#F7FAF3;border:1px dashed #D5E1CC;font-size:12px;color:#687161">사용자 화면 · {{ q.userView }}</div></sc-if>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button onClick="{{ q.toggleHide }}" disabled="{{ q.hideOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#EAF7D8">{{ q.hideLabel }}</button>
+            <button onClick="{{ q.del }}" disabled="{{ q.hideOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#F9DEDC;color:#8A1C14">삭제</button>
+          </div>
+        </section>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{ vUsers }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input value="{{ userQ }}" onChange="{{ setUserQ }}" placeholder="이메일 또는 닉네임 검색 후 Enter" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box;max-width:360px;border-radius:999px;padding:0 16px">
+        <span style="flex:1"></span><span style="font-size:13px;font-weight:600">{{ userCount }}명</span>
+      </div>
+      <div style="padding:12px 16px;border-radius:12px;background:#EAF7D8;font-size:13px;line-height:1.6">강사 권한은 관리자만 부여·회수할 수 있고, 권한이 있어야 강의 생성·등록 기능이 열려요. 정지하면 해당 계정은 바로 로그인이 차단돼요.</div>
+      <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;overflow:hidden"><div style="overflow-x:auto"><div style="min-width:820px">
+        <div style="display:grid;grid-template-columns:1.2fr 1.6fr .8fr .8fr 1fr 1.3fr;gap:12px;padding:12px 20px;background:#F7FAF3;font-size:12px;font-weight:700;color:#687161;border-bottom:1px solid #D5E1CC"><span>닉네임</span><span>이메일</span><span>구분</span><span>레벨</span><span>계정 상태</span><span>강사 권한</span></div>
+        <sc-if value="{{ noUsers }}"><div style="padding:32px;text-align:center;font-size:13px;color:#687161">검색 결과가 없어요.</div></sc-if>
+        <sc-for list="{{ userRows }}" as="u" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:1.2fr 1.6fr .8fr .8fr 1fr 1.3fr;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid #EEF1EA;font-size:13px">
+            <span style="display:flex;flex-direction:column;gap:2px"><b>{{ u.nickname }}</b><span style="font-size:11px;color:#687161">가입 {{ u.joined }}</span></span>
+            <span style="overflow:hidden;text-overflow:ellipsis">{{ u.email }}</span>
+            <span style="justify-self:start;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ u.roleBg }}">{{ u.role }}</span>
+            <span>{{ u.level }}</span>
+            <span style="display:flex;flex-direction:column;gap:3px"><select value="{{ u.status }}" onChange="{{ u.setStatus }}" aria-label="계정 상태" style="height:32px;border:1.5px solid #D5E1CC;border-radius:999px;padding:0 8px;font-family:inherit;font-size:12px;font-weight:700;background:{{ u.stBg }};color:#263B1A"><option>정상</option><option>정지</option><option>탈퇴</option></select><sc-if value="{{ u.blocked }}"><span style="font-size:11px;color:#B3261E">로그인 차단됨</span></sc-if></span>
+            <button onClick="{{ u.grant }}" disabled="{{ u.grantOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:{{ u.grantBg }};justify-self:start">{{ u.grantLabel }}</button>
+          </div>
+        </sc-for>
+      </div></div></section>
+    </sc-if>
+
+    <sc-if value="{{ vCourses }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:12px 16px;border-radius:12px;background:#EAF7D8;font-size:13px;line-height:1.6">검수 기준: 영상 1~3개 · 영상마다 요약글 · 테스트 퀴즈(OX) 5문제 · 4지선다 퀴즈 5~15문제. 기준을 어기면 허가할 수 없어요. 허가된 강의만 사용자 목록에 공개돼요. 시청·학습 완료 기록이 있는 강의는 삭제할 수 없고 비공개로만 바꿀 수 있어요.</div>
+      <sc-for list="{{ courseRows }}" as="c" hint-placeholder-count="3">
+        <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:800;font-size:16px">{{ c.title }}</span><span style="font-size:12px;color:#687161">{{ c.teacher }}</span><span style="flex:1"></span><span style="font-size:12px;font-weight:700;padding:3px 11px;border-radius:999px;background:{{ c.stBg }}">{{ c.status }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px">
+            <sc-for list="{{ c.checks }}" as="k"><div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:{{ k.bg }};font-size:13px"><span style="width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:900;background:{{ k.markBg }};color:{{ k.markFg }}">{{ k.mark }}</span><span>{{ k.text }}</span></div></sc-for>
+          </div>
+          <sc-if value="{{ c.hasReason }}"><div style="padding:9px 12px;border-radius:10px;background:#FDF4F3;border-left:3px solid #E7A19B;font-size:13px">반려 사유 · {{ c.reason }}</div></sc-if>
+          <sc-if value="{{ c.hasRecords }}"><span style="font-size:12px;color:#8A4B00;font-weight:600">시청·학습 완료 기록이 있어 삭제할 수 없어요. 비공개 전환만 가능해요.</span></sc-if>
+          <sc-if value="{{ c.warn }}"><span style="font-size:12px;color:#B3261E;font-weight:700">기준 미충족 {{ c.warn }}건 · 허가할 수 없어요</span></sc-if>
+          <sc-if value="{{ c.showReject }}"><div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:#F7FAF3;border:1px dashed #D5E1CC">
+            <textarea value="{{ c.rejectVal }}" onChange="{{ c.onReject }}" placeholder="반려 사유를 입력해 주세요 (필수)" style="min-height:70px;border:1.5px solid #D5E1CC;border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px;box-sizing:border-box;background:#fff;color:#263B1A;resize:vertical"></textarea>
+            <span style="font-size:12px;color:#B3261E;font-weight:600">{{ c.rejectErr }}</span>
+            <div style="display:flex;gap:6px"><button onClick="{{ c.doReject }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#263B1A;color:#9fe870">반려 처리</button><button onClick="{{ c.cancelReject }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#EAF7D8">취소</button></div></div></sc-if>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button onClick="{{ c.approve }}" disabled="{{ c.approveOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#9fe870;font-weight:800">허가</button>
+            <button onClick="{{ c.openReject }}" disabled="{{ c.rejectOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#EAF7D8">반려</button>
+            <button onClick="{{ c.toggleVis }}" disabled="{{ c.visOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#EAF7D8">{{ c.visLabel }}</button>
+            <button onClick="{{ c.del }}" disabled="{{ c.hasRecords }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#F9DEDC;color:#8A1C14">삭제</button>
+          </div>
+        </section>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{ vTerms }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px;align-items:start">
+        <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-weight:800;font-size:18px">용어 DB · {{ termTotal }}개</span>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:#F7FAF3">
+            <input value="{{ tWord }}" onChange="{{ onTWord }}" placeholder="용어 (예: 복리)" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box">
+            <input value="{{ tDesc }}" onChange="{{ onTDesc }}" placeholder="한 줄 설명" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box">
+            <span style="font-size:12px;color:#B3261E;font-weight:600">{{ tErr }}</span>
+            <div style="display:flex;gap:6px"><button onClick="{{ saveTerm }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#9fe870;font-weight:800">{{ tSaveLabel }}</button><sc-if value="{{ tEditing }}"><button onClick="{{ cancelTerm }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#EAF7D8">취소</button></sc-if></div>
+          </div>
+          <sc-for list="{{ termDb }}" as="t" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #EEF1EA"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-weight:700;font-size:14px">{{ t.word }}</span><span style="font-size:12px;color:#687161">{{ t.desc }}</span></div><button onClick="{{ t.edit }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#EAF7D8">수정</button><button onClick="{{ t.del }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:#F9DEDC;color:#8A1C14">삭제</button></div>
+          </sc-for>
+        </section>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-weight:800;font-size:18px;flex:1">날짜별 오늘의 용어 5개</span><input type="date" value="{{ termDate }}" onChange="{{ setTermDate }}" style="height:42px;border:1.5px solid #D5E1CC;border-radius:12px;padding:0 12px;font-family:inherit;font-size:14px;color:#263B1A;background:#fff;min-width:0;width:100%;box-sizing:border-box;width:auto"></div>
+            <div style="font-size:13px;padding:10px 12px;border-radius:10px;background:{{ termBannerBg }}">{{ termBanner }}</div>
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ termPick }}" as="t" hint-placeholder-count="5">
+                <button onClick="{{ t.toggle }}" disabled="{{ termPast }}" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 6px;border-top:1px solid #EEF1EA;font-size:14px;opacity:{{ t.op }}"><span style="width:22px;height:22px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:12px;font-weight:900;background:{{ t.bg }};border:1.5px solid #263B1A">{{ t.mark }}</span><b>{{ t.word }}</b><span style="font-size:12px;color:#687161">{{ t.desc }}</span></button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button onClick="{{ saveTerms }}" disabled="{{ saveOff }}" style="all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;padding:9px 18px;font-size:13px;background:#9fe870;font-weight:800">이 날짜로 저장</button><span style="font-size:13px;font-weight:700">선택 {{ selCount }} / 5</span><span style="font-size:12px;color:#B3261E;font-weight:600">{{ termErr }}</span></div>
+          </section>
+          <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:4px">
+            <span style="font-weight:800;font-size:16px;margin-bottom:6px">앞으로 7일</span>
+            <sc-for list="{{ upcoming }}" as="d" hint-placeholder-count="7"><button onClick="{{ d.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #EEF1EA;font-size:13px"><b style="min-width:70px">{{ d.date }}</b><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ d.bg }}">{{ d.src }}</span><span style="flex:1;min-width:0;color:#3a4a30">{{ d.words }}</span></button></sc-for>
+          </section>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ vAudit }}" hint-placeholder-val="{{ false }}">
+      <section style="background:#fff;border:1.5px dashed #D5E1CC;border-radius:16px;overflow:hidden"><div style="overflow-x:auto"><div style="min-width:560px">
+        <div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 2fr;gap:12px;padding:12px 20px;background:#F7FAF3;font-size:12px;font-weight:700;color:#687161;border-bottom:1px solid #D5E1CC"><span>일시</span><span>관리자</span><span>작업</span><span>대상</span></div>
+        <sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:1.2fr .8fr 1fr 2fr;gap:12px;padding:12px 20px;border-bottom:1px solid #EEF1EA;font-size:13px"><span style="color:#687161">{{ a.at }}</span><span>{{ a.actor }}</span><b>{{ a.action }}</b><span>{{ a.target }}</span></div></sc-for>
+      </div></div></section>
+      <span style="font-size:12px;color:#687161;word-break:keep-all">지금은 이 브라우저에만 저장되는 미리보기 기록이에요.<br>실제 서비스에서는 서버가 관리자 계정·일시·대상을 함께 저장해야 해요.</span>
+    </sc-if>
+  </main>
+</div>
+</sc-if>
+
+<sc-if value="{{ appDetail }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeApp }}" style="position:fixed;inset:0;z-index:55;background:rgba(38,59,26,.45);display:grid;place-items:center;padding:16px">
+    <div onClick="{{ stop }}" role="dialog" aria-label="신청 상세" style="width:min(520px,100%);max-height:calc(100vh - 32px);overflow-y:auto;box-sizing:border-box;background:#fff;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:800;font-size:19px;flex:1">신청 상세</span><button onClick="{{ closeApp }}" aria-label="닫기" style="all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:#EAF7D8;font-size:16px">×</button></div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px">
+        <sc-for list="{{ detailRows }}" as="d"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:12px;color:#687161">{{ d.label }}</span><b style="font-size:14px;overflow-wrap:anywhere">{{ d.value }}</b></div></sc-for>
+      </div>
+      <sc-if value="{{ hasDetailBreak }}">
+        <div style="display:flex;flex-direction:column;padding:12px 14px;border-radius:12px;background:#F7FAF3">
+          <span style="font-size:13px;font-weight:800;margin-bottom:4px">항목별 가점 · 임시 시뮬레이션</span>
+          <sc-for list="{{ detailBreak }}" as="b"><div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #E6ECE0;font-size:13px"><span>{{ b.label }}</span><b>{{ b.pts }} / {{ b.max }}</b></div></sc-for>
+        </div>
+      </sc-if>
+      <span style="font-size:12px;color:#687161">혼인 상태는 실제 개인정보가 아닌 레벨 기반 모의 청약 전용 가상 설정이에요.</span>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeConfirm }}" style="position:fixed;inset:0;z-index:60;background:rgba(38,59,26,.45);display:grid;place-items:center;padding:16px">
+    <div onClick="{{ stop }}" style="width:min(420px,100%);background:#fff;border-radius:20px;padding:26px;display:flex;flex-direction:column;gap:12px">
+      <span style="font-weight:800;font-size:19px">{{ confirmTitle }}</span>
+      <span style="font-size:14px;line-height:1.6;color:#687161">{{ confirmBody }}</span>
+      <div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeConfirm }}" style="all:unset;cursor:pointer;padding:9px 16px;border-radius:999px;background:#EAF7D8;font-weight:700">취소</button><button onClick="{{ runConfirm }}" style="all:unset;cursor:pointer;padding:9px 16px;border-radius:999px;background:#9fe870;font-weight:800">확인</button></div>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:70;background:#263B1A;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100vw - 32px);text-align:center">{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  // 데이터: housing/store.js(window.MBHousing) — 사용자 모의 청약 페이지와 같은 저장소
+  state = { view: 'dash', sidebarOpen: false, form: null, editId: null, formErr: '', nFilter: '전체', appNotice: 'all', confirm: null, toast: null };
+  componentDidMount() { this._on = () => this.forceUpdate(); window.addEventListener('mb-housing-change', this._on); }
+  componentWillUnmount() { window.removeEventListener('mb-housing-change', this._on); clearTimeout(this._tt); }
+  flash(m) { clearTimeout(this._tt); this.setState({ toast: m }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
+  emptyForm(T) { return { name: '', type: 'public', region: '서울', district: '', area: '59', price: '', units: '', post: T, close: '', announce: '', img: null }; }
+  safe(fn, ok) { try { fn(); if (ok) this.flash(ok); } catch (e) { this.flash(e.message); } }
+
+
+  // ───── 운영 기능(문의·사용자·강의 검수·경제 용어·작업 기록): 이 페이지 전용 목업 저장소 ─────
+  opsSeed() {
+    const W = ['복리', '인플레이션', '기준금리', '분산 투자', '예금자 보호', '환율', 'ETF', '배당', '청약통장', '전세', '신용점수', '채권'];
+    const D = ['원금에 이자가 붙고 그 이자에도 이자가 붙는 방식', '물가가 계속 오르고 돈의 가치가 떨어지는 현상', '중앙은행이 정하는 대표 금리', '여러 자산에 나누어 위험을 줄이는 방법', '금융회사가 망해도 5천만 원까지 보호하는 제도', '나라 사이 돈을 바꾸는 비율', '거래소에서 사고파는 펀드', '기업이 이익의 일부를 주주에게 나누는 것', '아파트 분양을 신청할 때 쓰는 통장', '큰 보증금을 맡기고 빌리는 집', '돈을 갚을 능력을 나타내는 점수', '돈을 빌리며 발행하는 증서'];
+    return {
+      inq: [
+        { id: 'q1', role: '회원', author: '복리왕', course: '청약통장 기초와 가점 계산', date: '2026.11.03', title: '부양가족 수에 부모님도 포함되나요?', body: '함께 살고 있지 않으면 어떻게 되나요?', state: 'ok', today: 2 },
+        { id: 'q2', role: '회원', author: '내집마련러', course: '증권 계좌와 주문 방법', date: '2026.11.03', title: '같이 공부하실 분 구해요', body: '010-1234-5678 로 연락 주세요. 오픈채팅 링크도 드려요.', state: 'ok', today: 1 },
+        { id: 'q3', role: '강사', author: '오민재', course: '코인과 위험', date: '2026.11.02', title: '수익 보장 강의 홍보', body: '지금 가입하면 수익 보장! 선착순 할인 이벤트를 놓치지 마세요.', state: 'ok', today: 1 },
+        { id: 'q4', role: '회원', author: '새내기', course: '예금과 적금, 뭐가 다를까', date: '2026.11.02', title: '이게 뭐예요', body: '씨발 설명이 너무 어려워요', state: 'hidden', today: 1 },
+        { id: 'q5', role: '회원', author: '불꽃저축', course: '환율과 해외 주식 세금', date: '2026.11.01', title: '환율 계산 예시가 더 있을까요?', body: '1,300원일 때 100달러는 얼마인지 한 번 더 알려 주세요.', state: 'ok', today: 11 }],
+      users: [
+        { id: 'u1', nickname: '민지', email: 'minji@mail.example', role: '회원', status: '정상', level: 14, joined: '2026.09.01' },
+        { id: 'u2', nickname: '복리왕', email: 'bokri@mail.example', role: '회원', status: '정상', level: 15, joined: '2026.08.17' },
+        { id: 'u3', nickname: '내집마련러', email: 'myhome@mail.example', role: '회원', status: '정상', level: 18, joined: '2026.07.30' },
+        { id: 'u4', nickname: '새내기', email: 'newbie@mail.example', role: '회원', status: '정지', level: 3, joined: '2026.10.20' },
+        { id: 'u5', nickname: '박서연', email: 'seoyeon@mail.example', role: '강사', status: '정상', level: 12, joined: '2026.06.05' },
+        { id: 'u6', nickname: '이도현', email: 'dohyun@mail.example', role: '강사', status: '정상', level: 10, joined: '2026.06.21' },
+        { id: 'u7', nickname: '오민재', email: 'minjae@mail.example', role: '강사', status: '정상', level: 9, joined: '2026.07.02' },
+        { id: 'u8', nickname: '하늘', email: 'sky@mail.example', role: '회원', status: '탈퇴', level: 6, joined: '2026.05.11' }],
+      courses: [
+        { id: 'c1', title: '청약통장 기초와 가점 계산', teacher: '박서연', status: '검수 대기', videos: 3, summaries: 3, ox: 5, quiz: 10, records: false },
+        { id: 'c2', title: '증권 계좌와 주문 방법', teacher: '이도현', status: '검수 대기', videos: 4, summaries: 4, ox: 5, quiz: 10, records: false },
+        { id: 'c3', title: '환율과 해외 주식 세금', teacher: '정하린', status: '검수 대기', videos: 3, summaries: 2, ox: 4, quiz: 4, records: false },
+        { id: 'c4', title: '예금과 적금, 뭐가 다를까', teacher: '박서연', status: '허가', videos: 2, summaries: 2, ox: 5, quiz: 10, records: true },
+        { id: 'c5', title: '코인과 위험', teacher: '오민재', status: '반려', videos: 2, summaries: 2, ox: 5, quiz: 8, records: false, reason: '퀴즈 해설이 비어 있어요. 보완 후 다시 요청해 주세요.' }],
+      terms: W.map((w, i) => ({ id: 't' + (i + 1), word: w, desc: D[i] })),
+      assigned: { '2026-11-05': ['t1', 't2', 't3', 't4', 't5'] },
+      audit: [{ at: '2026-11-02 16:20', actor: '김운영', action: '문의 숨김', target: '새내기 · 이게 뭐예요' }, { at: '2026-11-01 11:05', actor: '김운영', action: '계정 정지', target: '새내기' }]
+    };
+  }
+  opsGet() { if (this._ops) return this._ops; let r = null; try { r = JSON.parse(localStorage.getItem('mb-admin-ops-v1') || 'null'); } catch (e) {} return (this._ops = r || this.opsSeed()); }
+  opsSet(n) { this._ops = n; try { localStorage.setItem('mb-admin-ops-v1', JSON.stringify(n)); localStorage.setItem('mb-blocked-users', JSON.stringify(n.users.filter(u => u.status !== '정상').map(u => u.email))); } catch (e) {} this.forceUpdate(); }
+  pendingCourses() { return this.opsGet().courses.filter(c => c.status === '검수 대기').length; }
+  opsVals(go, ask, T) {
+    const O = this.opsGet(), s = this.state, view = s.view;
+    const mut = fn => { const n = JSON.parse(JSON.stringify(O)); fn(n); this.opsSet(n); };
+    const hm = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    const log = (n, action, target) => n.audit.unshift({ at: T + ' ' + hm(), actor: '김운영', action, target });
+    const upd = (id, arr, fn) => (n) => { const x = n[arr].find(y => y.id === id); fn(x, n); };
+    const out = { vInq: view === 'inq', vUsers: view === 'users', vCourses: view === 'courses', vTerms: view === 'terms', vAudit: view === 'audit' };
+    if (!['inq', 'users', 'courses', 'terms', 'audit'].includes(view)) return out;
+
+    if (view === 'inq') {
+      const bad = t => { const f = []; if (/(01[016789][-\s]?\d{3,4}[-\s]?\d{4})|(@[\w.-]+\.\w{2,})|(카톡|오픈채팅|open\.kakao|t\.me)/i.test(t)) f.push('외부 연락처'); if (/(수익 보장|무조건 수익|선착순|할인 이벤트|가입하면)/.test(t)) f.push('광고'); if (/(씨발|병신|개새끼|존나)/.test(t)) f.push('욕설·금칙어'); return f; };
+      const rows = O.inq.map(q => {
+        const flags = bad(q.title + ' ' + q.body), over = q.title.length > 50 || q.body.length > 1000 || q.today > 10;
+        const st = q.state === 'ok' ? ['정상', '#EAF7D8'] : q.state === 'hidden' ? ['숨김', '#FFF0D6'] : ['삭제', '#E4E7E0'];
+        return { q, flags, over, row: { role: q.role, roleBg: q.role === '강사' ? '#F2C14E' : '#EAF7D8', author: q.author, course: q.course, date: q.date, title: q.title, body: q.state === 'deleted' ? '(삭제된 글)' : q.body,
+          status: st[0], stBg: st[1], flags, limitText: '제목 ' + q.title.length + '/50 · 내용 ' + q.body.length + '/1000 · 오늘 ' + q.today + '/10개' + (over ? ' · 제한 초과' : ' · 제한 준수'), limitColor: over ? '#B3261E' : '#687161',
+          showUserView: q.state !== 'ok', userView: q.state === 'hidden' ? '관리자에 의해 숨김 처리된 글이에요' : '삭제된 글이에요',
+          hideLabel: q.state === 'hidden' ? '숨김 해제' : '숨기기', hideOff: q.state === 'deleted',
+          toggleHide: () => mut(upd(q.id, 'inq', (x, n) => { x.state = x.state === 'hidden' ? 'ok' : 'hidden'; log(n, x.state === 'hidden' ? '문의 숨김' : '숨김 해제', x.author + ' · ' + x.title); })),
+          del: () => ask('이 문의를 삭제할까요?', "'" + q.title + "' 글이 삭제 처리돼요. 작업 기록에 남아요.", () => mut(upd(q.id, 'inq', (x, n) => { x.state = 'deleted'; log(n, '문의 삭제', x.author + ' · ' + x.title); }))) } };
+      }).filter(o => { const f = s.inqFilter || '전체'; return f === '전체' || (f === '신고 의심' && (o.flags.length || o.over) && o.q.state === 'ok') || (f === '숨김' && o.q.state === 'hidden') || (f === '삭제' && o.q.state === 'deleted'); });
+      Object.assign(out, { inqRows: rows.map(o => o.row), inqCount: rows.length, noInq: rows.length === 0, inqFilter: s.inqFilter || '전체', setInqFilter: e => this.setState({ inqFilter: e.target.value }) });
+    }
+
+    if (view === 'users') {
+      const q = (s.userQ || '').trim().toLowerCase();
+      const rows = O.users.filter(u => !q || u.email.toLowerCase().includes(q) || u.nickname.toLowerCase().includes(q)).map(u => {
+        const inst = u.role === '강사';
+        return { nickname: u.nickname, email: u.email, role: u.role, roleBg: inst ? '#F2C14E' : '#EAF7D8', level: 'Lv.' + u.level, joined: u.joined, status: u.status, stBg: u.status === '정상' ? '#EAF7D8' : u.status === '정지' ? '#FFF0D6' : '#E4E7E0', blocked: u.status === '정지',
+          setStatus: e => { const v = e.target.value; ask('계정 상태를 바꿀까요?', u.nickname + ' 계정을 ' + u.status + ' → ' + v + '(으)로 바꿔요.' + (v === '정지' ? ' 정지되면 바로 로그인이 차단돼요.' : ''), () => mut(upd(u.id, 'users', (x, n) => { x.status = v; log(n, '계정 ' + v, x.nickname + ' (' + x.email + ')'); }))); this.forceUpdate(); },
+          grantLabel: inst ? '강사 권한 회수' : '강사 권한 부여', grantBg: inst ? '#F9DEDC' : '#9fe870', grantOff: u.status === '탈퇴',
+          grant: () => ask(inst ? '강사 권한을 회수할까요?' : '강사 권한을 부여할까요?', inst ? u.nickname + '의 강의 생성·등록 기능이 닫혀요.' : u.nickname + '에게 강의 생성·등록 기능이 열려요.', () => mut(upd(u.id, 'users', (x, n) => { x.role = inst ? '회원' : '강사'; log(n, inst ? '강사 권한 회수' : '강사 권한 부여', x.nickname); }))) };
+      });
+      Object.assign(out, { userRows: rows, userCount: rows.length, noUsers: rows.length === 0, userQ: s.userQ || '', setUserQ: e => this.setState({ userQ: e.target.value }) });
+    }
+
+    if (view === 'courses') {
+      const rows = O.courses.map(c => {
+        const ck = [
+          { ok: c.videos >= 1 && c.videos <= 3, text: '영상 ' + c.videos + '개 (1~3개)' },
+          { ok: c.summaries === c.videos, text: '요약글 ' + c.summaries + '/' + c.videos + '개' },
+          { ok: c.ox === 5, text: '테스트 퀴즈 ' + c.ox + '문제 (5문제)' },
+          { ok: c.quiz >= 5 && c.quiz <= 15, text: '4지선다 퀴즈 ' + c.quiz + '문제 (5~15)' }];
+        const warn = ck.filter(k => !k.ok).length, pending = c.status === '검수 대기', pub = c.status === '허가';
+        const stBg = { '검수 대기': '#FFF0D6', '허가': '#9fe870', '반려': '#F9DEDC', '비공개': '#E4E7E0' }[c.status];
+        const setSt = (st, act) => mut(upd(c.id, 'courses', (x, n) => { x.status = st; if (st !== '반려') delete x.reason; log(n, act, x.title); }));
+        return { title: c.title, teacher: c.teacher + ' 강사', status: c.status === '허가' ? '허가 · 공개 중' : c.status, stBg, warn, hasRecords: c.records, hasReason: c.status === '반려' && !!c.reason, reason: c.reason || '',
+          checks: ck.map(k => ({ text: k.text, bg: k.ok ? '#F4FBEC' : '#FDF4F3', mark: k.ok ? '✓' : '!', markBg: k.ok ? '#9fe870' : '#F9DEDC', markFg: k.ok ? '#263B1A' : '#B3261E' })),
+          approveOff: !(pending || c.status === '반려' || c.status === '비공개') || warn > 0, approve: () => ask('이 강의를 허가할까요?', "허가하면 '" + c.title + "'이(가) 사용자 목록에 공개돼요.", () => setSt('허가', '강의 허가')),
+          rejectOff: !pending, openReject: () => this.setState({ rejectId: c.id, rejectText: '', rejectErr: '' }),
+          showReject: s.rejectId === c.id, rejectVal: s.rejectText || '', rejectErr: s.rejectErr || '', onReject: e => this.setState({ rejectText: e.target.value, rejectErr: '' }), cancelReject: () => this.setState({ rejectId: null }),
+          doReject: () => { const r = (s.rejectText || '').trim(); if (!r) return this.setState({ rejectErr: '반려 사유를 입력해야 반려할 수 있어요.' }); mut(upd(c.id, 'courses', (x, n) => { x.status = '반려'; x.reason = r; log(n, '강의 반려', x.title + ' · ' + r); })); this.setState({ rejectId: null }); },
+          visOff: !(pub || c.status === '비공개') || (c.status === '비공개' && warn > 0), visLabel: pub ? '비공개로 전환' : '공개로 전환', toggleVis: () => setSt(pub ? '비공개' : '허가', pub ? '강의 비공개' : '강의 재공개'),
+          del: () => ask('강의를 삭제할까요?', "'" + c.title + "'이(가) 삭제돼요. 되돌릴 수 없어요.", () => mut((n) => { n.courses = n.courses.filter(x => x.id !== c.id); log(n, '강의 삭제', c.title); })) };
+      });
+      Object.assign(out, { courseRows: rows });
+    }
+
+    if (view === 'terms') {
+      const addD = (d, k) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + k); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+      const dayN = d => Math.round(new Date(d + 'T00:00:00') / 864e5);
+      const auto = d => { const L = O.terms; if (L.length < 5) return []; const st = ((dayN(d) * 5) % L.length + L.length) % L.length; return Array.from({ length: 5 }, (_, i) => L[(st + i) % L.length].id); };
+      const date = s.termDate || T, past = date < T, ass = O.assigned[date];
+      const sel = (s.termSel && s.termSelDate === date) ? s.termSel : (ass || auto(date));
+      const wordOf = id => (O.terms.find(t => t.id === id) || {}).word || '';
+      const fd = d => { const x = new Date(d + 'T00:00:00'); return (x.getMonth() + 1) + '.' + String(x.getDate()).padStart(2, '0') + '(' + '일월화수목금토'[x.getDay()] + ')'; };
+      const few = O.terms.length < 5;
+      const tf = s.tForm || { id: null, word: '', desc: '' };
+      Object.assign(out, {
+        termTotal: O.terms.length, tWord: tf.word, tDesc: tf.desc, tEditing: !!tf.id, tSaveLabel: tf.id ? '수정 저장' : '용어 등록', tErr: s.tErr || '',
+        onTWord: e => this.setState({ tForm: { ...tf, word: e.target.value }, tErr: '' }), onTDesc: e => this.setState({ tForm: { ...tf, desc: e.target.value }, tErr: '' }), cancelTerm: () => this.setState({ tForm: null, tErr: '' }),
+        saveTerm: () => { const w = tf.word.trim(), d = tf.desc.trim(); if (!w || !d) return this.setState({ tErr: '용어와 설명을 모두 입력해 주세요.' }); if (O.terms.some(t => t.word === w && t.id !== tf.id)) return this.setState({ tErr: '이미 등록된 용어예요.' });
+          mut((n) => { if (tf.id) { const x = n.terms.find(t => t.id === tf.id); x.word = w; x.desc = d; log(n, '용어 수정', w); } else { n.terms.push({ id: 't' + Date.now(), word: w, desc: d }); log(n, '용어 등록', w); } }); this.setState({ tForm: null, tErr: '' }); },
+        termDb: O.terms.map(t => ({ word: t.word, desc: t.desc, edit: () => this.setState({ tForm: { id: t.id, word: t.word, desc: t.desc }, tErr: '' }),
+          del: () => { const used = Object.keys(O.assigned).find(d => d >= T && O.assigned[d].includes(t.id)); if (used) return this.flash(fd(used) + ' 날짜에 지정된 용어라 삭제할 수 없어요'); if (O.terms.length - 1 < 5) return this.flash('용어가 5개 미만이 되어 삭제할 수 없어요');
+            ask('용어를 삭제할까요?', "'" + t.word + "' 용어가 DB에서 삭제돼요.", () => mut((n) => { n.terms = n.terms.filter(x => x.id !== t.id); log(n, '용어 삭제', t.word); })); } })),
+        termDate: date, setTermDate: e => this.setState({ termDate: e.target.value || T, termSel: null, termErr: '' }), termPast: past, selCount: sel.length, termErr: s.termErr || '',
+        termBanner: past ? '지나간 날짜라 수정할 수 없어요.' : few ? '등록된 용어가 5개 미만이라 지정할 수 없어요. 용어를 더 등록해 주세요.' : ass ? '관리자가 지정한 세트예요. 모든 사용자에게 같은 5개 카드가 보여요.' : '지정하지 않은 날이에요. 등록 순서대로 자동 선정된 5개예요. 바꾸려면 5개를 골라 저장하세요.',
+        termBannerBg: past ? '#E4E7E0' : few ? '#F9DEDC' : ass ? '#EAF7D8' : '#FFF0D6',
+        termPick: O.terms.map(t => { const on = sel.includes(t.id); return { word: t.word, desc: t.desc, mark: on ? '✓' : '', bg: on ? '#9fe870' : '#fff', op: past ? 0.55 : 1, toggle: () => { if (past) return; const cur = on ? sel.filter(x => x !== t.id) : (sel.length >= 5 ? sel : sel.concat(t.id)); if (!on && sel.length >= 5) return this.flash('하루 5개까지만 고를 수 있어요'); this.setState({ termSel: cur, termSelDate: date, termErr: '' }); } }; }),
+        saveOff: past || few || sel.length !== 5 || !(s.termSel && s.termSelDate === date),
+        saveTerms: () => { if (sel.length !== 5) return this.setState({ termErr: '5개를 모두 골라야 저장할 수 있어요.' }); mut((n) => { n.assigned[date] = sel.slice(); log(n, '오늘의 용어 지정', fd(date) + ' · ' + sel.map(wordOf).join(', ')); }); this.setState({ termSel: null }); this.flash(fd(date) + ' 오늘의 용어 5개를 저장했어요'); },
+        upcoming: Array.from({ length: 7 }, (_, i) => { const d = addD(T, i), a = O.assigned[d], ids = a || auto(d); return { date: fd(d), src: a ? '지정' : '자동', bg: a ? '#9fe870' : '#EEF1EA', words: ids.map(wordOf).join(' · '), go: () => this.setState({ termDate: d, termSel: null, termErr: '' }) }; })
+      });
+    }
+
+    if (view === 'audit') Object.assign(out, { auditRows: O.audit });
+    return out;
+  }
+  sbVals() {
+    const o = this.state.sbOpen || { lecture: true, content: true, training: true, growth: true, member: true };
+    let b = {}; try { b = JSON.parse(localStorage.getItem('mb-admin-badges') || '{}'); } catch (e) {}
+    const t = {}, c = {};
+    Object.keys(o).forEach(k => { t[k] = () => this.setState(x => ({ sbOpen: { ...o, [k]: !o[k] } })); c[k] = o[k] ? '▲' : '▼'; });
+    return { sbOpen: o, sbToggle: t, sbCaret: c, sbBadge: { review: b.review || 0, sub: b.sub || 0, board: b.board || 0 }, sbTodo: (b.review || 0) + (b.sub || 0) + (b.board || 0) };
+  }
+  renderVals() {
+    const H = window.MBHousing, s = this.state;
+    if (!H) return { denied: false, allowed: false };
+    const role = H.getPreviewRole();
+    if (role !== 'admin') return { denied: true, allowed: false, previewAdmin: () => H.setPreviewRole('admin'), confirmOpen: false, toast: null };
+    const db = H.get(), T = H.TODAY, fmt = n => Number(n || 0).toLocaleString('ko-KR');
+    const fmtD = d => { const x = new Date(d + 'T00:00:00'); return (x.getMonth() + 1) + '.' + String(x.getDate()).padStart(2, '0') + '(' + '일월화수목금토'[x.getDay()] + ')'; };
+    const big = n => { const e = Math.floor(n / 1e8), m = Math.round((n % 1e8) / 1e4); return (e ? e + '억 ' : '') + (m ? fmt(m) + '만 ' : '') + '캐시'; };
+    const ST = { '모집 예정': '#EEF1EA', '모집 중': '#9fe870', '모집 마감': '#D5E1CC', '발표 완료': '#F2C14E' };
+    const TY = { public: ['공공', '#EAF7D8', '#9fe870'], private: ['민간', 'rgba(242,193,78,.22)', '#F2C14E'] };
+    const go = v => () => { this.setState({ view: v }); try { window.scrollTo(0, 0); } catch (e) {} };
+    const ask = (title, body, run) => this.setState({ confirm: { title, body, run } });
+    const appsOf = id => db.apps.filter(a => a.noticeId === id);
+    const nameOf = id => (db.notices.find(n => n.id === id) || {}).name || '-';
+    const cnt = st => db.notices.filter(n => n.status === st).length;
+    const todo = db.notices.filter(n => (n.status === '모집 마감' && !n.computed) || (n.computed && n.status !== '발표 완료'));
+
+    const heads = {
+      dash: ['모의 청약 대시보드', '모의 청약 공고와 신청 현황을 한눈에 확인해요'],
+      notices: ['청약 공고 관리', '공공·민간 가상 공고를 등록하고 수정해요. 수정한 일정은 사용자 캘린더에 바로 반영돼요'],
+      apps: ['신청 현황', '공고별 신청 목록과 신청 당시 정보를 확인해요'],
+      results: ['당첨 결과 관리', '모집 마감 후 가상 경쟁자 기준으로 결과를 산정하고 발표해요'],
+      inq: ['문의하기 게시판 관리', '회원·강사가 남긴 문의를 확인하고 부적절한 글을 숨기거나 삭제해요'],
+      users: ['사용자 · 강사 관리', '계정 상태를 바꾸고 강사 권한을 부여하거나 회수해요'],
+      courses: ['강의 검수 및 관리', '검수를 요청한 강의의 구성을 확인하고 허가 또는 반려해요'],
+      terms: ['오늘의 경제 용어 관리', '용어를 관리하고 날짜별 오늘의 용어 5개를 지정해요'],
+      audit: ['관리자 작업 기록', '숨김·삭제·정지·권한 변경·검수·용어 지정 내역이에요']
+    };
+    const navDef = [['dash', '▦', '대시보드'], ['notices', '▤', '청약 공고 관리'], ['apps', '☰', '신청 현황'], ['results', '◎', '당첨 결과 관리'], ['inq', '✉', '문의하기 관리'], ['users', '☺', '사용자 · 강사'], ['courses', '▶', '강의 검수'], ['terms', '₩', '경제 용어'], ['audit', '≡', '작업 기록']];
+
+    const form = s.form || this.emptyForm(T);
+    const setF = k => e => { const v = e.target.value; this.setState(x => ({ form: { ...(x.form || this.emptyForm(T)), [k]: v }, formErr: '' })); };
+    const offS = off => ({ cur: off ? 'not-allowed' : 'pointer', op: off ? 0.45 : 1 });
+    const nQ = (s.nQ || '').trim(), nStatus = s.nStatus || '전체';
+    const noticeRows = db.notices.filter(n => (s.nFilter === '전체' || TY[n.type][0] === s.nFilter) && (nStatus === '전체' || n.status === nStatus) && (!nQ || n.name.includes(nQ))).map(n => {
+      const ac = appsOf(n.id).length, pub = n.status === '발표 완료', e = offS(pub), d = offS(ac > 0);
+      return {
+        name: n.name, status: n.status, typeLabel: TY[n.type][0], typeBg: TY[n.type][1], typeBd: TY[n.type][2], stBg: ST[n.status], hidden: !!n.hidden, rowOp: n.hidden ? 0.6 : 1,
+        meta: n.region + ' ' + n.district + ' · 전용 ' + n.area + '㎡ · ' + big(n.price) + ' · ' + fmt(n.units) + '세대',
+        post: fmtD(n.post), close: fmtD(n.close), announce: fmtD(n.announcedAt || n.announce), appCount: ac,
+        statusOff: pub, pubOptOff: true,
+        setStatus: ev => { const v = ev.target.value; this.safe(() => H.setStatus(n.id, v), "'" + n.name + "' 상태를 " + v + '(으)로 바꿨어요 · 사용자 화면에도 반영돼요'); },
+        hasLock: ac > 0, lockNote: '신청 ' + ac + '건 · 청약 유형·공급 세대 수는 바꿀 수 없고, 삭제 대신 비공개로 전환해요',
+        editOff: pub, editCur: e.cur, editOp: e.op,
+        edit: () => { if (pub) return; this.setState({ editId: n.id, form: { name: n.name, type: n.type, region: n.region, district: n.district, area: String(n.area), price: fmt(n.price), units: String(n.units), post: n.post, close: n.close, announce: n.announce, img: n.img }, formErr: '' }); try { window.scrollTo(0, 0); } catch (err) {} },
+        viewApps: () => this.setState({ view: 'apps', appNotice: n.id }),
+        hideLabel: n.hidden ? '공개로 전환' : '비공개 전환',
+        toggleHide: () => this.safe(() => H.setHidden(n.id, !n.hidden), n.hidden ? '공고를 다시 공개했어요' : '비공개로 바꿨어요 · 사용자 화면에서 보이지 않아요'),
+        delOff: ac > 0, delCur: d.cur, delOp: d.op, delTip: ac ? '신청자가 있어 삭제할 수 없어요' : '',
+        del: () => { if (ac) return; ask('공고를 삭제할까요?', "'" + n.name + "' 공고가 삭제돼요. 신청자가 없는 공고만 삭제할 수 있어요.", () => this.safe(() => H.deleteNotice(n.id), '공고를 삭제했어요')); }
+      };
+    });
+    const nStatusChips = ['전체'].concat(H.STATUSES).map(k => { const on = nStatus === k; return { label: k, n: k === '전체' ? db.notices.length : cnt(k), go: () => this.setState({ nStatus: k }), bg: on ? '#263B1A' : '#fff', fg: on ? '#9fe870' : '#263B1A', fw: on ? 800 : 600, line: on ? '#263B1A' : '#D5E1CC' }; });
+
+    const KIND = { win: '당첨', reserve: '예비 당첨', lose: '탈락' }, KBG = { win: '#9fe870', reserve: '#F2C14E', lose: '#E4E7E0' };
+    const appSt = (a, n) => a.result ? (n.status === '발표 완료' ? [KIND[a.result.kind], KBG[a.result.kind]] : ['산정 완료(미발표)', '#EEF1EA']) : n.status === '모집 중' ? ['접수 완료', '#EAF7D8'] : ['발표 대기', '#FFF0D6'];
+    const aQ = (s.aQ || '').trim(), aType = s.aType || '전체 유형', aStatus = s.aStatus || '전체 상태', aDate = s.aDate || '';
+    const appList = db.apps.map(a => ({ a, n: db.notices.find(x => x.id === a.noticeId) || { type: 'public', status: '' } })).filter(({ a, n }) =>
+      (s.appNotice === 'all' || a.noticeId === s.appNotice) && (!aQ || (n.name || '').includes(aQ)) && (aType === '전체 유형' || TY[n.type][0] === aType) && (aStatus === '전체 상태' || appSt(a, n)[0] === aStatus) && (!aDate || a.at.startsWith(aDate)));
+    const appRows = appList.map(({ a, n }) => { const st = appSt(a, n); return { receipt: a.receipt, nickname: a.nickname, noticeName: n.name || '-', typeLabel: TY[n.type][0], typeBg: TY[n.type][1], typeBd: TY[n.type][2], level: a.level, marital: a.marital, countText: a.count != null ? a.count + '회' : '-', recText: a.recognized != null ? fmt(a.recognized) : '-', score: a.score, at: a.at, statusText: st[0], stBg: st[1], open: () => this.setState({ appId: a.id }) }; });
+    const scopeN = s.appNotice === 'all' ? db.notices : db.notices.filter(n => n.id === s.appNotice);
+    const dA = s.appId && db.apps.find(a => a.id === s.appId), dN = dA && (db.notices.find(x => x.id === dA.noticeId) || { type: 'public', status: '' });
+
+    const resultRows = db.notices.map(n => {
+      const list = appsOf(n.id), c = k => list.filter(a => a.result && a.result.kind === k).length, pub = n.status === '발표 완료';
+      const canCompute = n.status === '모집 마감' && !n.computed, canPublish = n.computed && !pub;
+      const done = pub ? 4 : n.computed ? 2 : n.status === '모집 마감' ? 1 : 0;
+      const steps = ['모집 마감', '결과 산정', '결과 검토', '결과 발표'].map((label, i) => { const ok = i < done, now = i === done; return { label, mark: ok ? '✓' : String(i + 1), bg: ok ? '#EAF7D8' : now ? '#263B1A' : '#F2F5EE', fg: ok ? '#263B1A' : now ? '#fff' : '#9AA393', dotBg: ok ? '#9fe870' : now ? '#9fe870' : '#E4E7E0', dotFg: '#263B1A' }; });
+      const w = c('win'), rv = c('reserve'), l = c('lose'), sumOk = w + rv + l === list.length;
+      const hint = n.status === '모집 예정' ? '모집 예정 공고예요. 모집이 마감된 후 당첨 결과를 산정할 수 있어요.'
+        : n.status === '모집 중' ? '청약 모집이 마감된 후 당첨 결과를 산정할 수 있어요. (마감 ' + fmtD(n.close) + ')'
+        : pub ? '발표 완료 · 회원이 결과를 확인할 수 있어요. 발표 후에는 재산정·수정할 수 없어요.'
+        : n.computed ? '산정 결과를 검토한 뒤 발표해 주세요. 발표 전까지 회원 화면에는 공개되지 않아요.' : '결과를 산정해야 발표할 수 있어요.';
+      const cS = offS(!canCompute), pS = offS(!canPublish);
+      return { name: n.name, status: n.status, stBg: ST[n.status], typeLabel: TY[n.type][0], typeBg: TY[n.type][1], typeBd: TY[n.type][2],
+        dateLabel: pub ? '발표일 ' + fmtD(n.announcedAt || n.announce) : '발표 예정일 ' + fmtD(n.announce), steps,
+        units: fmt(n.units), apps: list.length, competitors: fmt(n.competitors), rate: ((n.competitors + 1) / n.units).toFixed(1) + ' : 1', cutline: n.cutline,
+        summary: n.computed ? '당첨 ' + w + '건 / 예비 ' + rv + '건 / 탈락 ' + l + '건' : '미산정',
+        showReview: !!n.computed, reviewTitle: pub ? '발표된 결과' : '결과 검토', method: n.method || '-',
+        reviewStats: [{ label: '판정 대상 회원', value: list.length + '명', bg: '#fff' }, { label: '당첨', value: w + '명', bg: '#EAF7D8' }, { label: '예비 당첨', value: rv + '명', bg: 'rgba(242,193,78,.2)' }, { label: '탈락', value: l + '명', bg: '#EEF1EA' }],
+        sumText: sumOk ? '✓ 당첨 + 예비 + 탈락 = 회원 신청 ' + list.length + '건 (가상 경쟁자 제외)' : '합계가 회원 신청 건수와 달라요. 산정 결과를 확인해 주세요.', sumColor: sumOk ? '#3d6120' : '#B3261E',
+        hasReviewApps: list.length > 0, reviewApps: list.map(a => ({ nickname: a.nickname, score: a.score, cut: n.cutline, label: a.result ? KIND[a.result.kind] : '-', bg: a.result ? KBG[a.result.kind] : '#EEF1EA' })),
+        hint, hintColor: pub ? '#3d6120' : canCompute || canPublish ? '#B26A00' : '#687161',
+        computeOff: !canCompute, cCur: cS.cur, cOp: canCompute || n.computed ? 1 : 0.45, cBg: n.computed ? '#F2F5EE' : '#EAF7D8', cLine: canCompute ? '#9fe870' : 'transparent',
+        computeLabel: pub ? '✓ 산정 완료' : n.computed ? '✓ 산정 완료 · 재산정 제한' : '당첨 결과 산정',
+        compute: () => { if (!canCompute) return; ask('당첨 결과를 산정할까요?', "'" + n.name + "' 회원 신청 " + list.length + '건을 가상 경쟁자 ' + fmt(n.competitors) + '명 · 임시 커트라인 ' + n.cutline + '점 기준으로 각각 판정해요. 산정 후 재산정은 제한되고, 발표 전까지 회원에게는 보이지 않아요.', () => this.safe(() => H.computeResults(n.id), '결과를 산정했어요 · 검토 후 발표해 주세요')); },
+        publishOff: !canPublish, pCur: pS.cur, pOp: canPublish || pub ? 1 : 0.45, pBg: pub ? '#F2F5EE' : canPublish ? '#9fe870' : '#EAF7D8', pLine: 'transparent',
+        publishLabel: pub ? '✓ 발표 완료' : '결과 발표',
+        publish: () => { if (!canPublish) return; ask('결과를 발표할까요?', "발표하면 '" + n.name + "' 신청 회원 " + list.length + '명이 당첨 여부를 바로 확인할 수 있어요. 당첨 ' + w + ' · 예비 ' + rv + ' · 탈락 ' + l + '. 발표 후에는 되돌리거나 수정할 수 없어요.', () => this.safe(() => H.publishResults(n.id), '결과를 발표했어요 · 회원이 확인할 수 있어요')); }
+      };
+    });
+
+    const daysTo = d => Math.round((new Date(d + 'T00:00:00') - new Date(T + 'T00:00:00')) / 864e5);
+    const wg = (label, dot, list, note, action, go2) => ({ label, dot, count: list.length, empty: list.length === 0, items: list.map(n => ({ name: n.name, note: note(n), action, go: go2 })) });
+    const workGroups = [
+      wg('결과 산정 필요', '#F59E0B', db.notices.filter(n => n.status === '모집 마감' && !n.computed), n => '모집 마감 ' + fmtD(n.close) + ' · 회원 신청 ' + appsOf(n.id).length + '건', '결과 산정', go('results')),
+      wg('산정 완료 · 발표 대기', '#10B981', db.notices.filter(n => n.computed && n.status !== '발표 완료'), n => '발표 예정일 ' + fmtD(n.announce), '결과 발표', go('results')),
+      wg('7일 이내 모집 마감', '#3B82F6', db.notices.filter(n => n.status === '모집 중' && daysTo(n.close) >= 0 && daysTo(n.close) <= 7).sort((a, b) => (a.close < b.close ? -1 : 1)), n => '마감 ' + fmtD(n.close) + ' · D-' + daysTo(n.close) + ' · 회원 신청 ' + appsOf(n.id).length + '건', '공고 보기', () => { this.setState({ view: 'notices', nStatus: '모집 중' }); try { window.scrollTo(0, 0); } catch (e) {} })
+    ];
+    const recentNotices = [...db.notices].sort((a, b) => (a.post < b.post ? 1 : -1)).slice(0, 5).map(n => ({ name: n.name, status: n.status, stBg: ST[n.status], typeLabel: TY[n.type][0], typeBg: TY[n.type][1], typeBd: TY[n.type][2], post: fmtD(n.post), close: fmtD(n.close), announce: fmtD(n.announcedAt || n.announce) }));
+
+    return {
+      ...this.opsVals(go, ask, T),
+      denied: false, allowed: true, exitPreview: () => H.setPreviewRole('user'),
+      sidebarOpen: s.sidebarOpen, sidebarClosed: true, mbDrawerT: this.state.sidebarOpen ? 'none' : 'translateX(-102%)', mbDrawerVis: this.state.sidebarOpen ? 'visible' : 'hidden', mbOverlayOp: this.state.sidebarOpen ? 1 : 0, mbOverlayPe: this.state.sidebarOpen ? 'auto' : 'none', toggleSidebar: () => this.setState(x => ({ sidebarOpen: !x.sidebarOpen })),
+      ...this.sbVals(),
+      sg: (() => { const o = this.state.sbGrp || {}; const r = {}; ['lecture', 'content', 'growth', 'member'].forEach(k => { const op = o[k] !== false; r[k] = { open: op, caret: op ? '▲' : '▼', toggle: () => this.setState(x => ({ sbGrp: { ...(x.sbGrp || {}), [k]: (x.sbGrp || {})[k] === false } })) }; }); return r; })(),
+      hNav: [['dash', '모의 청약 대시보드'], ['notices', '청약 공고 관리'], ['apps', '신청 현황'], ['results', '당첨 결과 관리']].map(([k, label]) => ({ label, go: go(k), bg: s.view === k ? '#EAF7D8' : 'transparent', fw: s.view === k ? 800 : 500, badge: k === 'results' && todo.length ? todo.length : 0 })),
+      subTabs: [['dash', '대시보드'], ['notices', '청약 공고 관리'], ['apps', '신청 현황'], ['results', '당첨 결과 관리']].map(([k, label]) => ({ label, go: go(k), badge: k === 'results' && todo.length ? todo.length : 0, bg: s.view === k ? '#263B1A' : '#fff', fg: s.view === k ? '#9fe870' : '#263B1A', fw: s.view === k ? 800 : 600, line: s.view === k ? '#263B1A' : '#D5E1CC' })),
+      hnav: [['dash', '대시보드', ['M3 3h7v9H3z', 'M14 3h7v5h-7z', 'M14 12h7v9h-7z', 'M3 16h7v5H3z']], ['notices', '청약 공고 관리', ['M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h6']], ['apps', '신청 현황', ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01']], ['results', '당첨 결과 관리', ['M8 21h8', 'M12 17v4', 'M7 4h10v5a5 5 0 0 1-10 0z', 'M17 5h3v2a3 3 0 0 1-3 3', 'M7 5H4v2a3 3 0 0 0 3 3']]].map(([k, label, icon]) => ({ label, icon, go: go(k), cur: s.view === k ? 'page' : 'false', bg: s.view === k ? '#EAF7D8' : 'transparent', fw: s.view === k ? 800 : 500, badge: k === 'results' && todo.length ? todo.length : null })),
+      hTodo: todo.length,
+      nav: navDef.map(([k, icon, label]) => ({ label, icon, go: go(k), bg: s.view === k ? '#EAF7D8' : 'transparent', fw: s.view === k ? 800 : 500, badge: k === 'results' && todo.length ? todo.length : k === 'courses' && this.pendingCourses() ? this.pendingCourses() : null })),
+      todoCount: todo.length, pageTitle: heads[s.view][0], pageDesc: heads[s.view][1],
+      vDash: s.view === 'dash', vNotices: s.view === 'notices', vApps: s.view === 'apps', vResults: s.view === 'results',
+      goResults: go('results'), goApps: go('apps'),
+      goNotices: go('notices'), workGroups, workTotal: workGroups.reduce((t, g) => t + g.count, 0), recentNotices, noRecent: recentNotices.length === 0,
+      stats: [
+        { label: '전체 청약 공고', value: db.notices.length + '건', sub: '공공 ' + db.notices.filter(n => n.type === 'public').length + ' · 민간 ' + db.notices.filter(n => n.type === 'private').length, dot: '#263B1A', go: () => this.setState({ view: 'notices', nStatus: '전체' }) },
+        { label: '모집 예정', value: cnt('모집 예정') + '건', sub: '공고 게시 전', dot: '#C9D3C1', go: () => this.setState({ view: 'notices', nStatus: '모집 예정' }) },
+        { label: '모집 중', value: cnt('모집 중') + '건', sub: '지금 신청 가능', dot: '#9fe870', go: () => this.setState({ view: 'notices', nStatus: '모집 중' }) },
+        { label: '모집 마감', value: cnt('모집 마감') + '건', sub: '산정 대기 ' + db.notices.filter(n => n.status === '모집 마감' && !n.computed).length + '건', dot: '#F59E0B', go: go('results') },
+        { label: '발표 완료', value: cnt('발표 완료') + '건', sub: '회원 결과 공개됨', dot: '#F2C14E', go: go('results') },
+        { label: '전체 회원 신청', value: db.apps.length + '건', sub: '신청 회원 ' + new Set(db.apps.map(a => a.userId)).size + '명 · 가상 경쟁자 제외', dot: '#3B82F6', go: go('apps') }],
+            form, formTitle: s.editId ? '공고 수정' : '새 공고 등록', formSave: s.editId ? '수정 저장' : '공고 게시', editing: !!s.editId, formErr: s.formErr,
+      formImgBg: form.img ? 'url("' + form.img + '")' : 'none', formImgText: form.img ? '이미지 선택됨 · 다시 누르면 변경' : '선택 안 함', regions: ['서울', '경기', '인천', '부산', '세종', '대구', '광주', '대전'],
+      fName: setF('name'), fType: setF('type'), fRegion: setF('region'), fDistrict: setF('district'), fArea: setF('area'), fUnits: setF('units'), fPrice: setF('price'),
+      fPost: setF('post'), fClose: setF('close'), fAnnounce: setF('announce'),
+      fImg: e => {
+        const f = e.target.files && e.target.files[0]; if (!f) return;
+        const img = new Image(), url = URL.createObjectURL(f);
+        img.onload = () => { const w = Math.min(640, img.width), h = Math.round(img.height * w / img.width), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+          const data = c.toDataURL('image/jpeg', 0.8); URL.revokeObjectURL(url); this.setState(x => ({ form: { ...(x.form || this.emptyForm(T)), img: data } })); };
+        img.src = url;
+      },
+      cancelEdit: () => this.setState({ editId: null, form: null, formErr: '' }),
+      saveForm: () => {
+        const f = form, num = v => parseInt(String(v).replace(/\D/g, ''), 10) || 0;
+        if (!f.name.trim()) return this.setState({ formErr: '아파트 단지명을 입력해 주세요.' });
+        if (!num(f.area) || !num(f.units) || !num(f.price)) return this.setState({ formErr: '전용면적·분양가·공급 세대 수를 입력해 주세요.' });
+        if (!f.post || !f.close || !f.announce) return this.setState({ formErr: '공고 게시일·신청 마감일·당첨자 발표일을 모두 입력해 주세요.' });
+        if (f.close < f.post || f.announce < f.close) return this.setState({ formErr: '날짜 순서를 확인해 주세요. 게시일 ≤ 마감일 ≤ 발표일이어야 해요.' });
+        const data = { name: f.name.trim(), type: f.type, region: f.region, district: f.district.trim(), area: num(f.area), units: num(f.units), price: num(f.price), post: f.post, close: f.close, announce: f.announce, img: f.img || null };
+        const id = s.editId;
+        if (!id) data.status = H.statusFromDates(f.post, f.close);
+        try { H.saveNotice(data, id); this.setState({ editId: null, form: null }); this.flash(id ? '공고를 수정했어요 · 사용자 캘린더에도 반영돼요' : "'" + data.name + "' 공고를 게시했어요"); }
+        catch (e) { this.setState({ formErr: e.message + ' 이미지가 너무 크면 저장되지 않을 수 있어요.' }); }
+      },
+      noticeCount: noticeRows.length, nFilter: s.nFilter, setNFilter: e => this.setState({ nFilter: e.target.value }), noticeRows, noNotices: noticeRows.length === 0, nStatusChips, nQ: s.nQ || '', setNQ: e => this.setState({ nQ: e.target.value }),
+      lockCore: !!s.editId && appsOf(s.editId).length > 0, lockOp: s.editId && appsOf(s.editId).length > 0 ? 0.55 : 1,
+      appNotice: s.appNotice, setAppNotice: e => this.setState({ appNotice: e.target.value }), noticeOpts: db.notices.map(n => ({ id: n.id, name: n.name })),
+      appRows, appCount: appRows.length, noAppRows: appRows.length === 0, appScope: s.appNotice === 'all' ? '전체 공고' : (scopeN[0] || {}).name || '',
+      virtualTotal: fmt(scopeN.reduce((t, n) => t + (n.competitors || 0), 0)),
+      aQ, aType, aStatus, aDate, aFiltered: !!(aQ || aDate || aType !== '전체 유형' || aStatus !== '전체 상태' || s.appNotice !== 'all'),
+      setAQ: e => this.setState({ aQ: e.target.value }), setAType: e => this.setState({ aType: e.target.value }), setAStatus: e => this.setState({ aStatus: e.target.value }), setADate: e => this.setState({ aDate: e.target.value }),
+      resetAF: () => this.setState({ aQ: '', aType: '전체 유형', aStatus: '전체 상태', aDate: '', appNotice: 'all' }),
+      appDetail: !!dA, closeApp: () => this.setState({ appId: null }),
+      detailRows: dA ? [['접수번호', dA.receipt], ['신청자', dA.nickname + ' · ' + dA.region], ['신청 단지', dN.name || '-'], ['청약 유형', TY[dN.type][0]], ['신청 당시 레벨', 'Lv.' + dA.level], ['가상 혼인 상태', dA.marital + ' · 신혼부부 ' + dA.newlywed], ['납입 회차', dA.count != null ? dA.count + '회' : '-'], ['인정금액', dA.recognized != null ? fmt(dA.recognized) + ' 캐시' : '-'], ['신청 당시 가점(임시)', dA.score + ' / ' + dA.max + '점'], ['신청일', dA.at], ['신청 상태', appSt(dA, dN)[0]], ['모집 상태', dN.status || '-']].map(([label, value]) => ({ label, value })) : [],
+      detailBreak: dA ? (dA.breakdown || []) : [], hasDetailBreak: !!(dA && dA.breakdown && dA.breakdown.length),
+      resultRows, noResults: resultRows.length === 0,
+      confirmOpen: !!s.confirm, confirmTitle: s.confirm ? s.confirm.title : '', confirmBody: s.confirm ? s.confirm.body : '',
+      closeConfirm: () => this.setState({ confirm: null }), runConfirm: () => { const c = s.confirm; this.setState({ confirm: null }); if (c) c.run(); },
+      toast: s.toast, stop: e => e.stopPropagation()
+    };
+  }
+}
+</script>
+</body>
+</html>

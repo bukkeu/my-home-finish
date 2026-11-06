@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>flow test</title>
+<style>body{font:13px/1.4 system-ui;margin:12px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}.ok{background:#e6f7d9}.bad{background:#fde2e2}.warn{background:#fff4cc}iframe{width:1280px;height:800px;border:1px solid #999;position:absolute;left:-3000px;top:0}</style>
+</head><body>
+<h3 id="st">running…</h3>
+<table><thead><tr><th>#</th><th>흐름</th><th>결과</th><th>도착/메모</th></tr></thead><tbody id="tb"></tbody></table>
+<iframe id="f"></iframe>
+<script>
+const F = document.getElementById('f'), TB = document.getElementById('tb');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rows = []; let n = 0;
+function add(name, cls, note) { n++; const tr = document.createElement('tr'); tr.className = cls; tr.innerHTML = `<td>${n}</td><td>${name}</td><td>${cls === 'ok' ? '정상' : cls === 'bad' ? '오류' : '확인 필요'}</td><td>${note}</td>`; TB.appendChild(tr); rows.push([n, name, cls, note]); }
+function load(url) { return new Promise(res => { let done = false; F.onload = async () => { if (done) return; done = true; await sleep(1800); res(); }; F.src = '../' + url; setTimeout(() => { if (!done) { done = true; res(); } }, 9000); }); }
+function waitNav(prev, ms = 6000) { return new Promise(res => { const t0 = Date.now(); const iv = setInterval(async () => { let p = ''; try { p = F.contentWindow.location.href; } catch (e) {} if ((p !== prev && F.contentDocument && F.contentDocument.readyState === 'complete') || Date.now() - t0 > ms) { clearInterval(iv); await sleep(1500); res(p); } }, 150); }); }
+const W = () => F.contentWindow, D = () => F.contentDocument;
+const page = () => { try { return decodeURIComponent(W().location.pathname.split('/').pop() + W().location.search + W().location.hash); } catch (e) { return '?'; } };
+function byText(sel, txt) { return [...D().querySelectorAll(sel)].find(e => e.textContent.replace(/\s+/g, ' ').includes(txt)); }
+function setVal(el, v) { const proto = Object.getPrototypeOf(el); const s = Object.getOwnPropertyDescriptor(proto, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+async function clickNav(name, url, finder, expect) {
+  try {
+    await load(url); const el = finder(); if (!el) { add(name, 'bad', `요소 없음 (${url})`); return; }
+    const prev = W().location.href; el.click(); const p = await waitNav(prev);
+    const got = page(); const ok = expect.test(got); add(name, ok ? 'ok' : (p === prev ? 'bad' : 'bad'), (p === prev ? '클릭 후 이동 없음 · ' : '') + got);
+  } catch (e) { add(name, 'bad', 'ERR ' + e.message); }
+}
+async function login(name, url, email, pw, expect) {
+  try {
+    await load(url);
+    const em = D().querySelector('input[type=email]'), pwi = D().querySelector('input[type=password]');
+    if (!em || !pwi) { add(name, 'bad', '입력창 없음'); return; }
+    setVal(em, email); setVal(pwi, pw); await sleep(300);
+    const btn = D().querySelector('button[type=submit]') || byText('button', '로그인');
+    const prev = W().location.href; btn.click(); await waitNav(prev, 7000);
+    const got = page(); add(name, expect.test(got) ? 'ok' : 'bad', got);
+  } catch (e) { add(name, 'bad', 'ERR ' + e.message); }
+}
+(async () => {
+  let hasHist = false; try { hasHist = Object.keys(JSON.parse(localStorage.getItem('mb-lecture-progress') || '{}')).length > 0; } catch (e) {}
+  await clickNav('Main → 로그인', 'Main.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /UserLogin/.test(a.getAttribute('href')) && a.textContent.includes('로그인')), /UserLogin/);
+  await clickNav('Main → 무료로 시작하기', 'Main.dc.html', () => byText('a', '무료로 시작하기'), /UserLogin/);
+  await login('UserLogin 로그인 (시청기록 ' + (hasHist ? '있음→vr2' : '없음→vr1') + ')', 'UserLogin.dc.html', 'beetle@example.com', 'beetle1234', hasHist ? /UserHome-vr2/ : /UserHome-vr1/);
+  await clickNav('UserLogin → 회원가입', 'UserLogin.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /UserSignup/.test(a.getAttribute('href'))), /UserSignup/);
+  for (const [lab, re] of [['강의 목록', /UserLectureCategory/], ['마이페이지', /UserMyPage/], ['문의 게시판', /UserInquiry/], ['모의 투자', /UserDemoTrading/], ['모의 청약', /UserDemoHousingSubscription/]]) {
+    await clickNav('UserHome-vr2 → ' + lab, 'UserHome-vr2.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => re.test(a.getAttribute('href'))), re);
+  }
+  await clickNav('강의 목록 → 강의 상세', 'UserLectureCategory.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /UserLectureDetail/.test(a.getAttribute('href'))), /UserLectureDetail/);
+  await clickNav('강의 상세 → 문의', 'UserLectureDetail.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /UserInquiry/.test(a.getAttribute('href'))), /UserInquiry/);
+  await clickNav('문의 게시판 → 홈', 'UserInquiry.dc.html', () => [...D().querySelectorAll('aside a[href]')].find(a => /UserHome/.test(a.getAttribute('href'))), /UserHome/);
+  // history rows
+  await load('UserHome-vr2.dc.html');
+  const hist = [...D().querySelectorAll('a[href*="UserLectureDetail"]')].filter(a => /title=/.test(a.getAttribute('href'))).map(a => ({ href: a.getAttribute('href'), t: decodeURIComponent((a.getAttribute('href').match(/title=([^&]+)/) || [])[1] || '') }));
+  for (const h of hist) {
+    await load(h.href); await sleep(400);
+    const h1 = D().querySelector('h1'); const shown = h1 ? h1.textContent.trim() : '(제목 없음)';
+    add('학습 기록 → ' + h.t, shown === h.t ? 'ok' : 'bad', '표시된 강의: ' + shown);
+  }
+  await clickNav('InstructorLogin → 강사 회원가입', 'InstructorLogin.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /InstructorSignup/.test(a.getAttribute('href'))), /InstructorSignup/);
+  await login('InstructorLogin 로그인', 'InstructorLogin.dc.html', 'teacher@moneybeetle.kr', 'teacher1234', /InstructorDashboard/);
+  await clickNav('강사 대시보드 → 강의 생성', 'InstructorDashboard.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /InstructorCourseCreate/.test(a.getAttribute('href'))), /InstructorCourseCreate/);
+  await clickNav('강의 생성 → 강사 대시보드', 'InstructorCourseCreate.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => /InstructorDashboard/.test(a.getAttribute('href'))), /InstructorDashboard/);
+  try { await load('InstructorDashboard.dc.html'); const b = byText('button', 'Q&A'); if (b) { b.click(); await sleep(800); add('강사 대시보드 Q&A 탭', byText('h1,h2', 'Q&A') ? 'ok' : 'warn', 'Q&A 화면 제목 ' + (byText('h1,h2', 'Q&A') ? '표시됨' : '못 찾음')); } else add('강사 대시보드 Q&A 탭', 'bad', 'Q&A 버튼 없음'); } catch (e) { add('강사 Q&A', 'bad', e.message); }
+  await login('AdminLogin 로그인', 'AdminLogin.dc.html', 'admin@moneybeetle.test', 'admin1234', /AdminDashboard/);
+  for (const [lab, re] of [['모의 투자 운영', /AdminTradingManagement/], ['모의 청약 운영', /AdminHousingManagement/]]) {
+    await clickNav('AdminDashboard → ' + lab, 'AdminDashboard.dc.html', () => [...D().querySelectorAll('a[href]')].find(a => re.test(a.getAttribute('href'))), re);
+  }
+  for (const p of ['AdminDashboard.dc.html', 'AdminHousingManagement.dc.html', 'AdminTradingManagement.dc.html']) {
+    try {
+      await load(p); const b = D().querySelector('button[aria-label="메뉴"]'); const dr = () => D().querySelector('[data-mb-drawer]');
+      if (!b || !dr()) { add(p + ' Drawer', 'bad', '버튼/Drawer 없음'); continue; }
+      const vis = b.getBoundingClientRect().width > 0;
+      b.click(); await sleep(500); const o1 = dr().getAttribute('data-open'); const x = Math.round(dr().getBoundingClientRect().left);
+      D().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(500); const o2 = dr().getAttribute('data-open');
+      b.click(); await sleep(500); const ov = D().querySelector('[data-mb-overlay]'); ov && ov.click(); await sleep(500); const o3 = dr().getAttribute('data-open');
+      b.click(); await sleep(500); const cl = D().querySelector('[data-mb-close]'); cl && cl.click(); await sleep(500); const o4 = dr().getAttribute('data-open');
+      const ok = vis && o1 === 'true' && o2 === 'false' && o3 === 'false' && o4 === 'false';
+      add(p.replace('.dc.html', '') + ' Drawer 열기/ESC/오버레이/X', ok ? 'ok' : 'bad', `버튼보임 ${vis} · 열림 ${o1}(left ${x}) · ESC ${o2} · 오버레이 ${o3} · X ${o4} · 너비 ${Math.round(dr().getBoundingClientRect().width)}`);
+      b.click(); await sleep(400); const link = [...dr().querySelectorAll('a[href]')].find(a => /\.dc\.html/.test(a.getAttribute('href')) && !a.getAttribute('href').includes(p));
+      if (link) { const prev = W().location.href; link.click(); await waitNav(prev); add(p.replace('.dc.html', '') + ' Drawer 메뉴 이동 (' + link.textContent.trim() + ')', page().split('?')[0] === link.getAttribute('href').split('?')[0] ? 'ok' : 'bad', page()); }
+    } catch (e) { add(p + ' Drawer', 'bad', 'ERR ' + e.message); }
+  }
+  document.getElementById('st').textContent = 'done';
+  window.__results = rows;
+})();
+</script>
+</body></html>

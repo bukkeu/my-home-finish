@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+html{background:#F7FAF3}
+body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+input:focus{outline:none}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#F7FAF3;color:#263B1A;font-family:'Pretendard',system-ui,sans-serif">
+  <header style="display:flex;align-items:center;padding:0 clamp(20px,13vw,250px);height:129px;border-bottom:1px solid #D5E1CC;box-sizing:border-box">
+    <a href="Main.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#263B1A"><img src="assets/logo.png" alt="Money Beetle" style="height:44px;width:auto;display:block"></a>
+    <div style="flex:1"></div>
+    <a href="Main.dc.html" aria-label="닫기" style="color:#263B1A;display:grid;place-items:center;width:44px;height:44px">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+    </a>
+  </header>
+
+  <main style="flex:1;display:flex;justify-content:center;padding:70px 24px 60px">
+    <div style="width:min(700px,100%);display:flex;flex-direction:column">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <sc-for list="{{ stepsInfo }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <span style="height:8px;border-radius:4px;background:{{ p.bar }}"></span>
+            <span style="font-size:18px;font-weight:{{ p.weight }};color:{{ p.color }};text-align:{{ p.align }}">{{ p.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <span style="align-self:center;margin-top:48px;font-size:13px;font-weight:700;padding:5px 12px;border-radius:999px;background:#263B1A;color:#9fe870">강사 회원가입</span><h1 style="margin:16px 0 0;text-align:center;font-weight:800;font-size:46px;letter-spacing:-0.03em;color:#263B1A">{{ title }}</h1>
+      <p style="margin:28px 0 0;text-align:center;font-size:21px">이미 계정이 있나요? <a href="InstructorLogin.dc.html" style="font-weight:800;text-decoration:underline;text-decoration-color:#9fe870;text-decoration-thickness:3px;text-underline-offset:3px">로그인</a></p>
+
+      <sc-if value="{{ s1 }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top:64px;display:flex;flex-direction:column">
+          <label style="font-size:23px;color:#687161">먼저 이메일 주소를 입력해 주세요</label>
+          <input type="email" value="{{ email }}" onChange="{{ setEmail }}" placeholder="teacher@moneybeetle.kr" style="margin-top:20px;height:68px;border:2px solid #263B1A;border-radius:14px;padding:0 24px;font-size:26px;font-family:inherit;box-sizing:border-box;color:#263B1A">
+          <span style="margin-top:14px;font-size:18px;color:#687161">이 이메일이 아이디가 돼요</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:64px;display:flex;flex-direction:column">
+          <label style="font-size:23px;color:#687161">비밀번호를 만들어 주세요</label>
+          <div style="position:relative;margin-top:20px;display:flex;flex-direction:column"><input type="{{ pwType1 }}" value="{{ pw }}" onChange="{{ setPw }}" placeholder="8자 이상, 영문+숫자" style="height:68px;border:2px solid #263B1A;border-radius:14px;padding:0 72px 0 24px;font-size:26px;font-family:inherit;box-sizing:border-box"><button type="button" onClick="{{ togglePw1 }}" aria-label="{{ pwLabel1 }}" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;border-radius:999px;background:transparent;color:#687161;cursor:pointer;display:grid;place-items:center" style-hover="background:#EAF7D8"><sc-if value="{{ pwShow1 }}"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"></path></svg></sc-if><sc-if value="{{ pwHide1 }}" hint-placeholder-val="{{ true }}"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if></button></div>
+          <span style="margin-top:14px;font-size:18px;color:{{ pwRuleColor }}">8자 이상, 영문과 숫자를 함께 써 주세요</span>
+          <div style="position:relative;margin-top:24px;display:flex;flex-direction:column"><input type="{{ pwType2 }}" value="{{ pw2 }}" onChange="{{ setPw2 }}" placeholder="비밀번호 확인" style="height:68px;border:2px solid #263B1A;border-radius:14px;padding:0 72px 0 24px;font-size:26px;font-family:inherit;box-sizing:border-box"><button type="button" onClick="{{ togglePw2 }}" aria-label="{{ pwLabel2 }}" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;border-radius:999px;background:transparent;color:#687161;cursor:pointer;display:grid;place-items:center" style-hover="background:#EAF7D8"><sc-if value="{{ pwShow2 }}"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"></path></svg></sc-if><sc-if value="{{ pwHide2 }}" hint-placeholder-val="{{ true }}"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if></button></div>
+          <sc-if value="{{ pwMismatch }}"><span style="margin-top:14px;font-size:18px;color:#b3261e">비밀번호가 일치하지 않아요</span></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:56px;display:flex;flex-direction:column">
+          <button onClick="{{ toggleAll }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;padding:22px 24px;border:2px solid #263B1A;border-radius:14px;font-size:22px;font-weight:700">
+            <span style="width:28px;height:28px;border-radius:50%;background:{{ allBg }};border:2px solid #263B1A;display:grid;place-items:center;color:#263B1A;font-size:16px">{{ allMark }}</span>전체 동의
+          </button>
+          <sc-for list="{{ terms }}" as="t" hint-placeholder-count="3">
+            <button onClick="{{ t.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid #D5E1CC;font-size:20px">
+              <span style="width:26px;height:26px;border-radius:50%;background:{{ t.bg }};border:2px solid #263B1A;display:grid;place-items:center;color:#263B1A;font-size:15px">{{ t.mark }}</span>
+              <span style="flex:1">{{ t.name }}</span>
+              <span style="font-size:16px;color:{{ t.tagColor }};font-weight:600">{{ t.tag }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:64px;display:flex;flex-direction:column;gap:12px">
+          <label style="font-size:23px;color:#687161">강사명</label>
+          <input type="text" value="{{ nick }}" onChange="{{ setNick }}" placeholder="강의에 표시될 이름" style="height:68px;border:2px solid #263B1A;border-radius:14px;padding:0 24px;font-size:26px;font-family:inherit;box-sizing:border-box">
+          <label style="font-size:23px;color:#687161;margin-top:16px">전문 분야</label>
+          <input type="text" value="{{ birth }}" onChange="{{ setBirth }}" placeholder="예: 청약, ETF, 주식" style="height:68px;border:2px solid #263B1A;border-radius:14px;padding:0 24px;font-size:26px;font-family:inherit;box-sizing:border-box">
+          <span style="font-size:18px;color:#687161">가입 후 관리자가 강사 권한을 승인하면 강의를 등록할 수 있어요</span>
+        </div>
+      </sc-if>
+
+      <button onClick="{{ next }}" disabled="{{ nextOff }}" style="all:unset;box-sizing:border-box;cursor:{{ nextCursor }};margin-top:38px;height:68px;border-radius:999px;background:#9fe870;color:#263B1A;font-weight:800;font-size:24px;display:flex;align-items:center;justify-content:center;opacity:{{ nextOpacity }}">{{ nextLabel }}</button>
+      <sc-if value="{{ canBack }}"><button onClick="{{ back }}" style="all:unset;cursor:pointer;margin-top:16px;text-align:center;font-size:18px;color:#687161;text-decoration:underline">이전 단계로</button></sc-if>
+
+    </div>
+  </main>
+  <div style="position:sticky;bottom:0;background:#263B1A;color:#fff;display:flex;align-items:center;justify-content:center;gap:16px;padding:22px 20px;font-size:clamp(14px,1.5vw,22px);flex-wrap:wrap;text-align:center">
+    <span style="background:#9fe870;color:#263B1A;font-weight:700;border-radius:6px;padding:4px 10px;font-size:0.85em">안내</span>
+    <span>강사 권한은 관리자 승인 후에 열려요</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { show1: false, show2: false, kOpen: false, gOpen: false, step: 1, email: '', pw: '', pw2: '', agree: [false, false, false], nick: '', birth: '' };
+  renderVals() {
+    const s = this.state, st = s.step, set = k => e => this.setState({ [k]: e.target.value });
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email);
+    const pwOk = s.pw.length >= 8 && /[A-Za-z]/.test(s.pw) && /\d/.test(s.pw);
+    const pwMatch = pwOk && s.pw === s.pw2;
+    const reqOk = s.agree[0] && s.agree[1];
+    const ok = [null, emailOk, pwMatch, reqOk, s.nick.trim().length >= 2][st];
+    const names = ['이메일', '비밀번호', '약관 동의', '강사 정보'];
+    const titles = ['강사 계정 만들기', '비밀번호 설정', '약관 동의', '강사 정보 입력'];
+    const tdef = [['이용약관', '필수'], ['개인정보 처리방침', '필수'], ['마케팅 정보 수신', '선택']];
+    const setAgree = (i, v) => this.setState(x => ({ agree: x.agree.map((a, j) => (i === null || i === j ? v : a)) }));
+    const allOn = s.agree.every(Boolean);
+    return {
+      pwType1: s.show1 ? 'text' : 'password', pwType2: s.show2 ? 'text' : 'password',
+      pwShow1: s.show1, pwHide1: !s.show1, pwShow2: s.show2, pwHide2: !s.show2,
+      pwLabel1: s.show1 ? '비밀번호 가리기' : '비밀번호 보기', pwLabel2: s.show2 ? '비밀번호 가리기' : '비밀번호 보기',
+      togglePw1: () => this.setState(x => ({ show1: !x.show1 })), togglePw2: () => this.setState(x => ({ show2: !x.show2 })),
+      kOpen: s.kOpen, openKakao: e => { e.preventDefault(); this.setState({ kOpen: true }); }, closeKakao: e => { if (e) e.preventDefault(); this.setState({ kOpen: false }); },
+      gOpen: s.gOpen, openGoogle: e => { e.preventDefault(); this.setState({ gOpen: true }); }, closeGoogle: e => { if (e) e.preventDefault(); this.setState({ gOpen: false }); }, stop: e => e.stopPropagation(),
+      gAccounts: [{ initial: '민', name: '김민지', email: 'minji@gmail.com' }, { initial: 'M', name: 'Minji Kim', email: 'minji.work@gmail.com' }],
+      s1: st === 1, s2: st === 2, s3: st === 3, s4: st === 4, title: titles[st - 1],
+      stepsInfo: names.map((n, i) => ({ label: `${i + 1} ${n}`, bar: i < st ? '#263B1A' : '#D5E1CC', weight: i + 1 === st ? 700 : 400, color: i + 1 === st ? '#263B1A' : '#687161', align: ['left', 'center', 'center', 'right'][i] })),
+      email: s.email, pw: s.pw, pw2: s.pw2, nick: s.nick, birth: s.birth,
+      setEmail: set('email'), setPw: set('pw'), setPw2: set('pw2'), setNick: set('nick'), setBirth: set('birth'),
+      pwRuleColor: s.pw && !pwOk ? '#b3261e' : '#687161', pwMismatch: pwOk && s.pw2 && s.pw !== s.pw2,
+      allBg: allOn ? '#9fe870' : 'transparent', allMark: allOn ? '✓' : '', toggleAll: () => setAgree(null, !allOn),
+      terms: tdef.map((t, i) => ({ name: t[0], tag: t[1], tagColor: i < 2 ? '#263B1A' : '#687161', bg: s.agree[i] ? '#9fe870' : 'transparent', mark: s.agree[i] ? '✓' : '', toggle: () => setAgree(i, !s.agree[i]) })),
+      nextOff: !ok, nextOpacity: ok ? 1 : 0.45, nextCursor: ok ? 'pointer' : 'not-allowed',
+      nextLabel: st === 4 ? '가입 신청' : '다음',
+      next: () => { if (!ok) return; if (st === 4) { try { localStorage.setItem('mb-instructor-pending', JSON.stringify({ email: s.email, name: s.nick, field: s.birth })); } catch (e) {} location.href = 'InstructorLogin.dc.html?signup=1'; } else this.setState({ step: st + 1 }); },
+      canBack: st > 1, back: () => this.setState({ step: st - 1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

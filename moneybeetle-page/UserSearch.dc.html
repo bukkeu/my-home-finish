@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./mb-drawer.js"></script>
+<script src="./mb-search.js"></script>
+<script src="mb-notify.js"></script>
+<link rel="stylesheet" href="_ds/industry-3114b2da-1ad2-4267-99fa-40225130da98/styles.css">
+<script src="_ds/industry-3114b2da-1ad2-4267-99fa-40225130da98/_ds_bundle.js"></script>
+<script src="_ds/classical-69c92c2e-e0af-40bb-a7ee-71964569174c/_ds_bundle.js"></script>
+<script src="_ds/modernist-850c2690-cbf6-4f34-9d22-5f2580185016/_ds_bundle.js"></script>
+<script src="_ds/nocturne-4af0f8a3-c1a9-4cfd-ad6e-95eba5d49960/_ds_bundle.js"></script>
+<script src="_ds/organic-c63e1951-6790-4b99-aee6-887991866cc8/_ds_bundle.js"></script>
+
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+:root{--color-bg:#F7FAF3;--color-surface:#ffffff;--color-text:#263B1A;--color-divider:#D5E1CC;
+--color-accent:#9fe870;--color-accent-100:#EAF7D8;--color-accent-200:#B9EF8E;--color-accent-300:#B9EF8E;--color-accent-400:#9fe870;--color-accent-500:#8fd85f;--color-accent-600:#7fc84f;--color-accent-700:#263B1A;--color-accent-800:#263B1A;--color-accent-900:#1B2B12;
+--color-neutral-200:#D5E1CC;--color-neutral-300:#D5E1CC;--color-neutral-600:#687161;--color-neutral-700:#687161;--color-neutral-800:#263B1A;
+--font-heading:"Pretendard",system-ui,sans-serif;--font-body:"Pretendard",system-ui,sans-serif;--font-heading-weight:800}
+html{background:var(--color-bg)}
+body{margin:0;min-height:100%;background:var(--color-bg);font-family:var(--font-body)}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:800;letter-spacing:-0.035em;color:var(--color-text)}
+a{color:var(--color-accent-800)}a:hover{color:var(--color-accent-900)}
+.blueprint>.corner{display:none}
+.btn{border-radius:999px;font-family:var(--font-body);font-weight:600}
+.btn-primary{background:var(--color-accent-400);color:var(--color-accent-800);font-weight:700;border-color:transparent}
+.btn-primary:hover{background:var(--color-accent-500)}.btn-primary:active{background:var(--color-accent-600)}
+.btn-secondary{background:var(--color-accent-100);border-color:transparent;color:var(--color-accent-800);font-weight:700}
+.btn-secondary:hover{background:var(--color-accent-200)}
+.card,.card.blueprint{border:1.5px dashed var(--color-divider);border-radius:16px;overflow:hidden}
+.blueprint{border-radius:16px}
+.tag{border-radius:999px;font-weight:600}
+.tag-accent{background:var(--color-accent-400);color:var(--color-accent-800)}
+.card-kicker{color:var(--color-accent-700);font-weight:600}
+.tag-outline{border-color:#F2C14E;background:rgba(242,193,78,.18);color:#263B1A}
+.card-title{font-family:var(--font-heading);font-weight:800;letter-spacing:-0.02em;color:var(--color-text)}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;color:var(--color-text);background:var(--color-bg)">
+
+<div style="position:sticky;top:0;align-self:flex-start;width:0;height:0;z-index:40;overflow:visible">
+<button class="btn btn-ghost btn-icon" onClick="{{ toggleSidebar }}" aria-label="메뉴" style="color:var(--color-text);position:absolute;top:22px;left:16px;width:40px;height:40px">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+</button>
+<a href="Main.dc.html" style="position:absolute;top:25px;left:64px;display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:34px;width:auto;max-width:172px;object-fit:contain;display:block"></a>
+</div>
+<div data-mb-overlay="1" data-open="{{ sidebarOpen }}" onClick="{{ toggleSidebar }}" aria-hidden="true" style="position:fixed;inset:0;z-index:55;background:rgba(38,59,26,.38);transition:opacity 180ms ease-out;opacity:{{ mbOverlayOp }};pointer-events:{{ mbOverlayPe }}"></div>
+<aside data-mb-drawer="1" data-open="{{ sidebarOpen }}" aria-label="메뉴" style="position:fixed;top:0;left:0;bottom:0;z-index:60;width:min(300px,85vw);box-sizing:border-box;background:#fff;border-radius:0 20px 20px 0;box-shadow:8px 0 40px rgba(38,59,26,.16);transition:transform 250ms cubic-bezier(.22,.61,.36,1);transform:{{ mbDrawerT }};visibility:{{ mbDrawerVis }};display:flex;flex-direction:column;gap:20px;padding:24px 16px;overflow-y:auto;overflow-x:hidden">
+  <div style="position:sticky;top:-24px;z-index:5;flex:none;height:64px;margin:-24px -16px 0;padding:0 12px 0 20px;background:#fff;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box"><a href="Main.dc.html" style="display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:30px;width:auto;max-width:160px;object-fit:contain;display:block"></a><button data-mb-close="1" onClick="{{ toggleSidebar }}" aria-label="메뉴 닫기" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:999px;display:grid;place-items:center;color:#263B1A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+
+  <div class="blueprint" style="padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;width:100%;min-width:0;margin:0">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:14px">민</div>
+      <div style="display:flex;flex-direction:column;line-height:1.3">
+        <span style="font-weight:500;font-size:14px">{{ nickname }}</span>
+        <span style="font-size:12px;color:var(--color-neutral-700);display:flex;align-items:center;gap:4px;white-space:nowrap">Lv.{{ level }}<span style="display:inline-block;padding:1px 8px;border-radius:999px;background:{{ houseBg }};color:#263B1A;font-weight:700;font-size:11px">{{ house }}</span><span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px"><img src="assets/cash-coin2.png" alt="캐시" style="width:13px;height:13px;flex:none">{{ cashText }}</span></span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-neutral-700)"><span>경험치</span><span>{{ exp }} / 150 XP</span></div>
+      <div style="height:4px;background:var(--color-neutral-200)"><div style="height:100%;background:var(--color-accent);width:{{ expPct }}"></div></div>
+      <span style="font-size:11px;color:var(--color-neutral-700);display:flex;align-items:center;gap:3px;white-space:nowrap">Lv.{{ nextLevel }} 달성 시<img src="assets/cash-coin2.png" alt="캐시" style="width:12px;height:12px;flex:none;margin-left:2px">{{ levelUpCash }} 지급</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;padding-top:10px;border-top:1px solid var(--color-divider)">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px"><span style="font-weight:600">연속 출석 {{ streak }}일</span><span style="font-size:11px;color:var(--color-accent-700);font-weight:600">{{ streakShort }}</span></div>
+    </div>
+  </div>
+
+  <nav style="display:flex;flex-direction:column;gap:2px;font-size:14px">
+    <a href="UserHome-vr2.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>홈</a>
+
+    <button data-mb-keep="1" onClick="{{ toggleLecture }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"></path><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"></path></svg>
+      <span style="flex:1">강의</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ lectureCaret }}</span>
+    </button>
+    <sc-if value="{{ lectureOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="UserLectureCategory.dc.html" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">자본 증액<br></a>
+        <a href="UserLectureCategory.dc.html?cat=estate" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">부동산</a>
+      </div>
+    </sc-if>
+
+    <button data-mb-keep="1" onClick="{{ toggleTraining }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 6-6"></path></svg>
+      <span style="flex:1">트레이닝</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ trainingCaret }}</span>
+    </button>
+    <sc-if value="{{ trainingOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="{{ invHref }}" onClick="{{ invClick }}" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800);display:flex;align-items:center;gap:6px"><sc-if value="{{ invLocked }}"><img src="uploads/lock.png" alt="잠김" style="width:14px;height:14px;object-fit:contain;flex:none"></sc-if><span>모의 투자</span>
+          <sc-if value="{{ invLocked }}"><span style="font-size:11px;color:var(--color-neutral-600)">· Lv.{{ invReq }}부터</span></sc-if></a>
+        <a href="UserDemoHousingSubscription.dc.html" onClick="{{ subClick }}" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800);display:flex;align-items:center;gap:6px"><sc-if value="{{ subLocked }}"><img src="uploads/lock.png" alt="잠김" style="width:14px;height:14px;object-fit:contain;flex:none"></sc-if><span>모의 청약</span>
+          <sc-if value="{{ subLocked }}"><span style="font-size:11px;color:var(--color-neutral-600)">· Lv.{{ subReq }}부터</span></sc-if></a>
+      </div>
+    </sc-if>
+
+    <button data-mb-keep="1" onClick="{{ toggleMy }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <span style="flex:1">내 학습</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ myCaret }}</span>
+    </button>
+    <sc-if value="{{ myOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="UserMyPage.dc.html#tab-wrong" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">퀴즈 오답노트</a>
+        <a href="UserMyPage.dc.html#tab-scrap" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">강의 스크랩</a>
+        <a href="UserMyPage.dc.html" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">시청기록 · 학습완료</a>
+      </div>
+    </sc-if>
+    
+    <a href="UserInquiry.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>문의 게시판</a>
+    <a href="UserMyPage.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>마이페이지</a>
+  </nav>
+</aside>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+  <header style="display:flex;align-items:center;gap:12px;padding:20px 40px;position:sticky;top:0;z-index:30;background:var(--color-bg)">
+    <sc-if value="{{ sidebarClosed }}" hint-placeholder-val="{{ false }}"><div style="width:200px;height:40px;flex:none"></div></sc-if>
+    <form action="UserLectureCategory.dc.html" method="get" style="flex:1;min-width:0;display:flex;justify-content:center;margin:0"><label style="width:100%;max-width:480px;height:44px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 18px;border-radius:999px;background:#fff;border:1.5px solid var(--color-divider)" style-focus-within="border-color:#9fe870"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#263B1A" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input name="q" type="search" placeholder="강의, 경제 용어 검색" style="all:unset;flex:1;min-width:0;font-size:15px;color:var(--color-text)"></label></form>
+    <button class="btn btn-secondary" onClick="{{ openWords }}" style="font-weight: 600; font-size: 13px">오늘의 경제단어</button>
+    <span class="tag tag-neutral" style="font-size:13px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px"><img src="assets/cash-coin2.png" alt="캐시" style="width:18px;height:18px;flex:none">{{ cashText }}</span>
+    <button data-mb-bell="1" aria-label="알림" style="all:unset;cursor:pointer;position:relative;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></button>
+    <a href="UserMyPage.dc.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;font-size:14px;font-weight:500">
+      <span style="width:34px;height:34px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:13px">민</span>{{ nickname }}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 6 6 6-6 6"></path></svg>
+    </a>
+  </header>
+
+  <main style="padding:24px clamp(20px,3vw,56px) 64px;display:flex;flex-direction:column;gap:24px;max-width:960px;width:100%;box-sizing:border-box;margin:0 auto">
+    <form action="UserSearch.dc.html" method="get" style="margin:0;display:flex;gap:10px;align-items:center">
+      <label style="flex:1;min-width:0;height:52px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 20px;border-radius:999px;background:#fff;border:1.5px solid var(--color-divider)" style-focus-within="border-color:#9fe870"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#263B1A" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input name="q" type="text" defaultValue="{{ query }}" aria-label="검색어" placeholder="강의, Q&A, 게시판 검색" style="all:unset;flex:1;min-width:0;font-size:16px;color:var(--color-text)"></label>
+      <button type="submit" class="btn btn-primary" style="height:52px;padding:0 24px;flex:none">검색</button>
+    </form>
+    <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1 style="margin:0;font-size:clamp(22px,2.6vw,28px);word-break:keep-all">‘{{ query }}’ 검색 결과</h1>
+        <span style="font-size:14px;color:var(--color-neutral-700)">전체 {{ total }}건</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <button onClick="{{ t.pick }}" aria-pressed="{{ t.on }}" style="all:unset;cursor:pointer;box-sizing:border-box;height:40px;padding:0 16px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#263B1A;background:{{ t.bg }};border:1.5px solid {{ t.bd }}" style-hover="filter:brightness(.97)">{{ t.label }}<span style="font-size:13px;font-weight:600;color:#687161">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+      <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="2">
+        <section style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="background:{{ sec.bg }};color:#263B1A;font-size:13px;font-weight:800;border-radius:999px;padding:4px 14px">{{ sec.label }}</span>
+            <strong style="font-size:18px">{{ sec.count }}건</strong>
+            <div style="flex:1"></div>
+            <sc-if value="{{ sec.canMore }}"><button onClick="{{ sec.more }}" style="all:unset;cursor:pointer;font-size:14px;font-weight:700;color:#263B1A;display:inline-flex;align-items:center;gap:4px">{{ sec.moreLabel }}</button></sc-if>
+          </div>
+          <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;overflow:hidden">
+            <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="3">
+              <a href="{{ it.href }}" style="display:flex;flex-direction:column;gap:6px;padding:16px 20px;text-decoration:none;color:var(--color-text);border-top:{{ it.bt }}" style-hover="background:#F7FAF3">
+                <span style="font-size:16px;font-weight:700;line-height:1.4;word-break:keep-all"><sc-for list="{{ it.title }}" as="p"><span style="background:{{ p.bg }};border-radius:3px">{{ p.t }}</span></sc-for></span>
+                <sc-if value="{{ it.hasDesc }}"><span style="font-size:14px;line-height:1.55;color:var(--color-neutral-700);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all"><sc-for list="{{ it.desc }}" as="p"><span style="background:{{ p.bg }};border-radius:3px">{{ p.t }}</span></sc-for></span></sc-if>
+                <span style="font-size:12px;color:#687161;display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ it.meta }}" as="m"><span style="background:#EEF5E7;border-radius:999px;padding:2px 10px">{{ m }}</span></sc-for></span>
+              </a>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+      <sc-if value="{{ noResult }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+          <strong style="font-size:18px;word-break:keep-all">‘{{ query }}’에 맞는 결과가 없어요</strong>
+          <span style="font-size:14px;color:var(--color-neutral-700);word-break:keep-all">철자를 확인하거나 다른 단어로 검색해 보세요.</span>
+        </div>
+      </sc-if>
+    </sc-if>
+    <sc-if value="{{ noQuery }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:48px 24px;text-align:center;font-size:15px;color:var(--color-neutral-700)">검색어를 입력하면 강의, Q&A, 게시판에서 한 번에 찾아 드려요.</div>
+    </sc-if>
+  </main>
+  <sc-if value="{{ lockOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeLock }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(400px,100%);border-radius:20px;padding:28px;gap:14px;background:var(--color-bg);align-items:center;text-align:center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="11" width="16" height="10"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span style="font-weight:800;font-size:20px">{{ lockName }}은(는) Lv.{{ lockReq }}부터 열려요</span>
+        <span style="font-size:14px;color:var(--color-neutral-700);word-break:keep-all">지금은 Lv.{{ level }} {{ house }}예요.<br>강의를 완료하고 경험치를 모아 보세요.</span>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn btn-secondary" onClick="{{ closeLock }}">닫기</button>
+          <a href="UserLectureCategory.dc.html" class="btn btn-primary" onClick="{{ closeLock }}" style="text-decoration:none">강의 들으러 가기</a>
+          <sc-if value="{{ lockIsSub }}"><a href="UserDemoHousingSubscription.dc.html" class="btn btn-secondary" style="text-decoration:none">미리 둘러보기</a></sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ wordsOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeWords }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(520px,100%);border-radius:20px;padding:28px;gap:16px;background:var(--color-bg);max-height:calc(100vh - 32px);overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:8px">
+          
+          <span class="tag tag-accent" style="font-size: 22px; font-weight: 800; padding: 10px 20px; border-radius: 999px; letter-spacing: -0.02em; box-shadow: 0 6px 16px rgba(127,200,79,.35); text-align: center">오늘의 경제단어</span><div style="flex:1"></div>
+          <button class="btn btn-ghost btn-icon" onClick="{{ closeWords }}" aria-label="닫기" style="color:var(--color-text)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ words }}" as="w" hint-placeholder-count="5">
+            <div style="padding:12px 0;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px">
+              <span style="font-family:var(--font-heading);font-weight:700;font-size:17px">{{ w.term }}</span>
+              <span style="font-size:14px;line-height:1.5;color:var(--color-neutral-800);text-wrap:pretty">{{ w.desc }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="dialog-actions" style="margin-top:0">
+          <button class="btn btn-ghost" onClick="{{ hideToday }}" style="color:var(--color-neutral-700)">오늘 하루 보지 않기</button>
+          <button class="btn btn-primary" onClick="{{ closeWords }}">확인</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;nickname&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;민지&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;level&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;사용자 상태&quot;},&quot;streak&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:0,&quot;max&quot;:30,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;사용자 상태&quot;},&quot;invReq&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:8,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;잠금 레벨&quot;},&quot;subReq&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;잠금 레벨&quot;}}">
+class Component extends DCLogic {
+  state = { sidebarOpen: false, lectureOpen: true, trainingOpen: true, myOpen: false, streak: null, checkedIn: false, cash: 12400, wordsOpen: localStorage.getItem('mb-words-hide') !== new Date().toDateString(), lock: null, wordsOpen: false, inq: this.loadInq(), inqTab: 'all', inqOpen: (new URLSearchParams(location.search).get('open') || '') , writing: false, fCat: '강의', fPrivate: false, fTitle: '', fBody: '', err: '', reply: {}, toastMsg: '' };
+  searchVals() {
+    const S = window.MBSearch, q = (new URLSearchParams(location.search).get('q') || '').trim(), s = this.state, f = s.sFilter || 'all', more = s.sMore || {};
+    const R = S.search(q), keys = ['lecture', 'qna', 'board'], total = keys.reduce((n, k) => n + R[k].length, 0);
+    const P = t => S.parts(t, q).map(p => ({ t: p.t, bg: p.m ? '#9FE870' : 'transparent' }));
+    const sections = keys.filter(k => R[k].length && (f === 'all' || f === k)).map(k => {
+      const all = R[k], lim = f === 'all' && !more[k] ? 3 : all.length, canMore = f === 'all' && all.length > 3;
+      return { label: S.types[k].label, bg: S.types[k].bg, count: all.length, canMore, moreLabel: more[k] ? '접기 ▲' : '더 보기 ▼', more: () => this.setState(x => ({ sMore: { ...(x.sMore || {}), [k]: !(x.sMore || {})[k] } })),
+        items: all.slice(0, lim).map((it, i) => ({ href: it.href, bt: i ? '1px solid var(--color-divider)' : 'none', title: P(it.title), desc: P(it.desc), hasDesc: !!it.desc, meta: it.meta.filter(Boolean) })) };
+    });
+    const tabs = [['all', '전체', total]].concat(keys.map(k => [k, S.types[k].label, R[k].length])).map(([k, label, count]) => ({ label, count, on: f === k, bg: f === k ? '#9FE870' : '#fff', bd: f === k ? '#9FE870' : 'var(--color-divider)', pick: () => this.setState({ sFilter: k }) }));
+    return { query: q, hasQuery: !!q, noQuery: !q, total, tabs, sections, noResult: !!q && total === 0 };
+  }
+  loadInq() {
+    try { const d = JSON.parse(localStorage.getItem('mb-inquiry-v1') || 'null'); if (Array.isArray(d)) return d; } catch (e) {}
+    return [
+      { id: 3, cat: '모의 청약', private: true, title: '청약통장 인정금액이 잔액보다 적게 나와요', body: '40만 캐시를 납입했는데 인정금액은 25만 캐시만 올라갔어요.\n오류인가요?', date: '2026.11.03', answer: { by: '김운영', date: '2026.11.03', body: '오류가 아니에요. 머니비틀 청약통장은 하루 최대 250,000캐시까지만 인정금액으로 반영돼요. 나머지 150,000캐시는 통장 잔액에 그대로 적립돼 있어요.' }, comments: [{ admin: false, body: '그렇군요. 확인해 주셔서 감사합니다!', date: '2026.11.03' }] },
+      { id: 2, cat: '모의 투자', title: '시즌 중간에 참가할 수 있나요?', body: '시즌 7이 이미 시작됐는데 지금 참가해도 되는지 궁금해요.', date: '2026.11.01', answer: null, comments: [] },
+      { id: 1, cat: '계정·캐시', title: '출석 캐시가 들어오지 않았어요', body: '10월 30일에 출석했는데 캐시가 지급되지 않았어요.', date: '2026.10.30', answer: { by: '김운영', date: '2026.10.31', body: '확인해 보니 출석 처리가 누락돼 있었어요. 2,000캐시를 보정 지급했어요. 불편을 드려 죄송해요.' }, comments: [{ admin: false, body: '들어왔어요. 감사합니다.', date: '2026.10.31' }, { admin: true, body: '이용해 주셔서 감사해요. 또 궁금한 점이 있으면 남겨 주세요.', date: '2026.10.31' }] },
+      { id: 0, cat: '기타', title: '', body: '', date: '2026.10.28', hidden: true, answer: null, comments: [] }
+    ];
+  }
+  saveInq(list) { try { localStorage.setItem('mb-inquiry-v1', JSON.stringify(list)); } catch (e) {} this.setState({ inq: list }); }
+  today() { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()); }
+  flash(m) { this.setState({ toastMsg: m }); clearTimeout(this._ft); this._ft = setTimeout(() => this.setState({ toastMsg: '' }), 2400); }
+  inqVals() {
+    const s = this.state, list = s.inq, today = this.today();
+    const todayCount = list.filter(q => q.date === today && !q.hidden).length;
+    const stOf = q => q.hidden ? '숨김' : q.answer ? '답변 완료' : '답변 대기';
+    const counts = { all: list.length, wait: list.filter(q => stOf(q) === '답변 대기').length, done: list.filter(q => stOf(q) === '답변 완료').length };
+    const tabs = [['all', '전체'], ['wait', '답변 대기'], ['done', '답변 완료']].map(([k, label]) => { const on = s.inqTab === k; return { label, count: counts[k], on: () => this.setState({ inqTab: k }), bg: on ? '#263B1A' : '#fff', fg: on ? '#9FE870' : '#263B1A', bd: on ? '#263B1A' : 'var(--color-divider)' }; });
+    const shown = list.filter(q => s.inqTab === 'all' || (s.inqTab === 'wait' ? stOf(q) === '답변 대기' : stOf(q) === '답변 완료'));
+    const rows = shown.map(q => {
+      const st = stOf(q), open = String(s.inqOpen) === String(q.id) && !q.hidden;
+      const send = () => { const t = (s.reply[q.id] || '').trim(); if (!t) return; this.saveInq(list.map(x => x.id === q.id ? { ...x, comments: [...x.comments, { admin: false, body: t, date: today }] } : x)); this.setState(x => ({ reply: { ...x.reply, [q.id]: '' } })); this.flash('댓글을 남겼어요'); };
+      return {
+        status: st, stBg: st === '답변 완료' ? '#9FE870' : st === '숨김' ? '#EEF0EC' : '#fff', stFg: st === '숨김' ? '#687161' : '#263B1A',
+        title: q.hidden ? '관리자에 의해 숨김 처리된 글이에요' : q.title, titleColor: q.hidden ? '#687161' : '#263B1A',
+        private: !!q.private && !q.hidden, meta: (q.private ? '비공개 · ' : '공개 · ') + q.cat + ' · ' + q.date + (q.comments.length ? ' · 댓글 ' + q.comments.length : ''),
+        caret: q.hidden ? '' : open ? '▲' : '▼', open,
+        toggle: () => { if (!q.hidden) this.setState({ inqOpen: open ? '' : q.id }); },
+        body: q.body, hasAnswer: !!q.answer, waiting: !q.answer, ansBy: q.answer ? q.answer.by : '', ansDate: q.answer ? q.answer.date : '', ansBody: q.answer ? q.answer.body : '',
+        hasComments: q.comments.length > 0, cmtCount: q.comments.length,
+        comments: q.comments.map(c => ({ who: c.admin ? '관리자' : '나', bg: c.admin ? '#263B1A' : '#EAF7D8', fg: c.admin ? '#9FE870' : '#263B1A', body: c.body, date: c.date })),
+        reply: s.reply[q.id] || '', setReply: e => { const v = e.target.value; this.setState(x => ({ reply: { ...x.reply, [q.id]: v } })); },
+        replyKey: e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) send(); }, sendReply: send,
+        canDelete: !q.answer, del: () => { if (confirm('이 문의를 삭제할까요?')) { this.saveInq(list.filter(x => x.id !== q.id)); this.flash('문의를 삭제했어요'); } }
+      };
+    });
+    return {
+      tabs, rows, noRows: rows.length === 0, todayCount,
+      writing: s.writing, openWrite: () => this.setState({ writing: true, err: '' }), cancelWrite: () => this.setState({ writing: false, fTitle: '', fBody: '', fPrivate: false, err: '' }),
+      isPublic: !s.fPrivate, isPrivate: s.fPrivate, setPublic: () => this.setState({ fPrivate: false }), setPrivate: () => this.setState({ fPrivate: true }),
+      pubBg: s.fPrivate ? '#fff' : '#EAF7D8', pubBd: s.fPrivate ? 'var(--color-divider)' : '#9FE870', priBg: s.fPrivate ? '#EAF7D8' : '#fff', priBd: s.fPrivate ? '#9FE870' : 'var(--color-divider)',
+      visNote: s.fPrivate ? '나와 관리자만 볼 수 있어요.' : '다른 사용자도 글을 볼 수 있어요.',
+      fCat: s.fCat, fTitle: s.fTitle, fBody: s.fBody, titleLen: s.fTitle.length, bodyLen: s.fBody.length.toLocaleString(),
+      setCat: e => this.setState({ fCat: e.target.value }), setTitle: e => this.setState({ fTitle: e.target.value, err: '' }), setBody: e => this.setState({ fBody: e.target.value, err: '' }),
+      hasErr: !!s.err, err: s.err, hasToast: !!s.toastMsg, toastMsg: s.toastMsg,
+      submit: () => {
+        const t = s.fTitle.trim(), b = s.fBody.trim();
+        if (!t) return this.setState({ err: '제목을 입력해 주세요.' });
+        if (!b) return this.setState({ err: '내용을 입력해 주세요.' });
+        if (todayCount >= 10) return this.setState({ err: '문의는 하루 10개까지 작성할 수 있어요.' });
+        const id = Math.max(0, ...list.map(q => q.id)) + 1;
+        this.saveInq([{ id, cat: s.fCat, private: s.fPrivate, title: t, body: b, date: today, answer: null, comments: [] }, ...list]);
+        this.setState({ writing: false, fTitle: '', fBody: '', fPrivate: false, err: '', inqTab: 'all', inqOpen: id }); this.flash('문의를 등록했어요');
+      }
+    };
+  }
+  renderVals() { const __v = this.__rv(); const l = Number(__v.level) || 1; __v.houseBg = l >= 17 ? '#F2C14E' : l >= 12 ? '#9fe870' : l >= 4 ? '#B9EF8E' : '#EAF7D8'; return __v; }
+  __rv() {
+    const p = this.props, level = p.level ?? 4, invReq = p.invReq ?? 8, subReq = p.subReq ?? 12;
+    const house = level <= 3 ? '고시원' : level <= 7 ? '원룸' : level <= 11 ? '투룸' : level <= 16 ? '아파트' : '내 집';
+    const streak = this.state.streak ?? (p.streak ?? 4), s = this.state;
+    const tog = k => () => this.setState(x => ({ [k]: !x[k] }));
+    const caret = v => (v ? '▲' : '▼');
+    const shown = Math.max(7, streak);
+    const dots = Array.from({ length: 7 }, (_, i) => { const on = i < Math.min(streak, 7); return { on, off: !on }; });
+    return {
+      ...this.searchVals(),
+      house, nickname: p.nickname ?? '민지', level, invReq, subReq,
+      invLocked: level < invReq, subLocked: level < subReq, invHref: level < invReq ? '#' : 'UserDemoTrading.dc.html', invOpen: level >= invReq, subOpen: level >= subReq,
+      exp: 90, expPct: '60%', deposits: 18,
+      cashText: s.cash.toLocaleString(), streak, streakDots: dots,
+      streakNote: streak >= 5 ? '5일 이상 연속 출석 중 · 매일 캐시 1,000 지급' : `${5 - streak}일 더 출석하면 매일 캐시 1,000을 받아요`,
+      streakShort: streak >= 5 ? '매일 1,000 캐시 지급 중' : `캐시 지급까지 ${5 - streak}일`,
+      nextLevel: Math.min(level + 1, 20), levelUpCash: (Math.min(level + 1, 20) * 1000).toLocaleString(),
+      lockOpen: !!s.lock, lockIsSub: !!s.lock && s.lock.name === '모의 청약', lockName: s.lock ? s.lock.name : '', lockReq: s.lock ? s.lock.req : '',
+      closeLock: e => { if (e) e.preventDefault(); this.setState({ lock: null }); },
+      invBlur: 'none', subBlur: 'none',
+      invClick: e => { if (level < invReq) { e.preventDefault(); this.setState({ lock: { name: '모의 투자', req: invReq } }); } },
+      subClick: e => { if (level < subReq) { e.preventDefault(); this.setState({ lock: { name: '모의 청약', req: subReq } }); } },
+      doneCount: 7,
+      history: [
+        { title: '금리와 채권 가격', path: '돈 굴리기 › ETF·분산 투자', date: '오늘', status: '시청 중', bg: 'var(--color-accent-100)' },
+        { title: '단리와 복리', path: '돈 굴리기 › 예적금', date: '어제', status: '학습 완료', bg: 'var(--color-accent-400)' },
+        { title: '청약통장 기초', path: '부동산 › 청약', date: '3일 전', status: '학습 완료', bg: 'var(--color-accent-400)' }
+      ],
+      checkedIn: s.checkedIn, checkLabel: s.checkedIn ? '오늘 출석 완료' : '출석 체크',
+      checkIn: () => this.setState(x => { const n = streak + 1; return { streak: n, checkedIn: true, cash: x.cash + (n >= 5 ? 1000 : 0) }; }),
+      wordsOpen: s.wordsOpen, openWords: () => this.setState({ wordsOpen: true }), closeWords: () => this.setState({ wordsOpen: false }), stop: e => e.stopPropagation(),
+      hideToday: () => { localStorage.setItem('mb-words-hide', new Date().toDateString()); this.setState({ wordsOpen: false }); },
+      sidebarOpen: s.sidebarOpen, sidebarClosed: true, mbDrawerT: this.state.sidebarOpen ? 'none' : 'translateX(-102%)', mbDrawerVis: this.state.sidebarOpen ? 'visible' : 'hidden', mbOverlayOp: this.state.sidebarOpen ? 1 : 0, mbOverlayPe: this.state.sidebarOpen ? 'auto' : 'none', toggleSidebar: tog('sidebarOpen'),
+      lectureOpen: s.lectureOpen, toggleLecture: tog('lectureOpen'), lectureCaret: caret(s.lectureOpen),
+      trainingOpen: s.trainingOpen, toggleTraining: tog('trainingOpen'), trainingCaret: caret(s.trainingOpen),
+      myOpen: s.myOpen, toggleMy: tog('myOpen'), myCaret: caret(s.myOpen),
+      words: [
+        { term: '복리', desc: '원금에 붙은 이자에도 다시 이자가 붙는 방식.' },
+        { term: '실수령액', desc: '세전 급여에서 4대보험과 소득세를 뺀 금액.' },
+        { term: '배당', desc: '기업이 이익의 일부를 주주에게 나눠 주는 것.' },
+        { term: '리밸런싱', desc: '정해 둔 자산 비중으로 포트폴리오를 다시 맞추는 일.' },
+        { term: '청약 가점', desc: '무주택 기간·부양가족·통장 가입 기간으로 매기는 점수.' }
+      ],
+      capital: ['월급 관리', '예적금', '주식', 'ETF·분산 투자'],
+      estate: ['청약', '전·월세', '대출'],
+      ranking: [
+        { rank: 1, name: '복리왕', ret: '+38.2%' }, { rank: 2, name: '적립식', ret: '+31.7%' },
+        { rank: 3, name: '나스닥러', ret: '+27.4%' }, { rank: 4, name: '배당요정', ret: '+22.9%' },
+        { rank: 5, name: '분산투자', ret: '+19.1%' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

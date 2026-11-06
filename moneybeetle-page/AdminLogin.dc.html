@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+html{background:#F7FAF3}
+body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+input:focus{outline:none}
+input:disabled{background:#EEF2EA;cursor:not-allowed}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#F7FAF3;color:#263B1A;font-family:'Pretendard',system-ui,sans-serif">
+  <div style="flex:1;display:flex;flex-direction:column">
+    <main style="flex:1;display:flex;flex-direction:column;padding:40px clamp(24px,6vw,120px) 48px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <a href="Main.dc.html" style="display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:44px;width:auto;display:block"></a>
+        <a href="Main.dc.html" aria-label="닫기" style="color:#263B1A;display:grid;place-items:center;width:44px;height:44px">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </a>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;width:min(520px,100%);margin:48px auto 0">
+        <h1 style="margin:0;font-weight:800;font-size:40px;letter-spacing:-0.03em;color:#263B1A;text-align:center">관리자 로그인</h1>
+        <p style="margin:16px 0 0;font-size:18px;color:#687161">발급받은 관리자 계정으로 로그인해 주세요.</p>
+        <form onSubmit="{{ submit }}" novalidate="novalidate" style="margin-top:40px;display:flex;flex-direction:column">
+          <div role="alert" aria-live="assertive" style="display:flex;flex-direction:column">
+            <sc-if value="{{ hasAlert }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-bottom:22px;display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:12px;background:{{ alertBg }};color:{{ alertFg }};font-size:15px;line-height:1.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5M12 16.5h.01"></path></svg>
+                <span style="flex:1;font-weight:600">{{ alertText }}</span>
+                <sc-if value="{{ showCountdown }}"><span style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums">{{ countdown }}</span></sc-if>
+              </div>
+            </sc-if>
+          </div>
+          <label for="admin-email" style="font-size:17px;color:#687161">관리자 이메일</label>
+          <input id="admin-email" type="email" autocomplete="username" value="{{ email }}" onChange="{{ setEmail }}" disabled="{{ locked }}" aria-invalid="{{ emailInvalid }}" placeholder="admin@moneybeetle.test" style="margin-top:10px;height:56px;border:2px solid {{ emailLine }};border-radius:12px;padding:0 18px;font-size:19px;font-family:inherit;box-sizing:border-box;color:#263B1A">
+          <sc-if value="{{ emailInvalid }}"><span style="margin-top:8px;font-size:14px;color:#b3261e">{{ emailErr }}</span></sc-if>
+          <label for="admin-pw" style="font-size:17px;color:#687161;margin-top:22px">비밀번호</label>
+          <div style="margin-top:10px;position:relative">
+            <input id="admin-pw" type="{{ pwType }}" autocomplete="current-password" value="{{ pw }}" onChange="{{ setPw }}" disabled="{{ locked }}" aria-invalid="{{ pwInvalid }}" placeholder="비밀번호" style="width:100%;height:56px;border:2px solid {{ pwLine }};border-radius:12px;padding:0 80px 0 18px;font-size:19px;font-family:inherit;box-sizing:border-box">
+            <button type="button" onClick="{{ togglePw }}" disabled="{{ locked }}" style="all:unset;cursor:pointer;position:absolute;right:18px;top:0;height:56px;display:flex;align-items:center;font-size:15px;color:#687161">{{ pwToggle }}</button>
+          </div>
+          <sc-if value="{{ pwInvalid }}"><span style="margin-top:8px;font-size:14px;color:#b3261e">{{ pwErr }}</span></sc-if>
+          <p style="margin:18px 0 0;font-size:15px;color:#687161">비밀번호를 잊었다면 시스템 담당자에게 문의해 주세요.</p>
+          <button type="submit" disabled="{{ btnOff }}" style="all:unset;box-sizing:border-box;cursor:{{ btnCursor }};margin-top:28px;height:58px;border-radius:999px;background:{{ btnBg }};color:#263B1A;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center" style-hover="filter:brightness(.95)">{{ btnText }}</button>
+        </form>
+      </div>
+    </main>
+  </div>
+  <div style="position:sticky;bottom:0;background:#263B1A;color:#fff;display:flex;align-items:center;justify-content:center;gap:16px;padding:22px 20px;font-size:clamp(14px,1.5vw,22px);flex-wrap:wrap;text-align:center">
+    <span style="background:#9fe870;color:#263B1A;font-weight:700;border-radius:6px;padding:4px 10px;font-size:0.85em">안내</span>
+    <span>관리자 화면의 모든 작업은 기록됩니다</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  // 목업 계정 — 실제 인증 연결 시 서버 검증으로 교체 (화면에 노출하지 않음)
+  ACCOUNTS = {
+    'admin@moneybeetle.test': { pw: 'admin1234', role: 'admin' },
+    'student@moneybeetle.test': { pw: 'student1234', role: 'student' }
+  };
+  state = { remember: false, email: '', pw: '', show: false, loading: false, emailErr: '', pwErr: '', alert: null, fails: 0, lockUntil: 0, now: Date.now() };
+  componentDidMount() {
+    let lockUntil = 0, fails = 0;
+    try { const em = localStorage.getItem('mb-admin-email'); if (em) this.setState({ email: em, remember: true }); } catch (e) {}
+    try { const s = JSON.parse(localStorage.getItem('mb-admin-login') || '{}'); lockUntil = s.lockUntil || 0; fails = s.fails || 0; } catch (e) {}
+    const now = Date.now(), q = new URLSearchParams(location.search);
+    if (lockUntil <= now && fails >= 5) fails = 0;
+    this.setState({ lockUntil, fails, now, alert: lockUntil > now ? { kind: 'lock' } : q.get('expired') ? { kind: 'expired' } : null });
+    this._t = setInterval(() => {
+      const t = Date.now();
+      if (this.state.lockUntil && t >= this.state.lockUntil) { this.save(0, 0); this.setState({ lockUntil: 0, fails: 0, alert: null, now: t }); }
+      else if (this.state.lockUntil) this.setState({ now: t });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this._t); clearTimeout(this._lt); }
+  save(fails, lockUntil) { try { localStorage.setItem('mb-admin-login', JSON.stringify({ fails, lockUntil })); } catch (e) {} }
+  submit(e) {
+    e.preventDefault();
+    const s = this.state;
+    if (s.loading || s.lockUntil > Date.now()) return;
+    const email = s.email.trim();
+    const emailErr = email ? '' : '이메일을 입력해 주세요', pwErr = s.pw ? '' : '비밀번호를 입력해 주세요';
+    if (emailErr || pwErr) return this.setState({ emailErr, pwErr, alert: null });
+    this.setState({ loading: true, alert: null });
+    this._lt = setTimeout(() => {
+      const acc = this.ACCOUNTS[email.toLowerCase()];
+      const ok = acc && acc.pw === s.pw;
+      if (ok && acc.role !== 'admin') return this.setState({ loading: false, pw: '', alert: { kind: 'denied' } });
+      if (ok) {
+        this.save(0, 0);
+        try { if (s.remember) localStorage.setItem('mb-admin-email', email); else localStorage.removeItem('mb-admin-email'); } catch (err) {}
+        try { localStorage.setItem('mb-admin-session', String(Date.now())); } catch (err) {}
+        const next = new URLSearchParams(location.search).get('next');
+        location.href = next && /^Admin[\w\-]*\.dc\.html(\?[^#]*)?(#.*)?$/.test(next) ? next : 'AdminDashboard.dc.html';
+        return;
+      }
+      const fails = s.fails + 1;
+      if (fails >= 5) { const lockUntil = Date.now() + 600000; this.save(fails, lockUntil); return this.setState({ loading: false, pw: '', fails, lockUntil, now: Date.now(), alert: { kind: 'lock' } }); }
+      this.save(fails, 0);
+      this.setState({ loading: false, pw: '', fails, alert: { kind: 'fail' } });
+    }, 600);
+  }
+  renderVals() {
+    const s = this.state, locked = s.lockUntil > s.now;
+    const rem = Math.max(0, Math.ceil((s.lockUntil - s.now) / 1000));
+    const M = {
+      fail: ['이메일 또는 비밀번호를 확인해 주세요.', '#FDECEA', '#8C1D18', '#E4A29C'],
+      lock: ['로그인을 5번 실패해 10분 동안 잠겼어요.', '#FDF1DC', '#7A4A00', '#F2C14E'],
+      denied: ['관리자 권한이 없는 계정이에요.', '#FDECEA', '#8C1D18', '#E4A29C'],
+      expired: ['로그인 시간이 지났어요. 다시 로그인해 주세요.', '#EEF2EA', '#263B1A', '#D5E1CC']
+    };
+    const a = s.alert ? M[s.alert.kind] : null;
+    return {
+      email: s.email, pw: s.pw, locked,
+      setEmail: e => this.setState({ email: e.target.value, emailErr: '' }),
+      setPw: e => this.setState({ pw: e.target.value, pwErr: '' }),
+      emailErr: s.emailErr, pwErr: s.pwErr, emailInvalid: !!s.emailErr, pwInvalid: !!s.pwErr,
+      emailLine: s.emailErr ? '#b3261e' : '#263B1A', pwLine: s.pwErr ? '#b3261e' : '#263B1A',
+      remember: s.remember, chkBg: s.remember ? '#9fe870' : '#fff', chkLine: s.remember ? '#9fe870' : '#C9D3C1', toggleRemember: () => this.setState(x => ({ remember: !x.remember })),
+      pwType: s.show ? 'text' : 'password', pwToggle: s.show ? '숨기기' : '보기',
+      togglePw: () => this.setState(x => ({ show: !x.show })),
+      btnOff: s.loading || locked, btnText: s.loading ? '확인 중…' : '로그인',
+      btnBg: locked ? '#D5E1CC' : '#9fe870', btnCursor: s.loading || locked ? 'not-allowed' : 'pointer',
+      submit: e => this.submit(e),
+      hasAlert: !!a, alertText: a ? a[0] : '', alertBg: a ? a[1] : '', alertFg: a ? a[2] : '', alertLine: a ? a[3] : '',
+      showCountdown: !!s.alert && s.alert.kind === 'lock' && locked,
+      countdown: String(Math.floor(rem / 60)).padStart(2, '0') + ':' + String(rem % 60).padStart(2, '0')
+    };
+  }
+}
+</script>
+</body>
+</html>

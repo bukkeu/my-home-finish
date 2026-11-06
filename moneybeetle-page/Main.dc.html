@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+html{background:#F7FAF3}
+body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#F7FAF3;color:#263B1A;font-family:'Pretendard',system-ui,sans-serif">
+  <header style="display:flex;align-items:center;gap:40px;padding:28px clamp(20px,6vw,120px)">
+    <a href="Main.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#263B1A"><img src="assets/logo.png" alt="Money Beetle" style="height:44px;width:auto;display:block"></a>
+    <div style="flex:1"></div>
+    <a href="UserLogin.dc.html" style="text-decoration:none;color:#263B1A;font-size:18px;font-weight:500">로그인</a>
+    <a href="UserSignup.dc.html" style="text-decoration:none;background:#9fe870;color:#263B1A;font-weight:700;font-size:18px;padding:16px 30px;border-radius:999px" style-hover="background:#8fd85f">회원가입</a>
+  </header>
+
+  <main id="intro" style="flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:12px 24px 0">
+    <div style="display:flex;gap:12px 36px;flex-wrap:wrap;justify-content:center;font-weight:700;font-size:17px;margin-top:8px">
+      <span style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:#EAF7D8;display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="#263B1A"><path d="M7 4v16l13-8z"></path></svg></span>영상 강의 + 퀴즈</span>
+      <span style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:#EAF7D8;display:grid;place-items:center;font-size:15px">₩</span>가상 캐시로 투자·청약 연습</span>
+      <span style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:#EAF7D8;display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="#263B1A"><path d="m12 2 3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"></path></svg></span>레벨업하며 내 집까지</span>
+    </div>
+
+    <h1 style="margin: 36px 0 0; font-weight: 700; font-size: clamp(55px,10.5vw,130px); line-height: 0.98; letter-spacing: -0.04em; color: #263B1A; text-wrap: balance">내 집 마련,<br>연습부터.</h1>
+    <p style="margin:44px 0 0;font-size:clamp(18px,1.6vw,26px);line-height:1.7;color:#687161;max-width:680px;text-wrap:balance">월급 관리부터 청약까지, 영상 강의와 퀴즈로 배우고<br>가상 캐시로 실제 돈 쓰기 전에 안전하게 연습해요.</p>
+    <a href="UserLogin.dc.html" style="margin-top:52px;text-decoration:none;background:#9fe870;color:#263B1A;font-weight:700;font-size:26px;padding:30px 64px;border-radius:999px" style-hover="background:#8fd85f" style-active="background:#7fc84f">무료로 시작하기</a>
+
+    <div style="margin-top:20px;width:100%;max-width:min(1600px,100%);display:flex;align-items:flex-end;gap:26px;padding-bottom:0">
+      <sc-for list="{{ steps }}" as="s" hint-placeholder-count="5">
+        <div style="flex:1;min-width:0;height:{{ s.h }};background:{{ s.bg }};color:{{ s.fg }};border-radius:28px 28px 0 0;padding:26px 8px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;align-items:center">
+          <sc-if value="{{ s.icon }}"><img src="assets/house-top-hd.png" alt="" style="width:clamp(110px,11vw,190px);height:auto;margin-top:calc(-26px - clamp(90px,9vw,156px));margin-bottom:6px;align-self:center;display:block;flex:none"></sc-if>
+          <span style="font-weight:800;font-size:clamp(16px,1.7vw,26px)">{{ s.name }}</span>
+          <span style="font-weight:600;font-size:clamp(11px,1.1vw,16px);color:{{ s.sub }};text-wrap:balance">{{ s.lv }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+
+  <section ref="{{ roadRef }}" aria-labelledby="road-title" style="background:#fff;padding:clamp(72px,9vw,128px) clamp(20px,6vw,120px) clamp(72px,8vw,112px);display:flex;flex-direction:column;align-items:center;text-align:center">
+    <h2 id="road-title" style="margin:0;font-weight:700;font-size:clamp(36px,5.4vw,68px);letter-spacing:-0.035em;line-height:1.05;color:#263B1A">내 집까지 가는 길</h2>
+    <p style="margin:20px 0 0;font-size:clamp(16px,1.5vw,22px);color:#687161">배우고, 모으고, 연습하면 어느새 내 집이에요.</p>
+
+    <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+      <div style="position:relative;width:100%;max-width:1100px;aspect-ratio:1000/760;margin-top:clamp(56px,6vw,88px)">
+        <svg viewBox="0 0 1000 760" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <defs><linearGradient id="railA" gradientUnits="userSpaceOnUse" x1="100" y1="120" x2="820" y2="120"><stop offset="0" stop-color="#EAF7D8"></stop><stop offset="1" stop-color="#B9EF8E"></stop></linearGradient><linearGradient id="haloA" gradientUnits="userSpaceOnUse" x1="100" y1="120" x2="820" y2="120"><stop offset="0" stop-color="#F5FBEE"></stop><stop offset="1" stop-color="#E2F6CF"></stop></linearGradient><linearGradient id="railB" gradientUnits="userSpaceOnUse" x1="820" y1="120" x2="680" y2="380"><stop offset="0" stop-color="#B9EF8E"></stop><stop offset="1" stop-color="#B9EF8E"></stop></linearGradient><linearGradient id="haloB" gradientUnits="userSpaceOnUse" x1="820" y1="120" x2="680" y2="380"><stop offset="0" stop-color="#E2F6CF"></stop><stop offset="1" stop-color="#E2F6CF"></stop></linearGradient><linearGradient id="railC" gradientUnits="userSpaceOnUse" x1="680" y1="380" x2="320" y2="380"><stop offset="0" stop-color="#B9EF8E"></stop><stop offset="1" stop-color="#9fe870"></stop></linearGradient><linearGradient id="haloC" gradientUnits="userSpaceOnUse" x1="680" y1="380" x2="320" y2="380"><stop offset="0" stop-color="#E2F6CF"></stop><stop offset="1" stop-color="#D6F4C0"></stop></linearGradient><linearGradient id="railD" gradientUnits="userSpaceOnUse" x1="320" y1="380" x2="320" y2="640"><stop offset="0" stop-color="#9fe870"></stop><stop offset="1" stop-color="#9fe870"></stop></linearGradient><linearGradient id="haloD" gradientUnits="userSpaceOnUse" x1="320" y1="380" x2="320" y2="640"><stop offset="0" stop-color="#D6F4C0"></stop><stop offset="1" stop-color="#D6F4C0"></stop></linearGradient><linearGradient id="railE" gradientUnits="userSpaceOnUse" x1="320" y1="640" x2="750" y2="640"><stop offset="0" stop-color="#9fe870"></stop><stop offset="1" stop-color="#F2C14E"></stop></linearGradient><linearGradient id="haloE" gradientUnits="userSpaceOnUse" x1="320" y1="640" x2="750" y2="640"><stop offset="0" stop-color="#D6F4C0"></stop><stop offset="1" stop-color="#FBEBC0"></stop></linearGradient></defs>
+          <path d="M 100 120 H 870 A 130 130 0 0 1 870 380 H 130 A 130 130 0 0 0 130 640 H 750" fill="none" stroke="#D5E1CC" stroke-width="37" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M 100 120 H 820" fill="none" stroke="url(#haloA)" stroke-width="34" stroke-linecap="butt"></path>
+          <path d="M 820 120 H 870 A 130 130 0 0 1 870 380 H 680" fill="none" stroke="url(#haloB)" stroke-width="34" stroke-linecap="butt"></path>
+          <path d="M 680 380 H 320" fill="none" stroke="url(#haloC)" stroke-width="34" stroke-linecap="butt"></path>
+          <path d="M 320 380 H 130 A 130 130 0 0 0 130 640 H 320" fill="none" stroke="url(#haloD)" stroke-width="34" stroke-linecap="butt"></path>
+          <path d="M 320 640 H 750" fill="none" stroke="url(#haloE)" stroke-width="34" stroke-linecap="butt"></path>
+          <circle cx="100" cy="120" r="17" fill="#F5FBEE"></circle><circle cx="750" cy="640" r="17" fill="#FBEBC0"></circle>
+          <path d="M 100 120 H 820" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="round" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashA }};transition:stroke-dashoffset {{ durA }} cubic-bezier(.45,.05,1,1) {{ delA }}"></path>
+          <path d="M 100 120 H 820" pathLength="1" fill="none" stroke="url(#railA)" stroke-width="14" stroke-linecap="round" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashA }};transition:stroke-dashoffset {{ durA }} cubic-bezier(.45,.05,1,1) {{ delA }}"></path>
+          <path d="M 820 120 H 870 A 130 130 0 0 1 870 380 H 680" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="butt" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashB }};transition:stroke-dashoffset {{ durB }} linear {{ delB }}"></path>
+          <path d="M 820 120 H 870 A 130 130 0 0 1 870 380 H 680" pathLength="1" fill="none" stroke="url(#railB)" stroke-width="14" stroke-linecap="butt" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashB }};transition:stroke-dashoffset {{ durB }} linear {{ delB }}"></path>
+          <path d="M 680 380 H 320" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="butt" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashC }};transition:stroke-dashoffset {{ durC }} linear {{ delC }}"></path>
+          <path d="M 680 380 H 320" pathLength="1" fill="none" stroke="url(#railC)" stroke-width="14" stroke-linecap="butt" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashC }};transition:stroke-dashoffset {{ durC }} linear {{ delC }}"></path>
+          <path d="M 320 380 H 130 A 130 130 0 0 0 130 640 H 320" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="butt" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashD }};transition:stroke-dashoffset {{ durD }} linear {{ delD }}"></path>
+          <path d="M 320 380 H 130 A 130 130 0 0 0 130 640 H 320" pathLength="1" fill="none" stroke="url(#railD)" stroke-width="14" stroke-linecap="butt" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashD }};transition:stroke-dashoffset {{ durD }} linear {{ delD }}"></path>
+          <path d="M 320 640 H 750" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="round" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashE }};transition:stroke-dashoffset {{ durE }} cubic-bezier(0,0,.35,1) {{ delE }}"></path>
+          <path d="M 320 640 H 750" pathLength="1" fill="none" stroke="url(#railE)" stroke-width="14" stroke-linecap="round" style="stroke-dasharray:1 1.02;stroke-dashoffset:{{ dashE }};transition:stroke-dashoffset {{ durE }} cubic-bezier(0,0,.35,1) {{ delE }}"></path>
+        </svg>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="3">
+          <span style="position:absolute;left:{{ r.x }};top:{{ r.y }};transform:translate(-50%,-50%);font-size:13px;font-weight:800;letter-spacing:.04em;padding:6px 14px;border-radius:999px;background:#263B1A;color:#9fe870;white-space:nowrap;opacity:{{ r.op }};transition:opacity .4s ease {{ r.delay }}">{{ r.label }}</span>
+        </sc-for>
+        <sc-for list="{{ stations }}" as="st" hint-placeholder-count="7">
+          <div style="position:absolute;left:{{ st.x }};top:{{ st.y }};width:0;height:0">
+            <div style="position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:14px;transform:translate(-50%,{{ st.off }}) scale({{ st.sc }});opacity:{{ st.op }};transition:opacity .35s ease {{ st.delay }}, transform .55s cubic-bezier(.34,1.56,.64,1) {{ st.delay }}">
+              <span style="position:relative;width:{{ st.size }};height:{{ st.size }};border-radius:50%;background:{{ st.bg }};color:#263B1A;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px {{ st.ring }},0 0 0 8px #fff">
+                <sc-if value="{{ st.home }}"><img src="assets/house-top-hd.png" alt="" style="width:78%;height:auto;display:block"></sc-if>
+                <sc-if value="{{ st.notHome }}"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><sc-for list="{{ st.icon }}" as="d"><path d="{{ d }}"></path></sc-for></svg></sc-if>
+                <sc-if value="{{ st.notHome }}"><span style="position:absolute;top:-2px;right:-2px;width:28px;height:28px;border-radius:50%;background:#263B1A;color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center">{{ st.n }}</span></sc-if>
+              </span>
+              <span style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap">
+                <strong style="font-size:clamp(16px,1.7vw,21px);font-weight:800;color:#263B1A">{{ st.t }}</strong>
+                <span style="font-size:clamp(13px,1.3vw,16px);color:#687161">{{ st.d }}</span>
+              </span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+      <div style="position:relative;width:100%;max-width:420px;margin-top:48px;display:flex;flex-direction:column;gap:22px;text-align:left">
+        <span style="position:absolute;left:28px;top:32px;bottom:32px;width:8px;border-radius:4px;background:#F5FBEE;box-shadow:inset 0 0 0 1px #D5E1CC;overflow:hidden"><span style="display:block;width:100%;height:100%;border-radius:4px;background:linear-gradient(180deg,#EAF7D8 0%,#B9EF8E 33%,#B9EF8E 50%,#9fe870 67%,#9fe870 83%,#F2C14E 100%);box-shadow:inset 0 0 0 1px #C9DDB8;clip-path:inset(0 0 {{ clipB }} 0);transition:clip-path {{ drawDur }} cubic-bezier(.45,.05,.35,1)"></span></span>
+        <sc-for list="{{ stations }}" as="st" hint-placeholder-count="7">
+          <div style="display:flex;flex-direction:column;gap:12px;opacity:{{ st.op }};transform:translateY({{ st.ty }});transition:opacity .35s ease {{ st.delay }}, transform .45s ease {{ st.delay }}">
+            <sc-if value="{{ st.gl }}"><span style="align-self:flex-start;margin-left:76px;font-size:12px;font-weight:800;letter-spacing:.04em;padding:5px 12px;border-radius:999px;background:#263B1A;color:#9fe870">{{ st.gl }}</span></sc-if>
+            <div style="position:relative;display:flex;align-items:center;gap:14px">
+              <span style="position:relative;flex:none;width:64px;height:64px;border-radius:50%;background:{{ st.bg }};color:#263B1A;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px {{ st.ring }},0 0 0 6px #fff">
+                <sc-if value="{{ st.home }}"><img src="assets/house-top-hd.png" alt="" style="width:78%;height:auto;display:block"></sc-if>
+                <sc-if value="{{ st.notHome }}"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><sc-for list="{{ st.icon }}" as="d"><path d="{{ d }}"></path></sc-for></svg></sc-if>
+              </span>
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <strong style="font-size:17px;font-weight:800;color:#263B1A">{{ st.t }}</strong>
+                <span style="font-size:14px;color:#687161">{{ st.d }}</span>
+              </span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </section>
+
+  <div style="position:sticky;bottom:0;background:#263B1A;color:#fff;display:flex;align-items:center;justify-content:center;gap:16px;padding:22px 20px;font-size:clamp(14px,1.5vw,22px);flex-wrap:wrap;text-align:center">
+    <span style="background:#9fe870;color:#263B1A;font-weight:700;border-radius:6px;padding:4px 10px;font-size:0.85em">안내</span>
+    <span>모든 투자·청약 화면은 가상 실습이며 실제 금융 거래가 아니에요</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { shown: false, reduce: false, narrow: typeof window !== 'undefined' && window.innerWidth < 760 };
+  roadRef = React.createRef();
+  componentDidMount() {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.onResize = () => { const n = window.innerWidth < 760; if (n !== this.state.narrow) this.setState({ narrow: n }); };
+    window.addEventListener('resize', this.onResize);
+    if (reduce || !('IntersectionObserver' in window)) { this.setState({ shown: true, reduce: true }); return; }
+    this.io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { this.setState({ shown: true }); this.io.disconnect(); } }, { threshold: 0.25 });
+    if (this.roadRef.current) this.io.observe(this.roadRef.current);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); if (this.io) this.io.disconnect(); }
+  renderVals() {
+    const { shown, reduce, narrow } = this.state;
+    const I = {
+      quiz: ['M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0', 'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3', 'M12 17h.01'],
+      video: ['M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0', 'M10 8l6 4-6 4z'],
+      done: ['M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0', 'm9 12 2 2 4-4'],
+      up: ['M22 7l-8.5 8.5-5-5L2 17', 'M16 7h6v6'],
+      chart: ['M3 3v18h18', 'M18 17V9', 'M13 17V5', 'M8 17v-3'],
+      apt: ['M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z', 'M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2', 'M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2', 'M10 6h4', 'M10 10h4', 'M10 14h4', 'M10 18h4']
+    };
+    const raw = [
+      { n: '1', t: '맛보기 퀴즈', d: '가볍게 풀어 보고 시작해요', x: 180, y: 120, icon: I.quiz, bg: '#E4F6D2', gl: '배우기', at: 0.08 },
+      { n: '2', t: '영상 + 요약', d: '짧은 영상과 핵심 요약으로 배워요', x: 500, y: 120, icon: I.video, bg: '#D2F2B3', at: 0.2 },
+      { n: '3', t: '마무리 퀴즈', d: '통과하면 캐시가 쌓여요', x: 820, y: 120, icon: I.done, bg: '#B9EF8E', at: 0.32 },
+      { n: '4', t: '레벨업', d: '고시원에서 원룸, 투룸으로', x: 680, y: 380, icon: I.up, bg: '#9fe870', gl: '성장하기', at: 0.52 },
+      { n: '5', t: 'Lv.8 모의 투자', d: '가상 캐시로 주식 투자 연습', x: 320, y: 380, icon: I.chart, bg: '#9fe870', at: 0.64 },
+      { n: '6', t: 'Lv.12 모의 청약', d: '청약통장 모으고 분양에 도전', x: 320, y: 640, icon: I.apt, bg: '#9fe870', gl: '도전하기', at: 0.84 },
+      { n: '', t: '내 집', d: '드디어 내 집 마련 완료!', x: 750, y: 640, home: true, bg: '#F2C14E', at: 1 }
+    ];
+    const total = 2.4, on = shown || reduce;
+    const delay = a => reduce ? '0s' : (a * total).toFixed(2) + 's';
+    const stations = raw.map(s => {
+      const size = s.home ? 132 : 92;
+      return { ...s, ring: raw.indexOf(s) < 2 ? '#C9DDB8' : 'transparent', notHome: !s.home, icon: s.icon || [], gl: s.gl || '', x: (s.x / 10) + '%', y: (s.y / 7.6) + '%', size: size + 'px', off: (-size / 2) + 'px', sc: on ? 1 : 0.6, op: on ? 1 : 0, ty: on ? '0px' : '14px', delay: delay(narrow ? raw.indexOf(s) / 7 : s.at) };
+    });
+    const rows = [
+    ].map(r => ({ ...r, op: on ? 1 : 0, delay: delay(r.at) }));
+    const L = [720, 648.4, 360, 788.4, 430], LT = L.reduce((p, c) => p + c, 0);
+    let acc = 0; const seg = {};
+    ['A', 'B', 'C', 'D', 'E'].forEach((k, i) => { const d = reduce ? 0 : total * L[i] / LT, dl = reduce ? 0 : total * acc / LT; acc += L[i]; seg['dash' + k] = on ? 0 : 1; seg['dur' + k] = d.toFixed(3) + 's'; seg['del' + k] = dl.toFixed(3) + 's'; });
+    return {
+      ...seg, clipB: on ? '0%' : '100%',
+      roadRef: this.roadRef, wide: !narrow, narrow, stations, rows,
+      dash: on ? 0 : 1, lineH: on ? '100%' : '0%', drawDur: reduce ? '0s' : total + 's',
+      steps: [
+      { name: '고시원', lv: 'Lv.1~3', h: '150px', bg: '#EAF7D8', fg: '#263B1A', sub: '#4a6b2e' },
+      { name: '원룸', lv: 'Lv.4~7', h: '200px', bg: '#B9EF8E', fg: '#263B1A', sub: '#3d6120' },
+      { name: '투룸', lv: 'Lv.8~11 · 모의투자 열림', h: '250px', bg: '#B9EF8E', fg: '#263B1A', sub: '#263B1A' },
+      { name: '아파트', lv: 'Lv.12~16 · 모의 청약 열림', h: '300px', bg: '#9fe870', fg: '#263B1A', sub: '#263B1A' },
+      { name: '내 집', icon: true, lv: 'Lv.17~', h: '350px', bg: '#F2C14E', fg: '#263B1A', sub: '#263B1A' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

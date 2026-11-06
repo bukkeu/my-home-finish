@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./mb-drawer.js"></script>
+<script src="./mb-search.js"></script>
+<script src="mb-notify.js"></script>
+<link rel="stylesheet" href="_ds/industry-3114b2da-1ad2-4267-99fa-40225130da98/styles.css">
+<script src="_ds/industry-3114b2da-1ad2-4267-99fa-40225130da98/_ds_bundle.js"></script>
+<script src="_ds/classical-69c92c2e-e0af-40bb-a7ee-71964569174c/_ds_bundle.js"></script>
+<script src="_ds/modernist-850c2690-cbf6-4f34-9d22-5f2580185016/_ds_bundle.js"></script>
+<script src="_ds/nocturne-4af0f8a3-c1a9-4cfd-ad6e-95eba5d49960/_ds_bundle.js"></script>
+<script src="_ds/organic-c63e1951-6790-4b99-aee6-887991866cc8/_ds_bundle.js"></script>
+
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+:root{--color-bg:#F7FAF3;--color-surface:#ffffff;--color-text:#263B1A;--color-divider:#D5E1CC;
+--color-accent:#9fe870;--color-accent-100:#EAF7D8;--color-accent-200:#B9EF8E;--color-accent-300:#B9EF8E;--color-accent-400:#9fe870;--color-accent-500:#8fd85f;--color-accent-600:#7fc84f;--color-accent-700:#263B1A;--color-accent-800:#263B1A;--color-accent-900:#1B2B12;
+--color-neutral-200:#D5E1CC;--color-neutral-300:#D5E1CC;--color-neutral-600:#687161;--color-neutral-700:#687161;--color-neutral-800:#263B1A;
+--font-heading:"Pretendard",system-ui,sans-serif;--font-body:"Pretendard",system-ui,sans-serif;--font-heading-weight:800}
+html{background:var(--color-bg)}
+body{margin:0;min-height:100%;background:var(--color-bg);font-family:var(--font-body)}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:800;letter-spacing:-0.035em;color:var(--color-text)}
+a{color:var(--color-accent-800)}a:hover{color:var(--color-accent-900)}
+.blueprint>.corner{display:none}
+.btn{border-radius:999px;font-family:var(--font-body);font-weight:600}
+.btn-primary{background:var(--color-accent-400);color:var(--color-accent-800);font-weight:700;border-color:transparent}
+.btn-primary:hover{background:var(--color-accent-500)}.btn-primary:active{background:var(--color-accent-600)}
+.btn-secondary{background:var(--color-accent-100);border-color:transparent;color:var(--color-accent-800);font-weight:700}
+.btn-secondary:hover{background:var(--color-accent-200)}
+.card,.card.blueprint{border:1.5px dashed var(--color-divider);border-radius:16px;overflow:hidden}
+.blueprint{border-radius:16px}
+.tag{border-radius:999px;font-weight:600}
+.tag-accent{background:var(--color-accent-400);color:var(--color-accent-800)}
+.card-kicker{color:var(--color-accent-700);font-weight:600}
+.tag-outline{border-color:#F2C14E;background:rgba(242,193,78,.18);color:#263B1A}
+.card-title{font-family:var(--font-heading);font-weight:800;letter-spacing:-0.02em;color:var(--color-text)}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;color:var(--color-text);background:var(--color-bg)">
+
+<div style="position:sticky;top:0;align-self:flex-start;width:0;height:0;z-index:40;overflow:visible">
+<button class="btn btn-ghost btn-icon" onClick="{{ toggleSidebar }}" aria-label="메뉴" style="color:var(--color-text);position:absolute;top:22px;left:16px;width:40px;height:40px">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+</button>
+<a href="Main.dc.html" style="position:absolute;top:25px;left:64px;display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:34px;width:auto;max-width:172px;object-fit:contain;display:block"></a>
+</div>
+<div data-mb-overlay="1" data-open="{{ sidebarOpen }}" onClick="{{ toggleSidebar }}" aria-hidden="true" style="position:fixed;inset:0;z-index:55;background:rgba(38,59,26,.38);transition:opacity 180ms ease-out;opacity:{{ mbOverlayOp }};pointer-events:{{ mbOverlayPe }}"></div>
+<aside data-mb-drawer="1" data-open="{{ sidebarOpen }}" aria-label="메뉴" style="position:fixed;top:0;left:0;bottom:0;z-index:60;width:min(300px,85vw);box-sizing:border-box;background:#fff;border-radius:0 20px 20px 0;box-shadow:8px 0 40px rgba(38,59,26,.16);transition:transform 250ms cubic-bezier(.22,.61,.36,1);transform:{{ mbDrawerT }};visibility:{{ mbDrawerVis }};display:flex;flex-direction:column;gap:20px;padding:24px 16px;overflow-y:auto;overflow-x:hidden">
+  <div style="position:sticky;top:-24px;z-index:5;flex:none;height:64px;margin:-24px -16px 0;padding:0 12px 0 20px;background:#fff;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box"><a href="Main.dc.html" style="display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:30px;width:auto;max-width:160px;object-fit:contain;display:block"></a><button data-mb-close="1" onClick="{{ toggleSidebar }}" aria-label="메뉴 닫기" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:999px;display:grid;place-items:center;color:#263B1A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+
+  <div class="blueprint" style="padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;width:100%;min-width:0;margin:0">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:14px">민</div>
+      <div style="display:flex;flex-direction:column;line-height:1.3">
+        <span style="font-weight:500;font-size:14px">{{ nickname }}</span>
+        <span style="font-size:12px;color:var(--color-neutral-700);display:flex;align-items:center;gap:4px;white-space:nowrap">Lv.{{ level }}<span style="display:inline-block;padding:1px 8px;border-radius:999px;background:{{ houseBg }};color:#263B1A;font-weight:700;font-size:11px">{{ house }}</span><span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px"><img src="assets/cash-coin2.png" alt="캐시" style="width:13px;height:13px;flex:none">{{ cashText }}</span></span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-neutral-700)"><span>경험치</span><span>{{ exp }} / 150 XP</span></div>
+      <div style="height:4px;background:var(--color-neutral-200)"><div style="height:100%;background:var(--color-accent);width:{{ expPct }}"></div></div>
+      <span style="font-size:11px;color:var(--color-neutral-700);display:flex;align-items:center;gap:3px;white-space:nowrap">Lv.{{ nextLevel }} 달성 시<img src="assets/cash-coin2.png" alt="캐시" style="width:12px;height:12px;flex:none;margin-left:2px">{{ levelUpCash }} 지급</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;padding-top:10px;border-top:1px solid var(--color-divider)">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px"><span style="font-weight:600">연속 출석 {{ streak }}일</span><span style="font-size:11px;color:var(--color-accent-700);font-weight:600">{{ streakShort }}</span></div>
+    </div>
+  </div>
+
+  <nav style="display:flex;flex-direction:column;gap:2px;font-size:14px">
+    <a href="UserHome-vr2.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>홈</a>
+
+    <button data-mb-keep="1" onClick="{{ toggleLecture }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"></path><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"></path></svg>
+      <span style="flex:1">강의</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ lectureCaret }}</span>
+    </button>
+    <sc-if value="{{ lectureOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="UserLectureCategory.dc.html" style="padding:7px 10px;margin-left:-10px;text-decoration:none;color:var(--color-accent-800);background:{{ navMoneyBg }};font-weight:{{ navMoneyFw }}">자본 증액<br></a>
+        <a href="UserLectureCategory.dc.html?cat=estate" style="padding:7px 10px;margin-left:-10px;text-decoration:none;color:var(--color-accent-800);background:{{ navEstateBg }};font-weight:{{ navEstateFw }}">부동산</a>
+      </div>
+    </sc-if>
+
+    <button data-mb-keep="1" onClick="{{ toggleTraining }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 6-6"></path></svg>
+      <span style="flex:1">트레이닝</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ trainingCaret }}</span>
+    </button>
+    <sc-if value="{{ trainingOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="{{ invHref }}" onClick="{{ invClick }}" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800);display:flex;align-items:center;gap:6px"><sc-if value="{{ invLocked }}"><img src="uploads/lock.png" alt="잠김" style="width:14px;height:14px;object-fit:contain;flex:none"></sc-if><span>모의 투자</span>
+          <sc-if value="{{ invLocked }}"><span style="font-size:11px;color:var(--color-neutral-600)">· Lv.{{ invReq }}부터</span></sc-if></a>
+        <a href="UserDemoHousingSubscription.dc.html" onClick="{{ subClick }}" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800);display:flex;align-items:center;gap:6px"><sc-if value="{{ subLocked }}"><img src="uploads/lock.png" alt="잠김" style="width:14px;height:14px;object-fit:contain;flex:none"></sc-if><span>모의 청약</span>
+          <sc-if value="{{ subLocked }}"><span style="font-size:11px;color:var(--color-neutral-600)">· Lv.{{ subReq }}부터</span></sc-if></a>
+      </div>
+    </sc-if>
+
+    <button data-mb-keep="1" onClick="{{ toggleMy }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <span style="flex:1">내 학습</span><span style="font-size:11px;color:var(--color-neutral-600)">{{ myCaret }}</span>
+    </button>
+    <sc-if value="{{ myOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;padding-left:40px;font-size:13px">
+        <a href="UserMyPage.dc.html#tab-wrong" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">퀴즈 오답노트</a>
+        <a href="UserMyPage.dc.html#tab-scrap" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">강의 스크랩</a>
+        <a href="UserMyPage.dc.html" style="padding:7px 0;text-decoration:none;color:var(--color-neutral-800)">시청기록 · 학습완료</a>
+      </div>
+    </sc-if>
+    
+    <a href="UserInquiry.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>문의 게시판</a>
+    <a href="UserMyPage.dc.html" style="display:flex;align-items:center;gap:12px;padding:9px 10px;text-decoration:none;color:inherit">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>마이페이지</a>
+  </nav>
+</aside>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+  <header style="display:flex;align-items:center;gap:12px;padding:20px 40px;position:sticky;top:0;z-index:30;background:var(--color-bg)">
+    <sc-if value="{{ sidebarClosed }}" hint-placeholder-val="{{ false }}"><div style="width:200px;height:40px;flex:none"></div></sc-if>
+    <form action="UserSearch.dc.html" method="get" style="flex:1;min-width:0;display:flex;justify-content:center;margin:0"><label style="width:100%;max-width:480px;height:44px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 18px;border-radius:999px;background:#fff;border:1.5px solid var(--color-divider)" style-focus-within="border-color:#9fe870"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#263B1A" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input name="q" type="search" placeholder="강의, Q&A, 게시판 검색" style="all:unset;flex:1;min-width:0;font-size:15px;color:var(--color-text)"></label></form>
+    <button class="btn btn-secondary" onClick="{{ openWords }}" style="font-weight: 600; font-size: 13px">오늘의 경제단어</button>
+    <span class="tag tag-neutral" style="font-size:13px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px"><img src="assets/cash-coin2.png" alt="캐시" style="width:18px;height:18px;flex:none">{{ cashText }}</span>
+    <button data-mb-bell="1" aria-label="알림" style="all:unset;cursor:pointer;position:relative;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none" style-hover="background:color-mix(in srgb,var(--color-text) 6%,transparent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></button>
+    <a href="UserMyPage.dc.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;font-size:14px;font-weight:500">
+      <span style="width:34px;height:34px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-800);display:grid;place-items:center;font-weight:700;font-size:13px">민</span>{{ nickname }}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 6 6 6-6 6"></path></svg>
+    </a>
+  </header>
+
+  <main style="padding:8px clamp(16px,3vw,40px) 80px;width:100%;max-width:1360px;margin:0 auto;box-sizing:border-box;display:flex;flex-direction:column;gap:18px">
+    <a href="{{ backHref }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 18px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800);font-size:14px;font-weight:700;text-decoration:none" style-hover="background:var(--color-accent-200)">← {{ catName }}</a>
+    <span style="font-size:13px;color:var(--color-neutral-700)">강의 › {{ catName }} › {{ subName }}</span>
+
+    <sc-if value="{{ ready }}" hint-placeholder-val="{{ false }}">
+    <section style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap">
+      <div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:8px">
+        <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.03em;line-height:1.35">{{ lectureTitle }}</h1>
+        <span style="font-size:14px;color:var(--color-neutral-700)">{{ teacher }} · {{ metaText }}</span>
+      </div>
+      <div style="flex:0 1 320px;min-width:230px;background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:14px 18px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:{{ stBg }};color:{{ stFg }};border:1.5px solid {{ stBorder }}">{{ stText }}</span><span style="flex:1"></span><span style="font-size:20px;font-weight:800;letter-spacing:-0.03em">{{ pct }}%</span></div>
+        <div style="height:8px;border-radius:999px;background:#EAF0E4;overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-accent);width:{{ pct }}%"></div></div>
+        <span style="font-size:12px;color:var(--color-neutral-700)">{{ progressText }}</span>
+      </div>
+    </section>
+
+    <sc-if value="{{ hasReward }}" hint-placeholder-val="{{ false }}">
+      <div style="border-radius:16px;background:var(--color-accent-400);color:var(--color-accent-800);padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="font-size:22px;font-weight:900">학습 완료!</span><span style="font-size:15px;font-weight:700">{{ rewardText }}</span><span style="font-size:12px;opacity:.8">보상은 최초 통과 때 한 번만 받아요</span>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;background:{{ nowChipBg }};color:{{ nowChipFg }};flex:none">{{ nowChip }}</span>
+          <div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:12px;font-weight:700;color:var(--color-neutral-700)">학습 {{ nowIdx }} / {{ nowTotal }}</span>
+            <span style="font-size:clamp(18px,2.2vw,22px);font-weight:800;letter-spacing:-0.03em;line-height:1.3">{{ nowTitle }}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button onClick="{{ goPrev }}" style="all:unset;box-sizing:border-box;cursor:pointer;height:42px;padding:0 18px;border-radius:999px;font-size:14px;font-weight:700;color:var(--color-accent-800);background:var(--color-accent-100);display:inline-flex;align-items:center;opacity:{{ prevOp }}" style-hover="background:var(--color-accent-200)">‹ 이전</button>
+            <button onClick="{{ goNext }}" aria-disabled="{{ nextLocked }}" title="{{ nextHint }}" style="all:unset;box-sizing:border-box;cursor:{{ nextCursor }};height:42px;padding:0 18px;border-radius:999px;font-size:14px;font-weight:800;color:{{ nextFg }};background:{{ nextBg }};border:1.5px {{ nextBorderStyle }} {{ nextBorder }};display:inline-flex;align-items:center;gap:6px;opacity:{{ nextOp }}"><sc-if value="{{ nextLocked }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></sc-if>다음 ›</button>
+          </div>
+        </div>
+
+        <sc-if value="{{ nextLocked }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:8px;margin-top:-6px;font-size:13px;font-weight:700;color:#7A5A00;background:#FBF3DA;border-radius:12px;padding:9px 14px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>{{ nextHint }}</div></sc-if>
+        <sc-if value="{{ isVideo }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#1B2B12,#34531F);color:#fff">
+              <div style="position:absolute;top:16px;left:20px;right:20px;padding-right:130px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:13px;font-weight:700;color:#B9EF8E">영상 {{ vNo }} / {{ vTotal }}</span>
+                <span style="font-size:clamp(16px,2vw,24px);font-weight:800;letter-spacing:-0.03em;line-height:1.35">{{ vTitle }}</span>
+              </div>
+              <button onClick="{{ togglePlay }}" aria-label="재생 또는 일시정지" style="all:unset;cursor:pointer;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:72px;height:72px;border-radius:50%;background:rgba(159,232,112,.95);color:#263B1A;display:grid;place-items:center" style-hover="background:#9fe870">
+                <sc-if value="{{ isPlaying }}" hint-placeholder-val="{{ false }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg></sc-if>
+                <sc-if value="{{ notPlaying }}" hint-placeholder-val="{{ true }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></sc-if></button>
+              <sc-if value="{{ vWatched }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:16px;right:20px;font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;background:#9fe870;color:#263B1A">✓ 시청 완료</span></sc-if>
+              <div style="position:absolute;left:0;right:0;bottom:0;padding:34px 20px 14px;background:linear-gradient(to top,rgba(0,0,0,.55),transparent);display:flex;flex-direction:column;gap:10px">
+                <div onClick="{{ seek }}" style="height:18px;display:flex;align-items:center;cursor:pointer"><div style="position:relative;width:100%;height:6px;border-radius:999px;background:rgba(255,255,255,.3)"><div style="height:100%;border-radius:999px;background:#9fe870;width:{{ vPct }}%"></div><span style="position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);left:{{ vPct }}%"></span></div></div>
+                <div style="display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600"><span>{{ timeText }}</span><span style="flex:1"></span><button onClick="{{ cycleRate }}" style="all:unset;cursor:pointer;height:28px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.18);font-size:12px;font-weight:700;display:inline-flex;align-items:center" style-hover="background:rgba(255,255,255,.3)">{{ rateText }}</button></div>
+              </div>
+            </div>
+            <span style="font-size:12px;color:var(--color-neutral-700);margin-top:-6px;word-break:keep-all">샘플 플레이어예요.<br>끝까지 재생하면 시청 완료로 기록되고, 마지막으로 본 위치가 저장돼요.</span>
+
+            <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;overflow:hidden">
+              <div style="display:flex;border-bottom:1px solid var(--color-divider)">
+                <button onClick="{{ showSummary }}" style="all:unset;box-sizing:border-box;cursor:pointer;flex:1;height:50px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:800;background:{{ tabSumBg }};box-shadow:inset 0 -3px 0 {{ tabSumLine }}">영상 요약글</button>
+                <button onClick="{{ showInquiry }}" style="all:unset;box-sizing:border-box;cursor:pointer;flex:1;height:50px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:800;background:{{ tabInqBg }};box-shadow:inset 0 -3px 0 {{ tabInqLine }}">강의 문의 <span style="font-size:12px;padding:1px 8px;border-radius:999px;background:var(--color-accent-100)">{{ inqCount }}</span></button>
+              </div>
+
+              <sc-if value="{{ tabSummary }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+                  <span style="font-size:12px;font-weight:700;color:#4E8A24">영상 {{ vNo }} 요약</span>
+                  <ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.75;text-wrap:pretty">
+                    <sc-for list="{{ summaryPoints }}" as="p" hint-placeholder-count="3"><li>{{ p }}</li></sc-for>
+                  </ul>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+                    <sc-if value="{{ hasNextVideo }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goNext }}" class="btn btn-primary" style="height:42px;padding:0 20px">다음 영상 보기</button></sc-if>
+                    <sc-if value="{{ lastVideo }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goQuiz }}" class="btn btn-primary" style="height:42px;padding:0 20px">영상 시청 후 퀴즈 풀기</button></sc-if>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ tabInquiry }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+                  <div style="border-radius:12px;background:var(--color-accent-100);padding:12px 16px;font-size:13px;line-height:1.6">이 강의의 강사({{ teacher }})에게 묻는 공간이에요. 작성자, 이 강의의 강사, 관리자만 볼 수 있어요.</div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <input type="text" maxlength="50" value="{{ form.title }}" onChange="{{ onInqTitle }}" placeholder="문의 제목 (50자)" style="height:46px;border:1.5px solid var(--color-divider);border-radius:12px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box;background:#fff;color:var(--color-text)">
+                    <textarea maxlength="1000" value="{{ form.body }}" onChange="{{ onInqBody }}" placeholder="궁금한 점을 적어 주세요 (1,000자)" style="min-height:96px;border:1.5px solid var(--color-divider);border-radius:12px;padding:12px 14px;font-size:15px;line-height:1.6;font-family:inherit;box-sizing:border-box;resize:vertical;background:#fff;color:var(--color-text)"></textarea>
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="flex:1;font-size:13px;font-weight:600;color:#B3261E;min-width:140px">{{ inqErr }}</span><span style="font-size:12px;color:var(--color-neutral-700)">오늘 {{ inqToday }} / 10개</span><button onClick="{{ submitInq }}" class="btn btn-primary" style="height:42px;padding:0 22px">문의 남기기</button></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <sc-for list="{{ inqRows }}" as="q" hint-placeholder-count="1">
+                      <div style="border:1px solid var(--color-divider);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;background:var(--color-bg)">
+                        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ q.stBg }};color:{{ q.stFg }}">{{ q.status }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ q.date }}</span></div>
+                        <span style="font-size:15px;font-weight:700">{{ q.title }}</span>
+                        <span style="font-size:14px;line-height:1.6;color:var(--color-neutral-800);white-space:pre-wrap">{{ q.body }}</span>
+                        <sc-if value="{{ q.hasAnswer }}"><div style="border-left:3px solid #9fe870;background:#fff;padding:10px 14px;border-radius:0 10px 10px 0;display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:800;color:#4E8A24">{{ q.answerBy }} · {{ q.answerDate }}</span><span style="font-size:14px;line-height:1.6">{{ q.answerText }}</span></div></sc-if>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ noInq }}"><div style="padding:24px;text-align:center;font-size:14px;color:var(--color-neutral-700)">아직 남긴 문의가 없어요</div></sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isOx }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:26px 28px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;background:#F2C14E;color:#263B1A">테스트 퀴즈</span><span style="font-size:20px;font-weight:800;letter-spacing:-0.03em">OX 5문제</span></div>
+            <div style="border-radius:12px;background:#FBF3DA;padding:12px 16px;font-size:13px;line-height:1.7">영상을 보기 전에 가볍게 풀어 보는 문제예요. <b>5문제에 모두 답하고 '정답 확인'을 눌러야 영상이 열리고, 영상을 모두 보면 최종 퀴즈가 열려요.</b> 틀려도 불이익이 없고, 점수·경험치·오답노트에 영향이 없어요. 횟수 제한 없이 다시 풀 수 있어요.</div>
+            <sc-for list="{{ oxRows }}" as="q" hint-placeholder-count="5">
+              <div style="border:1px solid var(--color-divider);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;background:{{ q.bg }}">
+                <div style="display:flex;align-items:flex-start;gap:12px"><span style="font-size:13px;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--color-accent-800);color:var(--color-accent-400);flex:none">{{ q.no }}</span><span style="flex:1;font-size:15px;line-height:1.6;font-weight:600">{{ q.q }}</span>
+                  <div style="display:flex;gap:6px;flex:none"><button onClick="{{ q.pickO }}" aria-label="O" style="all:unset;cursor:pointer;width:46px;height:46px;box-sizing:border-box;border-radius:12px;border:2px solid var(--color-accent-800);display:grid;place-items:center;font-weight:900;font-size:19px;background:{{ q.oBg }}">O</button><button onClick="{{ q.pickX }}" aria-label="X" style="all:unset;cursor:pointer;width:46px;height:46px;box-sizing:border-box;border-radius:12px;border:2px solid var(--color-accent-800);display:grid;place-items:center;font-weight:900;font-size:19px;background:{{ q.xBg }}">X</button></div></div>
+                <sc-if value="{{ q.showResult }}"><div style="font-size:14px;line-height:1.6;padding:10px 14px;border-radius:10px;background:#fff;border-left:3px solid {{ q.line }}"><b style="color:{{ q.resFg }}">{{ q.resText }}</b> · {{ q.exp }}</div></sc-if>
+              </div>
+            </sc-for>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><button onClick="{{ checkOx }}" class="btn btn-primary" style="height:46px;padding:0 26px;opacity:{{ oxCheckOp }}">정답 확인</button><button onClick="{{ resetOx }}" class="btn btn-secondary" style="height:46px;padding:0 22px">다시 풀기</button><span style="font-size:14px;font-weight:700">{{ oxScoreText }}</span><span style="flex:1"></span><button onClick="{{ goNext }}" style="all:unset;cursor:pointer;font-size:14px;font-weight:700;text-decoration:underline">영상 보러 가기 ›</button></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isQuiz }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:26px 28px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--color-accent-800);color:var(--color-accent-400)">최종 퀴즈</span><span style="font-size:20px;font-weight:800;letter-spacing:-0.03em">4지선다 {{ qTotal }}문제</span><span style="font-size:13px;color:var(--color-neutral-700)">70점 이상이면 통과 · 학습 완료</span></div>
+
+            <sc-if value="{{ quizLocked }}" hint-placeholder-val="{{ false }}">
+              <div style="border-radius:14px;background:var(--color-bg);border:1px solid var(--color-divider);padding:36px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="11" width="16" height="10"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+                <span style="font-size:17px;font-weight:800">영상을 모두 본 뒤에 풀 수 있어요</span>
+                <span style="font-size:14px;color:var(--color-neutral-700)">남은 영상 {{ leftVideos }}개</span>
+                <button onClick="{{ goUnwatched }}" class="btn btn-primary" style="height:44px;padding:0 24px">남은 영상 보러 가기</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ quizTaking }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ qDots }}" as="d" hint-placeholder-count="10"><button onClick="{{ d.go }}" style="all:unset;cursor:pointer;width:34px;height:34px;box-sizing:border-box;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;background:{{ d.bg }};color:{{ d.fg }};border:2px solid {{ d.border }}">{{ d.n }}</button></sc-for></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#4E8A24">문제 {{ qNo }} / {{ qTotal }}</span><span style="font-size:18px;font-weight:700;line-height:1.55">{{ qText }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ qOptions }}" as="o" hint-placeholder-count="4"><button onClick="{{ o.pick }}" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:2px solid {{ o.border }};background:{{ o.bg }};font-size:15px;line-height:1.5" style-hover="border-color:#263B1A"><span style="width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;font-weight:800;background:{{ o.markBg }};border:2px solid #263B1A">{{ o.mark }}</span>{{ o.text }}</button></sc-for></div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button onClick="{{ prevQ }}" class="btn btn-secondary" style="height:44px;padding:0 20px;opacity:{{ prevQOp }}">‹ 이전 문제</button><button onClick="{{ nextQ }}" class="btn btn-secondary" style="height:44px;padding:0 20px;opacity:{{ nextQOp }}">다음 문제 ›</button><span style="flex:1;font-size:13px;color:var(--color-neutral-700)">{{ answeredText }}</span><button onClick="{{ submitQuiz }}" class="btn btn-primary" style="height:46px;padding:0 28px;opacity:{{ submitOp }}">제출하기</button></div>
+                <span style="font-size:12px;color:var(--color-neutral-700)">제출하기 전에 이 화면을 나가면 기록되지 않고, 다시 들어오면 처음부터 시작해요.</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ quizResult }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="border-radius:14px;padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:{{ resBg }}"><span style="font-size:48px;font-weight:900;letter-spacing:-0.05em;line-height:1">{{ qScore }}<span style="font-size:20px">점</span></span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:20px;font-weight:800">{{ resTitle }}</span><span style="font-size:14px">{{ resDesc }}</span></div></div>
+                <sc-if value="{{ hasWrong }}"><div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:14px;font-weight:800">틀린 문제 · 오답노트에 저장돼요 (같은 문제는 한 번만)</span>
+                  <sc-for list="{{ wrongRows }}" as="w" hint-placeholder-count="2"><div style="border:1px solid var(--color-divider);border-radius:14px;padding:14px 16px;background:var(--color-bg);display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:700;line-height:1.55">{{ w.no }}. {{ w.q }}</span><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:4px"><div style="display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-radius:12px;background:#FCE8E6;border:1.5px solid #F2B8B5"><span style="font-size:12px;font-weight:800;color:#B3261E">✕ 내 답</span><span style="font-size:15px;font-weight:700;color:#8C1D18">{{ w.mine }}</span></div><div style="display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-radius:12px;background:#EAF7D8;border:1.5px solid #9fe870"><span style="font-size:12px;font-weight:800;color:#2F5711">✓ 정답</span><span style="font-size:15px;font-weight:800;color:#263B1A">{{ w.correct }}</span></div></div><div style="display:flex;gap:8px;padding:10px 14px;border-radius:12px;background:#fff;font-size:13px;line-height:1.6;color:#263B1A"><b style="flex:none">해설</b><span>{{ w.exp }}</span></div></div></sc-for></div></sc-if>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ retryQuiz }}" class="btn btn-primary" style="height:46px;padding:0 24px">다시 풀기</button><a href="{{ backHref }}" class="btn btn-secondary" style="height:46px;padding:0 22px;text-decoration:none;display:inline-flex;align-items:center">강의 목록으로</a></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside style="flex:0 1 320px;width:320px;max-width:100%;position:sticky;top:84px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box">
+        <div style="background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:16px;font-weight:800;flex:1">강의 목차</h3><span style="font-size:13px;font-weight:700">{{ doneN }} / {{ totalN }}</span></div>
+          <div style="height:6px;border-radius:999px;background:#EAF0E4;overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-accent);width:{{ pct }}%"></div></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+              <div style="border:1.5px solid {{ g.line }};border-radius:14px;overflow:hidden;background:#fff">
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:{{ g.headBg }}">
+                  <span style="width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;font-weight:900;background:{{ g.numBg }};color:{{ g.numFg }}">{{ g.num }}</span>
+                  <span style="flex:1;min-width:0;font-size:15px;font-weight:800;line-height:1.3">{{ g.title }}</span>
+                  <span style="font-size:12px;font-weight:800;padding:2px 10px;border-radius:999px;background:#fff;flex:none">{{ g.count }}</span>
+                </div>
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+                  <button onClick="{{ r.go }}" style="all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px 12px 11px;border-top:1px solid #EEF1EA;border-left:3px solid {{ r.bar }};background:{{ r.bg }};opacity:{{ r.op }}" style-hover="background:#F3F9EA">
+                    <span style="width:22px;height:22px;border-radius:50%;flex:none;box-sizing:border-box;display:grid;place-items:center;font-size:11px;font-weight:900;background:{{ r.markBg }};border:2px solid {{ r.markLine }};color:#263B1A">{{ r.mark }}</span>
+                    <span style="flex:1;min-width:0;font-size:14px;font-weight:{{ r.fw }};line-height:1.45;color:#263B1A;text-wrap:pretty">{{ r.title }}</span>
+                    <span style="flex:none;font-size:12px;color:var(--color-neutral-700);white-space:nowrap">{{ r.sub }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:{{ doneRowBg }};border:1.5px dashed var(--color-divider)"><span style="width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;font-weight:900;background:{{ doneMarkBg }};border:2px solid #263B1A">{{ doneMark }}</span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:800">학습 완료</span><span style="font-size:12px;color:var(--color-neutral-700)">영상을 모두 보고 퀴즈 70점 이상</span></span></div>
+          </div>
+        </div>
+        <button onClick="{{ openInquiry }}" style="all:unset;box-sizing:border-box;cursor:pointer;background:#fff;border:1.5px dashed var(--color-divider);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px" style-hover="border-color:#263B1A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg><span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:800">강의 문의</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ teacher }}에게 질문하기 · 내 문의 {{ inqCount }}개</span></span></button>
+      </aside>
+    </div>
+    </sc-if>
+    <sc-if value="{{ toastMsg }}" hint-placeholder-val="{{ false }}"><div style="position:fixed;left:50%;bottom:36px;transform:translateX(-50%);z-index:120;padding:12px 22px;border-radius:999px;background:#263B1A;color:#fff;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2)">{{ toastMsg }}</div></sc-if>
+  </main>
+  <sc-if value="{{ lockOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeLock }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(400px,100%);border-radius:20px;padding:28px;gap:14px;background:var(--color-bg);align-items:center;text-align:center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="11" width="16" height="10"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span style="font-weight:800;font-size:20px">{{ lockName }}은(는) Lv.{{ lockReq }}부터 열려요</span>
+        <span style="font-size:14px;color:var(--color-neutral-700);word-break:keep-all">지금은 Lv.{{ level }} {{ house }}예요.<br>강의를 완료하고 경험치를 모아 보세요.</span>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn btn-secondary" onClick="{{ closeLock }}">닫기</button>
+          <a href="UserLectureCategory.dc.html" class="btn btn-primary" onClick="{{ closeLock }}" style="text-decoration:none">강의 들으러 가기</a>
+          <sc-if value="{{ lockIsSub }}"><a href="UserDemoHousingSubscription.dc.html" class="btn btn-secondary" style="text-decoration:none">미리 둘러보기</a></sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ wordsOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeWords }}" style="z-index:50">
+      <div class="dialog elev-lg" onClick="{{ stop }}" style="width:min(520px,100%);border-radius:20px;padding:28px;gap:16px;background:var(--color-bg);max-height:calc(100vh - 32px);overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="tag tag-accent">오늘의 경제단어</span>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-icon" onClick="{{ closeWords }}" aria-label="닫기" style="color:var(--color-text)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ words }}" as="w" hint-placeholder-count="5">
+            <div style="padding:12px 0;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px">
+              <span style="font-family:var(--font-heading);font-weight:700;font-size:17px">{{ w.term }}</span>
+              <span style="font-size:14px;line-height:1.5;color:var(--color-neutral-800);text-wrap:pretty">{{ w.desc }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="dialog-actions" style="margin-top:0">
+          <button class="btn btn-ghost" onClick="{{ hideToday }}" style="color:var(--color-neutral-700)">오늘 하루 보지 않기</button>
+          <button class="btn btn-primary" onClick="{{ closeWords }}">확인</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;nickname&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;민지&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;level&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;사용자 상태&quot;},&quot;streak&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:0,&quot;max&quot;:30,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;사용자 상태&quot;},&quot;invReq&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:8,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;잠금 레벨&quot;},&quot;subReq&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;잠금 레벨&quot;}}">
+class Component extends DCLogic {
+  state = { sidebarOpen: false, lectureOpen: true, trainingOpen: true, myOpen: false, streak: null, checkedIn: false, cash: 12400, wordsOpen: false, lock: null, cat: 'money', activeSub: 0 };
+  componentDidMount() {
+    const qp = new URLSearchParams(location.search); this.setState({ detailTitle: qp.get('title') || '강의', detailSub: Number(qp.get('sub')) || 1 }); this.initLecture(qp); this._tick = setInterval(() => this.tick(), 250);
+    const q = new URLSearchParams(location.search).get('cat');
+    if (q === 'estate') this.setState({ cat: 'estate' });
+    this._onScroll = () => {
+      const ids = this.catData().subs.map((_, i) => 's' + (i + 1));
+      let cur = 0;
+      ids.forEach((id, i) => { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top < 180) cur = i; });
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = ids.length - 1;
+      if (cur !== this.state.activeSub) this.setState({ activeSub: cur });
+    };
+    
+  }
+  componentWillUnmount() { window.removeEventListener('scroll', this._onScroll); clearInterval(this._tick); }
+  scrollToSub(id, smooth) { const el = document.getElementById(id); if (!el) return; window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 136, behavior: smooth === false ? 'auto' : 'smooth' }); }
+  catData(key) {
+    const L = (title, teacher, videos, quiz, status, extra) => ({ title, teacher, videos, quiz, status, ...(extra || {}) });
+    const C = {
+      money: { name: '자본 증액', desc: '월급 관리부터 ETF까지, 내 집 마련 자금을 불리는 방법을 차례대로 배워요.', subs: [
+        { name: '월급 쪼개기', desc: '월급이 들어오면 먼저 나누는 습관', items: [L('통장 3개로 월급 나누기 (월급·생활비·비상금)', '한지수 강사', 3, 10, 'done'), L('비상금은 얼마나 모아야 할까', '한지수 강사', 2, 10, 'done'), L('새는 고정비 줄이기', '오민재 강사', 3, 10, 'doing', { watched: 2 })] },
+        { name: '예금·적금', desc: '가장 안전하게 돈을 모으는 방법', items: [L('예금과 적금, 뭐가 다를까', '박서연 강사', 2, 10, 'done'), L('이자는 어떻게 계산될까', '박서연 강사', 3, 12, 'done'), L('중도해지하면 생기는 일', '오민재 강사', 1, 8, 'todo'), L('청년 정책 적금 알아보기', '박서연 강사', 2, 10, 'todo', { baseDate: '2026.10' })] },
+        { name: '국내 주식', desc: '주식이 무엇인지부터 차근차근', items: [L('주식은 회사의 조각이다', '이도현 강사', 2, 10, 'todo'), L('증권 계좌와 주문 방법', '이도현 강사', 3, 10, 'todo')] },
+        { name: '미국 주식', desc: '환율까지 함께 보는 해외 투자', items: [L('미국 주식을 사는 방법', '정하린 강사', 2, 10, 'todo'), L('환율과 해외 주식 세금', '정하린 강사', 3, 12, 'todo')] },
+        { name: 'ETF·분산 투자', desc: '한 바구니에 담지 않는 투자', items: [L('ETF와 펀드, 채권', '이도현 강사', 3, 10, 'todo'), L('분산 투자로 위험 줄이기', '정하린 강사', 2, 10, 'todo'), L('코인과 위험', '오민재 강사', 2, 8, 'todo')] }
+      ] },
+      estate: { name: '부동산', desc: '청약부터 전·월세, 대출까지 첫 집을 구하는 과정을 배워요.', subs: [
+        { name: '청약', desc: '내 집 마련의 첫 단추', items: [L('청약통장 기초와 가점 계산', '박서연 강사', 3, 10, 'done')] },
+        { name: '전·월세', desc: '계약 전에 꼭 확인할 것들', items: [] },
+        { name: '대출', desc: '내게 맞는 대출 고르기', items: [] }
+      ] }
+    };
+    return C[key || this.state.cat || 'money'];
+  }
+  AUTH = {
+    videos: [
+      { title: '청약통장이 뭐예요?', min: 8, summary: ['청약통장은 아파트 분양을 신청할 때 쓰는 통장이에요.', '매달 일정 금액을 넣으며 가입 기간과 납입 횟수를 쌓아요.', '이 서비스에서는 회원가입과 동시에 가상 청약통장이 자동으로 만들어져요.'] },
+      { title: '가점은 어떻게 계산할까', min: 14, summary: ['가점은 무주택 기간(32점), 부양가족 수(35점), 청약통장 가입 기간(17점)을 더해 최대 84점이에요.', '항목마다 점수표가 달라서 기간과 인원을 정확히 세는 것이 중요해요.', '가점이 높을수록 가점제 당첨에 유리해요.'] },
+      { title: '내 가점 직접 계산해 보기', min: 18, summary: ['예) 무주택 5년 이상 6년 미만(12점) + 부양가족 2명(15점) + 가입 4년 이상(6점) = 33점.', '가입 기간과 납입 횟수는 매달 꾸준히 넣을수록 쌓여요.', '내 상황을 점수표에 하나씩 대입해 보면 어느 항목을 더 키울지 보여요.'] }
+    ],
+    ox: [
+      ['청약 가점의 만점은 84점이다.', 'O', '무주택 기간 32점 + 부양가족 수 35점 + 가입 기간 17점 = 84점이에요.'],
+      ['가점 항목 중 부양가족 수의 최대 점수가 가장 높다.', 'O', '부양가족 수는 35점으로 세 항목 중 가장 커요.'],
+      ['청약통장 가입 기간은 길수록 점수가 낮아진다.', 'X', '가입 기간은 길수록 점수가 높아져요.'],
+      ['무주택 기간은 가점 계산에 들어가지 않는다.', 'X', '무주택 기간은 최대 32점이 걸린 항목이에요.'],
+      ['가점제에서는 가점이 높은 사람이 유리하다.', 'O', '가점이 높을수록 당첨에 유리해요.']
+    ],
+    quiz: [
+      ['청약 가점 항목이 아닌 것은?', ['무주택 기간', '부양가족 수', '청약통장 가입 기간', '연 소득'], 3, '가점은 무주택 기간, 부양가족 수, 가입 기간 세 가지로 계산해요.'],
+      ['무주택 기간 가점의 만점은?', ['17점', '32점', '35점', '84점'], 1, '무주택 기간은 32점 만점이에요.'],
+      ['부양가족 수 가점의 만점은?', ['17점', '32점', '35점', '84점'], 2, '부양가족 수는 35점 만점이에요.'],
+      ['청약통장 가입 기간 가점의 만점은?', ['17점', '32점', '35점', '84점'], 0, '가입 기간은 17점 만점이에요.'],
+      ['가점의 전체 만점은?', ['84점', '100점', '64점', '70점'], 0, '32 + 35 + 17 = 84점이에요.'],
+      ['부양가족 2명의 가점은?', ['10점', '15점', '20점', '25점'], 1, '0명 5점부터 1명마다 5점씩 올라 2명은 15점이에요.'],
+      ['무주택 기간 5년 이상 6년 미만의 가점은?', ['8점', '10점', '12점', '14점'], 2, '5년 이상 6년 미만은 12점이에요.'],
+      ['무주택 12점 + 부양가족 15점 + 가입 기간 6점의 합계는?', ['33점', '31점', '35점', '38점'], 0, '12 + 15 + 6 = 33점이에요.'],
+      ['이 서비스에서 가상 청약통장은 언제 만들어질까?', ['직접 신청해야 해요', '회원가입과 동시에 자동으로', '레벨 12가 되면', '만들어지지 않아요'], 1, '회원가입과 동시에 가상 청약통장이 만들어져요.'],
+      ['가점을 높이는 방법으로 알맞은 것은?', ['매달 꾸준히 납입해 가입 기간과 횟수를 쌓는다', '통장을 자주 해지한다', '부양가족을 줄인다', '무주택 기간을 초기화한다'], 0, '꾸준히 납입할수록 가입 기간과 납입 횟수가 쌓여요.']
+    ],
+    inq: [{ id: 1, title: '부양가족 수에 부모님도 포함되나요?', body: '함께 살고 있지 않으면 어떻게 되나요?', date: '2026.11.02', answer: { by: '박서연 강사', text: '직계존속은 일정 기간 이상 같은 주소에서 함께 살아야 포함돼요. 2강의 점수표를 한 번 더 확인해 보세요.', date: '2026.11.03' } }]
+  };
+  contentFor(item) {
+    if (item.title === '청약통장 기초와 가점 계산') {
+      const A = this.AUTH;
+      return { videos: A.videos, ox: A.ox.map(x => ({ q: x[0], a: x[1], exp: x[2] })), quiz: A.quiz.map(x => ({ q: x[0], options: x[1], answer: x[2], exp: x[3] })), inq: A.inq, sample: false };
+    }
+    const vt = ['핵심 개념 이해', '사례로 살펴보기', '정리와 적용'], mins = [8, 12, 10];
+    const videos = Array.from({ length: item.videos }, (_, i) => ({ title: vt[i % 3], min: mins[i % 3], summary: ['이 영상은 ' + item.title + '의 ' + vt[i % 3] + ' 부분이에요.', '핵심 용어와 순서를 메모하며 들어 보세요.', '영상을 다 본 뒤 요약글로 한 번 더 복습해요.'] }));
+    const ox = [['영상을 모두 본 뒤에 최종 퀴즈를 풀어요.', 'O', '퀴즈는 영상 시청 후에 열려요.'], ['테스트 퀴즈에서 틀리면 오답노트에 저장된다.', 'X', '테스트 퀴즈는 점수·경험치·오답노트에 영향이 없어요.'], ['테스트 퀴즈는 여러 번 풀 수 있다.', 'O', '횟수 제한이 없어요.'], ['최종 퀴즈에서 틀린 문제는 오답노트에 저장된다.', 'O', '틀린 문제만 한 번씩 저장돼요.'], ['퀴즈 보상은 통과할 때마다 받는다.', 'X', '보상은 최초 통과 때 한 번만 받아요.']].map(x => ({ q: x[0], a: x[1], exp: x[2] }));
+    const B = [['퀴즈 통과 기준 점수는?', ['50점', '60점', '70점', '90점'], 2, '70점 이상이면 통과해요.'], ['퀴즈를 다시 풀 수 있는 횟수는?', ['1회', '3회까지', '횟수 제한 없음', '하루 1번'], 2, '재응시는 횟수 제한이 없어요.'], ['퀴즈 보상은 언제 받을까?', ['통과할 때마다', '최초 통과 때 한 번', '만점일 때만', '받지 않아요'], 1, '보상은 최초 통과 때 한 번만 받아요.'], ['틀린 문제가 저장되는 곳은?', ['오답노트', '스크랩', '랭킹', '출석'], 0, '틀린 문제는 오답노트에 모여요.'], ['같은 문제가 오답노트에 저장되는 방식은?', ['매번 새로 저장', '한 번만 저장', '저장되지 않음', '하루에 한 번'], 1, '같은 문제는 한 번만 저장돼요.'], ['학습 완료의 조건은?', ['영상만 시청', '퀴즈 통과', '문의 작성', '스크랩'], 1, '퀴즈를 통과하면 학습 완료예요.'], ['제출하기 전에 퀴즈 화면을 나가면?', ['점수가 기록돼요', '처음부터 다시 시작해요', '자동 제출돼요', '오답이 저장돼요'], 1, '기록하지 않고, 다시 들어오면 처음부터예요.'], ['테스트 퀴즈는 언제 풀까?', ['영상 시청 전', '영상 시청 후', '시즌이 끝날 때', '레벨업할 때'], 0, '영상 시청 전에 가볍게 풀어요.'], ['강의 문의는 누가 볼 수 있을까?', ['모든 회원', '작성자·강사·관리자', '작성자만', '비회원도'], 1, '작성자, 그 강의의 강사, 관리자만 볼 수 있어요.'], ['영상 이어보기는 어떻게 될까?', ['처음부터', '마지막으로 본 위치부터', '다음 영상부터', '불가능'], 1, '마지막으로 본 영상과 위치를 저장해요.']];
+    const quiz = Array.from({ length: item.quiz }, (_, i) => { const x = B[i % B.length]; return { q: x[0], options: x[1], answer: x[2], exp: x[3] }; });
+    return { videos, ox, quiz, inq: [], sample: true };
+  }
+  initLecture(qp) {
+    const cat = qp.get('cat') || 'money', subNo = Number(qp.get('sub')) || 1, title = qp.get('title') || '';
+    const cd = this.catData(cat), sub = cd.subs[subNo - 1] || cd.subs[0];
+    let item = sub && sub.items.find(x => x.title === title);
+    const resume = qp && qp.get && qp.get('resume') === '1', rv = qp && qp.get ? Number(qp.get('v')) : NaN;
+    if (!item && resume && title) item = { ...((sub && sub.items[0]) || {}), title, videos: 3, quiz: 10, status: 'doing', watched: rv >= 1 ? rv - 1 : 1 };
+    if (!item) item = (sub && sub.items[0]) || { title: title || '강의', teacher: '', videos: 3, quiz: 10, status: 'todo' };
+    const content = this.contentFor(item), n = content.videos.length;
+    let pr = null;
+    try { pr = JSON.parse(localStorage.getItem('mb-lecture-progress') || '{}')[item.title] || null; } catch (e) {}
+    const done = item.status === 'done';
+    const w = Array.from({ length: n }, (_, i) => (pr && pr.w ? !!pr.w[i] : (done || (item.status === 'doing' && i < (item.watched || 0)))));
+    const p = Array.from({ length: n }, (_, i) => (w[i] ? 1 : (pr && pr.p && pr.p[i]) || 0));
+    const first = w.indexOf(false);
+    const oxDone = resume || (pr && pr.ox != null ? !!pr.ox : (done || w.some(Boolean)));
+    this.setState({ lec: { item, content, view: !oxDone ? 'ox' : (resume && rv >= 1 && rv <= n) ? 'v' + (rv - 1) : first < 0 ? 'v0' : 'v' + first, w, p, playing: false, rate: 1, oxAns: [], oxChecked: false, oxPassed: oxDone, qAns: [], qi: 0, qDone: false, qScore: null, qWrong: [], passed: pr ? !!pr.passed : done, best: pr && pr.best != null ? pr.best : null, reward: null, tab: 'summary', inq: this.storedQna(cat, subNo, item.title).concat(content.inq), qCat: cat, qSub: subNo, form: { title: '', body: '' }, inqErr: '' } });
+  }
+  storedQna(cat, sub, title) { try { const v = JSON.parse(localStorage.getItem('mb-my-qna') || 'null'); return Array.isArray(v) ? v.filter(q => q.lecture && q.lecture.cat === cat && Number(q.lecture.sub) === Number(sub) && q.lecture.title === title) : []; } catch (e) { return []; } }
+  saveQna(q) { try { let v = JSON.parse(localStorage.getItem('mb-my-qna') || 'null'); if (!Array.isArray(v)) v = [{ id: 1, title: '청약통장은 언제부터 납입할 수 있나요?', body: '레벨 제한이 있는지 궁금해요.', date: '2026.11.01', lecture: { cat: 'estate', sub: 1, title: '청약통장 기초와 가점 계산' }, answer: { by: '관리자', text: '청약통장 납입은 레벨과 상관없이 하루 1회 가능해요.' } }]; v.unshift(q); localStorage.setItem('mb-my-qna', JSON.stringify(v)); } catch (e) {} }
+  persist() {
+    const L = this.state.lec; if (!L) return;
+    try { const prev = (JSON.parse(localStorage.getItem('mb-lecture-progress') || '{}')[L.item.title] || {}).w || []; const nNow = L.w.filter(Boolean).length; if (nNow > prev.filter(Boolean).length || (nNow > 0 && !prev.length && this._sawPlay)) { const t = new Date(); localStorage.setItem('mb-attend-date', t.getFullYear() + '-' + (t.getMonth() + 1) + '-' + t.getDate()); } } catch (e) {}
+    try { const all = JSON.parse(localStorage.getItem('mb-lecture-progress') || '{}'); all[L.item.title] = { w: L.w, p: L.p, passed: L.passed, best: L.best, ox: !!(L.oxChecked || L.oxPassed) }; localStorage.setItem('mb-lecture-progress', JSON.stringify(all)); } catch (e) {}
+  }
+  upd(patch, save) { this.setState(x => ({ lec: { ...x.lec, ...(typeof patch === 'function' ? patch(x.lec) : patch) } }), () => { if (save !== false) this.persist(); }); }
+  toast(m) { this.setState({ toastMsg: m }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toastMsg: '' }), 2600); }
+  tick() {
+    const L = this.state.lec; if (!L || !L.playing || L.view.charAt(0) !== 'v') return;
+    const i = Number(L.view.slice(1)), p = L.p.slice(), w = L.w.slice();
+    p[i] = Math.min(1, (p[i] || 0) + 0.25 * L.rate / 40);
+    let playing = true, done = false;
+    if (p[i] >= 1) { p[i] = 1; playing = false; if (!w[i]) { w[i] = true; done = true; } }
+    this.setState({ lec: { ...L, p, w, playing } }, () => { if (done) { this.persist(); this.toast('영상 ' + (i + 1) + ' 시청을 완료했어요'); } else if (Math.round(p[i] * 160) % 8 === 0) this.persist(); });
+  }
+  setView(v) {
+    const L0 = this.state.lec;
+    if (L0 && v.charAt(0) === 'v' && !(L0.oxChecked || L0.oxPassed)) { this.toast('시청 전 테스트(OX)를 먼저 완료해야 영상이 열려요'); if (L0.view !== 'ox') this.setState(x => ({ lec: { ...x.lec, view: 'ox', playing: false } })); return; }
+    if (L0 && v === 'quiz' && !(L0.oxChecked || L0.oxPassed)) { this.toast('시청 전 테스트(OX)를 먼저 완료해 주세요'); return; }
+    this.setState(x => { const L = x.lec, reset = L.view === 'quiz' && !L.qDone ? { qAns: [], qi: 0 } : {}; return { lec: { ...L, ...reset, view: v, playing: false } }; }, () => this.persist()); }
+  badText(t) { return /(01[016789][-\s]?\d{3,4}[-\s]?\d{4})|(@[\w.-]+\.\w{2,})|(카톡|오픈채팅|open\.kakao|t\.me)|(씨발|병신|개새끼|존나)/i.test(t || ''); }
+  detailVals() {
+    const s = this.state, L = s.lec;
+    if (!L) return { ready: false, toastMsg: s.toastMsg || '' };
+    const C = L.content, n = C.videos.length, isV = L.view.charAt(0) === 'v', vi = isV ? Number(L.view.slice(1)) : -1;
+    const allW = L.w.every(Boolean), wN = L.w.filter(Boolean).length, leftV = n - wN;
+    const steps = [{ key: 'ox', type: 'ox' }].concat(C.videos.map((v, i) => ({ key: 'v' + i, type: 'video', i }))).concat([{ key: 'quiz', type: 'quiz' }]);
+    const curIdx = steps.findIndex(x => x.key === L.view);
+    const total = n + 1, doneN = wN + (L.passed ? 1 : 0), pct = Math.round(doneN / total * 100);
+    const stateOf = st => st.type === 'ox' ? ((L.oxChecked || L.oxPassed) ? 'done' : 'todo') : st.type === 'video' ? (L.w[st.i] ? 'done' : (!(L.oxChecked || L.oxPassed) ? 'lock' : 'todo')) : (L.passed ? 'done' : (!allW || !(L.oxChecked || L.oxPassed) ? 'lock' : 'todo'));
+    const chipOf = { ox: ['테스트', '#FBEFC9', '#7A5A00'], video: ['영상', '#EAF7D8', '#263B1A'], quiz: ['퀴즈', '#263B1A', '#9fe870'] };
+    const outline = steps.map(st => {
+      const cur = st.key === L.view, ss = stateOf(st), c = chipOf[st.type];
+      const title = st.type === 'ox' ? 'OX 5문제 · 시청 전 맛보기' : st.type === 'video' ? C.videos[st.i].title : '4지선다 ' + C.quiz.length + '문제';
+      const sub = st.type === 'ox' ? '불이익 없음' : st.type === 'video' ? (st.i + 1) + '강 · ' + C.videos[st.i].min + '분 · 요약글' : (ss === 'lock' ? '영상 시청 후 열려요' : '70점 이상 통과');
+      return { chip: c[0], chipBg: c[1], chipFg: c[2], title, sub, mark: ss === 'done' ? '✓' : cur ? '▶' : '', markBg: ss === 'done' ? '#9fe870' : '#fff', markLine: ss === 'lock' ? '#C9D3C1' : '#263B1A', bg: cur ? '#EAF7D8' : '#fff', line: cur ? '#263B1A' : 'var(--color-divider)', op: ss === 'lock' && !cur ? 0.6 : 1, go: () => this.setView(st.key) };
+    });
+    const nowItem = outline[curIdx] || outline[0], nowC = chipOf[steps[Math.max(curIdx, 0)].type];
+    const mk = (idxs, num, title, note, head, line, numBg, numFg) => {
+      const items = idxs.map(x => { const o = outline[x], cur = steps[x].key === L.view; return { ...o, fw: cur ? 800 : 600, bg: cur ? '#EAF7D8' : '#fff', bar: cur ? '#263B1A' : 'transparent', title: steps[x].type === 'ox' ? 'OX 5문제' : steps[x].type === 'quiz' ? '4지선다 ' + C.quiz.length + '문제' : o.title, sub: steps[x].type === 'video' ? (stateOf(steps[x]) === 'lock' ? '잠김' : C.videos[steps[x].i].min + '분') : steps[x].type === 'quiz' && stateOf(steps[x]) === 'lock' ? '잠김' : steps[x].type === 'quiz' ? '70점↑' : '' }; });
+      const dn = idxs.filter(x => stateOf(steps[x]) === 'done').length;
+      return { num, title, note, headBg: head, line, numBg, numFg, count: dn + '/' + idxs.length, items };
+    };
+    const vIdx = steps.map((s, x) => s.type === 'video' ? x : -1).filter(x => x >= 0);
+    const groups = [
+      mk([0], '1', '시청 전 테스트', '', '#FBF3DA', '#F2C14E', '#F2C14E', '#263B1A'),
+      mk(vIdx, '2', '강의 영상', '', '#EAF7D8', '#9fe870', '#9fe870', '#263B1A'),
+      mk([steps.length - 1], '3', '최종 퀴즈', '', '#F2F4EF', '#D5E1CC', '#263B1A', '#9fe870')
+    ];
+    const stepNav0 = steps.map(st => {
+      const cur = st.key === L.view, ss = stateOf(st), text = st.type === 'ox' ? 'OX' : st.type === 'video' ? String(st.i + 1) : 'Q';
+      return { text, label: st.key, bg: cur ? '#263B1A' : ss === 'done' ? '#9fe870' : '#fff', fg: cur ? '#9fe870' : '#263B1A', border: ss === 'done' || cur ? '#263B1A' : '#D5E1CC', op: ss === 'lock' && !cur ? 0.55 : 1, go: () => this.setView(st.key) };
+    });
+    const out = {
+      ready: true, toastMsg: s.toastMsg || '', teacher: L.item.teacher || '', lectureTitle: L.item.title,
+      metaText: '영상 ' + n + '개 · 퀴즈 ' + C.quiz.length + '문제' + (C.sample ? ' · 예시 문제' : ''),
+      stText: L.passed ? '✓ 학습 완료' : wN > 0 ? '학습 중' : '시작 전', stBg: L.passed ? '#9fe870' : wN > 0 ? '#fff' : '#EEF0EC', stFg: wN > 0 || L.passed ? '#263B1A' : '#687161', stBorder: L.passed || wN > 0 ? '#9fe870' : '#EEF0EC',
+      pct, progressText: '영상 ' + wN + '/' + n + ' 시청 · 퀴즈 ' + (L.passed ? '통과' + (L.best != null ? ' (최고 ' + L.best + '점)' : '') : '미통과'),
+      doneN, totalN: total, groups, nowChip: nowC[0], nowChipBg: nowC[1], nowChipFg: nowC[2], nowIdx: curIdx + 1, nowTotal: steps.length, nowTitle: nowItem.title, hasReward: !!L.reward, rewardText: L.reward ? '경험치 +' + L.reward.xp + ' XP · 캐시 +' + L.reward.cash.toLocaleString() : '',
+      goPrev: () => { if (curIdx > 0) this.setView(steps[curIdx - 1].key); }, goNext: () => { if (curIdx < steps.length - 1) this.setView(steps[curIdx + 1].key); },
+      prevOp: curIdx > 0 ? 1 : 0.4, nextOp: curIdx < steps.length - 1 ? 1 : 0.4,
+      ...(() => { const nx = steps[curIdx + 1], oxOk = !!(L.oxChecked || L.oxPassed), lk = !!nx && (nx.type === 'video' ? !oxOk : nx.type === 'quiz' ? !(oxOk && allW) : false);
+        const hint = !nx ? '' : nx.type === 'video' && !oxOk ? '시청 전 테스트(OX)를 먼저 완료해야 영상이 열려요' : nx.type === 'quiz' ? (!oxOk ? '시청 전 테스트(OX)를 먼저 완료해 주세요' : '영상을 모두 시청해야 최종 퀴즈가 열려요') : '';
+        return lk ? { nextLocked: true, nextHint: hint, nextBg: '#ECEFE8', nextFg: '#8A9382', nextBorder: '#D5E1CC', nextBorderStyle: 'dashed', nextCursor: 'not-allowed' } : { nextLocked: false, nextHint: '', nextBg: '#9fe870', nextFg: '#263B1A', nextBorder: 'transparent', nextBorderStyle: 'solid', nextCursor: 'pointer' }; })(),
+      isVideo: isV, isOx: L.view === 'ox', isQuiz: L.view === 'quiz',
+      doneRowBg: L.passed ? '#EAF7D8' : '#fff', doneMarkBg: L.passed ? '#9fe870' : '#fff', doneMark: L.passed ? '✓' : '',
+      openInquiry: () => { this.setState(x => ({ lec: { ...x.lec, view: x.lec.view.charAt(0) === 'v' ? x.lec.view : 'v0', playing: false, tab: 'inquiry' } })); },
+      goQuiz: () => this.setView('quiz')
+    };
+    // video
+    if (isV) {
+      const v = C.videos[vi], p = L.p[vi] || 0, tot = v.min * 60;
+      const fm = sec => { sec = Math.floor(sec); return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0'); };
+      Object.assign(out, {
+        vNo: vi + 1, vTotal: n, vTitle: v.title, vPct: Math.round(p * 100), vWatched: !!L.w[vi], isPlaying: L.playing, notPlaying: !L.playing, timeText: fm(p * tot) + ' / ' + fm(tot), rateText: L.rate + 'x',
+        togglePlay: () => this.upd(x => ({ playing: !x.playing, p: x.p.map((q, j) => (j === vi && q >= 1 && !x.playing ? 0 : q)) })),
+        cycleRate: () => this.upd(x => ({ rate: x.rate === 1 ? 1.5 : x.rate === 1.5 ? 2 : 1 }), false),
+        seek: e => { const r = e.currentTarget.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); this.upd(x => ({ p: x.p.map((q, j) => (j === vi ? f : q)) })); },
+        summaryPoints: v.summary, hasNextVideo: vi < n - 1, lastVideo: vi === n - 1,
+        tabSummary: L.tab === 'summary', tabInquiry: L.tab === 'inquiry', tabSumBg: L.tab === 'summary' ? '#fff' : '#F7FAF3', tabInqBg: L.tab === 'inquiry' ? '#fff' : '#F7FAF3', tabSumLine: L.tab === 'summary' ? '#9fe870' : 'transparent', tabInqLine: L.tab === 'inquiry' ? '#9fe870' : 'transparent',
+        showSummary: () => this.upd({ tab: 'summary' }, false), showInquiry: () => this.upd({ tab: 'inquiry' }, false),
+        inqCount: L.inq.length, inqToday: L.inq.filter(q => q.date === '2026.11.03').length, noInq: L.inq.length === 0, form: L.form, inqErr: L.inqErr,
+        onInqTitle: e => this.upd(x => ({ form: { ...x.form, title: e.target.value }, inqErr: '' }), false), onInqBody: e => this.upd(x => ({ form: { ...x.form, body: e.target.value }, inqErr: '' }), false),
+        inqRows: L.inq.map(q => ({ title: q.title, body: q.body, date: q.date, status: q.answer ? '답변 완료' : '답변 대기', stBg: q.answer ? '#9fe870' : '#FFF0D6', stFg: q.answer ? '#263B1A' : '#8A4B00', hasAnswer: !!q.answer, answerBy: q.answer ? q.answer.by : '', answerDate: q.answer ? q.answer.date : '', answerText: q.answer ? q.answer.text : '' })),
+        submitInq: () => {
+          const f = L.form, t = f.title.trim(), b = f.body.trim();
+          if (!t || !b) return this.upd({ inqErr: '제목과 내용을 입력해 주세요' }, false);
+          if (L.inq.filter(q => q.date === '2026.11.03').length >= 10) return this.upd({ inqErr: '하루에 10개까지 문의할 수 있어요' }, false);
+          if (this.badText(t) || this.badText(b)) return this.upd({ inqErr: '사용할 수 없는 표현이나 외부 연락처가 포함돼 있어요' }, false);
+          const nq = { id: Date.now(), title: t, body: b, date: '2026.11.03', answer: null, lecture: { cat: L.qCat, sub: L.qSub, title: L.item.title } }; this.saveQna(nq);
+          this.upd(x => ({ inq: [nq].concat(x.inq), form: { title: '', body: '' }, inqErr: '' }), false); this.toast('문의를 남겼어요. 강사가 답변하면 알려 드려요');
+        }
+      });
+    }
+    // OX
+    if (L.view === 'ox') {
+      const allA = C.ox.every((q, i) => L.oxAns[i]);
+      const okN = C.ox.filter((q, i) => L.oxAns[i] === q.a).length;
+      Object.assign(out, {
+        oxRows: C.ox.map((q, i) => { const a = L.oxAns[i], ok = a === q.a; return { no: i + 1, q: q.q, exp: q.exp, oBg: a === 'O' ? '#9fe870' : '#fff', xBg: a === 'X' ? '#9fe870' : '#fff', bg: L.oxChecked ? (ok ? '#F4FBEC' : '#FDF4F3') : '#F7FAF3', showResult: L.oxChecked, resText: ok ? '정답' : '오답 · 정답은 ' + q.a, resFg: ok ? '#2F5711' : '#B3261E', line: ok ? '#9fe870' : '#E7A19B', pickO: () => this.upd(x => ({ oxAns: Object.assign(x.oxAns.slice(), { [i]: 'O' }), oxChecked: false }), false), pickX: () => this.upd(x => ({ oxAns: Object.assign(x.oxAns.slice(), { [i]: 'X' }), oxChecked: false }), false) }; }),
+        checkOx: () => { if (allA) this.upd({ oxChecked: true }); else this.toast('5문제에 모두 답해 주세요'); }, oxCheckOp: allA ? 1 : 0.5, resetOx: () => this.upd({ oxAns: [], oxChecked: false }, false),
+        oxScoreText: L.oxChecked ? okN + ' / ' + C.ox.length + '문제 맞았어요 · 기록되지 않아요' : ''
+      });
+    }
+    // Quiz
+    if (L.view === 'quiz') {
+      const Q = C.quiz, qi = Math.min(L.qi, Q.length - 1), q = Q[qi], answered = Q.filter((x, i) => L.qAns[i] != null).length;
+      const locked = !allW, taking = allW && !L.qDone, result = L.qDone;
+      Object.assign(out, {
+        qTotal: Q.length, quizLocked: locked, quizTaking: taking, quizResult: result, leftVideos: leftV, goUnwatched: () => this.setView('v' + L.w.indexOf(false)),
+        qNo: qi + 1, qText: q.q, qOptions: q.options.map((o, k) => ({ text: o, mark: String(k + 1), bg: L.qAns[qi] === k ? '#EAF7D8' : '#fff', markBg: L.qAns[qi] === k ? '#9fe870' : '#fff', border: L.qAns[qi] === k ? '#263B1A' : '#D5E1CC', pick: () => this.upd(x => ({ qAns: Object.assign(x.qAns.slice(), { [qi]: k }) }), false) })),
+        qDots: Q.map((x, i) => ({ n: i + 1, bg: i === qi ? '#263B1A' : L.qAns[i] != null ? '#9fe870' : '#fff', fg: i === qi ? '#9fe870' : '#263B1A', border: i === qi || L.qAns[i] != null ? '#263B1A' : '#D5E1CC', go: () => this.upd({ qi: i }, false) })),
+        prevQ: () => this.upd({ qi: Math.max(0, qi - 1) }, false), nextQ: () => this.upd({ qi: Math.min(Q.length - 1, qi + 1) }, false), prevQOp: qi > 0 ? 1 : 0.4, nextQOp: qi < Q.length - 1 ? 1 : 0.4,
+        answeredText: answered + ' / ' + Q.length + '문제 답함', submitOp: answered === Q.length ? 1 : 0.5,
+        submitQuiz: () => {
+          if (answered < Q.length) return this.toast('모든 문제에 답한 뒤 제출할 수 있어요');
+          const wrong = Q.map((x, i) => ({ x, i })).filter(o => L.qAns[o.i] !== o.x.answer).map(o => ({ no: o.i + 1, q: o.x.q, mine: o.x.options[L.qAns[o.i]], correct: o.x.options[o.x.answer], exp: o.x.exp }));
+          const score = Math.round((Q.length - wrong.length) / Q.length * 100), pass = score >= 70, first = pass && !L.passed;
+          const reward = first ? { xp: 100 + (score === 100 ? 20 : 0), cash: 3000 } : null;
+          this.upd({ qDone: true, qScore: score, qWrong: wrong, passed: L.passed || pass, best: Math.max(L.best || 0, score), reward: reward || L.reward });
+          if (reward) this.setState(x => ({ cash: x.cash + reward.cash }));
+        },
+        qScore: L.qScore, resBg: L.qScore >= 70 ? '#EAF7D8' : '#FFF0D6', resTitle: L.qScore >= 70 ? (L.reward ? '통과했어요! 학습 완료' : '통과했어요') : '아쉽게 통과하지 못했어요',
+        resDesc: L.qScore >= 70 ? (L.reward ? '경험치와 캐시를 받았어요' : '보상은 최초 통과 때 한 번만 받아요') : '70점 이상이면 통과예요. 횟수 제한 없이 다시 풀 수 있어요',
+        hasWrong: L.qWrong.length > 0, wrongRows: L.qWrong, retryQuiz: () => this.upd({ qDone: false, qAns: [], qi: 0, qScore: null, qWrong: [] }, false)
+      });
+    }
+    return out;
+  }
+  renderVals() { const __v = this.__rv(); const l = Number(__v.level) || 1; __v.houseBg = l >= 17 ? '#F2C14E' : l >= 12 ? '#9fe870' : l >= 4 ? '#B9EF8E' : '#EAF7D8'; return __v; }
+  __rv() { return Object.assign(this.baseVals(), this.detailVals()); }
+  baseVals() {
+    const p = this.props, level = p.level ?? 4, invReq = p.invReq ?? 8, subReq = p.subReq ?? 12;
+    const house = level <= 3 ? '고시원' : level <= 7 ? '원룸' : level <= 11 ? '투룸' : level <= 16 ? '아파트' : '내 집';
+    const streak = this.state.streak ?? (p.streak ?? 4), s = this.state;
+    const tog = k => () => this.setState(x => ({ [k]: !x[k] }));
+    const caret = v => (v ? '▲' : '▼');
+    const shown = Math.max(7, streak);
+    const dots = Array.from({ length: 7 }, (_, i) => { const on = i < Math.min(streak, 7); return { on, off: !on }; });
+    const cd = this.catData(), catKey = s.cat || 'money', act = s.activeSub || 0;
+    const tones = ['#E3F3D2', '#DCEFF0', '#EEF0DA', '#E6EBF6', '#F2EAD9'];
+    const st = { done: ['✓ 학습 완료', '#9fe870', '#263B1A', '#9fe870'], doing: ['학습 중', '#fff', '#263B1A', '#9fe870'], todo: ['시작 전', '#EEF0EC', '#687161', '#EEF0EC'] };
+    let doneAll = 0, totalAll = 0;
+    const sections = cd.subs.map((sb, i) => {
+      const done = sb.items.filter(x => x.status === 'done').length; doneAll += done; totalAll += sb.items.length;
+      return { id: 's' + (i + 1), num: String(i + 1).padStart(2, '0'), name: sb.name, desc: sb.desc, done, total: sb.items.length, empty: !sb.items.length, hasItems: sb.items.length > 0,
+        items: sb.items.map(x => { const b = st[x.status]; return { title: x.title, teacher: x.teacher, meta: '영상 ' + x.videos + '개 · 퀴즈 ' + x.quiz + '문제', sub: sb.name, thumbBg: tones[i % tones.length],
+          badge: b[0], badgeBg: b[1], badgeFg: b[2], badgeBorder: b[3], inProgress: x.status === 'doing', pct: x.watched ? Math.round(x.watched / x.videos * 100) + '%' : '0%', progressText: '영상 ' + (x.watched || 0) + '/' + x.videos + ' · 이어보기',
+          hasBase: !!x.baseDate, baseDate: x.baseDate || '', href: 'UserLectureDetail.dc.html?cat=' + catKey + '&sub=' + (i + 1) + '&title=' + encodeURIComponent(x.title) }; }) };
+    });
+    return {
+      lectureTitle: s.detailTitle || '', subName: (cd.subs[(s.detailSub || 1) - 1] || {}).name || '', backHref: 'UserLectureCategory.dc.html' + (catKey === 'estate' ? '?cat=estate' : '') + '#s' + (s.detailSub || 1),
+      catName: cd.name, catDesc: cd.desc, sections, doneAll, totalAll, donePct: totalAll ? Math.round(doneAll / totalAll * 100) + '%' : '0%',
+      chips: cd.subs.map((sb, i) => ({ no: i + 1, name: sb.name, bg: i === act ? '#9fe870' : '#fff', border: i === act ? '#9fe870' : 'var(--color-divider)', numBg: i === act ? '#263B1A' : '#EAF7D8', numFg: i === act ? '#9fe870' : '#263B1A', go: () => { this.setState({ activeSub: i }); this.scrollToSub('s' + (i + 1)); } })),
+      navMoneyBg: catKey === 'money' ? 'var(--color-accent-100)' : 'transparent', navMoneyFw: catKey === 'money' ? 700 : 400,
+      navEstateBg: catKey === 'estate' ? 'var(--color-accent-100)' : 'transparent', navEstateFw: catKey === 'estate' ? 700 : 400,
+      house, nickname: p.nickname ?? '민지', level, invReq, subReq,
+      invLocked: level < invReq, subLocked: level < subReq, invHref: level < invReq ? '#' : 'UserDemoTrading.dc.html', invOpen: level >= invReq, subOpen: level >= subReq,
+      exp: 90, expPct: '60%', deposits: 18,
+      cashText: s.cash.toLocaleString(), streak, streakDots: dots,
+      streakNote: streak >= 5 ? '5일 이상 연속 출석 중 · 매일 캐시 1,000 지급' : `${5 - streak}일 더 출석하면 매일 캐시 1,000을 받아요`,
+      streakShort: streak >= 5 ? '매일 1,000 캐시 지급 중' : `캐시 지급까지 ${5 - streak}일`,
+      nextLevel: Math.min(level + 1, 20), levelUpCash: (Math.min(level + 1, 20) * 1000).toLocaleString(),
+      lockOpen: !!s.lock, lockIsSub: !!s.lock && s.lock.name === '모의 청약', lockName: s.lock ? s.lock.name : '', lockReq: s.lock ? s.lock.req : '',
+      closeLock: e => { if (e) e.preventDefault(); this.setState({ lock: null }); },
+      invBlur: level < invReq ? 'blur(1.5px)' : 'none', subBlur: level < subReq ? 'blur(1.5px)' : 'none',
+      invClick: e => { if (level < invReq) { e.preventDefault(); this.setState({ lock: { name: '모의 투자', req: invReq } }); } },
+      subClick: e => { if (level < subReq) { e.preventDefault(); this.setState({ lock: { name: '모의 청약', req: subReq } }); } },
+      doneCount: 7,
+      history: [
+        { title: '금리와 채권 가격', path: '돈 굴리기 › ETF·분산 투자', date: '오늘', status: '시청 중', bg: 'var(--color-accent-100)' },
+        { title: '단리와 복리', path: '돈 굴리기 › 예적금', date: '어제', status: '학습 완료', bg: 'var(--color-accent-400)' },
+        { title: '청약통장 기초', path: '부동산 › 청약', date: '3일 전', status: '학습 완료', bg: 'var(--color-accent-400)' }
+      ],
+      checkedIn: s.checkedIn, checkLabel: s.checkedIn ? '오늘 출석 완료' : '출석 체크',
+      checkIn: () => this.setState(x => { const n = streak + 1; return { streak: n, checkedIn: true, cash: x.cash + (n >= 5 ? 1000 : 0) }; }),
+      wordsOpen: s.wordsOpen, openWords: () => this.setState({ wordsOpen: true }), closeWords: () => this.setState({ wordsOpen: false }), stop: e => e.stopPropagation(),
+      hideToday: () => { localStorage.setItem('mb-words-hide', new Date().toDateString()); this.setState({ wordsOpen: false }); },
+      sidebarOpen: s.sidebarOpen, sidebarClosed: true, mbDrawerT: this.state.sidebarOpen ? 'none' : 'translateX(-102%)', mbDrawerVis: this.state.sidebarOpen ? 'visible' : 'hidden', mbOverlayOp: this.state.sidebarOpen ? 1 : 0, mbOverlayPe: this.state.sidebarOpen ? 'auto' : 'none', toggleSidebar: tog('sidebarOpen'),
+      lectureOpen: s.lectureOpen, toggleLecture: tog('lectureOpen'), lectureCaret: caret(s.lectureOpen),
+      trainingOpen: s.trainingOpen, toggleTraining: tog('trainingOpen'), trainingCaret: caret(s.trainingOpen),
+      myOpen: s.myOpen, toggleMy: tog('myOpen'), myCaret: caret(s.myOpen),
+      words: [
+        { term: '복리', desc: '원금에 붙은 이자에도 다시 이자가 붙는 방식.' },
+        { term: '실수령액', desc: '세전 급여에서 4대보험과 소득세를 뺀 금액.' },
+        { term: '배당', desc: '기업이 이익의 일부를 주주에게 나눠 주는 것.' },
+        { term: '리밸런싱', desc: '정해 둔 자산 비중으로 포트폴리오를 다시 맞추는 일.' },
+        { term: '청약 가점', desc: '무주택 기간·부양가족·통장 가입 기간으로 매기는 점수.' }
+      ],
+      capital: ['월급 관리', '예적금', '주식', 'ETF·분산 투자'],
+      estate: ['청약', '전·월세', '대출'],
+      ranking: [
+        { rank: 1, name: '복리왕', ret: '+38.2%' }, { rank: 2, name: '적립식', ret: '+31.7%' },
+        { rank: 3, name: '나스닥러', ret: '+27.4%' }, { rank: 4, name: '배당요정', ret: '+22.9%' },
+        { rank: 5, name: '분산투자', ret: '+19.1%' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

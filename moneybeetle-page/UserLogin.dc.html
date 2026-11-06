@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+html{background:#F7FAF3}
+body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+input:focus{outline:none}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:14px!important;padding-right:34px!important;padding-left:14px!important}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#F7FAF3;color:#263B1A;font-family:'Pretendard',system-ui,sans-serif">
+  <div style="flex:1;display:flex;flex-direction:column">
+    <main style="flex:1;display:flex;flex-direction:column;padding:40px clamp(24px,6vw,120px) 48px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <a href="Main.dc.html" style="display:block;text-decoration:none"><img src="assets/logo.png" alt="Money Beetle" style="height:44px;width:auto;display:block"></a>
+        <a href="Main.dc.html" aria-label="닫기" style="color:#263B1A;display:grid;place-items:center;width:44px;height:44px">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </a>
+      </div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;width:min(520px,100%);margin:48px auto 0">
+        
+        <span style="align-self: flex-start; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: #EAF7D8; color: #263B1A; margin-bottom: 14px; text-align: center">학생 로그인</span><h1 style="margin: 0; font-weight: 800; font-size: 40px; letter-spacing: -0.03em; color: #263B1A; text-align: center">로그인</h1>
+        <p style="margin:16px 0 0;font-size:18px">처음이신가요? <a href="UserSignup.dc.html" style="font-weight:800;text-decoration:underline;text-decoration-color:#9fe870;text-decoration-thickness:3px;text-underline-offset:3px">회원가입</a></p>
+
+        <form onSubmit="{{ submit }}" style="margin-top:40px;display:flex;flex-direction:column">
+          <label style="font-size:17px;color:#687161">이메일</label>
+          <input type="email" value="{{ email }}" onChange="{{ setEmail }}" placeholder="beetle@example.com" style="margin-top:10px;height:56px;border:2px solid #263B1A;border-radius:12px;padding:0 18px;font-size:19px;font-family:inherit;box-sizing:border-box;color:#263B1A">
+          <label style="font-size:17px;color:#687161;margin-top:22px">비밀번호</label>
+          <div style="margin-top:10px;position:relative">
+            <input type="{{ pwType }}" value="{{ pw }}" onChange="{{ setPw }}" placeholder="비밀번호" style="width:100%;height:56px;border:2px solid #263B1A;border-radius:12px;padding:0 80px 0 18px;font-size:19px;font-family:inherit;box-sizing:border-box">
+            <button type="button" onClick="{{ togglePw }}" style="all:unset;cursor:pointer;position:absolute;right:18px;top:0;height:56px;display:flex;align-items:center;font-size:15px;color:#687161">{{ pwToggle }}</button>
+          </div>
+          <sc-if value="{{ error }}"><span style="margin-top:12px;font-size:15px;color:#b3261e">{{ error }}</span></sc-if>
+          <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;font-size:15px">
+            <button type="button" onClick="{{ toggleKeep }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;color:#687161">
+              <span style="width:22px;height:22px;border-radius:50%;background:{{ keepBg }};border:2px solid #263B1A;display:grid;place-items:center;color:#263B1A;font-size:13px">{{ keepMark }}</span>로그인 상태 유지</button>
+            <span aria-disabled="true" title="준비 중인 기능이에요" style="color:#A3AB9C;cursor:not-allowed">비밀번호 찾기 (준비 중)</span>
+          </div>
+          <button type="submit" style="all:unset;box-sizing:border-box;cursor:pointer;margin-top:28px;height:58px;border-radius:999px;background:#9fe870;color:#263B1A;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center" style-hover="background:#8fd85f" style-active="background:#7fc84f">로그인</button>
+        </form>
+
+        <div style="margin-top:36px;display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:16px;color:#687161">또는 간편하게 로그인</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <a href="UserHome-vr2.dc.html" style="height:54px;border:1px solid #D5E1CC;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;color:#263B1A;font-weight:700;font-size:17px;background:transparent;white-space:nowrap" style-hover="background:#fff">
+              <svg width="22" height="22" viewBox="0 0 48 48" style="flex:none"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6C44.1 38 46.5 31.8 46.5 24.5z"></path><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"></path><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"></path></svg>Google로 계속하기</a>
+            <a href="UserHome-vr2.dc.html" style="height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;color:#191919;font-weight:700;font-size:17px;background:#F5E44D;white-space:nowrap" style-hover="background:#EED93A">
+              <svg width="22" height="22" viewBox="0 0 24 24" style="flex:none"><path fill="#191919" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.2 4.7 6.6-.2.8-.7 2.8-.8 3.2-.1.5.2.5.4.4.2-.1 2.6-1.8 3.7-2.5.6.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"></path></svg>카카오로 계속하기</a>
+          </div>
+        </div>
+      </div>
+      
+    </main>
+  </div>
+
+  <div style="position:sticky;bottom:0;background:#263B1A;color:#fff;display:flex;align-items:center;justify-content:center;gap:16px;padding:22px 20px;font-size:clamp(14px,1.5vw,22px);flex-wrap:wrap;text-align:center">
+    <span style="background:#9fe870;color:#263B1A;font-weight:700;border-radius:6px;padding:4px 10px;font-size:0.85em">안내</span>
+    <span>모든 투자·청약 화면은 가상 실습이며 실제 금융 거래가 아니에요</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { email: '', pw: '', show: false, keep: true, error: '' };
+  renderVals() {
+    const s = this.state, set = k => e => this.setState({ [k]: e.target.value, error: '' });
+    return {
+      email: s.email, pw: s.pw, error: s.error,
+      setEmail: set('email'), setPw: set('pw'),
+      pwType: s.show ? 'text' : 'password', pwToggle: s.show ? '숨기기' : '보기',
+      togglePw: () => this.setState(x => ({ show: !x.show })),
+      keepBg: s.keep ? '#9fe870' : 'transparent', keepMark: s.keep ? '✓' : '',
+      toggleKeep: () => this.setState(x => ({ keep: !x.keep })),
+      submit: e => {
+        e.preventDefault();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) return this.setState({ error: '이메일 주소를 확인해 주세요' });
+        if (s.pw.length < 8) return this.setState({ error: '비밀번호를 8자 이상 입력해 주세요' });
+        try { localStorage.setItem('mb-role', 'student'); } catch (err) {} location.href = (function () { try { return Object.keys(JSON.parse(localStorage.getItem('mb-lecture-progress') || '{}')).length ? 'UserHome-vr2.dc.html' : 'UserHome-vr1.dc.html'; } catch (e) { return 'UserHome-vr2.dc.html'; } })();
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
