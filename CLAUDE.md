@@ -21,6 +21,12 @@
 기능·데이터는 명세서를, 코드 구조는 코딩컨벤션을 따른다.
 **코드를 쓰는 방식은 수업 자료(`C:\Lecture`, 팀 전원이 같은 폴더를 가지고 있다)와 학습 블로그를 기준으로 한다.** 코딩컨벤션의 "근거" 칸에 어느 수업 폴더에서 확인했는지 적혀 있다(예: Thymeleaf 조각 `08_Spring-Web-MVC/chap07-thymeleaf`, Security `10_Spring-Security`, JPA `09_JPA/module07-jpa-mini-project`). 수업과 다르게 하는 부분은 "제안" 또는 "팀 결정"으로 표시한다. **API·DB를 바꾸면 같은 PR에서 API명세서·DB설계도 고친다.**
 
+## FE / BE 구분
+
+- 담당은 기능(도메인) 단위이고, 한 사람이 자기 기능의 BE와 FE를 모두 맡는다. 구분은 `docs/MoneyBeetle_역할분담.md` "FE / BE 구분"을 따른다.
+- BE = `src/main/java/**`·`sql/**`·`application.yaml`·`src/test/**`(라벨 `be`, 브랜치 `feat/be-…`), FE = `templates/**`·`static/**`(라벨 `fe`, 브랜치 `feat/fe-…`). 자기 이슈가 아닌 쪽 파일은 이슈로 요청한다.
+- FE와 BE는 Controller가 정한 View 이름·Model 값과 API 명세서로 만난다. 바뀌면 같은 PR에서 문서를 고친다.
+
 ## 코드 규칙 (요약)
 
 - **패키지는 기능(도메인)별**: `com.wanted.moneybeetle.domain.<도메인>/{controller, exception, model/{dao, dto, entity, service}}`, 공통은 `global`. 관리자·강사용 Controller·Service도 해당 도메인 안에 두고 `admin` 패키지를 따로 만들지 않는다.
