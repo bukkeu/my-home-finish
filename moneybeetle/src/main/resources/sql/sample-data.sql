@@ -351,9 +351,9 @@ INSERT INTO trade_reason (trade_reason_id, label, sort_order) VALUES
 (5, '이익을 지키려고', 5),
 (6, '손실을 줄이려고', 6);
 
--- 시즌: 이월 30%, 상한 3,000,000, 해금 Lv.8 (프로토타입 시즌 설정)
+-- 시즌: 이월 100%·상한 없음(정책 정의서 SP-63, #76 확정), 해금 Lv.8
 INSERT INTO trading_season (trading_season_id, name, start_date, end_date, status, current_turn, total_turns, unlock_level, carryover_rate, carryover_cap, created_by) VALUES
-(1, '시즌 7', '2026-10-19', '2026-11-01', 'RUNNING', 5, 12, 8, 30.00, 3000000, 1);
+(1, '시즌 7', '2026-10-19', '2026-11-01', 'RUNNING', 5, 12, 8, 100.00, NULL, 1);
 
 -- 턴 12개 (일요일 제외). 1~5턴은 진행 기록이 있다
 INSERT INTO season_turn (trading_season_id, turn_no, trade_date, progressed_at, progressed_by) VALUES
