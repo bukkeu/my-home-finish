@@ -1,10 +1,155 @@
 package com.wanted.moneybeetle.domain.member.model.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Locale;
+import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : DBA ② (회원·인증)
 *   테이블 member - 회원(학습자·강사·관리자 role 구분)
-*   레벨·경험치·캐시 값 변경은 growth.RewardService 가 MemberService 메서드를 통해서만 한다 (직접 수정 금지)
+*   - 이메일은 소문자로 저장한다 (SP-01 대소문자 구분 없음)
+*   - 레벨·경험치·캐시 값 변경은 growth.RewardService 가 MemberService 메서드를 통해서만 한다 (직접 수정 금지).
+*     그 변경 메서드(경험치·캐시 반영)는 #10 2차에서 이 Entity 에 추가한다.
+*   - 이 파일의 1차(#5)는 가입에 필요한 부분만 있다: 생성(signup)과 상태·권한 상수.
 *  */
+@Entity
+@Table(name = "member")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member {
 
+    /** 권한 (role). Security 는 이 이름 그대로 권한(authority)으로 쓴다 (ROLE_ 접두어 없음) */
+    public static final String ROLE_MEMBER = "MEMBER";
+    public static final String ROLE_INSTRUCTOR = "INSTRUCTOR";
+    public static final String ROLE_ADMIN = "ADMIN";
+
+    /** 계정 상태 (SP-06) */
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_SUSPENDED = "SUSPENDED";
+    public static final String STATUS_WITHDRAWN = "WITHDRAWN";
+
+    public static final String GENDER_MALE = "MALE";
+    public static final String GENDER_FEMALE = "FEMALE";
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long memberId;
+
+    /** 로그인 아이디. 소문자로 저장. 탈퇴 30일 후 NULL */
+    @Column(length = 100)
+    private String email;
+
+    /** BCrypt 해시. 간편 로그인만 쓰면 NULL */
+    @Column(length = 255)
+    private String passwordHash;
+
+    @Column(nullable = false, length = 30)
+    private String nickname;
+
+    @Column(length = 500)
+    private String profileImageUrl;
+
+    /** 만 14세 이상 확인용. 탈퇴 30일 후 NULL */
+    private LocalDate birthDate;
+
+    @Column(length = 10)
+    private String gender;
+
+    @Column(name = "is_identity_verified")
+    private boolean identityVerified;
+
+    @Column(nullable = false, length = 20)
+    private String role;
+
+    @Column(nullable = false, length = 20)
+    private String status;
+
+    @Column(length = 200)
+    private String suspendedReason;
+
+    /** 레벨 1~20. 내려가지 않음 */
+    private int level;
+
+    /** 누적 경험치 */
+    private int exp;
+
+    /** 보유 캐시. 0 미만 불가 */
+    private long cash;
+
+    private int attendanceStreak;
+
+    private LocalDate lastAttendedDate;
+
+    private int failedLoginCount;
+
+    private LocalDateTime lockedUntil;
+
+    private LocalDateTime lastLoginAt;
+
+    private LocalDateTime withdrawnAt;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    private Member(String email, String passwordHash, String nickname, LocalDate birthDate, String gender) {
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+        this.role = ROLE_MEMBER;
+        this.status = STATUS_ACTIVE;
+        this.level = 1;
+        this.exp = 0;
+        this.cash = 0;
+    }
+
+    /**
+     * 일반 회원(학습자)으로 가입한다. 레벨 1·경험치 0·캐시 0으로 시작한다.
+     *
+     * @param passwordHash 이미 BCrypt 로 만든 해시 (평문을 넘기지 않는다, DP-02)
+     * @param today        가입 연령 계산 기준일 (KST 오늘). 테스트하기 쉽게 밖에서 받는다
+     */
+    public static Member signup(String email, String passwordHash, String nickname,
+                                LocalDate birthDate, String gender, LocalDate today) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null && SignupRules.isAtLeastMinAge(birthDate, today), "만 14세 이상만 가입할 수 있습니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        return new Member(email.toLowerCase(Locale.ROOT), passwordHash, nickname, birthDate, gender);
+    }
+
+    /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
+    public boolean isActive() {
+        return STATUS_ACTIVE.equals(status);
+    }
+
+    /** 탈퇴·삭제 대상이 아닌 일반 회원인가 */
+    public boolean isMember() {
+        return ROLE_MEMBER.equals(role);
+    }
+
+    private static void require(boolean ok, String message) {
+        if (!ok) {
+            throw new IllegalArgumentException(message);
+        }
+    }
 }
