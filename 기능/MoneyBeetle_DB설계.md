@@ -934,7 +934,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `subscription_account_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 통장 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE | - | 회원 (1:1) |
-| `balance` | BIGINT | N | - | 0 | 통장 잔액 |
+| `balance` | BIGINT | N | - | 0 | 통장 잔액 (납입액 전액) |
+| `recognized_amount` | BIGINT | N | - | 0 | 누적 인정금액 (납입 1회당 최대 250,000, SP-70 초안) |
 | `paid_count` | INT | N | - | 0 | 납입회차 |
 | `last_paid_date` | DATE | Y | - | - | 마지막 납입일 (KST) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -951,7 +952,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `subscription_deposit_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 납입 ID |
 | `subscription_account_id` | BIGINT | N | FK → subscription_account.subscription_account_id, UNIQUE(subscription_account_id, paid_date) | - | 통장 |
 | `paid_date` | DATE | N | UNIQUE(subscription_account_id, paid_date) | - | 납입일 (KST) |
-| `amount` | INT | N | - | - | 납입 캐시 (1회 1,000, 초안) |
+| `amount` | INT | N | - | - | 납입 캐시 (1회 20,000~500,000, SP-70 초안) |
+| `recognized_amount` | INT | N | - | - | 이번 납입의 인정금액 = min(amount, 250,000) |
 | `paid_count_after` | INT | N | - | - | 납입 후 회차 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 
@@ -1127,7 +1129,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- |
 | 사이트 문의 게시판 | `inquiry.course_id`가 NULL이면 사이트 문의로 처리 (페이지의 문의하기 게시판) | 강의 문의와 사이트 문의를 한 테이블로 둘지 나눌지 |
 | 강사 가입 방식 | `instructor_profile.approval_status` PENDING → 관리자 승인 (페이지의 강사 회원가입 반영) | 직접 가입 신청 허용 여부 |
-| 청약통장 납입액 | `subscription_deposit.amount` 1회 1,000캐시 (정책 초안). 페이지 목업은 2만~50만 캐시 | 금액 고정 여부 |
+| 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 초안, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
 | 청약 결과 | `result` WIN/LOSE (정책 SP-75). 페이지 목업에는 예비(RESERVE) 있음 | 예비 당첨 여부 |
 | 시즌 참가 캐시 차감 | `season_participant.saved_cash` 기록, 차감 시 `cash_history`에 SEASON_JOIN | 참가 때 캐시 차감 여부 |
 | 이월 상한 | `trading_season.carryover_cap` NULL 허용 | 상한 금액 |
