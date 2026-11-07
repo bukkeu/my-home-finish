@@ -85,7 +85,7 @@
 | 화면 URL | 소문자 kebab-case | `/user/my-page`, `/instructor/course-create` | 화면 설계 |
 | 템플릿 파일 | `templates/도메인/화면.html`, 소문자 kebab-case | `templates/course/detail.html` | 골격 |
 | 정적 파일 | `static/css`, `static/js`, `static/images` | `static/js/drawer.js` | 골격 |
-| SQL 스크립트 | `resources/sql/번호_도메인.sql` | `01_member.sql` | 골격 |
+| SQL 스크립트 | `resources/sql/`의 `create_database.sql`·`schema.sql`(테이블)·`sample-data.sql`(시드) | `schema.sql` | 학습(14일차) |
 
 Java 필드(camelCase)와 DB 컬럼(snake_case)은 Spring Boot가 자동으로 변환하므로 `@Column(name = ...)`을 따로 적지 않아도 됩니다. 자동 변환이 되지 않는 경우에만 적습니다. *(제안)*
 
@@ -378,7 +378,7 @@ public class MyInfoDTO {
 1. 자기 도메인 패키지 밖의 파일은 고치지 않는다. 필요하면 담당자에게 요청한다.
 2. 다른 도메인의 테이블(Repository)을 직접 쓰지 않는다. 그 도메인의 Service 메서드를 부른다.
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
-4. SQL은 `resources/sql`의 번호 파일로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다.
+4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다.
 5. 마이페이지·관리자 대시보드는 틀(SCM)과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
 
 **아직 구현이 없는 도메인과 협업할 때** (학습 25·26일차): 필요한 쪽이 **인터페이스**를 먼저 정의하고, 상대 팀의 실제 구현이 나올 때까지 `Fake` 구현으로 대신한다. 실제 구현이 생기면 Fake만 지우면 되고 사용하는 쪽 코드는 바뀌지 않는다.

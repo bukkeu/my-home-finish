@@ -37,7 +37,7 @@ com.wanted.moneybeetle
 2. 다른 도메인의 테이블(Repository)을 직접 쓰지 않는다. 그 도메인의 Service 메서드를 부른다.
    - 캐시·경험치 지급/차감 : `growth.RewardService` / 알림 : `notification.NotificationService` / 관리자 기록 : `operation.AdminLogService`
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
-4. SQL은 `resources/sql`의 번호 파일로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다.
+4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다.
 5. 마이페이지·관리자 대시보드는 틀(SCM)과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
 
 ## 문서
