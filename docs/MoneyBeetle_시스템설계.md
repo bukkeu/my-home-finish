@@ -243,7 +243,7 @@ flowchart LR
     style RB fill:#FCEBEB,stroke:#E24B4A,stroke-width:2px
 ```
 
-저장소(github.com/bukkeu/MY-HOME)는 `moneybeetle/`(Spring Boot 프로젝트: 서버 코드, `templates/`, `static/`), `기능/`(설계 문서), `moneybeetle-page/`(페이지 구현본, 참고용)로 나뉩니다. 구현본의 `.dc.html` 화면은 ROUTES.md의 향후 URL대로 `templates/` 아래 Thymeleaf 템플릿으로 옮기고, 공통 스크립트(`mb-*.js`)와 CSS는 `static/`으로 옮깁니다.
+저장소(github.com/bukkeu/MY-HOME)는 `moneybeetle/`(Spring Boot 프로젝트: 서버 코드, `templates/`, `static/`), `docs/`(설계 문서), `moneybeetle-page/`(페이지 구현본, 참고용)로 나뉩니다. 구현본의 `.dc.html` 화면은 ROUTES.md의 향후 URL대로 `templates/` 아래 Thymeleaf 템플릿으로 옮기고, 공통 스크립트(`mb-*.js`)와 CSS는 `static/`으로 옮깁니다.
 
 **환경 구분**
 
