@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @ControllerAdvice
@@ -19,6 +20,13 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = e.getErrorCode();
         log.warn("업무 예외 : {} ({})", errorCode.getCode(), request.getRequestURI());
         return makeResponse(errorCode, request);
+    }
+
+    // 없는 주소 요청 → 404
+    @ExceptionHandler(NoResourceFoundException.class)                       // ① 로그에 찍힌 예외 이름
+    public Object handleNoResource(NoResourceFoundException e, HttpServletRequest request) {   // ① 같은 이름
+        log.warn("없는 주소 요청 ({})", request.getRequestURI());
+        return makeResponse(CommonErrorCode.NOT_FOUND, request);              // ② 어떤 에러 코드?
     }
 
     // 예상하지 못한 모든 예외

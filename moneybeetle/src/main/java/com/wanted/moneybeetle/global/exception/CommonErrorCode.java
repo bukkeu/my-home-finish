@@ -2,8 +2,8 @@ package com.wanted.moneybeetle.global.exception;
 
 /* comment.
 *   담당 : SCM (회원·공통)
-*   공통 에러 : UNAUTHORIZED, SESSION_EXPIRED, FORBIDDEN, LEVEL_LOCKED, NOT_FOUND,
-*   DUPLICATE_REQUEST, IDEMPOTENCY_KEY_CONFLICT, FORBIDDEN_WORD, INTERNAL_ERROR (API 명세서 4장)
+*   공통 에러 (API 명세서 4장) : UNAUTHORIZED, SESSION_EXPIRED, FORBIDDEN, LEVEL_LOCKED, NOT_FOUND,
+*   DUPLICATE_REQUEST, IDEMPOTENCY_KEY_CONFLICT, FORBIDDEN_WORD, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, INTERNAL_ERROR
 *   : 양식에 맞춰 미리 써 둔 신고서 묶음
 *  */
 
@@ -23,6 +23,8 @@ public enum CommonErrorCode implements ErrorCode{
     DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 처리된 요청이에요       "),                                      // 409
     IDEMPOTENCY_KEY_CONFLICT(HttpStatus.CONFLICT, "같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요"),   // 409
     FORBIDDEN_WORD(HttpStatus.BAD_REQUEST, "사용할 수 없는 표현이 들어 있어요"),                                    // 400
+    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일은 2MB까지 올릴 수 있어요"),
+    FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "jpg, png 파일만 올릴 수 있어요"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "처리하지 못했어요. 내정보는 바뀌지 않았어요");                  // 500
 
 

@@ -2,3 +2,6 @@
 .idea/
 *.iml
 .env
+
+# 사용자 업로드 파일 (FileStorageService, file.upload-dir)
+uploads/
