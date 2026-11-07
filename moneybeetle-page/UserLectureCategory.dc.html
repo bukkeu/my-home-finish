@@ -334,7 +334,7 @@ class Component extends DCLogic {
       exp: 90, expPct: '60%', deposits: 18,
       cashText: s.cash.toLocaleString(), streak, streakDots: dots,
       streakNote: streak >= 5 ? '5일 이상 연속 출석 중 · 매일 캐시 1,000 지급' : `${5 - streak}일 더 출석하면 매일 캐시 1,000을 받아요`,
-      streakShort: streak >= 5 ? '매일 1,000 캐시 지급 중' : `캐시 지급까지 ${5 - streak}일`,
+      streakShort: streak >= 5 ? '매일 10,000 캐시 지급 중' : `캐시 지급까지 ${5 - streak}일`,
       nextLevel: Math.min(level + 1, 20), levelUpCash: (Math.min(level + 1, 20) * 1000).toLocaleString(),
       lockOpen: !!s.lock, lockIsSub: !!s.lock && s.lock.name === '모의 청약', lockName: s.lock ? s.lock.name : '', lockReq: s.lock ? s.lock.req : '',
       closeLock: e => { if (e) e.preventDefault(); this.setState({ lock: null }); },
