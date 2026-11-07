@@ -32,7 +32,7 @@
 
 | 예시 | 설명 |
 | --- | --- |
-| `feat/be-12-login-api` | 백엔드 로그인 API |
+| `feat/be-12-login-api` | 백엔드 로그인 API (수업은 `feature/…`로 썼지만 커밋 타입과 맞춰 `feat/…`로 줄여 쓴다) |
 | `feat/fe-12-login-page` | 프론트 로그인 화면 |
 | `fix/be-30-cash-negative` | 캐시가 0 미만이 되는 버그 수정 |
 | `docs/db-erd` | 문서 작업 (이슈 없으면 번호 생략) |
@@ -46,7 +46,7 @@
 2. `dev`을 최신으로 받고 작업 브랜치를 만든다.
 3. 작업하고 커밋한다 (작게, 자주).
 4. push 후 **`dev`으로 PR**을 올리고 팀원 1명을 리뷰어로 지정한다.
-5. 승인되면 **Squash and merge** 하고 브랜치를 삭제한다.
+5. 승인되면 **Squash and merge** 하고 브랜치를 삭제한다. (수업 `01_Git`에서는 병합 커밋으로 합쳤다. 작업 브랜치 → `dev`에 Squash를 쓰는 것은 한 이슈의 커밋 이력을 하나로 합치려는 팀 결정이다.)
 6. 시연·제출 시점마다 **`dev` → `main` PR**을 올려 병합한다 (이때는 **Create a merge commit**).
 
 ```bash
