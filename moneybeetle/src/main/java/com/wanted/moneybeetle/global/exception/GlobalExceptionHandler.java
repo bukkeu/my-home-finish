@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -23,10 +24,17 @@ public class GlobalExceptionHandler {
     }
 
     // 없는 주소 요청 → 404
-    @ExceptionHandler(NoResourceFoundException.class)                       // ① 로그에 찍힌 예외 이름
-    public Object handleNoResource(NoResourceFoundException e, HttpServletRequest request) {   // ① 같은 이름
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Object handleNoResource(NoResourceFoundException e, HttpServletRequest request) {
         log.warn("없는 주소 요청 ({})", request.getRequestURI());
-        return makeResponse(CommonErrorCode.NOT_FOUND, request);              // ② 어떤 에러 코드?
+        return makeResponse(CommonErrorCode.NOT_FOUND, request);
+    }
+
+    // 업로드 용량 초과 (yaml max-file-size 초과) → 400 FILE_TOO_LARGE
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Object handleMaxUpload(MaxUploadSizeExceededException e, HttpServletRequest request) {
+        log.warn("업로드 용량 초과 ({})", request.getRequestURI());
+        return makeResponse(CommonErrorCode.FILE_TOO_LARGE, request);
     }
 
     // 예상하지 못한 모든 예외
@@ -39,8 +47,8 @@ public class GlobalExceptionHandler {
     // 주소를 보고 JSON 상자 or 에러 페이지
     private Object makeResponse(ErrorCode errorCode, HttpServletRequest request) {
 
-        // 1) API 요청이면 JSON 상자
-        if (request.getRequestURI().startsWith("/api")) {
+        // 1) API 요청이면 JSON 상자 ("/api/" 로 비교해야 /apple 같은 화면 주소를 API로 잘못 보지 않음)
+        if (request.getRequestURI().startsWith("/api/")) {
             return ResponseEntity
                     .status(errorCode.getStatus())
                     .body(ApiResponse.fail(errorCode));

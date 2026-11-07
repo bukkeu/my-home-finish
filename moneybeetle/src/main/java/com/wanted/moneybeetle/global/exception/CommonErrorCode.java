@@ -20,12 +20,12 @@ public enum CommonErrorCode implements ErrorCode{
     FORBIDDEN(HttpStatus.FORBIDDEN, "이 페이지를 볼 수 있는 권한이 없어요"),                                        //403
     LEVEL_LOCKED(HttpStatus.FORBIDDEN, "아직 열리지 않은 기능이에요"),                                             //403
     NOT_FOUND(HttpStatus.NOT_FOUND, "찾을 수 없는 페이지예요"),                                                   // 404
-    DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 처리된 요청이에요       "),                                      // 409
+    DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 처리된 요청이에요"),                                      // 409
     IDEMPOTENCY_KEY_CONFLICT(HttpStatus.CONFLICT, "같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요"),   // 409
     FORBIDDEN_WORD(HttpStatus.BAD_REQUEST, "사용할 수 없는 표현이 들어 있어요"),                                    // 400
-    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일은 2MB까지 올릴 수 있어요"),
-    FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "jpg, png 파일만 올릴 수 있어요"),
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "처리하지 못했어요. 내정보는 바뀌지 않았어요");                  // 500
+    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기가 허용 범위를 넘었어요"),
+    FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "올릴 수 없는 파일 형식이에요"),
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "처리하지 못했어요. 내 정보는 바뀌지 않았어요");                  // 500
 
 
     private final HttpStatus status;

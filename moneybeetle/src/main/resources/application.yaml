@@ -5,7 +5,7 @@
 #   - spring.datasource : MySQL 8 (url jdbc:mysql://localhost:3306/money_beetle, username, password)
 #   - spring.jpa : ddl-auto none (resources/sql 스크립트로 테이블 생성), show-sql, format_sql
 #   - server.servlet.session.timeout : 30m (DP-11)
-#   - spring.servlet.multipart : 파일 업로드 최대 크기 2MB (DP-32)
+#   - spring.servlet.multipart : 파일 업로드 최대 크기 500MB (영상 기준, DP-33) / 이미지 2MB는 FileStorageService에서 검사 (DP-32)
 #   - jackson 시간대 : Asia/Seoul (DP-42)
 
 spring:
@@ -28,7 +28,8 @@ spring:
     time-zone: Asia/Seoul
   servlet:
     multipart:
-      max-file-size: 2MB
+      max-file-size: 500MB
+      max-request-size: 510MB
 server:
   servlet:
     session:
