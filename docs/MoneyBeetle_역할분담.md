@@ -147,7 +147,7 @@
 | #60 | 강사 강의 생성 화면 (화면) | — | 5 | 강의 생성 화면(분류·정보·영상·요약글·퀴즈·검수 요청) |
 | #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·내 문의 탭, 강의로 이동. `fragments/mypage/learning` |
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
-| #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `create_table.sql`을 같은 PR에서 수정 |
+| #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `schema.sql`을 같은 PR에서 수정 |
 
 **다른 사람에게 줘야 하는 것**: `CourseService.hasLearningHistory(memberId)`(김예린 홈·로그인 분기), `CourseService.findContinueWatching / findLearningSummary(memberId)`(김예린 홈·Drawer), `CourseService.search(q)`·`InquiryService.search(q)`(이재성 검색)
 **신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.write`, 서수영 `FileStorageService.save`
@@ -263,9 +263,9 @@
 | `domain/auth/**`(로그인 핸들러 등, config 제외), `domain/member/**` | 김예린 | 서수영은 `auth/config`만 수정 |
 | `global/security/IdempotencyFilter` | 이재성 | 서수영이 검토 |
 | `application.yaml`, `build.gradle`, `.github/**`, Docker | 서수영 | 이슈로 요청 (환경변수는 `MoneyBeetle_환경변수.md`) |
-| `sql/create_table.sql` 회원·강의·문의·운영 구역 | 신아림 | 컬럼 변경은 신아림에게 요청 |
-| `sql/create_table.sql` 성장·청약·모의투자 구역 | 김예린 | 컬럼 변경은 김예린에게 요청(청약은 서수영, 모의투자는 이재성이 요청) |
-| `sql/seed/*.sql` 시드 | 해당 샘플 데이터 이슈 담당: `trading.sql`(#72 이재성), `course.sql`(#73 신아림), `housing.sql`(#74 서수영), `term.sql`·`growth.sql`(#75 김예린, 레벨 정책·보상 규칙 포함) | 컬럼이 맞는지는 해당 구역 DBA가 검토 |
+| `sql/schema.sql` 회원·강의·문의·운영 구역 테이블 | 신아림 | 컬럼 변경은 신아림에게 요청 |
+| `sql/schema.sql` 성장·알림·경제 용어·청약·모의투자 구역 테이블 | 김예린 | 컬럼 변경은 김예린에게 요청(청약은 서수영, 모의투자는 이재성이 요청) |
+| `sql/sample-data.sql` 시드 | 같은 파일 안에서 구역 주석 아래에 추가: 회원·강의·퀴즈 구역 신아림(#73), 성장·알림·경제 용어 구역 김예린(#75, 레벨 정책·보상 규칙 포함), 모의투자 시드 이재성(#72), 청약 시드 서수영(#74). 한 파일이라 충돌이 나기 쉬우니 자기 구역만 고친다 | 컬럼이 맞는지는 해당 구역 DBA가 검토 |
 | `fragments/layout/*`, `static/**` | 김예린 | 서수영·이재성은 자기 화면 영역만 |
 | `member/mypage.html` | 이재성(틀) | 자기 탭 fragment만 수정 |
 | `admin/dashboard.html` | 김예린(틀) | 자기 탭 fragment만 수정 |
@@ -301,7 +301,7 @@
 | 브랜치 | 원격에 `main`, `dev`, `sy`, `test`, `feat/be-3-schema-course`, `fix/issue-auto-close`. 작업은 `feat/…` → `dev` → `main` 흐름(Git 규칙) |
 | 코드 | `moneybeetle/`는 골격(대부분 주석만). `./gradlew compileJava`는 성공하지만 `MoneyBeetleApplication`에 `@SpringBootApplication`·main이 없고 `application.yaml`이 비어 있어 `bootRun`은 실패(#2에서 해결) |
 | 저장소 | `.idea/`는 `.gitignore`로 제외됨. 설계 문서는 `docs/`에 있음 |
-| SQL | `sql/create_database.sql`, `sql/create_table.sql` 두 파일 구성 |
+| SQL | `sql/create_database.sql`(DB·계정), `sql/schema.sql`(테이블 47개), `sql/sample-data.sql`(시드) 세 파일 구성 (PR #91 병합 후) |
 
 ---
 
@@ -318,7 +318,7 @@
 | #32 내 강의 문의 | 문의(`inquiry`) 도메인이 신아림 담당이라 그대로 둠 | — |
 | 코드 파일 머리말·README의 옛 담당 표기 | 새 이슈 #83에서 정리 | #83 |
 | 브랜치 흐름 | `sy`·`test` 등 정리와 `main`·`dev` 보호는 새 이슈 #85에서 처리 | #85 |
-| SQL 파일 구조 | 스키마는 `sql/create_database.sql`+`sql/create_table.sql`, 시드는 도메인별 `sql/seed/*.sql`(해당 샘플 데이터 이슈 담당이 작성, DBA 검토) | §8 |
+| SQL 파일 구조 | 수업(14일차 JDBC 팀 프로젝트)과 같은 형식: 실행 순서 `create_database.sql` → `schema.sql` → `sample-data.sql`. 시드는 구역별로 담당이 작성하고 DBA가 검토 | §8 |
 | 추가한 이슈 | #83 README·담당 표기, #84 Actuator·로그, #85 브랜치 정리·보호, #86 통합 점검·시연, #87 인덱스·쿼리 점검 | §2~§5 |
 
 ### 남은 확인 사항

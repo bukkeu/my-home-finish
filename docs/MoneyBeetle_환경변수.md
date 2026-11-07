@@ -80,7 +80,7 @@
 | `DEPLOY_SSH_KEY` | 배포용 SSH 개인 키 | ✅ | 쓰지 않음 | GitHub Secrets |
 
 - GitHub Actions가 이미지를 GHCR에 올릴 때 쓰는 `GITHUB_TOKEN`은 GitHub이 자동으로 제공하므로 따로 만들지 않습니다.
-- **관리자 계정 주의**: `resources/sql/99_seed.sql`에 관리자 계정을 넣는 설계라면, 그 파일에 비밀번호(해시 포함)가 들어갑니다. 로컬 개발용 계정만 seed에 두고, **운영 관리자는 `ADMIN_INITIAL_*`로 배포 때 만듭니다.**
+- **관리자 계정 주의**: `resources/sql/sample-data.sql`에 관리자 계정을 넣는 설계라면, 그 파일에 비밀번호(해시 포함)가 들어갑니다. 로컬 개발용 계정만 seed에 두고, **운영 관리자는 `ADMIN_INITIAL_*`로 배포 때 만듭니다.**
 
 ---
 
@@ -179,7 +179,7 @@ spring:
 ## 6. 새 팀원·새 환경 체크리스트
 
 - [ ] `moneybeetle/.gitignore`에 `.env`가 있는지 확인한다 (없으면 추가).
-- [ ] MySQL 8을 설치하고 `resources/sql/create_database.sql` → `01_member.sql` … → `99_seed.sql` 순서로 실행한다 (FK 때문에 번호 순).
+- [ ] MySQL 8을 설치하고 `resources/sql/create_database.sql` → `schema.sql` → `sample-data.sql` 순서로 실행한다 (시드는 로컬 개발용).
 - [ ] `.env.example`을 복사해 `.env`(또는 IntelliJ 환경변수)를 만들고 `DB_PASSWORD`를 채운다.
 - [ ] `SPRING_PROFILES_ACTIVE=local`로 서버를 띄워 로그인 화면이 열리는지 확인한다.
 - [ ] `git status`에 `.env`가 보이지 않는지 확인한다.
@@ -205,6 +205,6 @@ spring:
 | 메일 발송 방식 | 정책(10분 유효 1회용 토큰)은 있으나 SMTP 서비스 미정 | 사용할 메일 서비스(예: Gmail SMTP 앱 비밀번호) |
 | 간편 로그인 | 우선순위 하. 구글·카카오 앱 등록 필요 | 구현 시점, 개인 테스트 앱을 쓸지 팀 공용 앱을 쓸지 |
 | 파일 저장 | 로컬 폴더와 S3 호환 스토리지 (시스템 설계서의 가정) | 운영에서 쓸 스토리지 서비스, 영상 파일 업로드 허용 여부 |
-| 관리자 계정 | `99_seed.sql`에 관리자 계정 포함 예정 | 운영 계정을 환경변수로 만들지, seed에서 제외할지 |
+| 관리자 계정 | `sample-data.sql`에 관리자 계정 포함됨(로컬 개발용) | 운영 계정을 환경변수로 만들지, seed에서 제외할지 |
 | 환경변수 키 이름 | 이 문서의 이름은 제안 | 팀 합의 후 확정 (Spring 기본 이름 `SPRING_DATASOURCE_URL` 등을 쓸 수도 있음) |
 | 비밀 값 전달 방법 | 미정 | 팀원 간 공유 방법 (비밀번호 관리 도구 등) |
