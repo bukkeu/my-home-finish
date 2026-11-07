@@ -1,5 +1,101 @@
-<!-- comment.
-    담당 : SCM (회원·공통)
-    내용 : 공통 헤더(로고, 경제단어, 캐시, 알림, 프로필)
-    경로 : 모든 사용자 화면
--->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>공통 헤더 조각</title>
+</head>
+<body>
+<!--/* comment.
+    담당 : DBA ② (공통 레이아웃, 이슈 #49)
+    내용 : 공통 head(CSS), 공통 헤더(로고, 검색, 경제단어, 캐시, 알림, 프로필), 공통 스크립트
+    경로 : 모든 사용자·강사·관리자 화면
+
+    수업(08_Spring-Web-MVC/chap07-thymeleaf)과 같은 방식: th:fragment 로 조각 이름을 붙이고
+    th:replace="~{fragments/layout/header :: headerFragment}" 로 불러간다 (templates 기준 경로, 앞에 '/' 없음).
+
+    ===== 화면(페이지)에서 쓰는 모양 =====
+    <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+    <head>
+        <th:block th:replace="~{fragments/layout/header :: headFragment('홈')}"></th:block>
+    </head>
+    <body>
+    <div class="mb-shell">
+        <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('home')}"></th:block>
+        <div class="mb-content">
+            <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+            <main class="mb-main"> ... 화면 내용 ... </main>
+            <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>   (투자·청약 화면만)
+        </div>
+    </div>
+    <th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+    </body>
+
+    ===== Controller 가 Model 에 넘기는 값 =====
+    layout : LayoutDTO (domain/home/model/dto) - 닉네임·레벨·캐시·경험치·연속 출석·해금 레벨.
+             없으면(null) 기본값으로 그려져서 화면이 깨지지 않는다.
+*/-->
+
+<!--/* 공통 <head> 안쪽: 페이지의 <head> 안에서 th:block 으로 불러간다. title 은 화면 이름 */-->
+<th:block th:fragment="headFragment(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="|${title} · Money Beetle|">Money Beetle</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/common.css}">
+</th:block>
+
+<!--/* 공통 헤더 (화면설계 4.1). 학습자는 전체, 강사는 햄버거+로고만, 관리자는 모바일에서만 메뉴 버튼이 보인다 */-->
+<header th:fragment="headerFragment" class="mb-header" sec:authorize="isAuthenticated()"
+        th:with="cash=${layout != null ? layout.cash : 0}, nickname=${layout != null ? layout.nickname : ''}, initial=${layout != null ? layout.initial : '?'}">
+
+    <div class="mb-header__brand">
+        <!--/* 관리자는 사이드바가 고정이라 큰 화면에서는 메뉴 버튼이 필요 없다 (모바일에서만 보임) */-->
+        <button type="button" class="btn btn-ghost btn-icon mb-hamburger" data-mb-open aria-label="메뉴"
+                th:classappend="${#authorization.expression('hasAuthority(''ADMIN'')')} ? 'mb-hamburger--admin'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <a sec:authorize="hasAuthority('MEMBER')" th:href="@{/user/home}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+        <a sec:authorize="hasAuthority('INSTRUCTOR')" th:href="@{/instructor/dashboard}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+<!--/* 관리자는 고정 사이드바 맨 위에 로고가 있어서 헤더에는 로고를 두지 않는다 */-->
+    </div>
+
+    <!--/* 학습자 전용: 통합 검색, 오늘의 경제단어, 캐시, 알림, 프로필 */-->
+    <th:block sec:authorize="hasAuthority('MEMBER')">
+        <form class="mb-search" th:action="@{/user/search}" method="get" role="search">
+            <label>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+                <input type="search" name="q" placeholder="강의·종목을 검색해 보세요" autocomplete="off" aria-label="통합 검색">
+            </label>
+        </form>
+        <!--/* 용어 5개 팝업은 홈 화면 이슈(#51)에서 data-mb-words 에 연결한다 */-->
+        <button type="button" class="btn btn-secondary mb-words" data-mb-words>오늘의 경제단어</button>
+        <span class="tag mb-cash" title="보유 캐시">
+            <img th:src="@{/images/cash-coin.png}" alt="캐시"><span th:text="${#numbers.formatInteger(cash, 0, 'COMMA')}">0</span>
+        </span>
+        <button type="button" class="mb-bell" data-mb-bell aria-label="알림">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+        </button>
+        <a class="mb-profile" th:href="@{/user/my-page}">
+            <span class="mb-avatar" th:text="${initial}">?</span>
+            <span class="mb-profile__name" th:text="${nickname}">닉네임</span>
+        </a>
+    </th:block>
+</header>
+
+<!--/* 공통 스크립트 + 서버 설정값(system_setting)을 MB_SERVER_CONFIG 로 전달 (NFR-10 반응형·잠금 표시에 쓴다) */-->
+<th:block th:fragment="scriptsFragment">
+    <script th:inline="javascript">
+        window.MB_SERVER_CONFIG = {
+            unlock: {
+                demoTrading: /*[[${layout != null ? layout.unlockTradingLevel : 8}]]*/ 8,
+                demoHousing: /*[[${layout != null ? layout.unlockHousingLevel : 12}]]*/ 12
+            }
+        };
+    </script>
+    <script th:src="@{/js/config.js}"></script>
+    <script th:src="@{/js/common.js}"></script>
+    <script th:src="@{/js/drawer.js}"></script>
+    <script th:src="@{/js/notify.js}"></script>
+</th:block>
+</body>
+</html>
