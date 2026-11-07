@@ -2888,7 +2888,7 @@ Header: Idempotency-Key: 31aa...
 **Request**
 
 ```json
-{ "carryoverRate": 30.0, "carryoverCap": 2000000, "unlockLevel": 8 }
+{ "carryoverRate": 100.0, "carryoverCap": null, "unlockLevel": 8 }
 ```
 
 **Response**
