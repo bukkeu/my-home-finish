@@ -18,7 +18,8 @@
 | 환경변수·비밀값 | `MoneyBeetle_환경변수.md` |
 | 누가 무엇을 맡는가 | `MoneyBeetle_역할분담.md` |
 
-기능·데이터는 명세서를, 코드 구조는 코딩컨벤션을 따른다. **API·DB를 바꾸면 같은 PR에서 API명세서·DB설계도 고친다.**
+기능·데이터는 명세서를, 코드 구조는 코딩컨벤션을 따른다.
+**코드를 쓰는 방식은 수업 자료(`C:\Lecture`, 팀 전원이 같은 폴더를 가지고 있다)와 학습 블로그를 기준으로 한다.** 코딩컨벤션의 "근거" 칸에 어느 수업 폴더에서 확인했는지 적혀 있다(예: Thymeleaf 조각 `08_Spring-Web-MVC/chap07-thymeleaf`, Security `10_Spring-Security`, JPA `09_JPA/module07-jpa-mini-project`). 수업과 다르게 하는 부분은 "제안" 또는 "팀 결정"으로 표시한다. **API·DB를 바꾸면 같은 PR에서 API명세서·DB설계도 고친다.**
 
 ## 코드 규칙 (요약)
 
@@ -30,6 +31,7 @@
 - **이름**: 클래스 PascalCase, `DTO`는 대문자(`SignupDTO`), 메서드 camelCase + 접두어(`find`=없을 수 있음, `get`=없으면 예외, `create`, `change`, `delete`, `check`/`is`/`has`), 상수·enum UPPER_SNAKE_CASE. 테이블·컬럼 snake_case 단수형, API URI는 소문자 복수형 kebab-case(`/api/v1/wrong-notes`), JSON 필드 camelCase, 템플릿·정적 파일 소문자 kebab-case.
 - **인증·보안**: 세션 로그인, 비밀번호는 `PasswordEncoder`(BCrypt)로만 저장·변경, `/instructor/**`·`/admin/**` 접근 제한. 레벨 해금은 `@RequireLevel`.
 - **삭제**: Hard Delete를 기본으로 쓰지 않고 DB 설계의 테이블별 방식(`deleted_at`, `is_hidden`, `is_public`)을 따른다.
+- **Thymeleaf 조각**: 수업처럼 `th:fragment="headerFragment"`로 정의하고 `th:replace="~{fragments/layout/header :: headerFragment}"`로 부른다(경로는 templates 기준, `.html` 생략, 앞에 `/` 없음). 권한은 `sec:authorize="hasAuthority('MEMBER')"`처럼 `ROLE_` 없이 검사한다.
 - **화면**: Thymeleaf 템플릿은 `templates/<도메인>/<화면>.html`, 공통은 `fragments/layout`. 인라인 스크립트 대신 `static/js`. 들여쓰기 2칸(HTML·CSS·JS).
 - **Java 스타일**: Google Java Style.
 - **비밀값**: 비밀번호·키를 코드·`application.yaml`에 직접 쓰지 않는다. `.env`(Git 제외) + 환경변수로 읽는다(`docs/MoneyBeetle_환경변수.md`).
