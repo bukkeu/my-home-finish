@@ -20,15 +20,15 @@ reviews:
   estimate_code_review_effort: true
   review_status: true
   poem: false
-  in_progress_fortune: false
+  in_progrxess_fortune: false
   enable_prompt_for_ai_agents: true  # Claude Code에 붙여 넣을 수정 프롬프트 제공
 
   auto_review:
     enabled: true
     drafts: false                    # Draft PR은 리뷰하지 않음
     base_branches:                   # 기본 브랜치 외에 리뷰할 대상 브랜치 (Git 규칙: 작업 브랜치 → dev → main)
-      - "^dev$"
-      - "^main$"
+      - "dev"
+      - "main"
     ignore_title_keywords:
       - "WIP"
 
