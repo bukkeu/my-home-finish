@@ -1798,7 +1798,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-04, SP-70 |
-| 설명 | 잔액, 납입회차, 오늘 납입 여부. (Lv.12 전 납입 허용 여부는 팀 확인 필요) |
+| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부, 납입 한도(1회 20,000~500,000, 하루 인정 250,000. SP-70 초안). (Lv.12 전 납입 허용 여부는 팀 확인 필요) |
 
 **Request**
 
@@ -1807,7 +1807,8 @@ Header: Idempotency-Key: 9b2f...
 **Response**
 
 ```json
-{ "accountId": 1, "balance": 14000, "paidCount": 14, "lastPaidDate": "2026-11-04", "paidToday": false, "depositAmount": 1000, "cash": 12400 }
+{ "accountId": 1, "balance": 1840000, "recognizedAmount": 1590000, "paidCount": 14, "lastPaidDate": "2026-11-04", "paidToday": false,
+  "depositPolicy": { "minAmount": 20000, "maxAmount": 500000, "dailyRecognizedLimit": 250000 }, "cash": 1250000 }
 ```
 
 #### 66. 청약통장 납입
@@ -1818,23 +1819,23 @@ Header: Idempotency-Key: 9b2f...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | SUB-05, SP-70, DP-35, DP-40 |
-| 설명 | 하루 1회. 캐시 차감 + 통장 잔액·회차 증가를 한 트랜잭션으로. |
+| 설명 | 하루 1회, 1회 20,000~500,000캐시. 납입액은 모두 잔액에 더하고, 인정금액은 min(납입액, 250,000)만 더한다. 캐시 차감 + 통장 잔액·인정금액·회차 증가 + 납입 내역 저장을 한 트랜잭션으로. |
 
 **Request**
 
 ```json
 Header: Idempotency-Key: 31aa...
-{ "amount": 1000 }
+{ "amount": 300000 }
 ```
 
 **Response**
 
 ```json
 201 Created
-{ "depositId": 15, "balance": 15000, "paidCount": 15, "cash": 11400 }
+{ "depositId": 15, "amount": 300000, "recognizedAmount": 250000, "balance": 2140000, "totalRecognizedAmount": 1840000, "paidCount": 15, "cash": 950000 }
 ```
 
-**Error**: `ALREADY_PAID_TODAY`, `NOT_ENOUGH_CASH`
+**Error**: `ALREADY_PAID_TODAY`, `DEPOSIT_BELOW_MIN`, `DEPOSIT_ABOVE_MAX`, `NOT_ENOUGH_CASH`
 
 #### 67. 납입 내역
 
@@ -1853,7 +1854,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 1000, "paidCountAfter": 15 } ] }
+{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ] }
 ```
 
 #### 68. 가점 계산기
@@ -3596,6 +3597,8 @@ Header: Idempotency-Key: 31aa...
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
 | 모의 청약 | `ALREADY_PAID_TODAY` | 409 | 오늘은 이미 납입했어요 |
+| 모의 청약 | `DEPOSIT_BELOW_MIN` | 400 | 최소 20,000 캐시부터 납입할 수 있어요 |
+| 모의 청약 | `DEPOSIT_ABOVE_MAX` | 400 | 한 번에 최대 500,000 캐시까지 납입할 수 있어요 |
 | 모의 청약 | `NOT_ANNOUNCED_YET` | 403 | 발표는 ○월 ○일이에요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
