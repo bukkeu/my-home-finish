@@ -1,6 +1,6 @@
 # MoneyBeetle 역할 분담 (세부)
 
-> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/create_table.sql`(테이블 47개)
+> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/schema.sql`(테이블 47개)
 > 이슈 1개 = 작업 브랜치 1개 = PR 1개. 브랜치 이름은 Git 규칙(`feat/be-<이슈번호>-<설명>`)을 따릅니다.
 
 ---
@@ -301,7 +301,7 @@
 | 브랜치 | 원격에 `main`, `dev`, `sy`, `test`, `feat/be-3-schema-course`, `fix/issue-auto-close`. 작업은 `feat/…` → `dev` → `main` 흐름(Git 규칙) |
 | 코드 | `moneybeetle/`는 골격(대부분 주석만). `./gradlew compileJava`는 성공하지만 `MoneyBeetleApplication`에 `@SpringBootApplication`·main이 없고 `application.yaml`이 비어 있어 `bootRun`은 실패(#2에서 해결) |
 | 저장소 | `.idea/`는 `.gitignore`로 제외됨. 설계 문서는 `docs/`에 있음 |
-| SQL | `sql/create_database.sql`(DB·계정), `sql/schema.sql`(테이블 47개), `sql/sample-data.sql`(시드) 세 파일 구성 (PR #91 병합 후) |
+| SQL | `sql/create_database.sql`(DB·계정), `sql/schema.sql`(테이블 47개), `sql/sample-data.sql`(시드) 세 파일 구성 |
 
 ---
 
