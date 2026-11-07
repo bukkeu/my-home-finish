@@ -19,7 +19,8 @@ jobs:
         with:
           script: |
             const pr = context.payload.pull_request;
-            const text = `${pr.title}\n${pr.body || ""}`;
+            const text = `${pr.title}\n${pr.body || ""}`
+              .replace(/<!--[\s\S]*?-->/g, "");
             const re = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)/gi;
             const numbers = [...new Set([...text.matchAll(re)].map(m => Number(m[1])))];
             for (const issue_number of numbers) {
