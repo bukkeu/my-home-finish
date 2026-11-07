@@ -1,6 +1,6 @@
 # MoneyBeetle 역할 분담 (세부)
 
-> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#76(이슈 번호는 이 저장소 기준), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/create_table.sql`(테이블 47개)
+> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/create_table.sql`(테이블 47개)
 > 이슈 1개 = 작업 브랜치 1개 = PR 1개. 브랜치 이름은 Git 규칙(`feat/be-<이슈번호>-<설명>`)을 따릅니다.
 
 ---
@@ -13,10 +13,10 @@
 
 | 담당 | 이전 안 | 이번 안 |
 | --- | --- | --- |
-| 서수영 (SCM) | 27개 · 점수 157 | **13개 · 점수 85** (+고유 업무 10) |
-| 이재성 (PM) | 13개 · 점수 70 | **19개 · 점수 94** (+일정 관리 10) |
-| 신아림 (DBA ①) | 15개 · 점수 78 | **21개 · 점수 103** (+DB 3) |
-| 김예린 (DBA ②) | 10개 · 점수 48 | **21개 · 점수 102** (+DB 3) |
+| 서수영 (SCM) | 27개 · 점수 157 | **16개 · 점수 93** (+고유 업무 10) |
+| 이재성 (PM) | 13개 · 점수 70 | **20개 · 점수 98** (+일정 관리 10) |
+| 신아림 (DBA ①) | 15개 · 점수 78 | **22개 · 점수 105** (+DB 3) |
+| 김예린 (DBA ②) | 10개 · 점수 48 | **22개 · 점수 104** (+DB 3) |
 
 - **점수**는 작업량 추정치입니다(API 수 + 구현 난이도 가산, 화면은 프로토타입 크기 기준). 계산 기준은 맨 아래 부록에 있습니다.
 - 서수영은 고유 업무(문서·Git·이슈, 릴리스 PR)가 있고 모의 청약에 **미확정 규칙**(당첨 규칙 임시안, 가점표)이 남아 있어서, 점수를 다른 사람보다 조금 낮게 두었습니다.
@@ -28,20 +28,21 @@
 
 | 담당 | 담당자 | 맡는 영역 | 이슈 | 점수 | API |
 | --- | --- | --- | --- | --- | --- |
-| **SCM** | **서수영** | **모의 청약** + 공통 기반·보안 + CI·배포 + 문서·Git·이슈 | 13 | 85 | 16 |
-| **PM** | **이재성** | **모의투자** + 통합 검색 + 마이페이지 틀 + 중복 요청 방지 | 19 | 94 | 39 |
-| **DBA ①** | **신아림** | 강의·퀴즈·강사 + 문의 + 사용자·강사 관리 | 21 | 103 | 53 |
-| **DBA ②** | **김예린** | 회원·인증 + 성장·알림·홈·경제 용어 + 관리자 틀·운영 + 공통 레이아웃 | 21 | 102 | 40 |
+| **SCM** | **서수영** (`tjtndud2`) | **모의 청약** + 공통 기반·보안 + CI·배포·Actuator + README·브랜치 정리 + 문서·Git·이슈 | 16 | 93 | 16 |
+| **PM** | **이재성** (`godgeul-glitch`) | **모의투자** + 통합 검색 + 마이페이지 틀 + 중복 요청 방지 + 통합 점검 | 20 | 98 | 39 |
+| **DBA ①** | **신아림** (`arim0317-dot`) | 강의·퀴즈·강사 + 문의 + 사용자·강사 관리 | 22 | 105 | 53 |
+| **DBA ②** | **김예린** (`paaaraaaeaaa`) | 회원·인증 + 성장·알림·홈·경제 용어 + 관리자 틀·운영 + 공통 레이아웃 | 22 | 104 | 40 |
 
-- 이슈 #3(DB 스키마 SQL)는 DBA 두 명이 구역을 나눠 맡습니다(점수는 각각 3으로 반영).
+- 이슈 #3(DB 스키마 SQL)와 #87(인덱스·쿼리 점검)은 DBA 두 명이 구역을 나눠 맡습니다(GitHub 담당자도 두 명, 점수는 #3은 각각 3, #87은 각각 2로 반영).
+- GitHub 담당자(Assignee)는 이 문서의 배정과 같게 지정되어 있습니다. 담당을 옮길 때는 이 문서와 GitHub 담당자를 같이 고칩니다.
 - API 합계는 148개이고 모든 API가 한 번씩 배정되어 있습니다. API 수가 DBA ①에 많은 것은 강의·문의·강사 관리 API가 많기 때문이고, 화면과 난이도는 점수에 반영했습니다.
 
 ### 담당자별 고유 업무 (코드 외)
 
 | 역할 | 고유 업무 |
 | --- | --- |
-| **PM 이재성** | 기획·실행·테스트·완료 전체 흐름과 일정 관리, 회의 주관, 의견 조율, 병목 파악·해결. 미확정 사항(#68 XP 값, #76 캐시·청약통장 기준, 청약 당첨 규칙 등)의 결정 조율 |
-| **SCM 서수영** | 프로젝트 문서 변경 추적·버전 관리, Git/GitHub 브랜치 전략·이슈 설계, 문서·개발 컨벤션 설계, `dev → main` 릴리스 PR |
+| **PM 이재성** | 기획·실행·테스트·완료 전체 흐름과 일정 관리, 회의 주관, 의견 조율, 병목 파악·해결. 미확정 사항(#68 XP 값, #76 캐시·청약통장 기준, 청약 당첨 규칙 등)의 결정 조율, 통합 점검(#86) |
+| **SCM 서수영** | 프로젝트 문서 변경 추적·버전 관리, Git/GitHub 브랜치 전략·이슈 설계, 문서·개발 컨벤션 설계, `dev → main` 릴리스 PR, 브랜치 정리·보호(#85), README(#83) |
 | **DBA ① 신아림 · ② 김예린** | DB 설계·관리, 스키마 버전 관리, SQL 최적화. 코드 담당자가 테이블을 바꾸려면 DBA에게 요청 |
 
 **DB 관리 구분**: 신아림 (DBA ①) = 회원·인증·문의·운영·강의·퀴즈 테이블 23개, 김예린 (DBA ②) = 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개. 시드는 구역을 나눠 함께 관리합니다.
@@ -53,7 +54,7 @@
 **패키지**: `domain/housing`, `global/**`, `domain/auth/config`(SecurityConfig)
 **테이블(코드 담당 4)**: subscription_account, subscription_deposit, housing_complex, housing_application
 **요구사항**: SUB-01~11, ADM-36~39, NFR-01~04, NFR-12~14
-**13개 · 점수 85 (+10) · API 16개**
+**16개 · 점수 93 (+10) · API 16개**
 
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
@@ -70,6 +71,9 @@
 | #68 | 경험치 활동 보상 기준 확정 (문서) | — | 2 | 활동별 XP 확정 → 정책 정의서 SP-22·`reward_rule` 시드·관련 이슈 본문 반영. 값 결정은 PM이 조율 |
 | #70 | 마이페이지 나의 청약통장 탭 (화면) | — | 4 | 마이페이지 "나의 청약통장" 탭(잔액·납입·내역). **레벨 조건 없음**, `Idempotency-Key`. `fragments/mypage/housing` |
 | #74 | 샘플 데이터 — 청약 단지·공고 | — | 3 | 시연용 공공·민영 단지·공고(네 단계 날짜 구성, 커트라인, 이미지). `housing/store.js` 기준 |
+| #83 | README 실행 가이드·담당 표기 정리 (문서) | — | 3 | 로컬 실행 방법(`.env.example` → DB → `bootRun`), 폴더 구조, 규칙 요약, 코드 파일 머리말·README의 옛 담당 표기 수정 |
+| #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC), Docker·Nginx 헬스 체크 |
+| #85 | 브랜치 정리·보호 규칙 설정 | — | 2 | `sy`·`test` 등 남은 브랜치 정리, `main`·`dev` 보호(PR 필수·승인 1명), `main`은 `dev`에서만 병합 |
 
 **다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.findMyApplications(memberId)`(김예린 마이페이지 성장 탭), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
 **서수영이 쓰는 것**: 김예린 `GrowthService.getLevel`, `RewardService.spend`, `NotificationService.send`
@@ -82,7 +86,7 @@
 **테이블(코드 담당 12)**: trading_season, season_turn, sector, stock, stock_price, news, news_tag, trade_reason, season_participant, holding, trade_order, ranking_award
 **요구사항**: INV-01~18, ADM-08~28, ADM-31~35, NFR-05, NFR-07
 **참고 코드**: `moneybeetle-page/new1/App.jsx`(사용자), `new1/Admin.jsx`(관리자), `DemoTrading-code/`
-**19개 · 점수 94 (+10) · API 39개**
+**20개 · 점수 98 (+10) · API 39개**
 
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
@@ -105,6 +109,7 @@
 | #62 | 관리자 모의투자 운영 화면 (화면) | — | 9 | 관리자 모의투자 운영(시즌·종목·가격·뉴스·턴·정산·통계). 누락 데이터가 있으면 다음 턴 버튼 비활성화 |
 | #72 | 샘플 데이터 — 종목·가격·뉴스 | — | 5 | 시연용 분야 15·종목 30·12턴 가격표·턴당 뉴스·매매 이유. `new1/App.jsx` 기준 |
 | #76 | 캐시 보상·청약통장 납입·이월금 기준 확정 (문서) | — | 2 | 출석·학습 완료·레벨업 캐시, 청약통장 납입, 이월금, 랭킹 보상 값 확정 → 정책 정의서·시드·`mb-config.js` 반영. 결정 조율은 PM |
+| #86 | 통합 점검·시연 시나리오 리허설 | — | 4 | 시연 시나리오 4개(학습·모의투자·청약·강사/관리자)를 `dev`에서 끝까지 실행, 문제는 담당자 이슈로 정리. 기능이 `dev`에 모인 뒤 진행 |
 
 **다른 사람에게 줘야 하는 것**: `RankingService.findAwards(memberId)`(김예린 Drawer·마이페이지), `TradingService.getDashboardSummary()`(김예린 관리자 첫 화면), `IdempotencyFilter`(전원)
 **이재성이 쓰는 것**: 김예린 `RewardService.getBalance`·`spend`, `NotificationService.send`, 신아림 `CourseService.search`·`InquiryService.search`
@@ -117,7 +122,7 @@
 **테이블(코드 담당 14)**: category, course, course_review, lesson, learning_progress, lesson_watch, scrap, quiz_question, quiz_choice, quiz_attempt, quiz_answer, wrong_answer_note, inquiry, inquiry_reply
 **DB 관리**: 회원·인증·문의·운영·강의·퀴즈 테이블 23개, 시드의 카테고리·강의·퀴즈
 **요구사항**: LRN-01~09, QST-01~06, TCH-01~09, ADM-02~04, ADM-06~07, NFR-15
-**19개 · 점수 95 (+3) · API 53개**
+**22개 · 점수 105 (+3) · API 53개**
 
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
@@ -142,6 +147,7 @@
 | #60 | 강사 강의 생성 화면 (화면) | — | 5 | 강의 생성 화면(분류·정보·영상·요약글·퀴즈·검수 요청) |
 | #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·내 문의 탭, 강의로 이동. `fragments/mypage/learning` |
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
+| #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `create_table.sql`을 같은 PR에서 수정 |
 
 **다른 사람에게 줘야 하는 것**: `CourseService.hasLearningHistory(memberId)`(김예린 홈·로그인 분기), `CourseService.findContinueWatching / findLearningSummary(memberId)`(김예린 홈·Drawer), `CourseService.search(q)`·`InquiryService.search(q)`(이재성 검색)
 **신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.write`, 서수영 `FileStorageService.save`
@@ -154,7 +160,7 @@
 **테이블(코드 담당 14)**: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule
 **DB 관리**: 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개, 시드의 레벨 정책·보상 규칙·분야·종목·가격
 **요구사항**: USR-01~14, HOM-01~06, GRW-01~08, ADM-01, ADM-05, ADM-29~30, NFR-06, NFR-08~10, NFR-13
-**21개 · 점수 102 (+3) · API 40개**
+**22개 · 점수 104 (+3) · API 40개**
 
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
@@ -179,6 +185,7 @@
 | #61 | 관리자 로그인·대시보드·운영 메뉴 화면 (화면) | — | 10 | 관리자 로그인·대시보드 **틀**·운영 메뉴. 탭(`?view=`) 내용은 각 담당이 fragment로 제공 |
 | #69 | 마이페이지 캐시 내역·레벨 탭 (화면) | — | 4 | "캐시 내역" 탭·프로필 요약(레벨·칭호·경험치·연속 출석·수상 내역). 수상 내역은 이재성이 데이터 제공. `fragments/mypage/growth` |
 | #75 | 샘플 데이터 — 경제 용어·알림 | — | 3 | 시연용 경제 용어 사전·날짜별 5개·개발용 알림 샘플 |
+| #87 | 인덱스·쿼리 점검 (신아림과 공동) | — | 2 | 성장·알림·경제 용어·청약·모의투자 구역의 조회 실행 계획·인덱스 점검 |
 
 **다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
 **김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.*`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
@@ -234,6 +241,7 @@
 | 김예린 | `AttendanceService.checkToday(memberId)` | 김예린 | 로그인 성공 |
 | 김예린 | `ForbiddenWordService.check(text)` | 신아림, 김예린 | 문의·닉네임·강의 글 |
 | 김예린 | `AdminLogService.write(adminId, action, targetId, before, after, reason)` | 전원 | 관리자 중요 작업 |
+| 김예린 | `InstructorService.apply(memberId, ...)` / `approve(applicationId)` | 신아림 | 강사 가입 신청(#30), 관리자 강사 승인(#37). `instructor_profile`은 김예린 `member` 도메인 소유 |
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
 | 서수영 | `HousingService.findMyApplications(memberId)` | 김예린 | 마이페이지 성장 탭 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
@@ -251,12 +259,13 @@
 
 | 파일 | 고치는 사람 | 다른 사람은 |
 | --- | --- | --- |
-| `global/**`, `SecurityConfig`, `CommonErrorCode` | 서수영 | 이슈로 요청 |
+| `global/**`, `domain/auth/config/**`(`SecurityConfig`·`LevelCheckInterceptor`), `CommonErrorCode` | 서수영 | 이슈로 요청 |
+| `domain/auth/**`(로그인 핸들러 등, config 제외), `domain/member/**` | 김예린 | 서수영은 `auth/config`만 수정 |
 | `global/security/IdempotencyFilter` | 이재성 | 서수영이 검토 |
 | `application.yaml`, `build.gradle`, `.github/**`, Docker | 서수영 | 이슈로 요청 (환경변수는 `MoneyBeetle_환경변수.md`) |
 | `sql/create_table.sql` 회원·강의·문의·운영 구역 | 신아림 | 컬럼 변경은 신아림에게 요청 |
 | `sql/create_table.sql` 성장·청약·모의투자 구역 | 김예린 | 컬럼 변경은 김예린에게 요청(청약은 서수영, 모의투자는 이재성이 요청) |
-| 시드 데이터 | 신아림(회원·강의 구역) / 김예린(성장·모의투자 구역) | — |
+| `sql/seed/*.sql` 시드 | 해당 샘플 데이터 이슈 담당: `trading.sql`(#72 이재성), `course.sql`(#73 신아림), `housing.sql`(#74 서수영), `term.sql`·`growth.sql`(#75 김예린, 레벨 정책·보상 규칙 포함) | 컬럼이 맞는지는 해당 구역 DBA가 검토 |
 | `fragments/layout/*`, `static/**` | 김예린 | 서수영·이재성은 자기 화면 영역만 |
 | `member/mypage.html` | 이재성(틀) | 자기 탭 fragment만 수정 |
 | `admin/dashboard.html` | 김예린(틀) | 자기 탭 fragment만 수정 |
@@ -269,11 +278,12 @@
 
 | 단계 | 서수영 | 이재성 | 신아림 | 김예린 |
 | --- | --- | --- | --- | --- |
-| **1. 기반** | #2, #4, #67 | #65 | #3(회원·강의 구역) | #3(성장·청약·모의투자 구역), #49, #10 |
-| **(문서)** | #68 | #76 | — | — |
+| **1. 기반** | #2, #4, #67, #84 | #65 | #3(회원·강의 구역) | #3(성장·청약·모의투자 구역), #49, #10 |
+| **(문서)** | #68, #83 | #76 | — | — |
 | **2. 핵심 흐름** | #27, #28, #74 | #40, #41, #42, #23, #72 | #16, #17, #19, #20, #73 | #5, #6, #11, #12, #13, #50, #51, #75 |
 | **3. 기능 확장** | #29, #58, #70 | #44, #43, #24, #25, #57, #54 | #18, #21, #22, #30, #31, #52, #53, #71 | #7, #8, #14, #36, #64, #66, #69 |
-| **4. 관리자·마무리** | #47, #48, #63 | #26, #45, #46, #62, #15, #56 | #32, #34, #35, #37, #38, #55, #59, #60 | #9, #33, #39, #61 |
+| **4. 관리자·마무리** | #47, #48, #63, #85 | #26, #45, #46, #62, #15, #56 | #32, #34, #35, #37, #38, #55, #59, #60 | #9, #33, #39, #61 |
+| **5. 점검** | — | #86(통합 점검·시연) | #87(구역 ①) | #87(구역 ②) |
 
 - 1단계가 `dev`에 다 들어가야 2단계를 시작합니다. 특히 서수영의 **#2**(서버 시작 클래스·설정)과 김예린의 **#10**(연동 메서드 공개)가 늦어지면 모두가 막힙니다. 샘플 데이터(#72~#75)는 해당 테이블이 확정된 뒤 시연 전까지 넣으면 됩니다.
 - 서수영의 **#4**(Security)이 끝나야 김예린가 로그인(#6)을 마무리할 수 있습니다. 2단계 초반에 먼저 올려 주세요.
@@ -285,7 +295,7 @@
 
 | 항목 | 상태 |
 | --- | --- |
-| 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#76(75개). #3(DB 스키마 SQL)은 닫힘, 나머지 열림. **담당자(Assignee) 지정 0개**. 이 문서가 #2~#76 전부를 배정함 |
+| 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#87(80개). #3(DB 스키마 SQL)은 닫힘, 나머지 열림. **담당자(Assignee) 지정 완료**(이 문서 배정과 같음, #3·#87은 DBA 두 명). #83~#87은 2026-11-07에 추가 |
 | PR 번호 | 이슈와 PR이 번호를 같이 씀: PR은 #1, #77~#82 |
 | 최근 확정 사항 | #9 본인인증·간편 로그인은 **가상**, #11 최대 Lv.20·칭호 구간별 필요 XP(첫 칭호 **고시원**), #20 통과 **70점**, #23 시즌 참가 시 **캐시 차감 없음**, #31 영상은 **파일 업로드**, #48 청약 당첨 규칙은 **임시안**(추후 확정), #68 XP 값·#76 캐시·청약통장 기준 확정 필요 |
 | 브랜치 | 원격에 `main`, `dev`, `sy`, `test`, `feat/be-3-schema-course`, `fix/issue-auto-close`. 작업은 `feat/…` → `dev` → `main` 흐름(Git 규칙) |
@@ -295,18 +305,29 @@
 
 ---
 
-## 11. 팀 확인 필요
+## 11. 정리한 결정과 남은 확인 사항
+
+### 이번에 정한 것
+
+| 항목 | 결정 | 반영 |
+| --- | --- | --- |
+| 이슈 담당자 | GitHub Assignee를 이 문서 배정대로 지정함(서수영 `tjtndud2`, 이재성 `godgeul-glitch`, 신아림 `arim0317-dot`, 김예린 `paaaraaaeaaa`). #3·#87은 DBA 두 명 | GitHub 이슈 전체 |
+| Main 소개 화면 | 별도 이슈 없이 #51에 포함(김예린) | #51 |
+| `member`·`auth` 패키지 | **파일 단위로 소유**: `auth/config`(SecurityConfig·LevelCheckInterceptor)는 서수영, 로그인 핸들러·회원 API는 김예린. 서로 다른 쪽 파일은 이슈로 요청 | §8 |
+| #30 강사 가입 신청 | 이슈를 쪼개지 않음. 신아림이 API를 만들고 신청·승인 처리는 김예린 `InstructorService`를 호출(#37 승인도 같음) | §7 |
+| #32 내 강의 문의 | 문의(`inquiry`) 도메인이 신아림 담당이라 그대로 둠 | — |
+| 코드 파일 머리말·README의 옛 담당 표기 | 새 이슈 #83에서 정리 | #83 |
+| 브랜치 흐름 | `sy`·`test` 등 정리와 `main`·`dev` 보호는 새 이슈 #85에서 처리 | #85 |
+| SQL 파일 구조 | 스키마는 `sql/create_database.sql`+`sql/create_table.sql`, 시드는 도메인별 `sql/seed/*.sql`(해당 샘플 데이터 이슈 담당이 작성, DBA 검토) | §8 |
+| 추가한 이슈 | #83 README·담당 표기, #84 Actuator·로그, #85 브랜치 정리·보호, #86 통합 점검·시연, #87 인덱스·쿼리 점검 | §2~§5 |
+
+### 남은 확인 사항
 
 | 항목 | 내용 | 정할 것 |
 | --- | --- | --- |
-| 서수영 업무량 | 점수 85로 가장 낮음(고유 업무 +10 별도). 모의 청약은 규칙이 미확정이라 범위가 늘 수 있음 | 청약 규칙 확정 후 필요하면 다른 담당에게 일부 이동 |
-| Main 소개 화면 | 화면 20개 중 `Main`만 이슈가 없음 | #51에 포함(현재 방침)할지, 새 이슈를 만들지 |
-| 이슈 담당자 | 담당자 지정 0개 | 이 문서 §2~§5 기준으로 GitHub Assignee 지정 |
-| `member`·`auth` 패키지 | `SecurityConfig`(서수영)와 로그인 핸들러·회원 API(김예린)가 같은 `auth`·`member`에 섞임 | 파일 단위 소유(§8)로 합의하거나, `auth/config`만 서수영으로 분리 |
-| `#30`·`#32` | 강사 가입 신청(`member`)·내 강의 문의(`inquiry`)가 강의 이슈에 포함 | 이슈를 쪼갤지, 서비스 호출로 처리할지 |
-| 코드 파일의 담당 주석 | `moneybeetle/` 파일 머리말·README의 담당 표기가 예전 기준 | 이번 담당으로 수정 |
-| 브랜치 흐름 | `sy`·`test` 등 남은 브랜치 | `dev` 기준으로 정리, 불필요한 브랜치 삭제 |
-| SQL 파일 구조 | `create_database.sql`+`create_table.sql` 구성 | 시드 파일을 따로 둘지 확정 후 §8 표기 맞춤 |
+| 청약 규칙 | 당첨 규칙은 임시안, 가점표 확정 필요 | 확정 후 서수영 업무량 재조정(점수 93, 가장 낮음) |
+| 경험치·캐시 값 | #68, #76에서 확정 | 이재성(PM)이 결정 조율 |
+| 점수 기준 | 점수는 상대 비교용 추정치 | 실제 진행하며 이슈를 옮기고, 옮길 때는 이 문서와 GitHub 담당자를 같이 수정 |
 
 ---
 
@@ -314,7 +335,7 @@
 
 - **BE 이슈**: 담당 API 수 + 난이도 가산. 가산: 공통 기반 +8, 보안 +6, 보상 엔진 +5, 퀴즈 채점 +3, 영상 파일 업로드 +4, 주문 트랜잭션 +4, 턴 점검 +3, 정산·이월금 +3, 가점·신청 스냅샷 +5, 당첨 산정(임시 규칙) +8, CI·배포 +6 등
 - **FE 이슈**: 프로토타입 화면 파일 크기(KB) ÷ 10 + 가산(모의투자·모의 청약 화면 +3, 관리자 운영 화면 +2)
-- **고유 업무·DB 가산**: PM 일정 관리 +10, SCM 문서·Git·이슈 +10, DBA DB 관리 +3(#3 구역 몫)
+- **고유 업무·DB 가산**: PM 일정 관리 +10, SCM 문서·Git·이슈 +10, DBA DB 관리 +3(#3 구역 몫). 새로 추가한 #83~#87은 작업 시간 기준으로 3·3·2·4·4점
 - 점수는 **상대 비교용 추정치**입니다. 실제 작업을 해 보며 이슈를 옮겨도 됩니다.
 
 | 이슈 | 점수 | 이슈 | 점수 | 이슈 | 점수 | 이슈 | 점수 |
@@ -337,4 +358,5 @@
 | #63 | 12 | #64 | 3 | #65 | 3 | #66 | 3 |
 | #67 | 6 | #68 | 2 | #69 | 4 | #70 | 4 |
 | #71 | 4 | #72 | 5 | #73 | 4 | #74 | 3 |
-| #75 | 3 | #76 | 2 |  |  |  |  |
+| #75 | 3 | #76 | 2 | #83 | 3 | #84 | 3 |
+| #85 | 2 | #86 | 4 | #87 | 4 (각 2) |  |  |
