@@ -471,7 +471,7 @@ class Component extends DCLogic {
     if (r.last === today) { if (this.state.streak !== r.streak || !this.state.checkedIn) this.setState({ streak: r.streak, checkedIn: true }); return; }
     const n = r.last === f(y) ? (r.streak || 0) + 1 : 1;
     localStorage.setItem('mb-attendance', JSON.stringify({ last: today, streak: n }));
-    this.setState(x => ({ streak: n, checkedIn: true, cash: x.cash + (n >= 5 ? 100 : 0) }));
+    this.setState(x => ({ streak: n, checkedIn: true, cash: x.cash + (n >= 5 ? 10000 : 0) }));
   }
   componentWillUnmount() { window.removeEventListener('mb-housing-change', this._hon); window.removeEventListener('hashchange', this._hash); clearTimeout(this._ht); clearInterval(this._at); }
   // 나의 청약통장 — 데이터는 housing/store.js(모의 청약 페이지와 공유)
@@ -579,7 +579,7 @@ class Component extends DCLogic {
       subClick: e => { if (level < subReq) { e.preventDefault(); this.setState({ lock: { name: '모의 청약', req: subReq } }); } }, invOpen: level >= invReq,
       exp: 90, expPct: '60%', nextLevel: Math.min(level + 1, 20), levelUpCash: (Math.min(level + 1, 20) * 1000).toLocaleString(), deposits: 18,
       cashText: s.cash.toLocaleString(), streak, streakDots: dots,
-      streakNote: streak >= 5 ? '5일 이상 연속 출석 중 · 매일 캐시 100 지급' : `${5 - streak}일 더 출석하면 매일 캐시를 받아요`,
+      streakNote: streak >= 5 ? '5일 이상 연속 출석 중 · 매일 캐시 10,000 지급' : `${5 - streak}일 더 출석하면 매일 캐시를 받아요`,
       checkedIn: s.checkedIn, checkLabel: s.checkedIn ? '오늘 출석 완료' : '출석 체크',
       checkIn: () => this.autoAttend(),
       tabs: [['account','계정 설정'],['cash','캐시 내역'],['housing','나의 청약통장'],['wrong','퀴즈 오답노트'],['scrap','강의 스크랩'],['history','학습 기록'],['qna','Q&A·문의 모음']].map(([k,l]) => ({ label: l, active: s.tab === k, idle: s.tab !== k, go: () => this.setState({ tab: k }) })),

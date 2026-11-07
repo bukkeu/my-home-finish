@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <th:block th:replace="~{fragments/layout/header :: headFragment('미리보기')}"></th:block>
+</head>
+<body>
+<!-- 공통 레이아웃 조각이 한 화면에서 같이 그려지는지 확인하는 테스트용 화면 (서비스 화면이 아님) -->
+<div class="mb-shell">
+    <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('home')}"></th:block>
+    <div class="mb-content">
+        <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+        <main class="mb-main">본문 영역</main>
+        <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+    </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+</body>
+</html>

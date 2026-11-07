@@ -1,6 +1,6 @@
 # MoneyBeetle 역할 분담 (세부)
 
-> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/schema.sql`(테이블 47개)
+> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87·#95(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/schema.sql`(테이블 47개)
 > 이슈 1개 = 작업 브랜치 1개 = PR 1개. 브랜치 이름은 Git 규칙(`feat/be-<이슈번호>-<설명>`)을 따릅니다.
 
 ---
@@ -15,8 +15,8 @@
 | --- | --- | --- |
 | 서수영 (SCM) | 27개 · 점수 157 | **16개 · 점수 93** (+고유 업무 10) |
 | 이재성 (PM) | 13개 · 점수 70 | **20개 · 점수 98** (+일정 관리 10) |
-| 신아림 (DBA ①) | 15개 · 점수 78 | **22개 · 점수 105** (+DB 3) |
-| 김예린 (DBA ②) | 10개 · 점수 48 | **22개 · 점수 104** (+DB 3) |
+| 신아림 (DBA ①) | 15개 · 점수 78 | **23개 · 점수 107** (+DB 3) |
+| 김예린 (DBA ②) | 10개 · 점수 48 | **23개 · 점수 106** (+DB 3) |
 
 - **점수**는 작업량 추정치입니다(API 수 + 구현 난이도 가산, 화면은 프로토타입 크기 기준). 계산 기준은 맨 아래 부록에 있습니다.
 - 서수영은 고유 업무(문서·Git·이슈, 릴리스 PR)가 있고 모의 청약에 **미확정 규칙**(당첨 규칙 임시안, 가점표)이 남아 있어서, 점수를 다른 사람보다 조금 낮게 두었습니다.
@@ -30,8 +30,8 @@
 | --- | --- | --- | --- | --- | --- |
 | **SCM** | **서수영** (`tjtndud2`) | **모의 청약** + 공통 기반·보안 + CI·배포·Actuator + README·브랜치 정리 + 문서·Git·이슈 | 16 | 93 | 16 |
 | **PM** | **이재성** (`godgeul-glitch`) | **모의투자** + 통합 검색 + 마이페이지 틀 + 중복 요청 방지 + 통합 점검 | 20 | 98 | 39 |
-| **DBA ①** | **신아림** (`arim0317-dot`) | 강의·퀴즈·강사 + 문의 + 사용자·강사 관리 | 22 | 105 | 53 |
-| **DBA ②** | **김예린** (`paaaraaaeaaa`) | 회원·인증 + 성장·알림·홈·경제 용어 + 관리자 틀·운영 + 공통 레이아웃 | 22 | 104 | 40 |
+| **DBA ①** | **신아림** (`arim0317-dot`) | 강의·퀴즈·강사 + 문의 + 사용자·강사 관리 | 23 | 107 | 53 |
+| **DBA ②** | **김예린** (`paaaraaaeaaa`) | 회원·인증 + 성장·알림·홈·경제 용어 + 관리자 틀·운영 + 공통 레이아웃 | 23 | 106 | 40 |
 
 - 이슈 #3(DB 스키마 SQL)와 #87(인덱스·쿼리 점검)은 DBA 두 명이 구역을 나눠 맡습니다(GitHub 담당자도 두 명, 점수는 #3은 각각 3, #87은 각각 2로 반영).
 - GitHub 담당자(Assignee)는 이 문서의 배정과 같게 지정되어 있습니다. 담당을 옮길 때는 이 문서와 GitHub 담당자를 같이 고칩니다.
@@ -122,7 +122,7 @@
 **테이블(코드 담당 14)**: category, course, course_review, lesson, learning_progress, lesson_watch, scrap, quiz_question, quiz_choice, quiz_attempt, quiz_answer, wrong_answer_note, inquiry, inquiry_reply
 **DB 관리**: 회원·인증·문의·운영·강의·퀴즈 테이블 23개, 시드의 카테고리·강의·퀴즈
 **요구사항**: LRN-01~09, QST-01~06, TCH-01~09, ADM-02~04, ADM-06~07, NFR-15
-**22개 · 점수 105 (+3) · API 53개**
+**23개 · 점수 107 (+3) · API 53개**
 
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
@@ -148,6 +148,7 @@
 | #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·내 문의 탭, 강의로 이동. `fragments/mypage/learning` |
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
 | #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `schema.sql`을 같은 PR에서 수정 |
+| #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (김예린과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
 
 **다른 사람에게 줘야 하는 것**: `CourseService.hasLearningHistory(memberId)`(김예린 홈·로그인 분기), `CourseService.findContinueWatching / findLearningSummary(memberId)`(김예린 홈·Drawer), `CourseService.search(q)`·`InquiryService.search(q)`(이재성 검색)
 **신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.write`, 서수영 `FileStorageService.save`
@@ -160,7 +161,7 @@
 **테이블(코드 담당 14)**: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule
 **DB 관리**: 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개, 시드의 레벨 정책·보상 규칙·분야·종목·가격
 **요구사항**: USR-01~14, HOM-01~06, GRW-01~08, ADM-01, ADM-05, ADM-29~30, NFR-06, NFR-08~10, NFR-13
-**22개 · 점수 104 (+3) · API 40개**
+**23개 · 점수 106 (+3) · API 40개**
 
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
@@ -186,6 +187,7 @@
 | #69 | 마이페이지 캐시 내역·레벨 탭 (화면) | — | 4 | "캐시 내역" 탭·프로필 요약(레벨·칭호·경험치·연속 출석·수상 내역). 수상 내역은 이재성이 데이터 제공. `fragments/mypage/growth` |
 | #75 | 샘플 데이터 — 경제 용어·알림 | — | 3 | 시연용 경제 용어 사전·날짜별 5개·개발용 알림 샘플 |
 | #87 | 인덱스·쿼리 점검 (신아림과 공동) | — | 2 | 성장·알림·경제 용어·청약·모의투자 구역의 조회 실행 계획·인덱스 점검 |
+| #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (신아림과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
 
 **다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
 **김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.*`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
@@ -263,9 +265,9 @@
 | `domain/auth/**`(로그인 핸들러 등, config 제외), `domain/member/**` | 김예린 | 서수영은 `auth/config`만 수정 |
 | `global/security/IdempotencyFilter` | 이재성 | 서수영이 검토 |
 | `application.yaml`, `build.gradle`, `.github/**`, Docker | 서수영 | 이슈로 요청 (환경변수는 `MoneyBeetle_환경변수.md`) |
-| `sql/schema.sql` 회원·강의·문의·운영 구역 테이블 | 신아림 | 컬럼 변경은 신아림에게 요청 |
-| `sql/schema.sql` 성장·알림·경제 용어·청약·모의투자 구역 테이블 | 김예린 | 컬럼 변경은 김예린에게 요청(청약은 서수영, 모의투자는 이재성이 요청) |
-| `sql/sample-data.sql` 시드 | 같은 파일 안에서 구역 주석 아래에 추가: 회원·강의·퀴즈 구역 신아림(#73), 성장·알림·경제 용어 구역 김예린(#75, 레벨 정책·보상 규칙 포함), 모의투자 시드 이재성(#72), 청약 시드 서수영(#74). 한 파일이라 충돌이 나기 쉬우니 자기 구역만 고친다 | 컬럼이 맞는지는 해당 구역 DBA가 검토 |
+| `sql/schema.sql` 신아림 담당 테이블 23개: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, inquiry, inquiry_reply, category, course, course_review, lesson, learning_progress, lesson_watch, scrap, quiz_question, quiz_choice, quiz_attempt, quiz_answer, wrong_answer_note | 신아림 | 컬럼 변경은 신아림에게 요청 (파일 안은 알파벳순이라 구역 구분이 없음) |
+| `sql/schema.sql` 김예린 담당 테이블 24개: attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule, subscription_account, subscription_deposit, housing_complex, housing_application, trading_season, season_turn, sector, stock, stock_price, news, news_tag, trade_reason, season_participant, holding, trade_order, ranking_award | 김예린 | 컬럼 변경은 김예린에게 요청(청약은 서수영, 모의투자는 이재성이 요청) |
+| `sql/sample-data.sql` 시드 | 파일 맨 아래에 자기 구역 주석(`-- [이름] 구역`)을 만들고 그 아래에만 추가: 회원·강의·퀴즈 구역 신아림(#73, 이미 있음), 성장·알림·경제 용어 구역 김예린(#75, 레벨 정책·보상 규칙 포함), 모의투자 시드 이재성(#72), 청약 시드 서수영(#74). 한 파일이라 충돌이 나기 쉬우니 자기 구역만 고친다 | 컬럼이 맞는지는 해당 구역 DBA가 검토 |
 | `fragments/layout/*`, `static/**` | 김예린 | 서수영·이재성은 자기 화면 영역만 |
 | `member/mypage.html` | 이재성(틀) | 자기 탭 fragment만 수정 |
 | `admin/dashboard.html` | 김예린(틀) | 자기 탭 fragment만 수정 |
@@ -295,13 +297,13 @@
 
 | 항목 | 상태 |
 | --- | --- |
-| 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#87(80개). #3(DB 스키마 SQL)은 닫힘, 나머지 열림. **담당자(Assignee) 지정 완료**(이 문서 배정과 같음, #3·#87은 DBA 두 명). #83~#87은 2026-11-07에 추가 |
+| 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#87·#95(81개). #3(DB 스키마 SQL)은 닫힘, 나머지 열림. **담당자(Assignee) 지정 완료**(이 문서 배정과 같음, #3·#87·#95는 DBA 두 명). #83~#87은 2026-11-07, #95는 11-08에 추가 |
 | PR 번호 | 이슈와 PR이 번호를 같이 씀: PR은 #1, #77~#82 |
-| 최근 확정 사항 | #9 본인인증·간편 로그인은 **가상**, #11 최대 Lv.20·칭호 구간별 필요 XP(첫 칭호 **고시원**), #20 통과 **70점**, #23 시즌 참가 시 **캐시 차감 없음**, #31 영상은 **파일 업로드**, #48 청약 당첨 규칙은 **임시안**(추후 확정), #68 XP 값·#76 캐시·청약통장 기준 확정 필요 |
+| 최근 확정 사항 | #9 본인인증·간편 로그인은 **가상**, #11 최대 Lv.20·칭호 구간별 필요 XP(첫 칭호 **고시원**), #20 통과 **70점**, #23 시즌 참가 시 **캐시 차감 없음**, #31 영상은 **파일 업로드**(1개 500MB 이하·mp4, DP-33), #48 청약 당첨 규칙은 **임시안**(추후 확정), #68 XP 값·#76 캐시·청약통장 기준 확정 필요 |
 | 브랜치 | 원격에 `main`, `dev`, `sy`, `test`, `feat/be-3-schema-course`, `fix/issue-auto-close`. 작업은 `feat/…` → `dev` → `main` 흐름(Git 규칙) |
 | 코드 | `moneybeetle/`는 골격(대부분 주석만). `./gradlew compileJava`는 성공하지만 `MoneyBeetleApplication`에 `@SpringBootApplication`·main이 없고 `application.yaml`이 비어 있어 `bootRun`은 실패(#2에서 해결) |
 | 저장소 | `.idea/`는 `.gitignore`로 제외됨. 설계 문서는 `docs/`에 있음 |
-| SQL | `sql/create_database.sql`(DB·계정), `sql/schema.sql`(테이블 47개), `sql/sample-data.sql`(시드) 세 파일 구성 |
+| SQL | `sql/create_database.sql`(DB 생성, 계정은 각자 로컬에서 만듦), `sql/schema.sql`(테이블 47개), `sql/sample-data.sql`(시드) 세 파일 구성 |
 
 ---
 
@@ -359,4 +361,4 @@
 | #67 | 6 | #68 | 2 | #69 | 4 | #70 | 4 |
 | #71 | 4 | #72 | 5 | #73 | 4 | #74 | 3 |
 | #75 | 3 | #76 | 2 | #83 | 3 | #84 | 3 |
-| #85 | 2 | #86 | 4 | #87 | 4 (각 2) |  |  |
+| #85 | 2 | #86 | 4 | #87 | 4 (각 2) | #95 | 4 (각 2) |

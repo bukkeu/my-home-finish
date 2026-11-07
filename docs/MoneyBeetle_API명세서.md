@@ -2085,7 +2085,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-02~03, SP-30, DP-31, DP-33 |
-| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. |
+| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
 
 **Request**
 
@@ -2099,7 +2099,7 @@ Header: Idempotency-Key: 31aa...
 { "lessonIds": [20, 21, 22] }
 ```
 
-**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
+**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`, `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
 
 #### 79. 테스트 퀴즈 저장
 
@@ -2888,7 +2888,7 @@ Header: Idempotency-Key: 31aa...
 **Request**
 
 ```json
-{ "carryoverRate": 30.0, "carryoverCap": 2000000, "unlockLevel": 8 }
+{ "carryoverRate": 100.0, "carryoverCap": null, "unlockLevel": 8 }
 ```
 
 **Response**

@@ -159,7 +159,7 @@ reviews:
       instructions: |
         - DB 비밀번호, OAuth 키, 메일 비밀번호, 스토리지 키가 값으로 직접 들어 있으면 반드시 지적하고 환경 변수로 분리하게 한다.
         - spring.jpa.hibernate.ddl-auto는 none이어야 한다(테이블은 resources/sql 스크립트로 생성). create나 create-drop이면 팀 공용 DB 데이터가 지워질 수 있음을 알린다.
-        - 시간대는 Asia/Seoul, 세션 타임아웃 30분, 업로드 최대 2MB가 유지되는지 확인한다.
+        - 시간대는 Asia/Seoul, 세션 타임아웃 30분, 업로드 한도(multipart 최대 500MB, 프로필 이미지 2MB는 코드에서 따로 검사)가 유지되는지 확인한다.
     - path: "moneybeetle/src/main/resources/sql/**/*.sql"
       instructions: |
         - SQL은 schema.sql(테이블)과 sample-data.sql(시드 데이터) 두 파일로 나누고 DBA가 관리한다. 시드는 로컬 개발용이라 운영에 넣지 않는다. 다른 도메인의 테이블을 담당 DBA 확인 없이 바꾸면 알린다.
