@@ -7,3 +7,29 @@
 #   - server.servlet.session.timeout : 30m (DP-11)
 #   - spring.servlet.multipart : 파일 업로드 최대 크기 2MB (DP-32)
 #   - jackson 시간대 : Asia/Seoul (DP-42)
+
+spring:
+  application:
+    name: moneybeetle
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: wanted
+    password: wanted
+  jpa:
+    show-sql: true
+    database: mysql
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    time-zone: Asia/Seoul
+  servlet:
+    multipart:
+      max-file-size: 2MB
+server:
+  servlet:
+    session:
+      timeout: 30m
