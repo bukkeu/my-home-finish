@@ -104,6 +104,36 @@ git push -u origin feat/be-12-login-api
 - 요청 사항은 `[필수]` / `[제안]` / `[질문]`으로 구분해 적습니다.
 - 사람이 아니라 코드에 대해 말합니다.
 
+### AI 리뷰 (CodeRabbit)
+
+PR을 올리면 CodeRabbit(`.coderabbit.yaml`)이 변경 요약과 줄 단위 리뷰 코멘트를 한국어로 남깁니다. AI 리뷰는 팀원 리뷰를 대신하지 않고, **승인(Approve)과 병합(Merge)은 팀원이 합니다.**
+
+| 항목 | 규칙 |
+| --- | --- |
+| 리뷰 시작 | 자동으로 시작되지 않으면(Public 저장소 스타 10개 미만 등) PR 코멘트에 `@coderabbitai review` 한 줄만 적는다 |
+| 리뷰 대상 | `dev`·`main`을 향한 PR. Draft PR은 리뷰하지 않음 |
+| AI 코멘트 처리 | 각 코멘트에 **반영 / 반영하지 않는 이유를 답글로 설명 / 질문** 셋 중 하나로 답한다. 반영·설명은 답글을 단 뒤, 질문은 AI의 답을 확인하고 납득한 뒤 스레드를 닫는다. 답 없이 Resolve하거나 무시하고 병합하지 않는다 |
+| 병합 조건 | 시작된 CodeRabbit 리뷰가 끝났고(진행 중이면 기다림) 위 AI 코멘트를 모두 처리 + 작성자를 뺀 팀원 1명 이상 승인 + 빌드·테스트 통과 |
+| AI 제안 코드 | 내가 설명할 수 있는 코드만 커밋하고, 반영한 뒤에는 로컬에서 실행해 확인한다 |
+| 비밀번호·키 지적 | 가장 먼저 처리한다. 커밋에서 지우는 것만으로는 부족하고 해당 비밀번호·키를 바꾼다 |
+| 질문·반박 | 코멘트에 `@coderabbitai 질문` 형식으로 답글을 달면 된다. AI 말에 동의하지 않으면 이유를 답글로 남긴다 |
+| 막힐 때 | PR에 `@coderabbitai help`, `@coderabbitai configuration`으로 현재 상태를 확인한다 |
+| 설정 변경 | `.coderabbit.yaml`은 PR에서 바꾸면 그 PR 리뷰에 바로 적용된다. 팀원 1명 승인을 받고 바꾼다 |
+
+팀원 리뷰어는 AI가 놓치기 쉬운 부분(요구사항·명세서와 맞는지, 다른 팀원 기능과 연결되는지, 팀이 정한 용어와 맞는지)을 중심으로 봅니다.
+
+#### 사용 방법 (전원)
+
+| 상황 | 하는 일 |
+| --- | --- |
+| PR을 올림 | 설치·설정은 필요 없다. PR 화면에서 CodeRabbit의 요약과 줄 단위 코멘트를 확인한다. 리뷰가 안 시작되면 `@coderabbitai review` 코멘트를 단다 |
+| 코멘트를 받음 | 코멘트마다 반영 / 이유 설명 / 질문 중 하나로 답하고 스레드를 닫는다. 반영한 뒤 푸시하면 새 커밋만 다시 리뷰된다 |
+| Claude Code를 씀 | 저장소 폴더에서 Claude Code를 열면 루트 `CLAUDE.md`(팀 규칙 요약)를 자동으로 읽는다. 새 작업은 "이슈 #번호를 `CLAUDE.md`와 `docs/` 규칙대로 구현해 줘", 리뷰 반영은 "PR #번호의 CodeRabbit 코멘트를 `CLAUDE.md`의 처리 순서대로 반영해 줘"라고 시킨다. 코멘트의 **Prompt for AI Agents** 부분을 복사해 붙여넣어도 된다 |
+| Claude가 고친 뒤 | 로컬에서 실행·테스트로 확인하고, 설명할 수 있는 수정만 커밋한다. 승인·병합·스레드 Resolve는 사람이 한다 |
+| 규칙을 바꾸고 싶음 | `CLAUDE.md`·`.coderabbit.yaml`·이 문서는 작업 브랜치 → `dev` PR로 바꾸고 팀원 1명의 승인을 받는다. 그 PR 리뷰에 바로 적용된다 |
+
+`CLAUDE.md`는 이 문서와 코딩컨벤션의 **요약**입니다. 내용이 다르면 `docs/`를 기준으로 하고, `docs/`를 바꾸면 `CLAUDE.md`도 같은 PR에서 맞춥니다.
+
 ---
 
 ## 4. Issue·PR 템플릿
@@ -146,3 +176,5 @@ git push -u origin feat/be-12-login-api
 - [ ] 병합 방식은 Squash merge와 Merge commit을 허용 (Settings → General)
 - [ ] Default branch를 `dev`으로 변경
 - [ ] Automatically delete head branches
+- [ ] CodeRabbit 설치 확인: Organization은 Settings → GitHub Apps, 개인 계정은 Settings → Applications → Installed GitHub Apps에 `coderabbitai`가 있고 이 저장소가 선택되어 있다
+- [ ] 저장소가 Public인지, `application.yaml`·`.env`에 비밀번호가 올라가 있지 않은지 확인 (`.env`는 `.gitignore`에 포함)

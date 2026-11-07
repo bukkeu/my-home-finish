@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 # MoneyBeetle(MY-HOME) 팀 CodeRabbit 설정
 # 기술 스택: Java 21 · Spring Boot 3.5 · MySQL 8 · JPA · Thymeleaf · Spring Security 6(세션 로그인)
-# 저장소 구조: moneybeetle/(Spring 서버) · moneybeetle-page/(HTML 프로토타입) · 기능/(명세 문서)
+# 저장소 구조: moneybeetle/(Spring 서버) · moneybeetle-page/(HTML 프로토타입) · docs/(설계 문서)
 # 리뷰 초점: 역할과 책임 분리, 도메인 분리, 캐시·자산 정합성, 유지보수성
 
 language: "ko-KR"
@@ -162,10 +162,10 @@ reviews:
         - 시간대는 Asia/Seoul, 세션 타임아웃 30분, 업로드 최대 2MB가 유지되는지 확인한다.
     - path: "moneybeetle/src/main/resources/sql/**/*.sql"
       instructions: |
-        - SQL은 번호 파일(01_member.sql 등)로 도메인별로 나누고 DBA가 관리한다. 다른 도메인의 테이블을 다른 번호 파일에서 바꾸면 알린다.
+        - SQL은 schema.sql(테이블)과 sample-data.sql(시드 데이터) 두 파일로 나누고 DBA가 관리한다. 시드는 로컬 개발용이라 운영에 넣지 않는다. 다른 도메인의 테이블을 담당 DBA 확인 없이 바꾸면 알린다.
         - 중복 지급 방지(활동 종류 + 대상 ID), 하루 1회 납입(회원 + 날짜), 같은 단지 중복 청약 같은 규칙은 유니크 제약으로 DB에서도 막는지 확인한다.
         - 금액 컬럼은 소수 오차가 없는 타입(BIGINT 등)을 쓰는지 확인한다.
-        - 테이블이 바뀌면 기능/MoneyBeetle_DB설계.md도 같은 PR에서 고쳐야 함을 알린다.
+        - 테이블이 바뀌면 docs/MoneyBeetle_DB설계.md도 같은 PR에서 고쳐야 함을 알린다.
     - path: "moneybeetle/src/test/**/*.java"
       instructions: |
         - 테스트 이름이 무엇을 검증하는지 드러나는지, 실패·예외 경우도 검증하는지 확인한다.
@@ -206,7 +206,7 @@ reviews:
         mode: "warning"
         instructions: |
           PR 설명에 "Closes #번호"가 없으면 실패. 단, dev → main 릴리스 PR과 docs 타입 PR은 예외로 통과.
-          Controller의 /api/v1 주소나 resources/sql 파일이 바뀌었는데 기능/MoneyBeetle_API명세서.md 또는 기능/MoneyBeetle_DB설계.md가 함께 바뀌지 않았으면 실패.
+          Controller의 /api/v1 주소나 resources/sql 파일이 바뀌었는데 docs/MoneyBeetle_API명세서.md 또는 docs/MoneyBeetle_DB설계.md가 함께 바뀌지 않았으면 실패.
           해당 사항이 없으면 통과.
 
   tools:
