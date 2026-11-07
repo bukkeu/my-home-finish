@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -65,6 +66,11 @@ public class FileStorageService {
             throw new BusinessException(CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
         }
 
+        // ④-2 이름만 바꾼 파일 막기 - 파일 내용이 확장자와 같은 형식인지 확인
+        if (!matchesContent(file, ext)) {
+            throw new BusinessException(CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
+        }
+
         // ⑤ 중복 방지하기 위한 UUID
         String savedName = UUID.randomUUID().toString() +ext;
 
@@ -77,5 +83,40 @@ public class FileStorageService {
         file.transferTo(new File(dir, savedName));
 
         return "/uploads/" + savedName;
+    }
+
+    /* comment.
+    *   파일 맨 앞 몇 바이트(매직 넘버)는 형식마다 정해져 있다
+    *   - JPEG : FF D8 FF
+    *   - PNG  : 89 50 4E 47 0D 0A 1A 0A
+    *   - MP4  : 5~8번째 바이트가 "ftyp"
+    *  */
+    private boolean matchesContent(MultipartFile file, String ext) throws IOException {
+        byte[] head = new byte[12];
+        int read;
+        try (InputStream in = file.getInputStream()) {
+            read = in.readNBytes(head, 0, head.length);
+        }
+
+        return switch (ext) {
+            case ".jpg", ".jpeg" -> startsWith(head, read, 0xFF, 0xD8, 0xFF);
+            case ".png" -> startsWith(head, read, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
+            case ".mp4" -> read >= 8
+                    && head[4] == 'f' && head[5] == 't' && head[6] == 'y' && head[7] == 'p';
+            default -> false;
+        };
+    }
+
+    // head 의 앞부분이 signature 와 같은지 비교 (읽은 길이가 모자라면 false)
+    private boolean startsWith(byte[] head, int read, int... signature) {
+        if (read < signature.length) {
+            return false;
+        }
+        for (int i = 0; i < signature.length; i++) {
+            if ((head[i] & 0xFF) != signature[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 }
