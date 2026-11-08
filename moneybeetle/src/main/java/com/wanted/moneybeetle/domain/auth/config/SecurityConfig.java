@@ -35,8 +35,9 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
-                    auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAnyAuthority("ADMIN");          // ⑤
-                    auth.requestMatchers("/instructor/**", "/api/v1/instructor/**").hasAnyAuthority("INSTRUCTOR"); // ⑥
+                    auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
+                    // ⑥ 승인된 강사만 INSTRUCTOR 권한을 받도록 하는 것은 로그인(AuthService, 김예린 #6)에서 확인
+                    auth.requestMatchers("/instructor/**", "/api/v1/instructor/**").hasAuthority("INSTRUCTOR");
                     auth.anyRequest().authenticated();                                         // ⑦ 로그인만 하면
                 })
                 .formLogin(login -> {
@@ -44,6 +45,10 @@ public class SecurityConfig {
                     login.loginProcessingUrl("/api/v1/auth/login");   // 로그인 처리 POST
                     login.usernameParameter("email");
                     login.passwordParameter("password");
+                    // TODO(#6 김예린) 성공·실패 핸들러 연결 : JSON 응답, 5회 실패 10분 잠금(DP-10), 출석 기록
+                    //   login.successHandler(authSuccessHandler);
+                    //   login.failureHandler(authFailHandler);
+                    // 로그인 시 세션 ID 재발급(세션 고정 보호)은 Spring Security 기본값이라 따로 설정하지 않는다
                 })
                 .logout(logout -> {
                     logout.logoutUrl("/api/v1/auth/logout");           // ⑧

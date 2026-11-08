@@ -45,7 +45,8 @@ class SecurityConfigTest {
     @RestController
     static class DummyController {
         @GetMapping({"/api/v1/auth/check-email", "/api/v1/admin/auth/login", "/api/v1/courses",
-                "/api/v1/admin/members", "/api/v1/instructor/courses", "/admin/dashboard", "/mypage"})
+                "/api/v1/admin/members", "/api/v1/instructor/courses", "/admin/dashboard", "/mypage",
+                "/instructor/dashboard"})
         String ok() {
             return "ok";
         }
@@ -98,6 +99,27 @@ class SecurityConfigTest {
     @Test
     void 일반_회원이_관리자_화면에_오면_403() throws Exception {
         mockMvc.perform(get("/admin/dashboard").with(as("MEMBER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 로그인_안_하고_관리자_API를_부르면_403이_아니라_401() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/members"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void 일반_회원이_강사_화면에_오면_403() throws Exception {
+        mockMvc.perform(get("/instructor/dashboard").with(as("MEMBER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 강사가_관리자_API나_화면에_오면_403() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/members").with(as("INSTRUCTOR")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/admin/dashboard").with(as("INSTRUCTOR")))
                 .andExpect(status().isForbidden());
     }
 
