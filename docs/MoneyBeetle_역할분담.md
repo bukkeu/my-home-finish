@@ -50,12 +50,12 @@
 | 신아림 | 14개 · 60점<br>#16~#22 #30 #31 #32 #34 #35 #37 #38 | 6개 · 39점<br>#52 #53 #55 #59 #60 #71 | #73 #87 #95 |
 | 김예린 | 15개 · 64점<br>#5~#14 #33 #36 #39 #64 #66 | 5개 · 35점<br>#49 #50 #51 #61 #69 | #75 #87 #95 |
 
-**폴더·이슈 소유** — 자기 이슈가 아닌 쪽의 파일은 직접 고치지 않고 이슈로 요청합니다(§8).
+**폴더·이슈 소유** — 자기 이슈가 아닌 쪽의 파일은 직접 고치지 않고 이슈로 요청합니다(§8). 아래 경로는 모두 **저장소 루트** 기준이고, 저장소 루트에는 Gradle 래퍼가 없어서 명령은 `moneybeetle/` 폴더에서 실행합니다.
 
 | 구분 | 폴더 | 이슈 라벨·브랜치 | 끝났다는 확인 |
 | --- | --- | --- | --- |
-| BE | `moneybeetle/src/main/java/**`, `src/main/resources/sql/**`, `application.yaml`, `src/test/**` | `be` · `feat/be-…` | `./gradlew test` 통과, API가 명세서와 같음 |
-| FE | `src/main/resources/templates/**`, `src/main/resources/static/**` (공통 틀 `fragments/layout`·`static/**`은 김예린, 마이페이지·관리자 대시보드 탭은 §6 표대로) | `fe` · `feat/fe-…` | 서버를 띄워 화면이 열리고 PC·모바일에서 동작 확인 |
+| BE | `moneybeetle/src/main/java/**`, `moneybeetle/src/main/resources/sql/**`, `moneybeetle/src/main/resources/application.yaml`, `moneybeetle/src/test/**` | `be` · `feat/be-…` | `moneybeetle/` 폴더에서 테스트 통과(Git Bash는 `./gradlew test`, PowerShell은 `.\gradlew.bat test`), API가 명세서와 같음 |
+| FE | `moneybeetle/src/main/resources/templates/**`, `moneybeetle/src/main/resources/static/**` (공통 틀 `fragments/layout`·`static/**`은 김예린, 마이페이지·관리자 대시보드 탭은 §6 표대로) | `fe` · `feat/fe-…` | 서버를 띄워 화면이 열리고 PC·모바일에서 동작 확인 |
 | 문서·설정 | `docs/**`, `.github/**`, `.coderabbit.yaml`, `CLAUDE.md` | `docs`·`chore` | 관련 문서가 같은 PR에서 고쳐짐 |
 
 **FE와 BE가 만나는 약속**

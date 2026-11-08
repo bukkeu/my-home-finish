@@ -24,7 +24,7 @@
 ## FE / BE 구분
 
 - 담당은 기능(도메인) 단위이고, 한 사람이 자기 기능의 BE와 FE를 모두 맡는다. 구분은 `docs/MoneyBeetle_역할분담.md` "FE / BE 구분"을 따른다.
-- BE = `src/main/java/**`·`sql/**`·`application.yaml`·`src/test/**`(라벨 `be`, 브랜치 `feat/be-…`), FE = `templates/**`·`static/**`(라벨 `fe`, 브랜치 `feat/fe-…`). 자기 이슈가 아닌 쪽 파일은 이슈로 요청한다.
+- BE = `moneybeetle/src/main/java/**`·`moneybeetle/src/main/resources/sql/**`·`moneybeetle/src/main/resources/application.yaml`·`moneybeetle/src/test/**`(라벨 `be`, 브랜치 `feat/be-…`), FE = `moneybeetle/src/main/resources/templates/**`·`moneybeetle/src/main/resources/static/**`(라벨 `fe`, 브랜치 `feat/fe-…`). 경로는 저장소 루트 기준이다. 자기 이슈가 아닌 쪽 파일은 이슈로 요청한다.
 - FE와 BE는 Controller가 정한 View 이름·Model 값과 API 명세서로 만난다. 바뀌면 같은 PR에서 문서를 고친다.
 
 ## 코드 규칙 (요약)
