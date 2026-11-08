@@ -17,8 +17,6 @@ import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
-import com.wanted.moneybeetle.domain.growth.model.policy.LevelTableFixture;
-import com.wanted.moneybeetle.domain.growth.model.policy.UnlockRules;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -249,7 +247,7 @@ class RewardServiceGrantTest {
         when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
         // 19줄짜리 표: LevelTable 자체는 유효하지만 최대 레벨(Member.MAX_LEVEL = 20)과 맞지 않는다
         when(growthService.loadLevelTable()).thenReturn(
-                new com.wanted.moneybeetle.domain.growth.model.policy.LevelTable(
+                new LevelTable(
                         LevelTableFixture.policies().subList(0, 19)));
 
         assertThatThrownBy(() -> rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L))

@@ -1,4 +1,4 @@
-package com.wanted.moneybeetle.domain.growth.model.policy;
+package com.wanted.moneybeetle.domain.growth.model.service;
 
 import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
 import java.util.List;

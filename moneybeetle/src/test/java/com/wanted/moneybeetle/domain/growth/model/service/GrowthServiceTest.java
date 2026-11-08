@@ -10,7 +10,6 @@ import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
 import com.wanted.moneybeetle.domain.growth.model.dao.LevelPolicyRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.LevelDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
-import com.wanted.moneybeetle.domain.growth.model.policy.LevelTableFixture;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;

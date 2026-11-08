@@ -1,4 +1,4 @@
-package com.wanted.moneybeetle.domain.growth.model.policy;
+package com.wanted.moneybeetle.domain.growth.model.service;
 
 import java.util.ArrayList;
 import java.util.List;

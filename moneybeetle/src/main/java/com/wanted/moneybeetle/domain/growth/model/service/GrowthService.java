@@ -4,8 +4,6 @@ import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
 import com.wanted.moneybeetle.domain.growth.model.dao.LevelPolicyRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.LevelDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
-import com.wanted.moneybeetle.domain.growth.model.policy.LevelTable;
-import com.wanted.moneybeetle.domain.growth.model.policy.UnlockRules;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;

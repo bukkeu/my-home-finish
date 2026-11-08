@@ -77,20 +77,23 @@ class MemberEntityTest {
     }
 
     @Test
-    @DisplayName("levelUp: 레벨만 올린다(캐시·경험치는 그대로). 같거나 낮은 레벨·Lv.20 초과는 거절하고 값을 바꾸지 않는다")
+    @DisplayName("levelUp: 레벨만 변경하고, 같은 레벨·하향·Lv.20 초과는 거부한다")
     void levelUp() {
         Member m = Member.signup("a@b.com", "hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
-        m.addReward(1_000, 450);
 
         m.levelUp(4);
-        assertThat(m.getLevel()).isEqualTo(4);
-        assertThat(m.getCash()).isEqualTo(1_000);       // 캐시는 addReward 경로로만 바뀐다
-        assertThat(m.getExp()).isEqualTo(450);
 
-        assertThatThrownBy(() -> m.levelUp(4)).isInstanceOf(IllegalArgumentException.class);    // 같은 레벨
-        assertThatThrownBy(() -> m.levelUp(3)).isInstanceOf(IllegalArgumentException.class);    // 내려가지 않는다
-        assertThatThrownBy(() -> m.levelUp(21)).isInstanceOf(IllegalArgumentException.class);   // 최대 Lv.20
         assertThat(m.getLevel()).isEqualTo(4);
+        assertThat(m.getCash()).isZero();
+        assertThat(m.getExp()).isZero();
+
+        assertThatThrownBy(() -> m.levelUp(4)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.levelUp(3)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.levelUp(21)).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(m.getLevel()).isEqualTo(4);
+        assertThat(m.getCash()).isZero();
+        assertThat(m.getExp()).isZero();
 
         m.levelUp(20);
         assertThat(m.getLevel()).isEqualTo(Member.MAX_LEVEL);
