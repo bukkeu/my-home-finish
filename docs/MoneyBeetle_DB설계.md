@@ -386,8 +386,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `level_policy_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 레벨 정책 ID |
 | `level` | TINYINT | N | UNIQUE | - | 레벨 1~20 |
-| `required_exp` | INT | N | - | - | 이 레벨이 되기 위한 누적 경험치 (150 XP 간격, 초안) |
-| `title` | VARCHAR(20) | N | - | - | 칭호: 텐트 / 원룸 / 투룸 / 아파트 / 내 집 |
+| `required_exp` | INT | N | - | - | 이 레벨이 되기 위한 누적 경험치 (구간별 150·200·300·400·600 XP씩, Lv.8 = 1,250, Lv.12 = 2,450, 확정 #11) |
+| `title` | VARCHAR(20) | N | - | - | 칭호: 고시원 / 원룸 / 투룸 / 아파트 / 내 집 (확정 #11) |
 | `levelup_cash` | INT | N | - | 0 | 레벨업 캐시 (새 레벨 × 10,000, 확정 #76) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
