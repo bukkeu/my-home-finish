@@ -114,6 +114,36 @@ class RewardServiceGrantTest {
     }
 
     @Test
+    @DisplayName("규칙 값이 바뀌어 지금 경험치가 0이어도, 이미 경험치를 받은 강의면 캐시를 다시 주지 않는다")
+    void alreadyGrantedEvenIfRuleChanged() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 0);   // 예전에는 경험치(100)만 주던 규칙이 캐시만 주도록 바뀜
+        givenBalance(3, 500, 35_000);
+        when(expHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(true);
+
+        RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
+
+        assertThat(result.isAlreadyGranted()).isTrue();
+        verify(memberService, never()).addReward(anyLong(), anyLong(), anyInt());
+        verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("반대로 예전에 캐시만 받았고 지금 규칙이 경험치만 주더라도 다시 주지 않는다")
+    void alreadyGrantedEvenIfRuleChangedToExpOnly() {
+        givenRule(RewardRule.COURSE_COMPLETE, 0, 100);
+        givenBalance(3, 500, 35_000);
+        when(cashHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(true);
+
+        RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
+
+        assertThat(result.isAlreadyGranted()).isTrue();
+        verify(memberService, never()).addReward(anyLong(), anyLong(), anyInt());
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     @DisplayName("지급 전에 회원 행을 잠근 뒤 이중 지급을 확인한다 (동시 요청 방지)")
     void locksMemberBeforeCheckingDuplicates() {
         givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);

@@ -94,9 +94,11 @@ public class RewardService {
         // 회원 행을 먼저 잠근다. 같은 회원의 다른 요청은 여기서 기다리므로 아래 이중 지급 확인이 안전하다
         MemberBalanceDTO before = memberService.lockBalance(memberId);
 
+        // 이중 지급은 "지금 규칙이 얼마를 주는가"가 아니라 "이 활동의 이력이 이미 있는가"로 판단한다.
+        // 관리자가 규칙 값을 바꿔 지금 지급량이 0이 되어도(예: 경험치만 주던 규칙을 캐시만 주도록 변경) 받은 기록이 있으면 다시 주지 않는다.
         boolean alreadyGranted =
-                (exp > 0 && expHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(memberId, expSource, sourceId))
-                        || (cash > 0 && cashHistoryRepository
+                (expSource != null && expHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(memberId, expSource, sourceId))
+                        || (cashSource != null && cashHistoryRepository
                         .existsByMemberIdAndSourceTypeAndSourceId(memberId, cashSource, sourceId));
         if (alreadyGranted) {
             return RewardResultDTO.alreadyGranted(before.getCash(), before.getExp(), before.getLevel());
