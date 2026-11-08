@@ -67,7 +67,7 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
         // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(PageResponse.from(...))로 감싸기
-        return courseService.findCourses(currentMemberId(), categoryId, toPageable(page, size, Sort.by("courseId")));
+        return courseService.findCourses(currentMemberIdOrNull(), categoryId, toPageable(page, size, Sort.by("courseId")));
     }
 
     /* API 31. 강의 상세 */
@@ -75,7 +75,7 @@ public class CourseController {
     @ResponseBody
     public CourseDetailDTO getCourse(@PathVariable Long courseId) {
         // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(...)로 감싸기
-        return courseService.getCourseDetail(currentMemberId(), courseId);
+        return courseService.getCourseDetail(currentMemberIdOrNull(), courseId);
     }
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
@@ -146,6 +146,12 @@ public class CourseController {
     /* page는 0 이상, size는 1~100 사이로 맞춘다 (API 명세서 1-3) */
     private Pageable toPageable(int page, int size, Sort sort) {
         return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), sort);
+    }
+
+    /* 로그인하지 않아도 보는 API(강의 목록·상세)용: 회원을 모르면 null → 스크랩 안 한 것으로 표시
+     * 로그인 여부로 막는 건 SecurityConfig가 주소 단위로 담당한다 */
+    private Long currentMemberIdOrNull() {
+        return null; // TODO 로그인 병합 후 @AuthenticationPrincipal AuthDetails의 getMemberId() (비로그인이면 null)
     }
 
     /* 본인 데이터는 주소로 회원 ID를 받지 않고 세션에서 꺼낸다 (NFR-03)

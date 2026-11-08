@@ -75,8 +75,9 @@ public class CourseService {
                 categoryIds, Course.STATUS_APPROVED, pageable);
 
         // 이 페이지 강의 중 내가 스크랩한 것을 한 번에 조회 (강의마다 조회하지 않음)
-        Set<Long> scrappedIds = findScrappedCourseIds(memberId,
-                courses.getContent().stream().map(Course::getCourseId).toList());
+        Set<Long> scrappedIds = (memberId == null)
+                ? Set.of()   // 회원을 모르면 스크랩 안 한 것으로
+                : findScrappedCourseIds(memberId, courses.getContent().stream().map(Course::getCourseId).toList());
 
         return courses.map(course -> CourseListDTO.from(
                 course,
@@ -92,7 +93,7 @@ public class CourseService {
         Course course = getVisibleCourse(courseId);
         Category category = categoryRepository.findById(course.getCategoryId()).orElse(null);
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId);
-        boolean scrapped = scrapRepository.existsByMemberIdAndCourseId(memberId, courseId);
+        boolean scrapped = memberId != null && scrapRepository.existsByMemberIdAndCourseId(memberId, courseId);
 
         return CourseDetailDTO.from(course, category, lessons, scrapped);
     }
