@@ -77,6 +77,29 @@ class MemberEntityTest {
     }
 
     @Test
+    @DisplayName("levelUp: 레벨만 변경하고, 같은 레벨·하향·Lv.20 초과는 거부한다")
+    void levelUp() {
+        Member m = Member.signup("a@b.com", "hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
+
+        m.levelUp(4);
+
+        assertThat(m.getLevel()).isEqualTo(4);
+        assertThat(m.getCash()).isZero();
+        assertThat(m.getExp()).isZero();
+
+        assertThatThrownBy(() -> m.levelUp(4)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.levelUp(3)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.levelUp(21)).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(m.getLevel()).isEqualTo(4);
+        assertThat(m.getCash()).isZero();
+        assertThat(m.getExp()).isZero();
+
+        m.levelUp(20);
+        assertThat(m.getLevel()).isEqualTo(Member.MAX_LEVEL);
+    }
+
+    @Test
     @DisplayName("약관은 이름·본문이 있어야 하고, 동의 기록은 회원·약관이 있어야 한다")
     void termsAndAgreement() {
         Terms t = Terms.create("서비스 이용약관", "본문", true, "1.0", LocalDateTime.of(2026, 11, 1, 0, 0));

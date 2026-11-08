@@ -92,7 +92,8 @@
     var item = e.target.closest('.mbn-item.new');
     if (item) {
       var id = item.getAttribute('data-id');
-      MB.api('/api/v1/notifications/' + id + '/read', { method: 'PATCH' }).catch(function () { /* 읽음 실패는 이동을 막지 않는다 */ });
+      // keepalive: 링크로 이동하는 중에도 읽음 요청이 취소되지 않게 한다
+      MB.api('/api/v1/notifications/' + id + '/read', { method: 'PATCH', keepalive: true }).catch(function () { /* 읽음 실패는 이동을 막지 않는다 */ });
     }
   }
 

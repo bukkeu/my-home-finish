@@ -879,7 +879,7 @@
 **Response**
 
 ```json
-{ "levels": [ { "level": 1, "requiredExp": 0, "title": "텐트", "levelupCash": 0 }, { "level": 8, "requiredExp": 1050, "title": "투룸", "levelupCash": 8000, "unlocks": ["TRADING"] } ] }
+{ "levels": [ { "level": 1, "requiredExp": 0, "title": "고시원", "levelupCash": 0 }, { "level": 8, "requiredExp": 1250, "title": "투룸", "levelupCash": 80000, "unlocks": ["TRADING"] } ] }
 ```
 
 #### 25. 알림 목록
@@ -1280,7 +1280,7 @@ Header: Idempotency-Key: 7c1e...
 {
   "attemptId": 55, "score": 80, "correctCount": 8, "questionCount": 10, "isPassed": true,
   "results": [ { "questionId": 201, "isCorrect": true, "correctChoiceId": 12, "explanation": "..." } ],
-  "rewards": { "firstPass": true, "exp": 120, "cash": 3500, "levelUp": { "from": 7, "to": 8, "title": "투룸", "levelupCash": 8000, "unlocked": ["TRADING"] } }
+  "rewards": { "firstPass": true, "exp": 120, "cash": 3500, "levelUp": { "from": 7, "to": 8, "title": "투룸", "levelupCash": 80000, "unlocked": ["TRADING"] } }
 }
 ```
 
