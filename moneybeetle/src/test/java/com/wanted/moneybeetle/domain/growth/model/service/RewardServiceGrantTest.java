@@ -59,6 +59,15 @@ class RewardServiceGrantTest {
         when(memberService.lockBalance(MEMBER)).thenReturn(MemberBalanceDTO.of(MEMBER, level, exp, cash));
     }
 
+    /** 이미 기록돼 있는 이력 (이중 지급·이중 차감 확인이 찾아내는 쪽) */
+    private static ExpHistory existingExp() {
+        return ExpHistory.create(MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L, null, 100, 100, 1);
+    }
+
+    private static CashHistory existingCash(String sourceType) {
+        return CashHistory.earn(MEMBER, sourceType, 15L, null, 30_000, 30_000);
+    }
+
     private static void assertErrorCode(Throwable e, GrowthErrorCode expected) {
         assertThat(e).isInstanceOf(BusinessException.class);
         assertThat(((BusinessException) e).getErrorCode()).isEqualTo(expected);
@@ -100,8 +109,8 @@ class RewardServiceGrantTest {
     void grantTwiceIsIgnored() {
         givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
         givenBalance(3, 500, 35_000);
-        when(expHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(true);
+        when(expHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingExp()));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -118,8 +127,8 @@ class RewardServiceGrantTest {
     void alreadyGrantedEvenIfRuleChanged() {
         givenRule(RewardRule.COURSE_COMPLETE, 30_000, 0);   // 예전에는 경험치(100)만 주던 규칙이 캐시만 주도록 바뀜
         givenBalance(3, 500, 35_000);
-        when(expHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(true);
+        when(expHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingExp()));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -133,8 +142,8 @@ class RewardServiceGrantTest {
     void alreadyGrantedEvenIfRuleChangedToExpOnly() {
         givenRule(RewardRule.COURSE_COMPLETE, 0, 100);
         givenBalance(3, 500, 35_000);
-        when(cashHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(true);
+        when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingCash(CashHistory.SOURCE_COURSE_COMPLETE)));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -154,9 +163,32 @@ class RewardServiceGrantTest {
 
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(memberService, expHistoryRepository);
         order.verify(memberService).lockBalance(MEMBER);
-        order.verify(expHistoryRepository).existsByMemberIdAndSourceTypeAndSourceId(
+        order.verify(expHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
                 MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L);
         order.verify(memberService).addReward(MEMBER, 30_000L, 100);
+    }
+
+    @Test
+    @DisplayName("중복 확인은 스냅샷을 볼 수 있는 일반 exists 조회가 아니라 잠금 조회로만 한다 (지급·사용 모두)")
+    void duplicateChecksUseLockingReads() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
+        givenBalance(1, 0, 50_000);
+        when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 1, 100, 80_000));
+        when(memberService.deductCash(MEMBER, 1_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 1, 100, 79_000));
+
+        rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
+        rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 1_000);
+
+        verify(expHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L);
+        verify(cashHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L);
+        verify(cashHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L);
+        verify(expHistoryRepository, never()).existsByMemberIdAndSourceTypeAndSourceId(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+        verify(cashHistoryRepository, never()).existsByMemberIdAndSourceTypeAndSourceId(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -273,8 +305,8 @@ class RewardServiceGrantTest {
     @DisplayName("같은 원인으로 이미 사용했으면 ALREADY_USED 로 거절해 이중 차감을 막는다")
     void alreadyUsed() {
         givenBalance(8, 1250, 50_000);
-        when(cashHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L)).thenReturn(true);
+        when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L)).thenReturn(Optional.of(existingCash(CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT)));
 
         assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.ALREADY_USED));

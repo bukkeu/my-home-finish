@@ -96,10 +96,13 @@ public class RewardService {
 
         // 이중 지급은 "지금 규칙이 얼마를 주는가"가 아니라 "이 활동의 이력이 이미 있는가"로 판단한다.
         // 관리자가 규칙 값을 바꿔 지금 지급량이 0이 되어도(예: 경험치만 주던 규칙을 캐시만 주도록 변경) 받은 기록이 있으면 다시 주지 않는다.
+        // 이력 조회는 잠금 조회(FOR UPDATE)로 한다. 일반 조회는 바깥 트랜잭션이 이미 만든 REPEATABLE READ 스냅샷을 볼 수 있어서,
+        // 회원 행을 잠근 사이에 다른 요청이 커밋한 이력을 못 볼 수 있기 때문이다.
         boolean alreadyGranted =
-                (expSource != null && expHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(memberId, expSource, sourceId))
+                (expSource != null && expHistoryRepository
+                        .findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, expSource, sourceId).isPresent())
                         || (cashSource != null && cashHistoryRepository
-                        .existsByMemberIdAndSourceTypeAndSourceId(memberId, cashSource, sourceId));
+                        .findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, cashSource, sourceId).isPresent());
         if (alreadyGranted) {
             return RewardResultDTO.alreadyGranted(before.getCash(), before.getExp(), before.getLevel());
         }
@@ -140,7 +143,8 @@ public class RewardService {
         }
 
         MemberBalanceDTO before = memberService.lockBalance(memberId);
-        if (cashHistoryRepository.existsByMemberIdAndSourceTypeAndSourceId(memberId, sourceType, sourceId)) {
+        // grant 와 같은 이유로 잠금 조회로 확인한다 (바깥 트랜잭션의 스냅샷이 아니라 최신 커밋 이력을 본다)
+        if (cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, sourceType, sourceId).isPresent()) {
             throw new BusinessException(GrowthErrorCode.ALREADY_USED);
         }
         if (before.getCash() < amount) {
