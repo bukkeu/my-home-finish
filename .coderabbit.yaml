@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# MoneyBeetle(MY-HOME) 팀 CodeRabbit 설정
+# MoneyBeetle(my-home-finish) 팀 CodeRabbit 설정
 # 기술 스택: Java 21 · Spring Boot 3.5 · MySQL 8 · JPA · Thymeleaf · Spring Security 6(세션 로그인)
 # 저장소 구조: moneybeetle/(Spring 서버) · moneybeetle-page/(HTML 프로토타입) · docs/(설계 문서)
 # 리뷰 초점: 역할과 책임 분리, 도메인 분리, 캐시·자산 정합성, 유지보수성
