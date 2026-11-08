@@ -85,9 +85,9 @@
 | 화면 URL | 소문자 kebab-case | `/user/my-page`, `/instructor/course-create` | 화면 설계 |
 | 템플릿 파일 | `templates/도메인/화면.html`, 소문자 kebab-case | `templates/course/detail.html` | 골격 |
 | 정적 파일 | `static/css`, `static/js`, `static/images` | `static/js/drawer.js` | 골격 |
-| SQL 스크립트 | `resources/sql/`의 `create_database.sql`·`schema.sql`(테이블)·`sample-data.sql`(시드) | `schema.sql` | 학습(14일차) |
+| SQL 스크립트 | `resources/sql/`의 `create_database.sql`·`schema.sql`(테이블)·`sample-data.sql`(시드) | `schema.sql` | 학습 블로그 14일차(JDBC 팀 프로젝트의 `sql/schema.sql`·`sample-data.sql`). 수업 폴더(10_Spring-Security)의 SQL은 `create_database.sql`·`create_tables.sql`이었다 |
 
-Java 필드(camelCase)와 DB 컬럼(snake_case)은 Spring Boot가 자동으로 변환하므로 `@Column(name = ...)`을 따로 적지 않아도 됩니다. 자동 변환이 되지 않는 경우에만 적습니다. *(제안)*
+Java 필드(camelCase)와 DB 컬럼(snake_case)은 Spring Boot가 자동으로 변환하므로 `@Column(name = ...)`을 생략해도 됩니다 *(제안)*. 수업 코드(`09_JPA/module07-jpa-mini-project`)는 모든 필드에 `@Column(name = "menu_name")`을 적었으니, 컬럼 이름을 눈에 보이게 하고 싶으면 적어도 됩니다. 자동 변환이 되지 않는 경우(예: 필드 `active` ↔ 컬럼 `is_active`)에는 반드시 적습니다. 수업 예제의 테이블은 `tbl_` 접두어를 썼지만 우리 DB는 접두어가 없으므로 `@Table(name = "member")`를 적습니다.
 
 ---
 
@@ -136,17 +136,19 @@ domain/member
 | --- | --- | --- |
 | 테이블이 기준 | `ddl-auto: none`. `resources/sql`의 테이블 정의가 기준이고 Entity가 거기에 맞춘다. Entity를 바꿔서 테이블을 바꾸지 않는다 | 학습·골격 |
 | setter 금지 | `@Setter`와 `@Data`를 Entity에 쓰지 않는다. 값 변경은 `changeXxx()`, `stopSelling()` 같은 **이름 있는 메서드**로만 한다 | 학습 |
-| 생성은 정적 메서드 | 전체 필드 생성자는 `private`으로 막고 `Menu.create(...)`처럼 정적 팩토리로 만든다. JPA용 기본 생성자는 `protected` | 학습 (기본 생성자는 일반 관례) |
+| 생성은 정적 메서드 | 전체 필드 생성자는 `private`으로 막고 `Menu.create(...)`처럼 정적 팩토리로 만든다. JPA용 기본 생성자는 `protected` | 학습 (수업은 `@NoArgsConstructor` public + `@AllArgsConstructor(access = PRIVATE)`였다. 기본 생성자를 `protected`로 막는 것은 팀 제안) |
 | 타입 선택 | `NOT NULL` 컬럼은 기본형(`int`), **NULL 가능 컬럼은 래퍼 타입**(`Integer`, `Long`) | 학습 |
-| PK 타입 | DB 문서의 PK는 `BIGINT`이므로 `Long`. `@GeneratedValue(strategy = GenerationType.IDENTITY)` (MySQL AUTO_INCREMENT와 짝) | DB 문서·학습 |
+| PK 타입 | DB 문서의 PK는 `BIGINT`이므로 `Long`(수업 예제는 `int`). `@GeneratedValue(strategy = GenerationType.IDENTITY)` (MySQL AUTO_INCREMENT와 짝) | DB 문서·학습(IDENTITY) |
 | 다른 도메인은 ID로 참조 | 다른 도메인의 Entity를 `@ManyToOne`으로 잇지 않고 **ID 값**(`Long memberId`)으로 참조한다. 도메인끼리 서로 의존하는 순환 참조를 막기 위함 | 학습 (PRD 기준) |
 | 같은 도메인 안의 연관관계 | 같은 도메인 안에서는 연관관계를 써도 되지만 팀 합의가 필요하다 (§12 참고) | 제안 |
 | 상태값은 상수로 | `"Y"`, `"N"`, `"ACTIVE"` 같은 문자열을 Service·Policy에 직접 쓰지 않고, **Entity가 상수로 들고 있는다** (예: `ON_SALE`, `STOPPED`). 표현이 바뀌어도 고칠 곳이 Entity 한 곳이다 | 학습 |
+| 상태값에 Java enum을 쓴다면 | 수업은 문자열 상수(`ON_SALE = "Y"`)와 Java `enum` + `@Enumerated(EnumType.STRING)` 두 방식을 모두 다뤘다. 팀은 DB가 VARCHAR이므로 **문자열 상수로 통일**한다. enum을 쓰는 곳이 있다면 `ORDINAL`은 금지하고, MySQL `ENUM` 컬럼으로 만들어지지 않게 `columnDefinition = "varchar(20)"`을 지정한다. 상수는 `private`으로 두고 Entity 메서드(`validateDeletable()`, `stopSelling()`)로만 상태를 묻고 바꾼다 | 학습 (문자열 상수로 통일은 제안) |
+| 조회 전용 Entity | 값이 바뀌지 않는 Entity는 변경 메서드를 열지 않는다 (수업 `Category`) | 학습 |
 | 수정은 변경 감지로 | 수정할 때 `save()`를 부르지 않는다. **`@Transactional` 안에서 조회 → 이름 있는 메서드로 값 변경**을 하면 commit 시점에 UPDATE가 나간다. 트랜잭션 밖에서 조회한 Entity는 변경 감지가 되지 않는다 | 학습 |
 | 상태 해석은 Entity가 | `refCategoryCode != null` 같은 내부 필드 해석은 `isSubCategory()`처럼 **Entity 메서드에 가두고**, 다른 클래스가 필드를 직접 들여다보지 않는다 | 학습 |
 | 검사 메서드 이름 | 상태를 보고 막는 메서드는 `validateXxx()` (예: `validateDeletable()`), 불리언 질문은 `isXxx()` | 학습 |
 | 중복은 DB 제약도 함께 | Policy가 이름 중복을 막아도 동시 요청은 둘 다 통과할 수 있다. 마지막 방어선으로 **DB UNIQUE 제약**을 함께 둔다 | 학습 |
-| 공통 컬럼 | `created_at`, `updated_at`은 `BaseTimeEntity`를 상속해서 쓴다. 변경이 없는 기록성 테이블은 `created_at`만 | 골격·DB 문서 |
+| 공통 컬럼 | `created_at`, `updated_at`은 `BaseTimeEntity`를 상속해서 쓴다. 변경이 없는 기록성 테이블은 `created_at`만. `BaseTimeEntity`·Auditing은 수업에 없는 팀 골격이므로 쓰려면 `JpaConfig`에 `@EnableJpaAuditing`이 있어야 한다 | 골격·DB 문서 |
 | 삭제 | Hard Delete를 기본으로 쓰지 않는다. DB 문서 3장의 테이블별 방식(`deleted_at`, `is_hidden`, `is_public`)을 따른다 | DB 문서 |
 | 도메인 정책 | "현재 상태를 봐야 판단되는 규칙"은 Entity 메서드 안에 둔다. 예: 이미 판매 중지된 메뉴는 다시 중지할 수 없다 | 학습 |
 
@@ -190,6 +192,8 @@ public class Member extends BaseTimeEntity {
 | Entity → DTO | DTO 안의 정적 메서드 `from(entity)`로 변환한다. Entity가 DTO를 알면 안 되므로 변환 코드는 **DTO 쪽**에 둔다 | 학습 |
 | DTO → Entity | Entity의 `create(...)`에 값을 넘겨서 만든다. DTO 안에서 `new Entity()`를 하지 않는다 | 제안 |
 | 입력 검증 | 입력값만 보고 판단되는 규칙(빈 값, 길이, 범위)은 DTO에 `@NotBlank`, `@Size`, `@Min` 같은 어노테이션으로 선언한다 | 학습 |
+| 폼 요청 DTO의 어노테이션 | 폼 값을 `@ModelAttribute`로 받는 요청 DTO는 `@NoArgsConstructor`·`@AllArgsConstructor`·`@Getter`·`@Setter`가 필요하다 (수업 `MenuDTO`). `@Setter` 금지는 **Entity에만** 적용한다. 응답용 DTO는 `@Getter`만 둔다 | 학습 |
+| 목록 변환 | `list.stream().map(XxxDTO::from).toList()`로 바꾼다 (수업 `MenuService.findMenuList`) | 학습 |
 | 검증 메시지 | `message`에 **사용자에게 보여 줄 문구**를 적는다. 예: `@Min(value = 0, message = "가격은 0원 이상 입력!")` | 학습 |
 | 한 DTO에 모두 담지 않기 | 등록·수정·조회가 서로 다르면 DTO도 나눈다 | 제안 |
 
@@ -249,7 +253,9 @@ public class MyInfoDTO {
 | DTO만 다룬다 | Entity를 Model이나 응답에 직접 담지 않는다 | 학습 |
 | 화면 요청 | `ModelAndView`(또는 `Model`)에 DTO를 담고 View 이름을 지정한다. Model 이름은 템플릿의 `th:each` 등과 **이름을 맞춘다** (예: `menuList`) | 학습 |
 | 데이터 요청 | `@ResponseBody`로 JSON을 반환한다. 팀 공통 형식은 `ApiResponse` | 학습·골격 |
-| 등록·수정·삭제 후 | 화면으로 바로 응답하지 않고 **redirect** 한다 (PRG 패턴: 새로고침 시 POST가 반복되는 것을 막음). 예: 등록 후 상세 조회로 302 | 학습 |
+| 요청 값 받기 | 단일 값은 `@RequestParam`, 폼 전체는 DTO를 `@ModelAttribute`(생략 가능, 이름은 클래스명 첫 글자 소문자)로, URL 일부는 `@PathVariable`로 받는다. HTML `input`의 `name`과 DTO 필드 이름이 다르면 그 값은 **조용히 무시된다**(400이 나지 않는다). 예를 들어 `int price`에 `@Min(0)`을 붙이고 폼에서 `prcie`를 보내면 `price`는 0으로 남아 검증을 통과한다. 필수 숫자 값은 `Integer`에 `@NotNull`을 함께 달아서 빠졌을 때 걸리게 한다. 메서드 제한이 없는 `@RequestMapping` 대신 `@GetMapping`·`@PostMapping`을 쓴다. `@RequestParam`에 직접 건 `@Min` 위반은 `HandlerMethodValidationException`이 처리한다 | 학습 (08 chap01·02, 09 module07) |
+| View 이름 | 앞에 `/`를 붙이지 않는다 (`return "member/signup"`). jar로 묶어 실행하면 템플릿을 못 찾을 수 있다. Model에 키 없이 객체를 넣으면 클래스명 첫 글자 소문자가 키가 된다 | 학습 (08 chap07) |
+| 등록·수정·삭제 후 | 화면으로 바로 응답하지 않고 **redirect** 한다 (PRG 패턴: 새로고침 시 POST가 반복되는 것을 막음). 예: 등록 후 상세 조회로 302. `return "redirect:/경로"`로 하고, redirect 뒤 화면에 넘길 값(결과 메시지 등)은 Model이 아니라 `RedirectAttributes.addFlashAttribute()`에 담는다 (Model 값은 두 번째 요청에서 사라진다) | 학습 (08 chap03) |
 | `@Valid`를 붙여야 검증된다 | DTO에 `@NotBlank` 등을 선언만 해서는 실행되지 않는다. **Controller 파라미터에 `@Valid`가 있어야** 검사한다. 검증은 Service에 들어가기 전에 끝난다 | 학습 |
 | 수정·삭제 입력도 검증 | 등록뿐 아니라 **수정 요청에도 검증**을 단다. 검증이 비어 있으면 빈 값·중복 값·너무 긴 값이 그대로 저장되거나 빈 200 응답이 나간다 | 학습 |
 | 화면 vs 데이터 | 화면을 돌려주면 `@Controller`, 데이터(JSON)만 주고받으면 `@RestController`(= `@Controller` + `@ResponseBody`). 한 메서드만 JSON이면 그 메서드에만 `@ResponseBody` | 학습 |
@@ -264,6 +270,8 @@ public class MyInfoDTO {
 | 조회는 `Optional` 처리 | `findById()`는 없어도 예외를 던지지 않고 빈 `Optional`만 준다. **`orElseThrow()`로 `BusinessException`을 직접 던진다** | 학습 |
 | 변환은 Service에서 | Repository에서 꺼낸 Entity를 DTO로 바꿔서 Controller에 돌려준다 | 학습 |
 | 트랜잭션 | 쓰기 메서드에 `@Transactional`. 캐시·경험치·자산이 함께 바뀌는 작업은 **하나의 트랜잭션**으로 묶는다 (DP-40) | DB·정책 문서 |
+| 쓰기·조회 트랜잭션 | 쓰기 메서드는 `@Transactional`, 조회는 붙이지 않거나 `@Transactional(readOnly = true)`. 삭제 순서는 `findById` → Entity `validateDeletable()`(도메인 정책) → Policy(비즈니스 정책) → `delete` (수업 `MenuService`) | 학습 |
+| 의존성 주입 | 생성자 주입. 생성자가 하나면 `@Autowired`는 생략한다. Policy도 `@Component` + 생성자 주입이고 위치는 `model/policy`다 | 학습 (07 chap02, 09 module07) |
 | **다른 도메인 접근 금지** | 다른 도메인의 Repository를 직접 쓰지 않고, 그 도메인의 **Service 메서드**를 호출한다 | 골격 README |
 
 공통 Service 창구(골격 README의 충돌 방지 규칙 2번)
@@ -280,7 +288,8 @@ public class MyInfoDTO {
 | --- | --- | --- |
 | 인터페이스만 작성 | `JpaRepository<Entity, PK타입>`을 상속한다. 기본 CRUD는 새로 만들지 않는다 | 학습 |
 | 단순 조건 | **쿼리 메서드** 이름으로 만든다. 예: `findByMenuPriceGreaterThanOrderByMenuPrice` | 학습 |
-| 복잡한 조건 | `@Query`. **JPQL을 우선**하고, Native Query는 꼭 필요할 때만 쓰며 이유를 주석으로 남긴다 | 학습 (Notion 자료 기준) |
+| 중복 확인 | `existsByXxx` 쿼리 메서드를 쓴다 (예: `existsByMenuName`, 수업 `MenuNamePolicy`) | 학습 |
+| 복잡한 조건 | `@Query`. **JPQL을 우선**하고, Native Query는 꼭 필요할 때만 쓰며 이유를 주석으로 남긴다 | 제안 (수업 예제 `findSubCategory`는 Native Query였고, 주석에서 JPQL이 기본이라고 안내했다) |
 | 정렬 | `Sort.by("menuCode")`처럼 **Entity 필드 이름**을 쓴다 (컬럼 이름이 아님) | 학습 |
 | "초과/이상" 주의 | `GreaterThan`은 `>`, `GreaterThanEqual`은 `>=`. 정책 문구와 **실제 SQL이 맞는지** 확인한다 | 학습 |
 
@@ -302,6 +311,9 @@ public class MyInfoDTO {
 | 에러 코드는 도메인별 enum | `MemberErrorCode`처럼 `ErrorCode` 인터페이스(code, httpStatus, message)를 구현한 enum을 **자기 도메인 안에** 만든다. 한 파일을 여럿이 고쳐서 충돌하는 일을 막기 위함 | 골격 |
 | 공통 에러 | `CommonErrorCode`는 SCM만 수정한다 | 골격 |
 | 던지는 예외 | 업무 규칙 위반은 `BusinessException` 하나로 통일한다. `RuntimeException`·`IllegalArgumentException`을 직접 던지지 않는다 | 학습 |
+| 예외 상속 | `BusinessException`은 `RuntimeException`을 상속해 Controller·Service 메서드에 `throws`를 쓰지 않는다. 수업의 `MemberNotFoundException extends Throwable`처럼 `throws`를 강제하는 방식은 따르지 않는다 | 학습 (07·08 chap04) |
+| 에러 화면·핸들러 | `GlobalExceptionHandler`는 `@ControllerAdvice` 클래스이고, 화면 요청은 `Model`에 `message`를 담아 `error/…` View 이름을 반환한다. 마지막에 `@ExceptionHandler(Exception.class)` 기본 핸들러를 둔다. 같은 Controller 안의 핸들러가 전역 핸들러보다 우선하므로 Controller 안에는 만들지 않는다. 수업은 `error/error.html` 한 장에 `status`·`message`를 담았고, 팀은 `403·404·500.html`로 나눈다 (핸들러가 반환하는 View 이름과 파일명을 맞춘다) | 학습 (08 chap04) + 팀 확장 |
+| 파일 저장 실패 | 파일 저장은 `global/file`의 Service에서 처리하고, 거기서 `IOException`을 `BusinessException`으로 바꿔 던진다. 여러 파일을 올리다 실패하면 이미 저장한 파일을 지운다. 수업(08 chap06)은 Controller에 `try-catch`를 썼지만 우리는 Controller에 쓰지 않는다 | 학습 + 팀 규칙 |
 | 에러 코드 이름 | `UPPER_SNAKE_CASE`, 상황이 드러나게. 예: `EMAIL_DUPLICATED`, `LOGIN_LOCKED` | 골격 |
 | 검증 실패 메시지 | 사용자에게 `@Min`·`@NotBlank`에 적은 **`message`가 그대로 보이는지** 확인한다 (예외 전체를 `getMessage()`로 찍으면 `Validation failure`만 나올 수 있음) | 학습 |
 | `@Valid` 실패 처리 | `GlobalExceptionHandler`에서 `e.getFieldError()`의 첫 번째 에러를 꺼낸다. 형식 자체가 틀린 경우(`isBindingFailure()`, 숫자 칸에 문자)와 검증 규칙 위반을 나누어 메시지를 만든다. 여러 칸이 틀려도 **첫 번째 하나만** 보인다 | 학습 |
@@ -329,8 +341,14 @@ public class MyInfoDTO {
 
 | 규칙 | 설명 | 근거 |
 | --- | --- | --- |
-| 방식 | **세션 로그인**(쿠키 `JSESSIONID`). 세션 만료 30분 | 학습·API 문서 |
+| 방식 | **세션 로그인**(쿠키 `JSESSIONID`). 세션 만료 30분(`server.servlet.session.timeout: 30m`은 팀 설정이고 수업 예제에는 없다) | 학습·API 문서(DP-11) |
 | 설정은 한 곳에 | 접근 권한, 로그인, 로그아웃, Remember Me, 세션, CSRF 설정은 `SecurityConfig`에서만 선언한다 | 학습 |
+| 설정 모양 | `SecurityFilterChain`은 람다 DSL로 쓴다: `http.authorizeHttpRequests(...).formLogin(...).rememberMe(...).logout(...).sessionManagement(...).csrf(...)`. `/admin/*`는 한 단계만 매칭하므로 하위 전체는 `/admin/**`로 쓴다 (수업은 `/*`). 로그아웃은 `deleteCookies("JSESSIONID", "remember-me")`, `invalidateHttpSession(true)`, `logoutSuccessUrl`을 지정한다 | 학습 |
+| 권한 이름 | 권한 검사는 수업처럼 `hasAnyAuthority("ADMIN")`·`sec:authorize="hasAuthority('MEMBER')"`로 한다. `AuthDetails.getAuthorities()`는 `ROLE_` 접두어 없이 `MEMBER`·`INSTRUCTOR`·`ADMIN`을 그대로 돌려준다. `hasRole`은 `ROLE_` 접두어가 필요해 이 구조와 맞지 않는다. 공통 레이아웃(#49)의 템플릿이 이 이름을 쓴다 | 학습 (10 `SecurityConfig`·`AuthDetails`) |
+| 정적 파일·동시 접속 | 정적 파일(`/css`·`/js`·`/images`)은 `WebSecurityCustomizer`와 `PathRequest.toStaticResources().atCommonLocations()`로 보안 검사에서 뺀다. `maximumSessions(1)`을 쓰려면 `HttpSessionEventPublisher`와 `SessionRegistry` Bean이 필요하다 | 학습 |
+| CSRF를 켠 폼 | 모든 POST 폼은 `th:action="@{/경로}"`를 쓴다(CSRF 토큰이 자동으로 들어간다). 로그아웃도 `th:action` + POST 폼이다. `fetch`로 POST·PATCH를 보낼 때는 CSRF 헤더를 함께 보낸다 | 학습 (켜는 것은 제안) |
+| Thymeleaf Security 확장 | `sec:authorize`·`sec:authentication`을 쓰려면 `build.gradle`에 `thymeleaf-extras-springsecurity6`가 있고, 템플릿에 `xmlns:sec="http://www.thymeleaf.org/extras/spring-security"`를 선언해야 한다 (없으면 조건과 상관없이 모두 출력된다) | 학습 (08 chap07) |
+| 현재 사용자 | 작성자·회원 ID는 요청 값(hidden input)이 아니라 `@AuthenticationPrincipal AuthDetails`에서 꺼낸다 | 학습 |
 | 권한 규칙의 순서 | **위에서부터 검사**한다. 좁은 규칙(`permitAll`)을 앞에 두고 마지막을 `anyRequest().authenticated()`로 닫는다 | 학습 |
 | 폼 이름 맞추기 | 로그인 폼 `input`의 `name`과 `usernameParameter`·`passwordParameter` 설정값이 **일치**해야 한다 | 학습 |
 | `UserDetailsService` | `AuthService.loadUserByUsername()`은 **회원 조회만** 한다. 비밀번호는 비교하지 않는다. 없으면 `null`이 아니라 `UsernameNotFoundException`을 던진다 | 학습 |
@@ -346,7 +364,7 @@ public class MyInfoDTO {
 | URL 권한 vs 메서드 권한 | 경로 단위로 한 번에 막을 때는 `SecurityConfig`, 같은 Controller 안에서 메서드마다 권한이 다를 때는 `@PreAuthorize` | 학습 |
 | CSRF | 학습 예제는 수업 목적으로 `csrf.disable()` 했다. **우리 프로젝트는 켜 두고** 로그아웃은 POST만 받는다 (꺼 두면 GET으로도 로그아웃된다) | 학습 (켜는 것은 제안) |
 | 응답 확인 | 보안 설정은 설정만 믿지 말고 **익명·일반 회원·관리자로 각각 호출**해서 302(로그인 이동)·403(권한 없음)을 확인한다 | 학습 |
-| 로그인 후 이동 | 로그인 전에 가려던 주소로 돌아가야 하면 요청을 기억하는 핸들러(`SavedRequestAware…`)를 쓴다. 학습 예제의 부모 핸들러는 항상 `/`로 이동했다 | 학습 |
+| 로그인 후 이동 | 로그인 전에 가려던 주소로 돌아가야 하면 요청을 기억하는 핸들러(`SavedRequestAware…`)를 쓴다. 학습 예제의 부모 핸들러(`SimpleUrlAuthenticationSuccessHandler`)는 항상 `/`로 이동한다. 수업 주석은 "가려던 페이지로"라고 적었지만 실제로는 그렇지 않다 | 학습 |
 
 > 권한 이름은 DB 문서의 `role`(`MEMBER` / `INSTRUCTOR` / `ADMIN`) 한 값을 기준으로 정할지, 학습 예제처럼 쉼표로 구분한 여러 권한으로 둘지 팀 확인이 필요합니다 (§12).
 
@@ -363,10 +381,12 @@ public class MyInfoDTO {
 | 주석 | 클래스 상단: 담당·역할·정책 번호. 메서드: **왜** 이렇게 하는지가 불분명할 때만. 코드를 그대로 설명하는 주석은 쓰지 않는다 | 골격·제안 |
 | 파일 인코딩 | UTF-8 | 제안 |
 | Lombok | `@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@RequiredArgsConstructor`(생성자 주입)만 허용. `@Data`·`@Setter`는 Entity에 쓰지 않는다 | 제안 |
-| 의존성 주입 | **생성자 주입** (`private final` 필드 + `@RequiredArgsConstructor`). `@Autowired` 필드 주입 금지 | 제안 |
+| 의존성 주입 | **생성자 주입** (`private final` 필드 + `@RequiredArgsConstructor`). `@Autowired` 필드 주입 금지. 생성자가 하나면 `@Autowired`는 생략한다. Lombok 없이 직접 생성자를 써도 된다 | 학습(생성자 주입, 07 chap02)·제안(Lombok) |
 | 시간 | 모든 시간은 KST. `LocalDateTime` 사용 | DB 문서 |
 | 매직 넘버 | 해금 레벨·통과 점수·보상 금액 등 바뀔 수 있는 값은 코드에 직접 쓰지 않고 `system_setting`·`reward_rule`·`level_policy`에서 읽는다 (NFR-13) | DB·정책 문서 |
-| 템플릿(Thymeleaf) | `th:text`·`th:each` 사용, 공통 조각은 `templates/fragments/`에 둔다. 인라인 `<script>`보다 `static/js`로 분리한다 | 골격·제안 |
+| 템플릿(Thymeleaf) | 공통 조각은 `templates/fragments/`에 둔다. 조각 이름은 `headerFragment`처럼 camelCase + `Fragment`로 정하고, 정의는 `th:fragment="headerFragment"`, 호출은 `th:replace="~{fragments/layout/header :: headerFragment}"`로 쓴다 (경로는 templates 기준, `.html` 생략, 앞에 `/` 없음). 태그째 바꿀 때는 `th:replace`, 바깥 태그를 남기고 안에 넣을 때만 `th:insert`. 값은 `th:fragment="x(a, b)"`로 받고 `~{... :: x(${v1}, ${v2})}`로 넘긴다. 링크·정적 파일은 `th:href`·`th:src` + `@{}`, 조건은 `th:if`·`th:unless`, 반복은 `th:each`, 첫 줄은 `<html xmlns:th="http://www.thymeleaf.org">`. 인라인 `<script>`보다 `static/js`로 분리한다 | 학습 (08 chap07)·제안 |
+| 인터셉터 | `HandlerInterceptor` 구현 클래스에 `@Component`를 붙이고 `global/config/WebConfig`(`WebMvcConfigurer.addInterceptors`)에서 등록한다. 적용 경로는 `/**`(하위 전체, `/*`는 한 단계만)로 쓰고 `/css/**`·`/js/**`·`/images/**`는 `excludePathPatterns`로 뺀다. `/api` 인터셉터는 JSON 응답이라 `postHandle`의 `ModelAndView`가 `null`일 수 있으니 `preHandle`에서 처리한다 | 학습 (08 chap05) |
+| 컴포넌트 스캔 | `@SpringBootApplication`은 자기 패키지와 하위만 스캔한다. `MoneyBeetleApplication`이 `global.config`에 있으므로 `ContextConfig`의 `@ComponentScan(basePackages = "com.wanted.moneybeetle")`를 지우지 않는다. 시작 설정은 이슈 #2에서 만든다. 지금은 `MoneyBeetleApplication`이 빈 클래스이고 `ContextConfig`·`JpaConfig`의 `@ComponentScan`·`@EntityScan`·`@EnableJpaRepositories`는 주석으로만 있다(아직 적용되지 않았다). 그전의 화면 테스트는 테스트 코드 안의 전용 설정을 쓴다(예: `LayoutFragmentRenderTest`는 **화면 렌더링 확인용**이라 DB·JPA 자동 설정을 빼서 Repository를 주입할 수 없다). #2 이전에 JPA·Repository를 테스트하려면 Entity 스캔과 Repository 활성화를 넣은 별도 테스트 설정과 테스트용 DB 연결이 있어야 한다. #2가 올라온 뒤에는 시작 설정에 컴포넌트 스캔과 `@EntityScan`·`@EnableJpaRepositories`를 넣고, 테스트를 `@SpringBootTest(classes = MoneyBeetleApplication.class)`로 지정한다 | 학습 (07 chap02, 09 module07) |
 | 포매터 | IntelliJ 기본 포매터 (Settings → Code Style → Java, 위 규칙에 맞게 설정) | 제안 |
 
 ---
@@ -378,7 +398,7 @@ public class MyInfoDTO {
 1. 자기 도메인 패키지 밖의 파일은 고치지 않는다. 필요하면 담당자에게 요청한다.
 2. 다른 도메인의 테이블(Repository)을 직접 쓰지 않는다. 그 도메인의 Service 메서드를 부른다.
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
-4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다.
+4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. `schema.sql`을 다시 실행하면 데이터가 지워지므로, 이미 만든 DB에 변경만 적용해야 할 때에 한해 DBA가 `sql/migration/<날짜>_<설명>.sql`(ALTER 등)을 추가하고 같은 변경을 `schema.sql`에도 반영한다.
 5. 마이페이지·관리자 대시보드는 틀(SCM)과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
 
 **아직 구현이 없는 도메인과 협업할 때** (학습 25·26일차): 필요한 쪽이 **인터페이스**를 먼저 정의하고, 상대 팀의 실제 구현이 나올 때까지 `Fake` 구현으로 대신한다. 실제 구현이 생기면 Fake만 지우면 되고 사용하는 쪽 코드는 바뀌지 않는다.
@@ -394,7 +414,7 @@ public class MyInfoDTO {
 | `DTO` 대문자 표기 | 학습·골격이 모두 `DTO` 대문자 | 그대로 통일 (Java 일반 관례는 `Dto`이므로 팀 합의 필요) |
 | open-in-view | Spring Boot 기본값이 켜져 있음 (학습 25일차에서 경고 확인) | 끌지 여부 |
 | 포매터·린터 | 없음 | IntelliJ 설정 공유 또는 Spotless 같은 도구 도입 여부 |
-| 권한(role) 표현 | DB 문서는 `role` 한 값(`MEMBER`/`INSTRUCTOR`/`ADMIN`), 학습 예제는 `"USER,ADMIN"`처럼 쉼표로 구분한 여러 권한 | 한 값으로 할지 / 여러 권한으로 할지, `hasAnyAuthority`에 쓸 이름 |
+| 권한(role) 표현 | DB 문서는 `role` 한 값(`MEMBER`/`INSTRUCTOR`/`ADMIN`). 학습 예제는 `ROLE_` 없는 권한 문자열(`hasAnyAuthority`)을 썼고, 공통 레이아웃(#49)도 같은 방식 | 서수영 #4에서 `getAuthorities()`가 `MEMBER`·`INSTRUCTOR`·`ADMIN`을 `ROLE_` 없이 돌려주도록 확정 |
 | 로그인 잠금 | 학습 예제는 잠금 여부 불리언 + 수동 해제, DB 문서는 `failed_login_count`·`locked_until`(5회 실패 시 10분 잠금) | DB 문서 기준으로 할지 |
 | CSRF | 학습 예제는 꺼 둠. 이 문서는 켜 두기를 제안 | 켤지, 켜면 Thymeleaf 폼·fetch에서 토큰을 어떻게 보낼지 |
 | 업데이트 쿼리 | 변경 감지는 바뀐 컬럼이 아니라 **모든 컬럼**을 UPDATE한다(학습 26일차) | `@DynamicUpdate` 사용 여부 |

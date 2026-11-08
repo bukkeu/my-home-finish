@@ -11,7 +11,8 @@ USE money_beetle;
 -- ---------------------------------------------------------------------
 
 -- 회원: 1 관리자 / 2~6 강사 / 7~8 학습자 (7은 수강 이력 없음, 8은 이력 있음 용도)
--- 8(민지)은 해금 확인용으로 Lv.8·캐시를 넣어 두었다. 원장(cash_history·exp_history)은 DBA ② 구역에서 맞춘다
+-- 8(민지)은 해금 확인용으로 Lv.8·경험치·캐시를 넣어 두었고, 같은 값의 원장(cash_history·exp_history)은 DBA ② 구역에 있다.
+-- 1(관리자)의 Lv.20·경험치는 화면 확인용 값이라 원장이 없다 (관리자는 보상·원장 대상이 아니다)
 INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role, status, level, exp, cash) VALUES
 (1, 'admin@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '관리자', '1999-04-12', 'ADMIN', 'ACTIVE', 20, 6000, 0),
 (2, 'seoyeon@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '박서연', '1999-04-12', 'INSTRUCTOR', 'ACTIVE', 1, 0, 0),
@@ -286,6 +287,42 @@ INSERT INTO scrap (member_id, course_id) VALUES (8, 15), (8, 12);
 -- 청약통장(subscription_account)은 회원가입 때 자동 개설되므로, 시드 회원 1~8의 통장도 이 구역에서 만든다
 -- ---------------------------------------------------------------------
 
+-- 레벨 정책 (이슈 #11 확정): 레벨 한 칸에 필요한 경험치는 고시원(Lv.1~3) 150 · 원룸(4~7) 200 · 투룸(8~11) 300 ·
+-- 아파트(12~16) 400 · 내 집(17~19) 600 이고, required_exp 는 그 레벨이 되기 위한 누적 경험치다 (Lv.8 = 1,250, Lv.12 = 2,450).
+-- 레벨업 캐시는 새 레벨 × 10,000 (SP-14). 이 값을 바꾸면 LevelSeedTest·LevelTableFixture 도 함께 바꾼다.
+INSERT INTO level_policy (level, required_exp, title, levelup_cash) VALUES
+(1, 0, '고시원', 0),
+(2, 150, '고시원', 20000),
+(3, 300, '고시원', 30000),
+(4, 450, '원룸', 40000),
+(5, 650, '원룸', 50000),
+(6, 850, '원룸', 60000),
+(7, 1050, '원룸', 70000),
+(8, 1250, '투룸', 80000),
+(9, 1550, '투룸', 90000),
+(10, 1850, '투룸', 100000),
+(11, 2150, '투룸', 110000),
+(12, 2450, '아파트', 120000),
+(13, 2850, '아파트', 130000),
+(14, 3250, '아파트', 140000),
+(15, 3650, '아파트', 150000),
+(16, 4050, '아파트', 160000),
+(17, 4450, '내 집', 170000),
+(18, 5050, '내 집', 180000),
+(19, 5650, '내 집', 190000),
+(20, 6250, '내 집', 200000);
+
+-- 청약통장: 회원당 하나(member_id 유니크). 잔액·납입회차는 기본값 0
+INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8);
+
+-- 민지(8)의 원장: member.cash·exp 값과 내역이 맞게 한 줄씩 둔다 (SP-15, GRW-07).
+-- 보상 규칙(reward_rule) 시드는 XP·캐시 값이 확정된 뒤(#68, #76) 생기므로 reward_rule_id는 비워 둔다
+INSERT INTO cash_history (member_id, history_type, source_type, source_id, amount, balance_after, reason, admin_id) VALUES
+(8, 'ADMIN_GIVE', 'ADMIN', NULL, 12000, 12000, '시드 초기 지급 (로컬 개발용)', 1);
+
+-- 경험치 1,250 = 누적 Lv.8 (이슈 #11 기준). 시드에서는 완료한 강의 4 한 건으로 묶었다
+INSERT INTO exp_history (member_id, source_type, source_id, amount, exp_after, level_after) VALUES
+(8, 'COURSE_COMPLETE', 4, 1250, 1250, 8);
 -- 모의투자 (#72, 이재성) ─ 프로토타입 moneybeetle-page/new1/Admin.jsx 기준
 -- 시즌 1개(시즌 7, 2026-10-19 월 시작, 14일·12턴)를 5턴 진행 중 상태로 넣는다. 시즌 만든 관리자 = 1
 -- 가격: 5턴 = 프로토타입 현재 가격, 1~4턴·6턴은 프로토타입 seedPrices() 식, 7~12턴은 같은 식을 이어서 계산 (50원 단위)

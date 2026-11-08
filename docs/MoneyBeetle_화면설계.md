@@ -915,7 +915,7 @@ flowchart TD
 
 ## 9. 반응형 디자인 명세
 
-> 아래는 프론트엔드 구현 시 적용할 공통 반응형 기준이다. 모의투자 화면(`new1/index.css`)에는 1200px, 1100px, 1000px, 900px, 700px, 420px 구간의 세부 대응 코드가 포함되어 있다. 나머지 `.dc.html` 화면은 실제 배포 전 아래 규칙에 따라 화면별 검증이 필요하다.
+> 아래는 프론트엔드 구현 시 적용할 공통 반응형 기준이다. 모의투자 화면(`new1/index.css`)에는 1200px, 1100px, 1000px, 900px, 700px, 420px 구간의 세부 대응 코드가 포함되어 있다. 나머지 `.dc.html` 화면은 발표 전 아래 규칙에 따라 화면별 검증이 필요하다.
 > 
 
 ### 9.1 브레이크포인트
@@ -1005,6 +1005,7 @@ templates
 - 정적 파일은 `static/css`, `static/js`, `static/images`에 둔다. 프로토타입의 `mb-*.js`(Drawer·알림·검색·사이드바)는 `static/js`로 옮긴다.
 - 마이페이지와 관리자 대시보드는 틀(템플릿)과 탭 내용(fragment)을 나누어, 탭마다 담당자가 따로 수정할 수 있다.
 - 사용자·강사·관리자 화면의 공통 헤더·Drawer는 같은 fragment를 쓰고 역할에 따라 메뉴만 달라진다(`sec:authorize`).
+- 조각은 수업(`08_Spring-Web-MVC/chap07-thymeleaf`)과 같은 방식으로 만든다: `th:fragment="headerFragment"`로 이름을 붙이고, `th:replace="~{fragments/layout/header :: headerFragment}"`로 불러온다(경로는 templates 기준, `.html` 생략, 앞에 `/` 없음). `sec:authorize`를 쓰는 템플릿은 `xmlns:sec="http://www.thymeleaf.org/extras/spring-security"`를 선언하고, 권한은 `ROLE_` 없이 검사한다(수업 `10_Spring-Security`). 한 권한은 `sec:authorize="hasAuthority('MEMBER')"`, 여러 권한 중 하나면 `sec:authorize="hasAnyAuthority('MEMBER', 'INSTRUCTOR', 'ADMIN')"`로 쓴다(`|`는 SpEL의 OR가 아니다).
 
 ### 10.2 화면에 전달되는 주요 데이터 (Model)
 
