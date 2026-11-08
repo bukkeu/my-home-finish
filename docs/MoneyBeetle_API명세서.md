@@ -1752,7 +1752,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-01~02, NFR-12 |
-| 설명 | 월별 공고일·신청 기간·발표일. |
+| 설명 | 월별 공고일·신청 기간·발표일. 그 달에 일정이 하나라도 걸친 단지(공고일 ≤ 말일, 발표일 ≥ 1일)를 신청 시작일 순으로 준다. `status`는 오늘 기준(API 64 참고), `applied`는 내가 신청한 단지면 `true`. |
 
 **Request**
 
@@ -1789,6 +1789,16 @@ Header: Idempotency-Key: 9b2f...
   "status": "OPEN", "competitionRate": null, "myApplication": null
 }
 ```
+
+- `status`: 오늘(Asia/Seoul) 기준으로 계산한다. 신청 시작일 전 `UPCOMING`, 신청 기간(시작일·마감일 당일 포함) `OPEN`, 마감 뒤 `CLOSED`, 관리자가 발표하면 `ANNOUNCED`.
+- `competitionRate`: 접수 마감 뒤에만 `신청자 수 ÷ 공급 세대`를 소수 둘째 자리까지 준다(예: 250명 ÷ 120세대 → `2.08`). 마감 전에는 `null` (SP-74, SUB-10).
+- `myApplication`: 이 단지에 신청했으면 아래 값, 신청하지 않았으면 `null` (SUB-08).
+
+```json
+"myApplication": { "applicationId": 40, "receiptNo": "MB-261105-0042", "totalScore": 24, "appliedAt": "2026-11-05T10:00:00" }
+```
+
+**Error**: `LEVEL_LOCKED`, `NOT_FOUND` (없거나 삭제된 단지)
 
 #### 65. 내 청약통장
 
