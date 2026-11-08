@@ -57,4 +57,17 @@ class NotificationRepositoryTest {
         assertThat(repository.findByNotificationIdAndMemberId(
                 other.getNotificationId(), 8L).orElseThrow().isRead()).isFalse();
     }
+
+    @Test
+    @DisplayName("읽지 않은 알림이 없는 회원은 0건이 갱신된다")
+    void markAllReadReturnsZeroWhenNothingToUpdate() {
+        Notification read = Notification.create(7L, "UNLOCK", "알림", null);
+        read.markRead();
+
+        repository.saveAndFlush(read);
+
+        int updatedCount = repository.markAllRead(7L);
+
+        assertThat(updatedCount).isZero();
+    }
 }
