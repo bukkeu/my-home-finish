@@ -12,8 +12,10 @@ Java 21 · Spring Boot 3.5 · Spring Data JPA · Spring Security(세션 로그�
 ## 실행 방법
 
 1. MySQL에서 `src/main/resources/sql`의 스크립트를 순서대로 실행한다: `create_database.sql` → `schema.sql` → `sample-data.sql`
+   - ⚠️ `schema.sql`은 기존 테이블을 **삭제하고 다시 만든다**. 이미 넣어 둔 개발 데이터가 있으면 모두 사라지니 처음 한 번만 실행한다.
+   - `sample-data.sql`은 로컬 개발용 시드라서 운영 서버에는 넣지 않는다.
 2. DB 접속 정보 등 비밀 값은 `.env`(Git 제외)와 환경변수로 넣는다. 키 목록은 `docs/MoneyBeetle_환경변수.md`를 본다.
-3. 서버를 띄운다.
+3. 서버를 띄운다. (⚠️ 시작 클래스와 설정(`application.yaml`)이 이슈 #2에서 올라온 뒤부터 실행할 수 있다. 그전에는 `./gradlew bootRun`이 안 된다.)
 
 ```bash
 ./gradlew bootRun
@@ -76,7 +78,7 @@ src/main/resources
 ```
 
 - 화면에서 쓰는 설정값의 기준은 서버(`system_setting` 테이블)입니다. `config.js`는 서버 값이 없을 때만 기본값을 씁니다.
-- 레벨·칭호 계산은 화면 표시용이고, 실제 레벨 해금 판단은 서버(`LevelCheckInterceptor`)가 합니다.
+- 레벨·칭호 계산은 화면 표시용이고, 실제 레벨 해금 판단은 서버(`LevelCheckInterceptor`)가 합니다. (`LevelCheckInterceptor`와 등록을 맡을 `WebConfig`는 아직 빈 파일이라 이슈 #2·#4에서 구현할 예정입니다.)
 
 ## 담당
 

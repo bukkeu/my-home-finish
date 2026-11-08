@@ -2085,7 +2085,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-02~03, SP-30, DP-31, DP-33 |
-| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
+| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상 파일은 먼저 한 개씩 올려서(아래 "영상 파일 올리기") 받은 `videoUrl`을 이 요청에 담아 저장한다. 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
 
 **Request**
 
@@ -2099,7 +2099,25 @@ Header: Idempotency-Key: 31aa...
 { "lessonIds": [20, 21, 22] }
 ```
 
-**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`, `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
+
+**영상 파일 올리기** (#78의 부속 요청, API 번호는 늘리지 않는다)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/courses/{courseId}/lessons/video` |
+| Method | `POST` |
+| 권한 | 강사 |
+| 관련 | TCH-02, DP-33 |
+| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. |
+
+- Form: file=(mp4, 500MB 이하)
+
+```json
+{ "videoUrl": "/files/lesson/7-1.mp4" }
+```
+
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
 
 #### 79. 테스트 퀴즈 저장
 
