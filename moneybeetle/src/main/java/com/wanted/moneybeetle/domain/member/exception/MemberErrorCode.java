@@ -20,7 +20,8 @@ public enum MemberErrorCode implements ErrorCode {
     PASSWORD_INVALID("PASSWORD_INVALID", HttpStatus.BAD_REQUEST, "비밀번호는 8~20자의 영문과 숫자를 모두 포함해야 해요."),
     REQUIRED_TERMS_NOT_AGREED("REQUIRED_TERMS_NOT_AGREED", HttpStatus.BAD_REQUEST, "필수 약관에 동의해 주세요."),
     AGE_UNDER_14("AGE_UNDER_14", HttpStatus.BAD_REQUEST, "만 14세 이상만 가입할 수 있어요."),
-    TERMS_NOT_FOUND("TERMS_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 약관이에요.");
+    TERMS_NOT_FOUND("TERMS_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 약관이에요."),
+    MEMBER_NOT_FOUND("MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND, "존재하지 않는 회원이에요.");
 
     private final String code;
     private final HttpStatus status;

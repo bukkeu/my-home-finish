@@ -20,8 +20,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 *   테이블 member - 회원(학습자·강사·관리자 role 구분)
 *   - 이메일은 소문자로 저장한다 (SP-01 대소문자 구분 없음)
 *   - 레벨·경험치·캐시 값 변경은 growth.RewardService 가 MemberService 메서드를 통해서만 한다 (직접 수정 금지).
-*     그 변경 메서드(경험치·캐시 반영)는 #10 2차에서 이 Entity 에 추가한다.
-*   - 이 파일의 1차(#5)는 가입에 필요한 부분만 있다: 생성(signup)과 상태·권한 상수.
+*     변경 메서드는 addReward(캐시·경험치 받기)와 spendCash(캐시 쓰기)다 (#10 2차). 레벨 재계산은 #11 에서 붙인다.
+*   - 가입에 필요한 부분(#5): 생성(signup)과 상태·권한 상수.
 *  */
 @Entity
 @Table(name = "member")
@@ -134,6 +134,27 @@ public class Member {
         require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
                 "성별은 MALE 또는 FEMALE 이어야 합니다.");
         return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, birthDate, gender);
+    }
+
+    /**
+     * 활동 보상으로 캐시·경험치를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
+     * 레벨은 여기서 바꾸지 않는다 - 레벨 재계산과 레벨업 캐시는 #11 에서 붙인다.
+     */
+    public void addReward(long cashAmount, int expAmount) {
+        require(cashAmount >= 0 && expAmount >= 0, "보상 값은 0 이상이어야 합니다.");
+        this.cash += cashAmount;
+        this.exp += expAmount;
+    }
+
+    /** 캐시를 쓴다. 잔액은 0 미만이 될 수 없다 (SP-15) */
+    public void spendCash(long amount) {
+        require(amount > 0, "사용 금액은 0보다 커야 합니다.");
+        require(hasEnoughCash(amount), "캐시가 부족합니다.");
+        this.cash -= amount;
+    }
+
+    public boolean hasEnoughCash(long amount) {
+        return this.cash >= amount;
     }
 
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
