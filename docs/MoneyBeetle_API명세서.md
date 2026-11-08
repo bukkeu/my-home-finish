@@ -34,7 +34,7 @@
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
-| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37) |
+| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 실패(2xx가 아닌) 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 헤더가 없으면 막지 않고 그대로 처리한다 (`IdempotencyFilter`, #65) |
 
 ### 1-2 응답 형식
 
@@ -3603,7 +3603,7 @@ Header: Idempotency-Key: 4d8e...
 | 공통 | `FORBIDDEN` | 403 | 이 페이지를 볼 수 있는 권한이 없어요 |
 | 공통 | `LEVEL_LOCKED` | 403 | Lv.8부터 열려요. 지금은 Lv.5예요 |
 | 공통 | `NOT_FOUND` | 404 | 찾을 수 없는 페이지예요 |
-| 공통 | `DUPLICATE_REQUEST` | 409 | (기존 처리 결과를 그대로 반환) |
+| 공통 | `DUPLICATE_REQUEST` | 409 | 이미 처리된 요청이에요 (같은 `Idempotency-Key`의 처음 요청이 아직 처리 중일 때. 처리가 끝났으면 이 에러 대신 처음 결과를 그대로 반환) |
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |

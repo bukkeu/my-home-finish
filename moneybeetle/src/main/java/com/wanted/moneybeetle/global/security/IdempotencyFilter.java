@@ -1,10 +1,163 @@
 package com.wanted.moneybeetle.global.security;
 
 /* comment.
-*   담당 : SCM (회원·공통)
-*   Idempotency-Key 헤더로 같은 요청을 한 번만 처리 (DP-37)
-*   대상 : 퀴즈 제출, 매수·매도, 청약 납입
+*   담당 : PM 이재성 (#65), 검토 : SCM 서수영
+*   Idempotency-Key 헤더로 같은 요청을 한 번만 처리 (DP-37, API 명세서 1-1)
+*   대상 : 퀴즈 제출, 매수·매도, 청약통장 납입, 강의 영상·요약글 저장(API 78)
+*   - 키는 "로그인 회원 + 메서드 + 주소 + Idempotency-Key" 로 구분한다
+*   - 같은 키 + 같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려준다
+*   - 같은 키 + 다른 내용이면 처리하지 않고 409 IDEMPOTENCY_KEY_CONFLICT
+*   - 처음 요청이 아직 처리 중이면 409 DUPLICATE_REQUEST
+*   - 성공(2xx)한 결과만 24시간 보관한다. 실패하면 기록을 지워서 같은 키로 다시 시도할 수 있다
+*   - 헤더가 없으면 막지 않고 그대로 처리한다 (화면은 항상 헤더를 보낸다)
+*   Spring Security 필터 다음에 실행되므로 로그인 정보(getUserPrincipal)를 쓸 수 있다
 *  */
-public class IdempotencyFilter {
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wanted.moneybeetle.global.common.ApiResponse;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import com.wanted.moneybeetle.global.exception.ErrorCode;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
+import java.time.Clock;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingResponseWrapper;
+
+@Component
+public class IdempotencyFilter extends OncePerRequestFilter {
+
+    public static final String HEADER = "Idempotency-Key";
+    public static final String REPLAYED_HEADER = "Idempotent-Replayed";
+
+    /** 중복 요청 방지를 적용하는 API (메서드, 주소 패턴) */
+    private static final List<Target> TARGETS = List.of(
+            new Target("POST", "/api/v1/courses/*/quiz/attempts"),      // 퀴즈 제출 (API 42)
+            new Target("POST", "/api/v1/trading/orders"),               // 매수·매도 (API 60)
+            new Target("POST", "/api/v1/housing/account/deposits"),     // 청약통장 납입 (API 66)
+            new Target("PUT", "/api/v1/instructor/courses/*/lessons")   // 강의 영상·요약글 저장 (API 78)
+    );
+
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
+    private final ObjectMapper objectMapper;
+    private final IdempotencyStore store;
+
+    @Autowired
+    public IdempotencyFilter(ObjectMapper objectMapper) {
+        this(objectMapper, new InMemoryIdempotencyStore(Clock.systemDefaultZone()));
+    }
+
+    IdempotencyFilter(ObjectMapper objectMapper, IdempotencyStore store) {
+        this.objectMapper = objectMapper;
+        this.store = store;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return TARGETS.stream().noneMatch(target -> target.matches(request.getMethod(), path));
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+            FilterChain chain) throws ServletException, IOException {
+        String idempotencyKey = request.getHeader(HEADER);
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        CachedBodyRequest cachedRequest = new CachedBodyRequest(request);
+        String storeKey = storeKey(request, idempotencyKey);
+        String bodyHash = sha256(cachedRequest.getBody());
+
+        if (!store.start(storeKey, bodyHash)) {
+            handleRepeated(storeKey, bodyHash, response);
+            return;
+        }
+
+        ContentCachingResponseWrapper cachedResponse = new ContentCachingResponseWrapper(response);
+        try {
+            chain.doFilter(cachedRequest, cachedResponse);
+        } catch (IOException | ServletException | RuntimeException e) {
+            store.remove(storeKey);
+            throw e;
+        }
+
+        int status = cachedResponse.getStatus();
+        if (status >= 200 && status < 300) {
+            store.complete(storeKey, status, cachedResponse.getContentType(),
+                    cachedResponse.getContentAsByteArray());
+        } else {
+            store.remove(storeKey);
+        }
+        cachedResponse.copyBodyToResponse();
+    }
+
+    /** 같은 키가 이미 있을 때: 내용이 다르면 거절, 처리 중이면 거절, 끝났으면 처음 결과를 다시 보낸다 */
+    private void handleRepeated(String storeKey, String bodyHash, HttpServletResponse response)
+            throws IOException {
+        Optional<IdempotencyRecord> found = store.find(storeKey);
+        if (found.isEmpty()) {
+            // 확인하는 사이에 처음 요청이 실패해 기록이 지워졌다 -> 다시 시도하도록 안내
+            writeError(response, CommonErrorCode.DUPLICATE_REQUEST);
+            return;
+        }
+        IdempotencyRecord record = found.get();
+        if (!record.isSameBody(bodyHash)) {
+            writeError(response, CommonErrorCode.IDEMPOTENCY_KEY_CONFLICT);
+            return;
+        }
+        if (record.isInProgress()) {
+            writeError(response, CommonErrorCode.DUPLICATE_REQUEST);
+            return;
+        }
+        response.setStatus(record.status());
+        if (record.contentType() != null) {
+            response.setContentType(record.contentType());
+        }
+        response.setHeader(REPLAYED_HEADER, "true");
+        response.getOutputStream().write(record.body());
+    }
+
+    private void writeError(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(errorCode.getStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        objectMapper.writeValue(response.getOutputStream(), ApiResponse.fail(errorCode));
+    }
+
+    private String storeKey(HttpServletRequest request, String idempotencyKey) {
+        Principal principal = request.getUserPrincipal();
+        String owner = principal == null ? "anonymous" : principal.getName();
+        return owner + " " + request.getMethod() + " " + request.getRequestURI() + " " + idempotencyKey;
+    }
+
+    private static String sha256(byte[] body) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 을 쓸 수 없습니다", e);
+        }
+    }
+
+    private record Target(String method, String pattern) {
+        boolean matches(String requestMethod, String path) {
+            return method.equals(requestMethod) && PATH_MATCHER.match(pattern, path);
+        }
+    }
 }
