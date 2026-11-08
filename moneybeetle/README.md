@@ -13,7 +13,7 @@ Java 21 · Spring Boot 3.5 · Spring Data JPA · Spring Security(세션 로그�
 
 1. MySQL에서 `src/main/resources/sql`의 스크립트를 순서대로 실행한다: `create_database.sql` → `schema.sql` → `sample-data.sql`
    - ⚠️ `schema.sql`은 기존 테이블을 **삭제하고 다시 만든다**. 이미 넣어 둔 개발 데이터가 있으면 모두 사라지니 처음 한 번만 실행한다.
-   - `sample-data.sql`은 로컬 개발용 시드라서 운영 서버에는 넣지 않는다.
+   - `sample-data.sql`은 로컬 개발·발표용 시드다. (배포하지 않고 로컬에서 발표한다, 팀 결정 2026-11-08)
    - 이미 DB를 만들어 둔 사람은 `schema.sql`을 다시 실행하지 말고 `src/main/resources/sql/migration/`의 파일만 실행한다(값 변경이 있을 때만 파일이 추가된다). 지금은 `2026-11-08_trading_season_carryover_default.sql`(이월 비율 기본값 100.00)이 있다.
 2. DB 접속 정보 등 비밀 값은 `.env`(Git 제외)와 환경변수로 넣는다. 키 목록은 `docs/MoneyBeetle_환경변수.md`를 본다.
 3. 서버를 띄운다. (⚠️ 시작 클래스와 설정(`application.yaml`)이 이슈 #2에서 올라온 뒤부터 실행할 수 있다. 그전에는 `./gradlew bootRun`이 안 된다.)

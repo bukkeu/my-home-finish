@@ -28,7 +28,7 @@
 
 | 담당 | 담당자 | 맡는 영역 | 이슈 | 점수 | API |
 | --- | --- | --- | --- | --- | --- |
-| **SCM** | **서수영** (`tjtndud2`) | **모의 청약** + 공통 기반·보안 + CI·배포·Actuator + README·브랜치 정리 + 문서·Git·이슈 | 16 | 93 | 16 |
+| **SCM** | **서수영** (`tjtndud2`) | **모의 청약** + 공통 기반·보안 + CI·Actuator + README·브랜치 정리 + 문서·Git·이슈 | 16 | 93 | 16 |
 | **PM** | **이재성** (`godgeul-glitch`) | **모의투자** + 통합 검색 + 마이페이지 틀 + 중복 요청 방지 + 통합 점검 | 20 | 98 | 39 |
 | **DBA ①** | **신아림** (`arim0317-dot`) | 강의·퀴즈·강사 + 문의 + 사용자·강사 관리 | 23 | 107 | 53 |
 | **DBA ②** | **김예린** (`paaaraaaeaaa`) | 회원·인증 + 성장·알림·홈·경제 용어 + 관리자 틀·운영 + 공통 레이아웃 | 23 | 106 | 40 |
@@ -83,7 +83,7 @@
 
 ---
 
-## 2. 서수영 (SCM) — 모의 청약 · 공통 기반 · CI/배포
+## 2. 서수영 (SCM) — 모의 청약 · 공통 기반 · CI
 
 **패키지**: `domain/housing`, `global/**`, `domain/auth/config`(SecurityConfig)
 **테이블(코드 담당 4)**: subscription_account, subscription_deposit, housing_complex, housing_application
@@ -106,7 +106,7 @@
 | #70 | 마이페이지 나의 청약통장 탭 (화면) | — | 4 | 마이페이지 "나의 청약통장" 탭(잔액·납입·내역). **레벨 조건 없음**, `Idempotency-Key`. `fragments/mypage/housing` |
 | #74 | 샘플 데이터 — 청약 단지·공고 | — | 3 | 시연용 공공·민영 단지·공고(네 단계 날짜 구성, 커트라인, 이미지). `housing/store.js` 기준 |
 | #83 | README 실행 가이드·담당 표기 정리 (문서) | — | 3 | 로컬 실행 방법(`.env.example` → DB → `bootRun`), 폴더 구조, 규칙 요약, 코드 파일 머리말·README의 옛 담당 표기 수정 |
-| #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC), Docker·Nginx 헬스 체크 |
+| #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC). 배포하지 않으므로 Docker·Nginx 헬스 체크는 없음 |
 | #85 | 브랜치 정리·보호 규칙 설정 | — | 2 | `sy`·`test` 등 남은 브랜치 정리, `main`·`dev` 보호(PR 필수·승인 1명), `main`은 `dev`에서만 병합 |
 
 **다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
@@ -297,7 +297,7 @@
 | `global/**`, `domain/auth/config/**`(`SecurityConfig`·`LevelCheckInterceptor`), `CommonErrorCode` | 서수영 | 이슈로 요청 |
 | `domain/auth/**`(로그인 핸들러 등, config 제외), `domain/member/**` | 김예린 | 서수영은 `auth/config`만 수정 |
 | `global/security/IdempotencyFilter` | 이재성 | 서수영이 검토 |
-| `application.yaml`, `build.gradle`, `.github/**`, Docker | 서수영 | 이슈로 요청 (환경변수는 `MoneyBeetle_환경변수.md`) |
+| `application.yaml`, `build.gradle`, `.github/**` | 서수영 | 이슈로 요청 (환경변수는 `MoneyBeetle_환경변수.md`) |
 | `sql/schema.sql` 신아림 담당 테이블 23개: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, inquiry, inquiry_reply, category, course, course_review, lesson, learning_progress, lesson_watch, scrap, quiz_question, quiz_choice, quiz_attempt, quiz_answer, wrong_answer_note | 신아림 | 컬럼 변경은 신아림에게 요청 (파일 안은 알파벳순이라 구역 구분이 없음) |
 | `sql/schema.sql` 김예린 담당 테이블 24개: attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule, subscription_account, subscription_deposit, housing_complex, housing_application, trading_season, season_turn, sector, stock, stock_price, news, news_tag, trade_reason, season_participant, holding, trade_order, ranking_award | 김예린 | 컬럼 변경은 김예린에게 요청(청약은 서수영, 모의투자는 이재성이 요청) |
 | `sql/sample-data.sql` 시드 | 파일 맨 아래에 자기 구역 주석(`-- [이름] 구역`)을 만들고 그 아래에만 추가: 회원·강의·퀴즈 구역 신아림(#73, 이미 있음), 성장·알림·경제 용어 구역 김예린(#75, 레벨 정책·보상 규칙 포함), 모의투자 시드 이재성(#72), 청약 시드 서수영(#74). 한 파일이라 충돌이 나기 쉬우니 자기 구역만 고친다 | 컬럼이 맞는지는 해당 구역 DBA가 검토 |
