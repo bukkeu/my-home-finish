@@ -21,7 +21,9 @@ import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
 import com.wanted.moneybeetle.domain.course.model.entity.Scrap;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -164,9 +166,15 @@ public class CourseService {
         getVisibleCourse(courseId);
 
         if (scrapRepository.existsByMemberIdAndCourseId(memberId, courseId)) {
-            throw new RuntimeException(CourseErrorCode.ALREADY_SCRAPPED.getMessage()); // TODO 공통 설정 병합 후 BusinessException으로
+            throw new BusinessException(CourseErrorCode.ALREADY_SCRAPPED);
         }
-        scrapRepository.save(Scrap.create(memberId, courseId));
+        try {
+            // saveAndFlush: INSERT를 바로 실행해서 중복 위반을 이 메서드 안에서 잡는다
+            scrapRepository.saveAndFlush(Scrap.create(memberId, courseId));
+        } catch (DataIntegrityViolationException e) {
+            // 동시에 들어온 같은 요청이 먼저 저장된 경우 (UNIQUE(member_id, course_id) 위반) → 500이 아니라 409
+            throw new BusinessException(CourseErrorCode.ALREADY_SCRAPPED);
+        }
     }
 
     /* API 37. 스크랩 해제 (실제 삭제). 강의가 비공개로 바뀌었어도 해제는 할 수 있어야 해서 공개 검사를 하지 않는다 */
