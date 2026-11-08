@@ -72,6 +72,16 @@ class LevelTableTest {
     }
 
     @Test
+    @DisplayName("음수 레벨업 캐시 정책은 해당 레벨 정보를 포함해 거절한다")
+    void rejectsNegativeLevelUpCash() {
+        assertThatThrownBy(() -> new LevelTable(List.of(
+                LevelPolicy.create(1, 0, "고시원", 0),
+                LevelPolicy.create(2, 150, "고시원", -1))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Lv.2");
+    }
+
+    @Test
     @DisplayName("잘못된 정책표는 만들 때 거절한다 (빈 표, 레벨 빠짐, Lv.1 이 0이 아님, 경험치가 늘지 않음)")
     void invalidTables() {
         assertThatThrownBy(() -> new LevelTable(List.of())).isInstanceOf(IllegalArgumentException.class);
