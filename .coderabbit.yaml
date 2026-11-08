@@ -20,7 +20,7 @@ reviews:
   estimate_code_review_effort: true
   review_status: true
   poem: false
-  in_progrxess_fortune: false
+  in_progress_fortune: false         # 리뷰 진행 중 문구(운세 멘트) 끄기
   enable_prompt_for_ai_agents: true  # Claude Code에 붙여 넣을 수정 프롬프트 제공
 
   auto_review:
