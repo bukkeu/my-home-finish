@@ -92,6 +92,7 @@ git push -u origin feat/be-12-login-api
 | 크기 | 한 PR = 한 이슈. 대략 400줄 이하 |
 | 승인 | **작성자를 뺀 팀원 1명의 승인** 필수. 본인 PR은 본인이 병합하지 않음 |
 | 병합 방식 | 작업 브랜치 → `dev`은 Squash and merge, `dev` → `main`은 Create a merge commit |
+| 릴리스 PR 제목 | `dev` → `main` PR도 허용된 타입(`chore` 등)을 쓴다. 예: `chore: dev → main (보상 서비스·공통 레이아웃 반영)`. `release:` 같은 타입은 쓰지 않는다 |
 | PR 대상 | 작업 브랜치는 `dev`으로 (`main`으로 바로 올리지 않음). `hotfix`만 `main` |
 | 리뷰 기한 | 24시간 안에 확인 (어려우면 댓글로 미리 알림) |
 | 병합 조건 | 빌드·테스트 통과 + 승인 + 충돌 없음 |
