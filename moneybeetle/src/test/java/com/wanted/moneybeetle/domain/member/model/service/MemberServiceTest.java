@@ -8,11 +8,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository;
+import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
+import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
-import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
@@ -23,6 +30,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.mockito.ArgumentMatchers.any;
+
+import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
+import java.util.Set;
+import org.springframework.test.util.ReflectionTestUtils;
+
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   MemberService 1차 - Repository 를 Mock 으로 두고 서버·DB 없이 돈다
@@ -31,13 +44,33 @@ class MemberServiceTest {
 
     private MemberRepository memberRepository;
     private TermsRepository termsRepository;
+    private MemberTermsAgreementRepository memberTermsAgreementRepository;
+    private PasswordEncoder passwordEncoder;
+    private ForbiddenWordService forbiddenWordService;
+    private Clock clock;
     private MemberService memberService;
 
     @BeforeEach
     void setUp() {
         memberRepository = mock(MemberRepository.class);
         termsRepository = mock(TermsRepository.class);
-        memberService = new MemberService(memberRepository, termsRepository);
+        memberTermsAgreementRepository = mock(MemberTermsAgreementRepository.class);
+        passwordEncoder = mock(PasswordEncoder.class);
+        forbiddenWordService = mock(ForbiddenWordService.class);
+
+        clock = Clock.fixed(
+                Instant.parse("2026-11-08T00:00:00Z"),
+                ZoneId.of("Asia/Seoul")
+        );
+
+        memberService = new MemberService(
+                memberRepository,
+                termsRepository,
+                memberTermsAgreementRepository,
+                passwordEncoder,
+                forbiddenWordService,
+                clock
+        );
     }
 
     @Test
@@ -131,9 +164,13 @@ class MemberServiceTest {
     void nickname() {
         when(memberRepository.existsByNickname("민지")).thenReturn(true);
 
-        assertThat(memberService.isNicknameAvailable("민지").isAvailable()).isFalse();   // 중복
+        assertThat(memberService.isNicknameAvailable("민지").isAvailable()).isFalse();
         assertThat(memberService.isNicknameAvailable("새닉네임").isAvailable()).isTrue();
-        assertThat(memberService.isNicknameAvailable("!").isAvailable()).isFalse();      // 형식 위반
+
+        assertThatThrownBy(() -> memberService.isNicknameAvailable("!"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(MemberErrorCode.NICKNAME_INVALID);
     }
 
     @Test
@@ -152,9 +189,66 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("signup 은 아직 구현 전이라 호출하면 구현 전임을 알린다 (#5 2차)")
-    void signupNotYet() {
-        assertThatThrownBy(() -> memberService.signup(new SignupDTO()))
-                .isInstanceOf(UnsupportedOperationException.class);
+    @DisplayName("회원가입 성공 시 회원 저장, 비밀번호 암호화, 약관 동의 기록을 저장한다")
+    void signupSuccess() {
+        // given
+        Terms requiredTerms = Terms.create(
+                "서비스 이용약관",
+                "본문1",
+                true,
+                "1.0",
+                LocalDateTime.of(2026, 11, 1, 0, 0)
+        );
+
+        Terms optionalTerms = Terms.create(
+                "마케팅 정보 수신",
+                "본문2",
+                false,
+                "1.0",
+                LocalDateTime.of(2026, 11, 1, 0, 0)
+        );
+
+        ReflectionTestUtils.setField(requiredTerms, "termsId", 1L);
+        ReflectionTestUtils.setField(optionalTerms, "termsId", 2L);
+
+        when(termsRepository.findByRequiredTrue())
+                .thenReturn(List.of(requiredTerms));
+
+        when(termsRepository.findByTermsIdIn(Set.of(1L, 2L)))
+                .thenReturn(List.of(requiredTerms, optionalTerms));
+
+        when(passwordEncoder.encode("beetle1234"))
+                .thenReturn("encoded-password");
+
+        when(memberRepository.save(any(Member.class)))
+                .thenAnswer(invocation -> {
+                    Member member = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(member, "memberId", 100L);
+                    return member;
+                });
+
+        SignupDTO request = new SignupDTO(
+                "MinJi@Gmail.com",
+                "beetle1234",
+                "beetle1234",
+                "민지",
+                java.time.LocalDate.of(1999, 4, 12),
+                "FEMALE",
+                List.of(1L, 2L)
+        );
+
+        // when
+        SignupResultDTO result = memberService.signup(request);
+
+        // then
+        assertThat(result.getMemberId()).isEqualTo(100L);
+        assertThat(result.getNickname()).isEqualTo("민지");
+
+        verify(passwordEncoder).encode("beetle1234");
+        verify(memberRepository).save(any(Member.class));
+        verify(memberTermsAgreementRepository).saveAll(any());
+
+        verify(forbiddenWordService).check("민지");
     }
+
 }

@@ -15,6 +15,13 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberTermsAgreement;
+import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Set;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
@@ -35,6 +42,10 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final TermsRepository termsRepository;
+    private final MemberTermsAgreementRepository memberTermsAgreementRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ForbiddenWordService forbiddenWordService;
+    private final Clock clock;
 
     /** 회원의 현재 레벨·경험치·캐시 (growth.RewardService 용). 없는 회원이면 MEMBER_NOT_FOUND */
     public MemberBalanceDTO getBalance(Long memberId) {
@@ -105,7 +116,13 @@ public class MemberService {
      * 형식(2~12자 한글·영문·숫자)과 금칙어 검사는 2차에서 오류 코드(NICKNAME_INVALID, FORBIDDEN_WORD)와 함께 붙인다.
      */
     public AvailabilityDTO isNicknameAvailable(String nickname) {
-        return AvailabilityDTO.of(SignupRules.isValidNickname(nickname) && !memberRepository.existsByNickname(nickname));
+        if (!SignupRules.isValidNickname(nickname)) {
+            throw new BusinessException(MemberErrorCode.NICKNAME_INVALID);
+        }
+
+        forbiddenWordService.check(nickname);
+
+        return AvailabilityDTO.of(!memberRepository.existsByNickname(nickname));
     }
 
     /**
@@ -115,7 +132,105 @@ public class MemberService {
      */
     @Transactional
     public SignupResultDTO signup(SignupDTO request) {
-        // TODO(#5 2차): PasswordEncoder(#4), BusinessException(#2), ForbiddenWordService(#64), HousingService.openAccount 가 올라온 뒤 구현
-        throw new UnsupportedOperationException("MemberService.signup 은 #2·#4 가 올라온 뒤 구현합니다 (#5 2차)");
+        if (request == null) {
+            throw new IllegalArgumentException("회원가입 정보가 필요합니다.");
+        }
+
+        // 1. 이메일 형식 및 중복 검사
+        String email = SignupRules.normalizeEmail(request.getEmail());
+
+        if (!SignupRules.isValidEmail(request.getEmail())) {
+            throw new BusinessException(MemberErrorCode.EMAIL_INVALID);
+        }
+
+        if (memberRepository.existsByEmail(email)) {
+            throw new BusinessException(MemberErrorCode.EMAIL_DUPLICATED);
+        }
+
+        // 2. 닉네임 형식 및 중복 검사
+        String nickname = request.getNickname();
+
+        if (!SignupRules.isValidNickname(nickname)) {
+            throw new BusinessException(MemberErrorCode.NICKNAME_INVALID);
+        }
+
+        forbiddenWordService.check(nickname);
+
+        if (memberRepository.existsByNickname(nickname)) {
+            throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+        }
+
+        // 3. 비밀번호 검증
+        if (!SignupRules.isValidPassword(request.getPassword())) {
+            throw new BusinessException(MemberErrorCode.PASSWORD_INVALID);
+        }
+
+        if (!request.getPassword().equals(request.getPasswordConfirm())) {
+            throw new BusinessException(MemberErrorCode.PASSWORD_MISMATCH);
+        }
+
+        // 4. 생년월일 및 가입 연령 검증
+        LocalDate today = LocalDate.now(clock);
+        LocalDate birthDate = request.getBirthDate();
+
+        if (!SignupRules.isPastDate(birthDate, today)) {
+            throw new BusinessException(MemberErrorCode.BIRTH_DATE_INVALID);
+        }
+
+        if (!SignupRules.isAtLeastMinAge(birthDate, today)) {
+            throw new BusinessException(MemberErrorCode.AGE_UNDER_14);
+        }
+
+        // 5. 약관 동의 정보 검증
+        if (request.getAgreedTermsIds() == null
+                || request.getAgreedTermsIds().isEmpty()
+                || request.getAgreedTermsIds().stream().anyMatch(java.util.Objects::isNull)) {
+            throw new BusinessException(MemberErrorCode.REQUIRED_TERMS_NOT_AGREED);
+        }
+
+        Set<Long> agreedIds = new java.util.LinkedHashSet<>(request.getAgreedTermsIds());
+
+        List<com.wanted.moneybeetle.domain.member.model.entity.Terms> agreedTerms =
+                termsRepository.findByTermsIdIn(agreedIds);
+
+        if (agreedTerms.size() != agreedIds.size()) {
+            throw new BusinessException(MemberErrorCode.TERMS_NOT_FOUND);
+        }
+
+        List<Long> requiredIds = termsRepository.findByRequiredTrue()
+                .stream()
+                .map(term -> term.getTermsId())
+                .toList();
+
+        if (!SignupRules.agreedAllRequired(requiredIds, agreedIds)) {
+            throw new BusinessException(MemberErrorCode.REQUIRED_TERMS_NOT_AGREED);
+        }
+
+        // 6. 비밀번호 암호화 및 회원 저장
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        Member member = Member.signup(
+                email,
+                encodedPassword,
+                nickname,
+                birthDate,
+                request.getGender(),
+                today
+        );
+
+        Member savedMember = memberRepository.save(member);
+
+        // 7. 동의한 약관 기록 저장
+        List<MemberTermsAgreement> agreements = agreedTerms.stream()
+                .map(term -> MemberTermsAgreement.create(
+                        savedMember.getMemberId(),
+                        term.getTermsId(),
+                        true
+                ))
+                .toList();
+
+        memberTermsAgreementRepository.saveAll(agreements);
+
+        return SignupResultDTO.from(savedMember);
     }
 }
