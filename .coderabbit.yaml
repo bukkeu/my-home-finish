@@ -33,6 +33,12 @@ reviews:
       - "WIP"
 
   path_filters:                      # 리뷰에서 뺄 파일
+    # 리뷰는 moneybeetle/(Spring 서버) 코드만 한다. 문서·저장소 설정 파일만 바뀐 PR은 코멘트를 달지 않는다
+    - "!docs/**"
+    - "!.github/**"
+    - "!*.md"                        # 저장소 루트의 README.md, CLAUDE.md
+    - "!.coderabbit.yaml"
+    - "!.gitignore"
     # 빌드 결과물·IDE 설정
     - "!**/build/**"
     - "!**/out/**"
