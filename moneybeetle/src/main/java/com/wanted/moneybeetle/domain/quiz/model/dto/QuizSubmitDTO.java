@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 public class QuizSubmitDTO {
     @NotNull(message = "답안을 보내 주세요")
-    private List<AnswerItem> answers;
+    private List<@NotNull(message = "답안 항목은 비울 수 없어요") AnswerItem> answers;
 
     @Getter
     @NoArgsConstructor
