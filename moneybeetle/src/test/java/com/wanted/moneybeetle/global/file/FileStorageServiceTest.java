@@ -16,14 +16,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /* comment.
 *   FileStorageService 경계 조건 확인 (스프링 없이 단독 실행)
-*   - 이름 없음 / 점 없음 / 허용하지 않는 확장자 / 이름만 바꾼 파일 → FILE_TYPE_NOT_ALLOWED
+*   - 이름 없음 / 점 없음 / 허용하지 않는 확장자 / 이름만 바꾼 파일 / 잘리거나 다른 형식의 mp4 → FILE_TYPE_NOT_ALLOWED
 *   - 이미지 2MB 초과 → FILE_TOO_LARGE, 정확히 2MB 는 통과
 *  */
 class FileStorageServiceTest {
 
     private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0};
     private static final byte[] PNG = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0};
-    private static final byte[] MP4 = {0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'm', 'p', '4', '2'};
+    // ftyp 상자(24바이트: 크기·"ftyp"·브랜드 "mp42"·버전·호환 브랜드 2개) + 뒤에 영상 데이터가 있는 형태
+    private static final byte[] MP4 = mp4("mp42", 24, 16);
+
+    private static byte[] mp4(String brand, int boxSize, int extraBytes) {
+        byte[] data = new byte[boxSize + extraBytes];
+        data[3] = (byte) boxSize;
+        System.arraycopy("ftyp".getBytes(), 0, data, 4, 4);
+        System.arraycopy(brand.getBytes(), 0, data, 8, 4);
+        System.arraycopy("isommp42".getBytes(), 0, data, 16, 8);
+        return data;
+    }
 
     @TempDir
     Path uploadDir;
@@ -83,6 +93,17 @@ class FileStorageServiceTest {
         assertRejected(() -> save(file("fake.jpg", PNG)), CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
         assertRejected(() -> saveVideo(file("fake.mp4", JPEG)), CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
         assertRejected(() -> save(file("empty.png", new byte[0])), CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
+    }
+
+    @Test
+    void ftyp만_맞는_다른_형식이나_잘린_mp4는_형식_오류() {
+        // CodeRabbit 예시 : 내용 없이 ftyp 만 있는 8바이트 파일
+        byte[] onlyFtyp = {0, 0, 0, 8, 'f', 't', 'y', 'p'};
+        assertRejected(() -> saveVideo(file("fake.mp4", onlyFtyp)), CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
+        // QuickTime(.mov) 브랜드
+        assertRejected(() -> saveVideo(file("movie.mp4", mp4("qt  ", 24, 16))), CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
+        // ftyp 상자만 있고 뒤에 영상 데이터가 없는 잘린 파일
+        assertRejected(() -> saveVideo(file("cut.mp4", mp4("isom", 24, 0))), CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
     }
 
     @Test

@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -89,8 +90,12 @@ public class FileStorageService {
     *   파일 맨 앞 몇 바이트(매직 넘버)는 형식마다 정해져 있다
     *   - JPEG : FF D8 FF
     *   - PNG  : 89 50 4E 47 0D 0A 1A 0A
-    *   - MP4  : 5~8번째 바이트가 "ftyp"
+    *   - MP4  : 5~8번째 바이트가 "ftyp", 9~12번째 바이트(브랜드)가 MP4 계열
+    *            ("qt  " 같은 QuickTime 은 ftyp 가 같아도 거절)
     *  */
+    private static final List<String> MP4_BRANDS =
+            List.of("isom", "iso2", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1", "M4V ", "dash");
+
     private boolean matchesContent(MultipartFile file, String ext) throws IOException {
         byte[] head = new byte[12];
         int read;
@@ -101,10 +106,24 @@ public class FileStorageService {
         return switch (ext) {
             case ".jpg", ".jpeg" -> startsWith(head, read, 0xFF, 0xD8, 0xFF);
             case ".png" -> startsWith(head, read, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
-            case ".mp4" -> read >= 8
-                    && head[4] == 'f' && head[5] == 't' && head[6] == 'y' && head[7] == 'p';
+            case ".mp4" -> isMp4(head, read, file.getSize());
             default -> false;
         };
+    }
+
+    /* comment.
+    *   MP4 는 맨 앞에 ftyp 상자가 있다 : [상자 크기 4바이트]["ftyp"][브랜드 4바이트]...
+    *   - 브랜드가 MP4 계열이어야 하고
+    *   - 상자 크기가 16 이상이며, ftyp 상자 뒤에 실제 영상 데이터가 더 있어야 한다 (잘린 파일 거절)
+    *  */
+    private boolean isMp4(byte[] head, int read, long fileSize) {
+        if (read < 12 || head[4] != 'f' || head[5] != 't' || head[6] != 'y' || head[7] != 'p') {
+            return false;
+        }
+        long boxSize = ((head[0] & 0xFFL) << 24) | ((head[1] & 0xFFL) << 16)
+                | ((head[2] & 0xFFL) << 8) | (head[3] & 0xFFL);
+        String brand = new String(head, 8, 4, StandardCharsets.US_ASCII);
+        return boxSize >= 16 && fileSize > boxSize && MP4_BRANDS.contains(brand);
     }
 
     // head 의 앞부분이 signature 와 같은지 비교 (읽은 길이가 모자라면 false)
