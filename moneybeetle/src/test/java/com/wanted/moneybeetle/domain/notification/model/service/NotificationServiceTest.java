@@ -79,6 +79,13 @@ class NotificationServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "javascript:alert(1)"))
                 .isInstanceOf(IllegalArgumentException.class);
+        // 브라우저가 "//evil.example" 로 해석하는 우회: 역슬래시, 탭·줄바꿈 삽입
+        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "/\\evil.example"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "/\t/evil.example"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "/\n/evil.example"))
+                .isInstanceOf(IllegalArgumentException.class);
         verify(repository, never()).save(any());
     }
 

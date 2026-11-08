@@ -86,6 +86,11 @@ public class Notification {
             if (!linkUrl.startsWith("/") || linkUrl.startsWith("//")) {
                 throw new IllegalArgumentException("linkUrl 은 사이트 안 경로('/'로 시작)여야 합니다: " + linkUrl);
             }
+            // 브라우저는 역슬래시를 슬래시로 보고("/\evil.com" -> "//evil.com"), 탭·줄바꿈을 지운 뒤 주소를 해석한다
+            // ("/<탭>/evil.com" -> "//evil.com"). 그래서 역슬래시와 제어 문자가 든 주소는 모두 거절한다
+            if (linkUrl.indexOf('\\') >= 0 || linkUrl.chars().anyMatch(c -> c <= 0x1F || c == 0x7F)) {
+                throw new IllegalArgumentException("linkUrl 에 역슬래시나 제어 문자를 쓸 수 없습니다.");
+            }
         }
         return new Notification(memberId, type, title, linkUrl);
     }
