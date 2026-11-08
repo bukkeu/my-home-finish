@@ -12,8 +12,11 @@ Java 21 · Spring Boot 3.5 · Spring Data JPA · Spring Security(세션 로그�
 ## 실행 방법
 
 1. MySQL에서 `src/main/resources/sql`의 스크립트를 순서대로 실행한다: `create_database.sql` → `schema.sql` → `sample-data.sql`
+   - ⚠️ `schema.sql`은 기존 테이블을 **삭제하고 다시 만든다**. 이미 넣어 둔 개발 데이터가 있으면 모두 사라지니 처음 한 번만 실행한다.
+   - `sample-data.sql`은 로컬 개발용 시드라서 운영 서버에는 넣지 않는다.
+   - 이미 DB를 만들어 둔 사람은 `schema.sql`을 다시 실행하지 말고 `src/main/resources/sql/migration/`의 파일만 실행한다(값 변경이 있을 때만 파일이 추가된다). 지금은 `2026-11-08_trading_season_carryover_default.sql`(이월 비율 기본값 100.00)이 있다.
 2. DB 접속 정보 등 비밀 값은 `.env`(Git 제외)와 환경변수로 넣는다. 키 목록은 `docs/MoneyBeetle_환경변수.md`를 본다.
-3. 서버를 띄운다.
+3. 서버를 띄운다. (⚠️ 시작 클래스와 설정(`application.yaml`)이 이슈 #2에서 올라온 뒤부터 실행할 수 있다. 그전에는 `./gradlew bootRun`이 안 된다.)
 
 ```bash
 ./gradlew bootRun
@@ -76,7 +79,7 @@ src/main/resources
 ```
 
 - 화면에서 쓰는 설정값의 기준은 서버(`system_setting` 테이블)입니다. `config.js`는 서버 값이 없을 때만 기본값을 씁니다.
-- 레벨·칭호 계산은 화면 표시용이고, 실제 레벨 해금 판단은 서버(`LevelCheckInterceptor`)가 합니다.
+- 레벨·칭호 계산은 화면 표시용이고, 실제 레벨 해금 판단은 서버(`LevelCheckInterceptor`)가 합니다. (`LevelCheckInterceptor`와 등록을 맡을 `WebConfig`는 아직 빈 파일이라 이슈 #2·#4에서 구현할 예정입니다.)
 
 ## 담당
 
@@ -95,7 +98,7 @@ src/main/resources
 2. 다른 도메인의 Entity를 `@ManyToOne`으로 잇거나 Repository를 직접 쓰지 않는다. 다른 도메인은 ID로 참조하고 그 도메인의 Service 메서드를 부른다.
    - 캐시·경험치 지급/차감 : `growth.RewardService` / 알림 : `notification.NotificationService` / 관리자 기록 : `operation.AdminLogService`
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
-4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. 시드는 파일 맨 아래 자기 구역 주석 아래에만 추가한다.
+4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. `schema.sql`을 다시 실행하면 데이터가 지워지므로, 이미 만든 DB에 변경만 적용해야 할 때에 한해 DBA가 `sql/migration/<날짜>_<설명>.sql`(ALTER 등)을 추가하고 같은 변경을 `schema.sql`에도 반영한다. 시드는 파일 맨 아래 자기 구역 주석 아래에만 추가한다.
 5. 마이페이지·관리자 대시보드는 틀과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
 6. API·DB를 바꾸면 같은 PR에서 API명세서·DB설계도 고친다.
 

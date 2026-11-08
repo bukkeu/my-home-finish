@@ -384,7 +384,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `level` | TINYINT | N | UNIQUE | - | 레벨 1~20 |
 | `required_exp` | INT | N | - | - | 이 레벨이 되기 위한 누적 경험치 (150 XP 간격, 초안) |
 | `title` | VARCHAR(20) | N | - | - | 칭호: 텐트 / 원룸 / 투룸 / 아파트 / 내 집 |
-| `levelup_cash` | INT | N | - | 0 | 레벨업 캐시 (레벨 × 1,000, 초안) |
+| `levelup_cash` | INT | N | - | 0 | 레벨업 캐시 (새 레벨 × 10,000, 확정 #76) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
 
@@ -731,8 +731,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `current_turn` | TINYINT | N | - | 0 | 현재 턴 0~12 |
 | `total_turns` | TINYINT | N | - | 12 | 전체 턴 |
 | `unlock_level` | TINYINT | N | - | 8 | 참가 해금 레벨 |
-| `carryover_rate` | DECIMAL(5,2) | N | - | 30.00 | 이월 비율(%) |
-| `carryover_cap` | BIGINT | Y | - | - | 이월 상한 (미정) |
+| `carryover_rate` | DECIMAL(5,2) | N | - | 100.00 | 이월 비율(%). 기본 100(전액), 관리자가 시즌 설정(ADM-11)에서 바꿀 수 있다 |
+| `carryover_cap` | BIGINT | Y | - | - | 이월 상한. 기본 NULL(상한 없음), 관리자가 시즌 설정에서 정한다 |
 | `settled_at` | DATETIME | Y | - | - | 정산 일시 |
 | `ranking_published_at` | DATETIME | Y | - | - | 랭킹 공개 일시 |
 | `created_by` | BIGINT | N | FK → member.member_id | - | 만든 관리자 |
