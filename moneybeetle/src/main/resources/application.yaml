@@ -2,8 +2,41 @@
 #   담당 : SCM (회원·공통) / DB 접속 정보는 DBA 와 맞춘다
 #   들어갈 내용
 #   - spring.application.name : moneybeetle
-#   - spring.datasource : MySQL 8 (url jdbc:mysql://localhost:3306/moneybeetle, username, password)
+#   - spring.datasource : MySQL 8 (DB money_beetle). 접속 정보는 환경변수 DB_URL, DB_USERNAME, DB_PASSWORD 로 읽는다
+#     로컬은 moneybeetle/.env (Git 제외, .env.example 복사) 또는 IntelliJ 실행 설정의 Environment variables 에 값을 넣는다
+#     비밀 값(DB_PASSWORD)에는 기본값을 두지 않는다 -> 설정을 안 하면 서버가 뜨지 않아 바로 알 수 있다 (환경변수 문서 5-2)
 #   - spring.jpa : ddl-auto none (resources/sql 스크립트로 테이블 생성), show-sql, format_sql
 #   - server.servlet.session.timeout : 30m (DP-11)
-#   - spring.servlet.multipart : 파일 업로드 최대 크기 2MB (DP-32)
+#   - spring.servlet.multipart : max-file-size 500MB(강의 영상, DP-33), max-request-size 510MB. 프로필 이미지 2MB(DP-32)는 FileStorageService 가 용도별로 검사
 #   - jackson 시간대 : Asia/Seoul (DP-42)
+
+spring:
+  application:
+    name: moneybeetle
+  config:
+    import: optional:file:.env[.properties]   # 실행 위치(moneybeetle/)의 .env 를 읽는다. 없으면 건너뛴다
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    show-sql: true
+    database: mysql
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    time-zone: Asia/Seoul
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 510MB
+server:
+  servlet:
+    session:
+      timeout: 30m
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads}

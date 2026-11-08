@@ -21,7 +21,9 @@ import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
 import com.wanted.moneybeetle.domain.course.model.entity.Scrap;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -75,8 +77,9 @@ public class CourseService {
                 categoryIds, Course.STATUS_APPROVED, pageable);
 
         // 이 페이지 강의 중 내가 스크랩한 것을 한 번에 조회 (강의마다 조회하지 않음)
-        Set<Long> scrappedIds = findScrappedCourseIds(memberId,
-                courses.getContent().stream().map(Course::getCourseId).toList());
+        Set<Long> scrappedIds = (memberId == null)
+                ? Set.of()   // 회원을 모르면 스크랩 안 한 것으로
+                : findScrappedCourseIds(memberId, courses.getContent().stream().map(Course::getCourseId).toList());
 
         return courses.map(course -> CourseListDTO.from(
                 course,
@@ -92,7 +95,7 @@ public class CourseService {
         Course course = getVisibleCourse(courseId);
         Category category = categoryRepository.findById(course.getCategoryId()).orElse(null);
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId);
-        boolean scrapped = scrapRepository.existsByMemberIdAndCourseId(memberId, courseId);
+        boolean scrapped = memberId != null && scrapRepository.existsByMemberIdAndCourseId(memberId, courseId);
 
         return CourseDetailDTO.from(course, category, lessons, scrapped);
     }
@@ -129,7 +132,7 @@ public class CourseService {
 
     /* API 34. 시청 기록: 최근 본 영상 순 (LRN-06) */
     public Page<WatchHistoryDTO> findWatchHistories(Long memberId, Pageable pageable) {
-        Page<LessonWatch> watches = lessonWatchRepository.findByMemberIdOrderByLastWatchedAtDesc(memberId, pageable);
+        Page<LessonWatch> watches = lessonWatchRepository.findVisibleByMemberId(memberId, Course.STATUS_APPROVED, pageable);
 
         Map<Long, Lesson> lessons = lessonRepository.findAllById(
                         watches.getContent().stream().map(LessonWatch::getLessonId).toList())
@@ -146,8 +149,8 @@ public class CourseService {
 
     /* API 35. 학습 완료 목록 (LRN-06, LRN-07) */
     public Page<CompletedCourseDTO> findCompletedCourses(Long memberId, Pageable pageable) {
-        Page<LearningProgress> completed = learningProgressRepository.findByMemberIdAndStatusOrderByCompletedAtDesc(
-                memberId, LearningProgress.STATUS_COMPLETED, pageable);
+        Page<LearningProgress> completed = learningProgressRepository.findVisibleByMemberIdAndStatus(
+                memberId, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 completed.getContent().stream().map(LearningProgress::getCourseId).toList());
@@ -163,9 +166,15 @@ public class CourseService {
         getVisibleCourse(courseId);
 
         if (scrapRepository.existsByMemberIdAndCourseId(memberId, courseId)) {
-            throw new RuntimeException(CourseErrorCode.ALREADY_SCRAPPED.getMessage()); // TODO 공통 설정 병합 후 BusinessException으로
+            throw new BusinessException(CourseErrorCode.ALREADY_SCRAPPED);
         }
-        scrapRepository.save(Scrap.create(memberId, courseId));
+        try {
+            // saveAndFlush: INSERT를 바로 실행해서 중복 위반을 이 메서드 안에서 잡는다
+            scrapRepository.saveAndFlush(Scrap.create(memberId, courseId));
+        } catch (DataIntegrityViolationException e) {
+            // 동시에 들어온 같은 요청이 먼저 저장된 경우 (UNIQUE(member_id, course_id) 위반) → 500이 아니라 409
+            throw new BusinessException(CourseErrorCode.ALREADY_SCRAPPED);
+        }
     }
 
     /* API 37. 스크랩 해제 (실제 삭제). 강의가 비공개로 바뀌었어도 해제는 할 수 있어야 해서 공개 검사를 하지 않는다 */
@@ -176,7 +185,7 @@ public class CourseService {
 
     /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11) */
     public Page<ScrapListDTO> findScraps(Long memberId, Pageable pageable) {
-        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable);
+        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDescScrapIdDesc(memberId, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 scraps.getContent().stream().map(Scrap::getCourseId).toList());
@@ -231,13 +240,13 @@ public class CourseService {
     private Course getVisibleCourse(Long courseId) {
         return courseRepository.findById(courseId)
                 .filter(Course::isVisibleToLearner)
-                .orElseThrow(() -> new RuntimeException(CourseErrorCode.COURSE_NOT_PUBLIC.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.COURSE_NOT_PUBLIC)); // TODO 공통 설정 병합 후 BusinessException으로
     }
 
     /* 그 강의에 속한 영상인지 확인한다 */
     private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
         return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
-                .orElseThrow(() -> new RuntimeException(CourseErrorCode.LESSON_NOT_FOUND.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND)); // TODO 공통 설정 병합 후 BusinessException으로
     }
 
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {

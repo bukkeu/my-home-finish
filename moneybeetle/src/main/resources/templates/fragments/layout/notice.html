@@ -1,5 +1,18 @@
-<!-- comment.
-    담당 : SCM (회원·공통)
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>안내 띠 조각</title>
+</head>
+<body>
+<!--/* comment.
+    담당 : DBA ② (공통 레이아웃, 이슈 #49)
     내용 : 하단 안내 띠 "가상 실습이며 실제 금융 거래가 아니에요" (NFR-12)
-    경로 : 투자·청약 화면
--->
+    경로 : 투자·청약 화면 (모의투자·모의 청약·관리자 운영 화면의 맨 아래)
+    사용 : <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+*/-->
+<div th:fragment="noticeFragment" class="mb-notice" role="note">
+    가상 실습이며 실제 금융 거래가 아니에요
+</div>
+</body>
+</html>

@@ -1,5 +1,18 @@
+<!DOCTYPE html>
 <!-- comment.
     담당 : SCM (회원·공통)
     내용 : 서버 오류 - "처리하지 못했어요. 내 정보는 바뀌지 않았어요"
     경로 : EP-04
 -->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>오류가 발생했어요</title>
+</head>
+<body>
+<h1>500</h1>
+<p th:text="${message} ?: '처리하지 못했어요. 내 정보는 바뀌지 않았어요.'">처리하지 못했어요. 내 정보는 바뀌지 않았어요.</p>
+<a th:href="@{/}">메인으로</a>
+</body>
+</html>
+
