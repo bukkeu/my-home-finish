@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -60,8 +61,9 @@ public class QuizService {
                 .toList();
 
         int correctCount = (int) results.stream().filter(TestQuizResultDTO.ResultItem::isCorrect).count();
-        boolean allAnswered = questions.stream()
-                .allMatch(question -> selected.containsKey(question.getQuizQuestionId()));
+        // 문항이 없으면 열지 않는다. 모든 문항에 실제로 답(보기 선택)했을 때만 영상이 열린다
+        boolean allAnswered = !questions.isEmpty()
+                && questions.stream().allMatch(question -> selected.get(question.getQuizQuestionId()) != null);
 
         return TestQuizResultDTO.of(correctCount, results, allAnswered);
     }
@@ -81,14 +83,16 @@ public class QuizService {
                 .collect(Collectors.groupingBy(QuizChoice::getQuizQuestionId));
     }
 
-    /* 답안을 "문항 ID → 고른 보기 ID"로 바꾼다. 안 푼 문제(null)는 빼고, 같은 문항이 두 번 오면 처음 것만 쓴다 */
+    /* 답안을 "문항 ID → 고른 보기 ID"로 바꾼다.
+     * 같은 문항이 여러 번 오면 첫 답만 쓴다. 첫 답이 미응답(choiceId null)이어도 그대로 유지한다 */
     private Map<Long, Long> toSelectedMap(QuizSubmitDTO request) {
-        return request.getAnswers().stream()
-                .filter(answer -> answer.getQuestionId() != null && answer.getChoiceId() != null)
-                .collect(Collectors.toMap(
-                        QuizSubmitDTO.AnswerItem::getQuestionId,
-                        QuizSubmitDTO.AnswerItem::getChoiceId,
-                        (first, second) -> first));
+        Map<Long, Long> selected = new HashMap<>();
+        for (QuizSubmitDTO.AnswerItem answer : request.getAnswers()) {
+            if (answer.getQuestionId() != null && !selected.containsKey(answer.getQuestionId())) {
+                selected.put(answer.getQuestionId(), answer.getChoiceId());
+            }
+        }
+        return selected;
     }
 
     private Long findCorrectChoiceId(List<QuizChoice> choices) {
