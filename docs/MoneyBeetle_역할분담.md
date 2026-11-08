@@ -61,7 +61,7 @@
 **FE와 BE가 만나는 약속**
 
 1. **화면 요청** — Controller(BE)가 View 이름과 Model 이름을 정하고, 템플릿(FE)이 그 이름으로 그립니다. 이름과 DTO는 FE 이슈의 "관련 BE 이슈"와 화면설계 §10.2(Model 표)에 적고, 바뀌면 같은 PR에서 고칩니다. 모든 화면이 쓰는 공통 값은 `layout`(`LayoutDTO`)입니다.
-2. **데이터 요청(fetch)** — API 명세서가 계약입니다. 화면 JS는 `static/js/common.js`의 `MB.api()`로 부르고, 명세서에 없는 필드에 기대지 않습니다. 실패하면 `MB.api()`는 `{ code, message, fields }`를 던지며, `fields`는 입력칸별 오류(`@Valid` 실패, 없으면 `null`)라서 입력칸 아래 문구에 씁니다.
+2. **데이터 요청(fetch)** — API 명세서가 계약입니다. 화면 JS는 `static/js/common.js`의 `MB.api()`로 부르고, 명세서에 없는 필드에 기대지 않습니다. 실패하면 `MB.api()`는 `{ code, message, fields }`를 던지며, `fields`는 입력칸별 오류(`@Valid` 실패, 없으면 `null`)라서 입력칸 아래 문구에 씁니다. 서버에 닿지 못한 네트워크 실패도 같은 모양(`code`는 `NETWORK_ERROR`, `fields`는 `null`)으로 던지므로 화면은 응답 오류와 같은 방식으로 처리합니다.
 3. **한쪽이 먼저 끝날 때** — 약속한 이름으로 `Fake` 데이터(코딩컨벤션 §11)를 쓰고, 값이 없어도(null) 화면이 깨지지 않게 그립니다. 나중에 진짜 값으로 바꿉니다.
 4. **권한·레벨** — 화면은 `sec:authorize`(`MEMBER`·`INSTRUCTOR`·`ADMIN`)와 잠금 표시로 보여 주기만 하고, 실제 차단은 BE(`SecurityConfig`, `LevelCheckInterceptor`)가 합니다.
 5. **한 이슈가 양쪽을 건드릴 때** — 자기 이슈의 BE와 FE는 한 사람이 같은 브랜치 흐름으로 하되, PR은 BE와 FE를 이슈별로 나눕니다(`feat/be-…`, `feat/fe-…`). 한 PR = 한 이슈 규칙은 그대로입니다. 한 이슈에 BE와 FE 작업이 함께 들어 있다면 이렇게 나눕니다.
