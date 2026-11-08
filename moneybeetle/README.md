@@ -98,7 +98,7 @@ src/main/resources
 2. 다른 도메인의 Entity를 `@ManyToOne`으로 잇거나 Repository를 직접 쓰지 않는다. 다른 도메인은 ID로 참조하고 그 도메인의 Service 메서드를 부른다.
    - 캐시·경험치 지급/차감 : `growth.RewardService` / 알림 : `notification.NotificationService` / 관리자 기록 : `operation.AdminLogService`
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
-4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. 시드는 파일 맨 아래 자기 구역 주석 아래에만 추가한다.
+4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. `schema.sql`을 다시 실행하면 데이터가 지워지므로, 이미 만든 DB에 변경만 적용해야 할 때에 한해 DBA가 `sql/migration/<날짜>_<설명>.sql`(ALTER 등)을 추가하고 같은 변경을 `schema.sql`에도 반영한다. 시드는 파일 맨 아래 자기 구역 주석 아래에만 추가한다.
 5. 마이페이지·관리자 대시보드는 틀과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
 6. API·DB를 바꾸면 같은 PR에서 API명세서·DB설계도 고친다.
 
