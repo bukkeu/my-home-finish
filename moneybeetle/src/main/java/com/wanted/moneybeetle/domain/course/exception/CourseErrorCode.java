@@ -20,10 +20,11 @@ public enum CourseErrorCode implements ErrorCode {
     NO_LESSON(HttpStatus.BAD_REQUEST, "영상을 1개 이상 등록해 주세요"),                       // SP-30
     CATEGORY_IN_USE(HttpStatus.CONFLICT, "강의가 연결된 카테고리는 삭제할 수 없어요");          // ADM-02
 
-    private final HttpStatus httpStatus;
+    private final HttpStatus status;   // ErrorCode.getStatus() 규약 (#2) - @Getter 가 getStatus() 를 만든다
     private final String message;
 
-    public String getCode() {   // TODO 병합 후 @Override 추가
+    @Override
+    public String getCode() {
         return name();
     }  // "COURSE_NOT_PUBLIC" 같은 이름을 그대로 코드로 사용
     }
