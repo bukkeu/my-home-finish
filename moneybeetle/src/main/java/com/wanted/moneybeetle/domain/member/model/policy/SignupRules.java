@@ -1,5 +1,8 @@
 package com.wanted.moneybeetle.domain.member.model.policy;
 
+import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -24,12 +27,22 @@ public final class SignupRules {
     /** SP-04: 가입 연령 */
     public static final int MIN_AGE = 14;
 
+    private static final Validator EMAIL_VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
+
     private SignupRules() {
     }
 
     /** SP-01: 대소문자를 구분하지 않으므로 앞뒤 공백을 지우고 소문자로 바꿔 저장·조회한다 */
     public static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 이메일 형식·길이가 가입 요청(SignupDTO.email 의 @NotBlank·@Email·@Size)과 같은 규칙에 맞는가.
+     * DTO 에 선언한 제약을 그대로 불러 쓰므로 두 곳이 어긋나지 않는다. 중복 확인 전에 normalizeEmail 결과를 넣는다.
+     */
+    public static boolean isValidEmail(String email) {
+        return email != null && EMAIL_VALIDATOR.validateValue(SignupDTO.class, "email", email).isEmpty();
     }
 
     public static boolean isValidNickname(String nickname) {

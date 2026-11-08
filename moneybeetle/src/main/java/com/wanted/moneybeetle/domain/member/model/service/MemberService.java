@@ -36,10 +36,16 @@ public class MemberService {
         return termsRepository.findAllByOrderByTermsIdAsc().stream().map(TermsDTO::from).toList();
     }
 
-    /** 이메일을 쓸 수 있는가 — 대소문자 구분 없이 중복이면 false (API 2, SP-01) */
+    /**
+     * 이메일을 쓸 수 있는가 — 형식·길이가 가입 요청과 같은 규칙에 맞고, 대소문자 구분 없이 중복이 아닐 때만 true (API 2, SP-01).
+     * 형식이 틀린 이메일은 조회하지 않고 바로 false 를 돌려준다 (사용 가능으로 보이지 않게).
+     */
     public AvailabilityDTO isEmailAvailable(String email) {
         String normalized = SignupRules.normalizeEmail(email);
-        return AvailabilityDTO.of(normalized != null && !normalized.isEmpty() && !memberRepository.existsByEmail(normalized));
+        if (!SignupRules.isValidEmail(normalized)) {
+            return AvailabilityDTO.of(false);
+        }
+        return AvailabilityDTO.of(!memberRepository.existsByEmail(normalized));
     }
 
     /**

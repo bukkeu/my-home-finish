@@ -2,7 +2,9 @@ package com.wanted.moneybeetle.domain.member.model.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +51,28 @@ class MemberServiceTest {
     void blankEmail() {
         assertThat(memberService.isEmailAvailable(" ").isAvailable()).isFalse();
         assertThat(memberService.isEmailAvailable(null).isAvailable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("형식이 틀리거나 100자를 넘는 이메일은 조회하지 않고 쓸 수 없다고 답한다")
+    void invalidEmailIsNotAvailable() {
+        String tooLong = "user@" + "d".repeat(60) + "." + "e".repeat(31) + ".com";   // 101자
+
+        assertThat(tooLong).hasSize(101);
+        assertThat(memberService.isEmailAvailable("not-an-email").isAvailable()).isFalse();
+        assertThat(memberService.isEmailAvailable("minji@").isAvailable()).isFalse();
+        assertThat(memberService.isEmailAvailable(tooLong).isAvailable()).isFalse();
+        verify(memberRepository, never()).existsByEmail(anyString());
+    }
+
+    @Test
+    @DisplayName("100자 이하의 올바른 이메일은 중복만 본다")
+    void maxLengthEmailChecksDuplicate() {
+        String max = "user@" + "d".repeat(60) + "." + "e".repeat(30) + ".com";   // 정확히 100자
+
+        assertThat(max).hasSize(100);
+        assertThat(memberService.isEmailAvailable(max).isAvailable()).isTrue();
+        verify(memberRepository).existsByEmail(max);
     }
 
     @Test
