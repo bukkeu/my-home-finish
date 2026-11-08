@@ -38,11 +38,13 @@ public class MemberService {
 
     /**
      * 이메일을 쓸 수 있는가 — 형식·길이가 가입 요청과 같은 규칙에 맞고, 대소문자 구분 없이 중복이 아닐 때만 true (API 2, SP-01).
-     * 형식이 틀린 이메일은 조회하지 않고 바로 false 를 돌려준다 (사용 가능으로 보이지 않게).
+     * 원본이나 정규화한 값 중 하나라도 형식이 틀리면 조회하지 않고 바로 false 를 돌려준다 (사용 가능으로 보이지 않게).
      */
     public AvailabilityDTO isEmailAvailable(String email) {
+        // 원본과 정규화한 값을 모두 검사한다. 정규화(앞뒤 공백 제거)는 틀린 입력을 올바른 값으로 바꿔 버릴 수 있는데,
+        // 가입 요청(SignupDTO)은 원본 그대로 검증하므로 여기서도 원본이 틀리면 가입할 수 없는 이메일로 답한다.
         String normalized = SignupRules.normalizeEmail(email);
-        if (!SignupRules.isValidEmail(normalized)) {
+        if (!SignupRules.isValidEmail(email) || !SignupRules.isValidEmail(normalized)) {
             return AvailabilityDTO.of(false);
         }
         return AvailabilityDTO.of(!memberRepository.existsByEmail(normalized));

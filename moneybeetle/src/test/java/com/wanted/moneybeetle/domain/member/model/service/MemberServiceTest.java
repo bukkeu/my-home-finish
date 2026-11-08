@@ -66,6 +66,14 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("앞뒤 공백이 붙은 원본은 정규화하면 올바르더라도 쓸 수 없다 (가입 요청은 원본 그대로 검증하므로)")
+    void paddedRawEmailIsNotAvailable() {
+        assertThat(memberService.isEmailAvailable(" minji@gmail.com").isAvailable()).isFalse();
+        assertThat(memberService.isEmailAvailable("minji@gmail.com ").isAvailable()).isFalse();
+        verify(memberRepository, never()).existsByEmail(anyString());
+    }
+
+    @Test
     @DisplayName("100자 이하의 올바른 이메일은 중복만 본다")
     void maxLengthEmailChecksDuplicate() {
         String max = "user@" + "d".repeat(60) + "." + "e".repeat(30) + ".com";   // 정확히 100자
