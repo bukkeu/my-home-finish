@@ -36,9 +36,11 @@
         return Promise.reject({ code: 'UNAUTHORIZED', message: '로그인이 필요해요.', fields: null });
       }
       if (res.status === 204) return null;
-      // 본문이 JSON이 아닌 경우(빈 본문 등, SyntaxError)만 null 로 두고, 본문을 읽다가 실패한 경우는 네트워크 오류로 던진다
+      // 본문이 JSON이 아닌 경우(빈 본문 등, SyntaxError)는 null 로 둔다.
+      // 본문을 읽다가 실패한 경우는 성공 응답이면 네트워크 오류로 던지고, HTTP 오류 응답(res.ok 가 false)이면
+      // 이미 상태 코드를 받았으므로 null 로 두어 아래의 공통 오류 경로(code 'ERROR')로 보낸다.
       return res.json().catch(function (e) {
-        return e instanceof SyntaxError ? null : networkError();
+        return e instanceof SyntaxError || !res.ok ? null : networkError();
       }).then(function (body) {
         if (res.ok && (!body || body.success !== false)) return body && 'data' in body ? body.data : body;
         var err = (body && body.error) || {};

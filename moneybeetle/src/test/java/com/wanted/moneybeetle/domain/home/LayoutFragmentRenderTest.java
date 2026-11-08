@@ -95,7 +95,8 @@ class LayoutFragmentRenderTest {
         }
         java.nio.file.Path out = java.nio.file.Path.of(dir);
         java.nio.file.Files.createDirectories(out);
-        String name = (authority == null ? "anonymous" : authority.toLowerCase()) + (query.contains("level=12") ? "-lv12" : "") + ".html";
+        String name = (authority == null ? "anonymous" : authority.toLowerCase()) + (query.contains("level=12") ? "-lv12" : "")
+                + (query.contains("withLayout=false") ? "-nolayout" : "") + ".html";
         java.nio.file.Files.writeString(out.resolve(name), html);
     }
 
