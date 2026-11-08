@@ -38,7 +38,7 @@ MoneyBeetle은 **Spring Boot MVC + Thymeleaf(서버가 화면을 만들어 응�
 
 ```mermaid
 flowchart LR
-    B["브라우저 (PC·모바일)<br/>Thymeleaf 화면 20개 · JS fetch"] -- HTTPS --> N["Nginx<br/>HTTPS 인증서 · 정적 파일 캐시<br/>요청을 서버로 전달 · 요청 수 제한"]
+    B["브라우저 (PC·모바일)<br/>Thymeleaf 화면 20개 · JS fetch"] -- HTTPS --> N["Nginx<br/>HTTPS 인증서 · 정적 파일 캐시<br/>요청을 서버로 전달 · 요청 수 제한<br/>업로드 요청 크기 제한 510MB"]
     N -- "화면·/api<br/>(영상·이미지 업로드 포함)" --> A["웹 서버 (Spring Boot MVC)<br/>화면 렌더링 (Thymeleaf)<br/>인증·권한 필터 (세션)<br/>도메인 12개<br/>메모리 캐시 (Caffeine)<br/>예약 작업"]
     A -- JPA --> D[("MySQL<br/>회원·학습·캐시<br/>거래·청약·감사")]
     A -. 서버 증설 시 .-> R[("Redis<br/>세션·캐시 공유")]
@@ -54,7 +54,7 @@ flowchart LR
 | 구성 요소 | 배치 | 역할 |
 | --- | --- | --- |
 | 클라이언트 | 사용자 브라우저 | 서버가 만든 HTML을 보여 줌. 일부 동작만 `/api`를 `fetch`로 호출하고 브라우저에는 화면 편의 설정만 저장 |
-| 리버스 프록시 | 클라우드 서버 (Nginx 컨테이너) | HTTPS, 정적 파일(`static/`) 캐시, 요청을 Spring Boot 서버로 전달, 요청 수 제한 |
+| 리버스 프록시 | 클라우드 서버 (Nginx 컨테이너) | HTTPS, 정적 파일(`static/`) 캐시, 요청을 Spring Boot 서버로 전달, 요청 수 제한. 파일 업로드 경로(`/api/v1/**` 중 업로드 API)는 `client_max_body_size 510m`로 Spring Boot의 `max-request-size`(510MB)와 같게 둔다(Nginx 기본값 1MB면 영상이 Spring Boot에 닿기 전에 거절됨) |
 | 웹 서버 | 같은 서버 (Spring Boot 컨테이너) | 화면 렌더링(Thymeleaf), 인증·권한, 모든 업무 규칙, 메모리 캐시, 예약 작업(탈퇴 정보 정리, 만료 토큰 삭제) |
 | DB | 관리형 MySQL (또는 같은 서버의 컨테이너) | 모든 업무 데이터와 감사 기록. 매일 자동 백업 |
 | 스토리지 | S3 호환 오브젝트 스토리지 | 영상·썸네일·프로필·단지 이미지. 비공개 버킷에 두고 서명 주소로만 접근 |
@@ -204,7 +204,7 @@ flowchart LR
 
 | 파일 | 올리는 화면 | 업로드 방식 | 제한 |
 | --- | --- | --- | --- |
-| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 그 `videoUrl`들과 요약글만 담아 보낸다. 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
+| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 각 영상의 `lessonId`·`sortOrder`(순서)·`title`·`videoUrl`·`durationSeconds`(재생 시간)·`summary`(요약글)를 담은 `lessons` 배열을 한 번에 보낸다(요청 예시는 API명세서 78번). 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
 | 강의 썸네일 | InstructorCourseCreate | 브라우저 → 서버(형식·용량 검사) → 스토리지 | 이미지, 용량 미정 |
 | 프로필 이미지 | UserMyPage | 위와 같음 | 2MB, jpg·png (DP-32) |
 | 청약 단지 이미지 | AdminHousingManagement | 위와 같음 | 이미지, 용량 미정 |

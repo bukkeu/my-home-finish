@@ -12,7 +12,7 @@
 - 기준 문서: 요구사항 명세서, 정책 정의서, 머니비틀 페이지 구현(Claude Design). 표의 ID는 요구사항·정책 번호입니다.
 - DBMS는 **MySQL 8.0 (InnoDB, utf8mb4)** 기준입니다. 시간은 모두 서버의 한국 시간(KST)으로 저장합니다(DP-42).
 - **(초안)** 표시는 정책 정의서 5장의 미확정 값입니다. 값이 바뀌어도 테이블 구조는 그대로 쓰도록 설정 테이블로 뺐습니다.
-- **SQL 파일**은 `moneybeetle/src/main/resources/sql/`에 있고 이 순서로 실행합니다: `create_database.sql`(DB 생성, 접속 계정 안내) → `schema.sql`(테이블 47개, 실행하면 기존 테이블을 지우고 다시 만듦) → `sample-data.sql`(로컬 개발용 시드, 운영 DB에는 넣지 않음). 시드는 구역별로 담당 DBA가 관리합니다. 이미 만든 DB에 값만 바꿀 때는 `sql/migration/`의 파일을 씁니다.
+- **SQL 파일**은 `moneybeetle/src/main/resources/sql/`에 있고 이 순서로 실행합니다: `create_database.sql`(DB 생성, 접속 계정 안내) → `schema.sql`(테이블 47개, 실행하면 기존 테이블을 지우고 다시 만들기 때문에 **새 DB를 만들 때만** 실행) → `sample-data.sql`(로컬 개발용 시드, 운영 DB에는 넣지 않음). 시드는 구역별로 담당 DBA가 관리합니다. **이미 만든 DB의 구조나 데이터를 바꿀 때는 모두** `schema.sql`을 다시 실행하지 않고 `sql/migration/`의 마이그레이션 파일을 씁니다(DBA가 추가하고 `schema.sql`에도 같은 변경을 반영).
 
 ---
 
