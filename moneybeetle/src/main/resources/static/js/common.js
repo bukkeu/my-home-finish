@@ -1,7 +1,7 @@
 /* comment.
 *   담당 : DBA ② (공통 레이아웃, 이슈 #49)
 *   공통 fetch 래퍼(ApiResponse 처리, 401 이면 로그인 이동), 토스트
-*   - MB.api(url, options)  : 성공하면 응답의 data 를 돌려주고, 실패하면 { code, message, fields } 를 던진다 (fields 는 입력칸별 오류, 없으면 null). POST·PUT·PATCH·DELETE 에는 CSRF 헤더를 붙인다
+*   - MB.api(url, options)  : 성공하면 응답의 data 를 돌려주고, 실패하면 { code, message, fields } 를 던진다 (fields 는 입력칸별 오류, 없으면 null. 네트워크 실패는 code 'NETWORK_ERROR'). POST·PUT·PATCH·DELETE 에는 CSRF 헤더를 붙인다
 *   - MB.toast(message, kind) : 오른쪽 아래에 잠깐 보이는 알림 (kind: 'error' 이면 붉은 테두리)
 *   응답 형식: { success, data, error: { code, message } } (API 명세서 1-2)
 *  */
@@ -25,7 +25,10 @@
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(opts.body);
     }
-    return fetch(url, opts).then(function (res) {
+    return fetch(url, opts).catch(function () {
+      // 서버에 닿지 못한 경우(네트워크 끊김·타임아웃 등)도 응답 오류와 같은 모양으로 던진다
+      return Promise.reject({ code: 'NETWORK_ERROR', message: '네트워크 연결을 확인하고 다시 시도해 주세요.', fields: null });
+    }).then(function (res) {
       if (res.status === 401) {
         // 세션 만료·비로그인: 로그인 화면으로 보내고, 로그인 뒤 원래 화면으로 돌아오게 주소를 남긴다
         window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
