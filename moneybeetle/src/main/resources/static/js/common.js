@@ -25,17 +25,21 @@
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(opts.body);
     }
-    return fetch(url, opts).catch(function () {
-      // 서버에 닿지 못한 경우(네트워크 끊김·타임아웃 등)도 응답 오류와 같은 모양으로 던진다
+    // 서버에 닿지 못한 경우(네트워크 끊김·타임아웃, 응답 본문을 읽다가 끊긴 경우 등)도 응답 오류와 같은 모양으로 던진다
+    var networkError = function () {
       return Promise.reject({ code: 'NETWORK_ERROR', message: '네트워크 연결을 확인하고 다시 시도해 주세요.', fields: null });
-    }).then(function (res) {
+    };
+    return fetch(url, opts).catch(networkError).then(function (res) {
       if (res.status === 401) {
         // 세션 만료·비로그인: 로그인 화면으로 보내고, 로그인 뒤 원래 화면으로 돌아오게 주소를 남긴다
         window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
         return Promise.reject({ code: 'UNAUTHORIZED', message: '로그인이 필요해요.', fields: null });
       }
       if (res.status === 204) return null;
-      return res.json().catch(function () { return null; }).then(function (body) {
+      // 본문이 JSON이 아닌 경우(빈 본문 등, SyntaxError)만 null 로 두고, 본문을 읽다가 실패한 경우는 네트워크 오류로 던진다
+      return res.json().catch(function (e) {
+        return e instanceof SyntaxError ? null : networkError();
+      }).then(function (body) {
         if (res.ok && (!body || body.success !== false)) return body && 'data' in body ? body.data : body;
         var err = (body && body.error) || {};
         // fields: 입력칸별 오류(@Valid 실패). 있으면 화면이 입력칸 아래에 문구를 보여 줄 수 있다
