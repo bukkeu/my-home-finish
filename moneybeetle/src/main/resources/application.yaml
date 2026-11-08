@@ -7,3 +7,32 @@
 #   - server.servlet.session.timeout : 30m (DP-11)
 #   - spring.servlet.multipart : max-file-size 500MB(강의 영상, DP-33), max-request-size 510MB. 프로필 이미지 2MB(DP-32)는 FileStorageService 가 용도별로 검사
 #   - jackson 시간대 : Asia/Seoul (DP-42)
+
+spring:
+  application:
+    name: moneybeetle
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: wanted
+    password: wanted
+  jpa:
+    show-sql: true
+    database: mysql
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    time-zone: Asia/Seoul
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 510MB
+server:
+  servlet:
+    session:
+      timeout: 30m
+file:
+  upload-dir: ./uploads

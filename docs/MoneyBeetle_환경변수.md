@@ -107,8 +107,8 @@
 | `spring.application.name` | `moneybeetle` | |
 | `spring.jpa.hibernate.ddl-auto` | `none` (테이블은 `resources/sql` 스크립트로 만든다) | 학습·골격 |
 | `server.servlet.session.timeout` | `30m` | DP-11 |
-| `spring.servlet.multipart.max-file-size` | `500MB` (강의 영상 한도. 프로필 이미지 2MB는 `FileStorageService`가 용도별로 따로 검사한다) | DP-32, DP-33 |
-| `spring.servlet.multipart.max-request-size` | `510MB` (파일 한 개 한도보다 조금 크게) | DP-33 |
+| `spring.servlet.multipart.max-file-size` | `500MB` (강의 영상 한도. 프로필 이미지 2MB는 `FileStorageService`가 용도별로 따로 검사한다). **구현 예정**: 설정과 `FileStorageService`는 #2, 영상 검증은 #31. 그전에는 Spring Boot 기본값(파일 1MB)이다 | DP-32, DP-33 |
+| `spring.servlet.multipart.max-request-size` | `510MB` (영상은 한 요청에 한 개씩 올리므로 파일 한 개 한도보다 조금 크게. 영상 한 개당 업로드는 API명세서 #78 "영상 파일 올리기") | DP-33 |
 | 시간대 | `Asia/Seoul` (서버·DB·Jackson) | DP-42 |
 | `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql` | `local`에서만 켬 (`application-local.yaml`). `format_sql`은 `properties.hibernate` 아래에 써야 적용된다 | 학습 (09 module07) |
 
