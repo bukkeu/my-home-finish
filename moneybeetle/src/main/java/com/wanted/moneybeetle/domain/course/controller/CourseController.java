@@ -1,17 +1,25 @@
 package com.wanted.moneybeetle.domain.course.controller;
 
 import com.wanted.moneybeetle.domain.course.model.dto.CategoryTreeDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CompletedCourseDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -31,10 +39,11 @@ public class CourseController {
 
     private static final int DEFAULT_PAGE_SIZE = 20;   // API 명세서 1-3
     private static final int MAX_PAGE_SIZE = 100;
+    private static final Long TEMP_MEMBER_ID = 8L;     // TODO 로그인(#4·#6) 병합 후 삭제. 시드의 8번 회원
 
     private final CourseService courseService;
 
-    /* ===== 카테고리·강의 조회 (이번 이슈) ===== */
+    /* ===== 카테고리·강의 조회 (#16) ===== */
 
     /* API 29. 카테고리·소주제 */
     @GetMapping("/api/v1/categories")
@@ -51,14 +60,8 @@ public class CourseController {
             @RequestParam Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
-
-        Pageable pageable = PageRequest.of(
-                Math.max(page, 0),
-                Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
-                Sort.by("courseId"));
-
         // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(PageResponse.from(...))로 감싸기
-        return courseService.findCourses(categoryId, pageable);
+        return courseService.findCourses(categoryId, toPageable(page, size, Sort.by("courseId")));
     }
 
     /* API 31. 강의 상세 */
@@ -69,18 +72,58 @@ public class CourseController {
         return courseService.getCourseDetail(courseId);
     }
 
-    /* ===== 영상 재생·이어보기·시청 기록 (다음 이슈) =====
-     * GET /api/v1/courses/{courseId}/lessons/{lessonId}
-     * PUT /api/v1/courses/{courseId}/lessons/{lessonId}/progress
-     * GET /api/v1/members/me/watch-histories, /completed-courses
-     */
+    /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
 
-    /* ===== 스크랩 (그다음 이슈) =====
+    /* API 32. 영상 재생 정보 */
+    @GetMapping("/api/v1/courses/{courseId}/lessons/{lessonId}")
+    @ResponseBody
+    public LessonPlayDTO getLesson(@PathVariable Long courseId, @PathVariable Long lessonId) {
+        return courseService.getLessonPlay(currentMemberId(), courseId, lessonId);
+    }
+
+    /* API 33. 시청 위치 저장 → 204 No Content */
+    @PutMapping("/api/v1/courses/{courseId}/lessons/{lessonId}/progress")
+    public ResponseEntity<Void> saveProgress(@PathVariable Long courseId,
+                                             @PathVariable Long lessonId,
+                                             @Valid @RequestBody ProgressDTO request) {
+        courseService.saveProgress(currentMemberId(), courseId, lessonId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /* API 34. 시청 기록 */
+    @GetMapping("/api/v1/members/me/watch-histories")
+    @ResponseBody
+    public Page<WatchHistoryDTO> getWatchHistories(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+        return courseService.findWatchHistories(currentMemberId(), toPageable(page, size, Sort.unsorted()));
+    }
+
+    /* API 35. 학습 완료 목록 */
+    @GetMapping("/api/v1/members/me/completed-courses")
+    @ResponseBody
+    public Page<CompletedCourseDTO> getCompletedCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+        return courseService.findCompletedCourses(currentMemberId(), toPageable(page, size, Sort.unsorted()));
+    }
+
+    /* ===== 스크랩 (#18) =====
      * POST/DELETE /api/v1/courses/{courseId}/scrap
      * GET /api/v1/members/me/scraps
      */
 
-    /* ===== 화면 (화면 이슈) =====
+    /* ===== 화면 (#52) =====
      * GET /user/lectures, /user/lecture-detail → Thymeleaf 템플릿 반환
      */
+
+    /* page는 0 이상, size는 1~100 사이로 맞춘다 (API 명세서 1-3) */
+    private Pageable toPageable(int page, int size, Sort sort) {
+        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), sort);
+    }
+
+    /* 본인 데이터는 주소로 회원 ID를 받지 않고 세션에서 꺼낸다 (NFR-03) */
+    private Long currentMemberId() {
+        return TEMP_MEMBER_ID; // TODO 로그인 병합 후 @AuthenticationPrincipal의 회원 ID로 바꾸기
+    }
 }

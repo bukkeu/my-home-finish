@@ -3,14 +3,21 @@ package com.wanted.moneybeetle.domain.course.model.service;
 import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.domain.course.model.dao.CategoryRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.CourseRepository;
+import com.wanted.moneybeetle.domain.course.model.dao.LearningProgressRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
+import com.wanted.moneybeetle.domain.course.model.dao.LessonWatchRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.CategoryTreeDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CompletedCourseDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
-import com.wanted.moneybeetle.global.exception.BusinessException;
+import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /* comment.
@@ -34,8 +42,10 @@ public class CourseService {
     private final CategoryRepository categoryRepository;
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
+    private final LearningProgressRepository learningProgressRepository;
+    private final LessonWatchRepository lessonWatchRepository;
 
-    /* ===== 카테고리·강의 조회 (이번 이슈) ===== */
+    /* ===== 카테고리·강의 조회 (#16) ===== */
 
     /* API 29. 카테고리 → 소주제 트리 (LRN-01) */
     public List<CategoryTreeDTO> findCategoryTree() {
@@ -63,50 +73,138 @@ public class CourseService {
                         course,
                         null,   // TODO 강사 이름: DBA ② 메서드가 생기면 연결
                         (int) lessonRepository.countByCourseId(course.getCourseId()),
-                        null,   // TODO 내 학습 상태: 이어보기 이슈에서 연결
-                        false   // TODO 스크랩 여부: 스크랩 이슈에서 연결
+                        null,   // TODO 내 학습 상태: 로그인 병합 후 연결
+                        false   // TODO 스크랩 여부: 스크랩 이슈(#18)에서 연결
                 ));
     }
 
     /* API 31. 강의 상세 (LRN-02, LRN-04, SP-41) */
     public CourseDetailDTO getCourseDetail(Long courseId) {
-        Course course = courseRepository.findById(courseId)
-                .filter(Course::isVisibleToLearner)
-                .orElseThrow(() -> new RuntimeException(CourseErrorCode.COURSE_NOT_PUBLIC.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
-
+        Course course = getVisibleCourse(courseId);
         Category category = categoryRepository.findById(course.getCategoryId()).orElse(null);
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId);
 
         return CourseDetailDTO.from(course, category, lessons);
     }
 
-    /* 상위 카테고리(예: 돈 굴리기)를 고르면 그 아래 소주제 강의까지 함께 보여 준다 */
+    /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
+
+    /* API 32. 영상 재생 정보 + 이어보기 위치 (LRN-03, LRN-05) */
+    public LessonPlayDTO getLessonPlay(Long memberId, Long courseId, Long lessonId) {
+        getVisibleCourse(courseId);
+        Lesson lesson = getLessonOfCourse(courseId, lessonId);
+
+        int positionSeconds = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                .map(progress -> progress.positionOf(lessonId))
+                .orElse(0);
+
+        return LessonPlayDTO.from(lesson, positionSeconds);
+    }
+
+    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38) */
+    @Transactional
+    public void saveProgress(Long memberId, Long courseId, Long lessonId, ProgressDTO request) {
+        getVisibleCourse(courseId);
+        Lesson lesson = getLessonOfCourse(courseId, lessonId);
+
+        LearningProgress progress = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
+        progress.moveTo(lessonId, lesson.clampSeconds(request.getPositionSeconds()));
+
+        LessonWatch watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
+                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId)));
+        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), request.isCompleted());
+        // 수정은 save()를 다시 부르지 않는다. 트랜잭션이 끝날 때 변경 감지로 UPDATE된다
+    }
+
+    /* API 34. 시청 기록: 최근 본 영상 순 (LRN-06) */
+    public Page<WatchHistoryDTO> findWatchHistories(Long memberId, Pageable pageable) {
+        Page<LessonWatch> watches = lessonWatchRepository.findByMemberIdOrderByLastWatchedAtDesc(memberId, pageable);
+
+        // 영상·강의 정보를 한 번씩만 모아서 조회한다 (항목마다 조회하면 쿼리가 N번 나감)
+        Map<Long, Lesson> lessons = lessonRepository.findAllById(
+                        watches.getContent().stream().map(LessonWatch::getLessonId).toList())
+                .stream()
+                .collect(Collectors.toMap(Lesson::getLessonId, Function.identity()));
+        Map<Long, Course> courses = findCoursesByIds(
+                lessons.values().stream().map(Lesson::getCourseId).toList());
+
+        return watches.map(watch -> {
+            Lesson lesson = lessons.get(watch.getLessonId());
+            return WatchHistoryDTO.from(watch, lesson, courses.get(lesson.getCourseId()));
+        });
+    }
+
+    /* API 35. 학습 완료 목록 (LRN-06, LRN-07) */
+    public Page<CompletedCourseDTO> findCompletedCourses(Long memberId, Pageable pageable) {
+        Page<LearningProgress> completed = learningProgressRepository.findByMemberIdAndStatusOrderByCompletedAtDesc(
+                memberId, LearningProgress.STATUS_COMPLETED, pageable);
+
+        Map<Long, Course> courses = findCoursesByIds(
+                completed.getContent().stream().map(LearningProgress::getCourseId).toList());
+
+        return completed.map(progress -> CompletedCourseDTO.from(progress, courses.get(progress.getCourseId())));
+    }
+
+    /* ===== 스크랩 (#18에서 이 아래에 추가) ===== */
+
+    /* ===== 다른 담당이 부르는 메서드 (역할분담 7장) ===== */
+
+    /* 김예린: 로그인 후 홈 vr1/vr2 분기 */
+    public boolean hasLearningHistory(Long memberId) {
+        return learningProgressRepository.existsByMemberId(memberId);
+    }
+
+    /* 김예린: 홈 '이어서 볼 강의' (최근에 본 순서, 최대 5개) */
+    public List<CourseListDTO> findContinueWatching(Long memberId) {
+        List<LearningProgress> progresses = learningProgressRepository
+                .findTop5ByMemberIdAndStatusOrderByUpdatedAtDesc(memberId, LearningProgress.STATUS_IN_PROGRESS);
+        Map<Long, Course> courses = findCoursesByIds(
+                progresses.stream().map(LearningProgress::getCourseId).toList());
+
+        return progresses.stream()
+                .map(progress -> courses.get(progress.getCourseId()))
+                .filter(course -> course != null && course.isVisibleToLearner())   // 그사이 비공개된 강의는 빼기
+                .map(course -> CourseListDTO.from(
+                        course,
+                        null,   // TODO 강사 이름
+                        (int) lessonRepository.countByCourseId(course.getCourseId()),
+                        LearningProgress.STATUS_IN_PROGRESS,
+                        false))
+                .toList();
+    }
+
+    /* 이재성: 통합 검색 */
+    public List<CourseListDTO> search(String keyword) {
+        return List.of(); // TODO 제목 검색 (허가 + 공개만)
+    }
+
+    /* ===== 내부 도우미 ===== */
+
+    /* 학습자에게 보여도 되는 강의만 꺼낸다. 없는 강의와 비공개 강의는 같은 에러 (SP-31) */
+    private Course getVisibleCourse(Long courseId) {
+        return courseRepository.findById(courseId)
+                .filter(Course::isVisibleToLearner)
+                .orElseThrow(() -> new RuntimeException(CourseErrorCode.COURSE_NOT_PUBLIC.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
+    }
+
+    /* 그 강의에 속한 영상인지 확인한다 (다른 강의의 lessonId를 넣어도 막힘) */
+    private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
+        return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
+                .orElseThrow(() -> new RuntimeException(CourseErrorCode.LESSON_NOT_FOUND.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
+    }
+
+    private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
+        return courseRepository.findAllById(courseIds).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Function.identity()));
+    }
+
+    /* 상위 카테고리를 고르면 그 아래 소주제 강의까지 함께 보여 준다 */
     private List<Long> findCategoryIdsWithChildren(Long categoryId) {
         List<Long> ids = new ArrayList<>();
         ids.add(categoryId);
         categoryRepository.findByParentIdAndIsActiveTrue(categoryId)
                 .forEach(child -> ids.add(child.getCategoryId()));
         return ids;
-    }
-
-    /* ===== 이어보기·시청 기록 (다음 이슈에서 이 아래에 추가) ===== */
-
-    /* ===== 스크랩 (그다음 이슈에서 이 아래에 추가) ===== */
-
-    /* ===== 다른 담당이 부르는 메서드 (역할분담 7장). 이름만 먼저 공개 ===== */
-
-    /* DBA ②: 로그인 후 홈 vr1/vr2 분기 */
-    public boolean hasLearningHistory(Long memberId) {
-        return false; // TODO 이어보기 이슈에서 learning_progress로 구현
-    }
-
-    /* DBA ②: 홈 '이어서 볼 강의' */
-    public List<CourseListDTO> findContinueWatching(Long memberId) {
-        return List.of(); // TODO 이어보기 이슈에서 구현
-    }
-
-    /* 이재성: 통합 검색 */
-    public List<CourseListDTO> search(String keyword) {
-        return List.of(); // TODO 제목 검색 (허가 + 공개만)
     }
 }

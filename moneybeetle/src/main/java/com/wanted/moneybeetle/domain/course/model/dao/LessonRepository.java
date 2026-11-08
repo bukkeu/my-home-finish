@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.course.model.dao;
 
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
 
 import java.util.List;
 
@@ -12,4 +13,5 @@ import java.util.List;
 public interface LessonRepository extends JpaRepository<Lesson, Long> {
     List<Lesson> findByCourseIdOrderBySortOrderAsc(Long courseId);
     long countByCourseId(Long courseId);
+    Optional<Lesson> findByLessonIdAndCourseId(Long lessonId, Long courseId);
 }
