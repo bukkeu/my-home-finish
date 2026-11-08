@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 /* comment.
@@ -39,6 +40,11 @@ public final class SignupRules {
         return password != null && password.matches(PASSWORD_PATTERN);
     }
 
+    /** 생년월일은 오늘보다 이전이어야 한다. today 는 서울(KST) 기준 오늘이어야 하므로(DP-42) 공통 시계에서 받아 넘긴다 */
+    public static boolean isPastDate(LocalDate birthDate, LocalDate today) {
+        return birthDate != null && birthDate.isBefore(today);
+    }
+
     /** SP-04: 만 14세 이상인가 (생일이 지났는지까지 본다) */
     public static boolean isAtLeastMinAge(LocalDate birthDate, LocalDate today) {
         return birthDate != null && !birthDate.plusYears(MIN_AGE).isAfter(today);
@@ -52,6 +58,9 @@ public final class SignupRules {
      */
     public static boolean agreedAllRequired(Collection<Long> requiredTermsIds, Collection<Long> agreedTermsIds) {
         Collection<Long> agreed = agreedTermsIds == null ? List.<Long>of() : agreedTermsIds;
+        if (agreed.stream().anyMatch(Objects::isNull)) {
+            return false;   // Set.copyOf 는 null 원소가 있으면 NullPointerException 을 던진다
+        }
         return Set.copyOf(agreed).containsAll(requiredTermsIds);
     }
 }

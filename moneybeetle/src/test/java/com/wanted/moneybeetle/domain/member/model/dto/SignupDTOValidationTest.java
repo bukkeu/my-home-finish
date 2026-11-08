@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -72,13 +73,20 @@ class SignupDTOValidationTest {
     }
 
     @Test
-    @DisplayName("미래 생년월일·빈 약관 목록·잘못된 성별은 거절한다")
+    @DisplayName("빈 약관 목록·잘못된 성별은 거절한다 (생년월일이 과거인지는 서울 날짜가 필요해 SignupRules 가 본다)")
     void otherViolations() {
         SignupDTO dto = valid();
-        dto.setBirthDate(LocalDate.now().plusDays(1));
         dto.setAgreedTermsIds(List.of());
         dto.setGender("OTHER");
-        assertThat(messages(dto)).contains("생년월일이 올바르지 않아요.", "약관 동의 정보가 필요해요.", "성별은 MALE 또는 FEMALE 이어야 해요.");
+        assertThat(messages(dto)).contains("약관 동의 정보가 필요해요.", "성별은 MALE 또는 FEMALE 이어야 해요.");
+    }
+
+    @Test
+    @DisplayName("약관 ID 목록에 null 이 섞이면 거절한다")
+    void nullTermsElement() {
+        SignupDTO dto = valid();
+        dto.setAgreedTermsIds(Arrays.asList(1L, null));
+        assertThat(messages(dto)).contains("약관 동의 정보가 올바르지 않아요.");
     }
 
     @Test

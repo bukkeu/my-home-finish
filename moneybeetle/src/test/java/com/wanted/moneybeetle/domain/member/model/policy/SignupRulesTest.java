@@ -3,6 +3,7 @@ package com.wanted.moneybeetle.domain.member.model.policy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,5 +66,22 @@ class SignupRulesTest {
         assertThat(SignupRules.agreedAllRequired(required, List.of(1L, 3L))).isFalse();      // 필수 2번 빠짐
         assertThat(SignupRules.agreedAllRequired(required, null)).isFalse();
         assertThat(SignupRules.agreedAllRequired(List.of(), null)).isTrue();                 // 필수 약관이 없으면 통과
+    }
+
+    @Test
+    @DisplayName("SP-05: 동의 목록에 null 이 있어도 예외 없이 동의 안 한 것으로 본다")
+    void nullTermsElement() {
+        assertThat(SignupRules.agreedAllRequired(List.of(1L), Arrays.asList(1L, null))).isFalse();
+        assertThat(SignupRules.agreedAllRequired(List.of(), Arrays.asList((Long) null))).isFalse();
+    }
+
+    @Test
+    @DisplayName("생년월일은 서울 기준 오늘보다 이전이어야 한다 (날짜를 넘겨 받아 서버 시간대와 무관)")
+    void pastDate() {
+        LocalDate today = LocalDate.of(2026, 11, 8);
+        assertThat(SignupRules.isPastDate(LocalDate.of(2026, 11, 7), today)).isTrue();
+        assertThat(SignupRules.isPastDate(today, today)).isFalse();
+        assertThat(SignupRules.isPastDate(LocalDate.of(2026, 11, 9), today)).isFalse();
+        assertThat(SignupRules.isPastDate(null, today)).isFalse();
     }
 }
