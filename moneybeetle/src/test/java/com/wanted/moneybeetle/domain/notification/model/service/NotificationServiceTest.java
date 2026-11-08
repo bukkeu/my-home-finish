@@ -143,7 +143,11 @@ class NotificationServiceTest {
                 .extracting(p -> p.getProperty().getSegment()).containsExactly("memberId", "read");
         assertThat(new PartTree("findByNotificationIdAndMemberId", Notification.class).getParts())
                 .extracting(p -> p.getProperty().getSegment()).containsExactly("notificationId", "memberId");
-        assertThat(new PartTree("findByMemberIdOrderByCreatedAtDescNotificationIdDesc", Notification.class).getParts())
+        PartTree listQuery = new PartTree("findByMemberIdOrderByCreatedAtDescNotificationIdDesc", Notification.class);
+        assertThat(listQuery.getParts())
                 .extracting(p -> p.getProperty().getSegment()).containsExactly("memberId");
+        // 최신순 정렬 계약: createdAt 내림차순, 같으면 notificationId 내림차순
+        assertThat(listQuery.getSort().stream().map(o -> o.getProperty() + ":" + o.getDirection()).toList())
+                .containsExactly("createdAt:DESC", "notificationId:DESC");
     }
 }

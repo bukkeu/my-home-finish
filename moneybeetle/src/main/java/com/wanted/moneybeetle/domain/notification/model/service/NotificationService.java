@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 *  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
@@ -32,7 +33,6 @@ public class NotificationService {
     }
 
     /** 내 알림을 최신순으로 한 페이지와 안 읽은 알림 수를 함께 돌려준다 (API 25) */
-    @Transactional(readOnly = true)
     public NotificationListDTO findNotifications(Long memberId, Pageable pageable) {
         var items = notificationRepository
                 .findByMemberIdOrderByCreatedAtDescNotificationIdDesc(memberId, pageable)
