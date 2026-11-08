@@ -4,6 +4,7 @@ import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSubmitDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizQuestionDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.TestQuizResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.service.QuizService;
+import com.wanted.moneybeetle.global.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -29,18 +30,16 @@ public class QuizController {
     /* API 39. 테스트 퀴즈 문제 */
     @GetMapping("/api/v1/courses/{courseId}/test-quiz")
     @ResponseBody
-    public QuizQuestionDTO getTestQuiz(@PathVariable Long courseId) {
-        // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(...)로 감싸기
-        return quizService.getTestQuiz(courseId);
+    public ApiResponse<QuizQuestionDTO> getTestQuiz(@PathVariable Long courseId) {
+        return ApiResponse.success(quizService.getTestQuiz(courseId));
     }
 
     /* API 40. 테스트 퀴즈 채점 (기록하지 않으므로 200) */
     @PostMapping("/api/v1/courses/{courseId}/test-quiz/grade")
     @ResponseBody
-    public TestQuizResultDTO gradeTestQuiz(@PathVariable Long courseId,
-                                           @Valid @RequestBody QuizSubmitDTO request) {
-        // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(...)로 감싸기
-        return quizService.gradeTestQuiz(courseId, request);
+    public ApiResponse<TestQuizResultDTO> gradeTestQuiz(@PathVariable Long courseId,
+                                                        @Valid @RequestBody QuizSubmitDTO request) {
+        return ApiResponse.success(quizService.gradeTestQuiz(courseId, request));
     }
 
     /* ===== 퀴즈 제출·채점 (#20) =====
