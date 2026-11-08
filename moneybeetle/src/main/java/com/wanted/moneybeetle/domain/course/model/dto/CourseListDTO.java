@@ -2,11 +2,13 @@ package com.wanted.moneybeetle.domain.course.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import lombok.Getter;
 
 /* comment.
 *   담당 : DBA ① (강의·퀴즈)
 *   강의 목록 한 줄 (courseId, title, instructorName, lessonCount, status, isScrapped)
 *  */
+@Getter
 public class CourseListDTO {
 
 
