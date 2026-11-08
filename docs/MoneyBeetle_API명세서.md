@@ -2122,8 +2122,10 @@ Header: Idempotency-Key: 4d8e...
 - Form: file=(mp4, 500MB 이하)
 
 ```json
-{ "videoUrl": "/files/lesson/7-1.mp4" }
+{ "videoUrl": "lesson/7-1.mp4" }
 ```
+
+응답의 `videoUrl`은 **만료되지 않는 파일 키**(스토리지 안의 경로)이고, 서명 주소가 아니다. 서버는 업로드 때 이 키를 받아 두었다가, 위 "영상·요약글 저장" 요청에 담긴 같은 값을 `lesson.video_url`(DB)에 그대로 저장한다. 영상을 보여 주는 응답(API 62 등)의 `videoUrl`은 저장된 키로 **조회할 때마다 새로 발급한 짧게 만료되는 서명 주소**다(local 환경은 서버가 `/files/` + 키로 로컬 파일을 직접 내려 준다). 그래서 서명 주소를 DB에 저장하거나 저장 요청에 담지 않는다.
 
 **Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
 
