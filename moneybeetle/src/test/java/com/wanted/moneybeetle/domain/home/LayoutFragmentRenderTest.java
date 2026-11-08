@@ -108,6 +108,14 @@ class LayoutFragmentRenderTest {
     }
 
     @Test
+    @DisplayName("CSRF 토큰이 meta 태그로 내려와서 MB.api 가 PATCH·POST 요청에 붙일 수 있다")
+    void csrfMetaTags() throws Exception {
+        String html = render("MEMBER", "?level=5");
+
+        assertThat(html).contains("<meta name=\"_csrf\"", "<meta name=\"_csrf_header\"");
+    }
+
+    @Test
     @DisplayName("학습자: 레벨이 충분하면 잠금 표시가 사라진다")
     void memberUnlocked() throws Exception {
         String html = render("MEMBER", "?level=12");
