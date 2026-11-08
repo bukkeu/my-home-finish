@@ -3,8 +3,8 @@ package com.wanted.moneybeetle.domain.growth.model.policy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -19,13 +19,18 @@ import org.junit.jupiter.api.Test;
 *  */
 class LevelSeedTest {
 
-    private static final Path SEED = Path.of("src/main/resources/sql/sample-data.sql");
+    /** 클래스패스 위치다 (src/main/resources/sql/sample-data.sql). 작업 디렉터리에 상관없이 읽힌다 */
+    private static final String SEED = "/sql/sample-data.sql";
     private static final Pattern ROW = Pattern.compile("\\((\\d+),\\s*(\\d+),\\s*'([^']+)',\\s*(\\d+)\\)");
 
     @Test
     @DisplayName("sample-data.sql 의 level_policy 20줄이 확정값과 같고 정책표 검증을 통과한다")
     void seedMatchesConfirmedValues() throws Exception {
-        String sql = Files.readString(SEED);
+        String sql;
+        try (InputStream in = LevelSeedTest.class.getResourceAsStream(SEED)) {
+            assertThat(in).as("클래스패스에 " + SEED + " 가 있어야 한다").isNotNull();
+            sql = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
         int start = sql.indexOf("INSERT INTO level_policy");
         assertThat(start).as("level_policy INSERT 가 있어야 한다").isGreaterThanOrEqualTo(0);
         String statement = sql.substring(start, sql.indexOf(';', start));

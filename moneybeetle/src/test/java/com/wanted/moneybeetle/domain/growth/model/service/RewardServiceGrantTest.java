@@ -96,7 +96,7 @@ class RewardServiceGrantTest {
         assertThat(result.getExpTotal()).isEqualTo(400);
         assertThat(result.isLevelUp()).isFalse();   // Lv.4 는 누적 450 부터라 아직 오르지 않는다
         assertThat(result.getLevelUpCash()).isZero();
-        verify(memberService, never()).levelUp(anyLong(), anyInt(), anyLong());
+        verify(memberService, never()).levelUp(anyLong(), anyInt());
 
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository).save(cash.capture());
@@ -120,7 +120,8 @@ class RewardServiceGrantTest {
         givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
         givenBalance(3, 400, 5_000);
         when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
-        when(memberService.levelUp(MEMBER, 4, 40_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 4, 500, 75_000));
+        when(memberService.levelUp(MEMBER, 4)).thenReturn(MemberBalanceDTO.of(MEMBER, 4, 500, 35_000));
+        when(memberService.addReward(MEMBER, 40_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 4, 500, 75_000));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -152,7 +153,8 @@ class RewardServiceGrantTest {
         givenBalance(1, 0, 0);
         // 경험치 1,300 -> Lv.8 (모의투자 해금). 레벨업 캐시는 Lv.2~8 = 20,000 + ... + 80,000 = 350,000
         when(memberService.addReward(MEMBER, 0L, 1_300)).thenReturn(MemberBalanceDTO.of(MEMBER, 1, 1_300, 0));
-        when(memberService.levelUp(MEMBER, 8, 350_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1_300, 350_000));
+        when(memberService.levelUp(MEMBER, 8)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1_300, 0));
+        when(memberService.addReward(MEMBER, 350_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1_300, 350_000));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -180,7 +182,8 @@ class RewardServiceGrantTest {
         givenRule(RewardRule.COURSE_COMPLETE, 0, 100);
         givenBalance(11, 2_400, 0);
         when(memberService.addReward(MEMBER, 0L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 11, 2_500, 0));
-        when(memberService.levelUp(MEMBER, 12, 120_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 12, 2_500, 120_000));
+        when(memberService.levelUp(MEMBER, 12)).thenReturn(MemberBalanceDTO.of(MEMBER, 12, 2_500, 0));
+        when(memberService.addReward(MEMBER, 120_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 12, 2_500, 120_000));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -198,7 +201,117 @@ class RewardServiceGrantTest {
 
         assertThat(result.isLevelUp()).isFalse();
         assertThat(result.getLevelTo()).isEqualTo(20);
-        verify(memberService, never()).levelUp(anyLong(), anyInt(), anyLong());
+        verify(memberService, never()).levelUp(anyLong(), anyInt());
+    }
+
+    @Test
+    @DisplayName("레벨업 캐시도 규칙 캐시와 같은 addReward 경로로 주고, 레벨업 이력의 시작 잔액은 (최종 잔액 - 레벨업 캐시)다")
+    void levelUpCashUsesAddRewardAndHistoryStartsFromBalanceBefore() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
+        givenBalance(3, 400, 5_000);
+        when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
+        when(memberService.levelUp(MEMBER, 4)).thenReturn(MemberBalanceDTO.of(MEMBER, 4, 500, 35_000));
+        // 다른 곳에서 잔액이 더 변해 있어도(여기서는 35,000 이 아닌 값) 이력은 addReward 가 돌려준 최종 잔액에서 거꾸로 센다
+        when(memberService.addReward(MEMBER, 40_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 4, 500, 80_000));
+
+        RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
+
+        assertThat(result.getCashBalance()).isEqualTo(80_000);
+        ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
+        verify(cashHistoryRepository, org.mockito.Mockito.times(2)).save(cash.capture());
+        assertThat(cash.getAllValues().get(1).getBalanceAfter()).isEqualTo(80_000);   // 40,000 + (80,000 - 40,000)
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(memberService);
+        order.verify(memberService).addReward(MEMBER, 30_000L, 100);
+        order.verify(memberService).levelUp(MEMBER, 4);
+        order.verify(memberService).addReward(MEMBER, 40_000L, 0);
+    }
+
+    @Test
+    @DisplayName("레벨 정책표를 읽지 못하면 LEVEL_POLICY_INVALID 로 멈추고 경험치 이력을 남기지 않는다")
+    void levelTableLoadFailureStopsBeforeExpHistory() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
+        givenBalance(3, 400, 5_000);
+        when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
+        when(growthService.loadLevelTable()).thenThrow(new BusinessException(GrowthErrorCode.LEVEL_POLICY_INVALID));
+
+        assertThatThrownBy(() -> rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L))
+                .satisfies(e -> assertErrorCode(e, GrowthErrorCode.LEVEL_POLICY_INVALID));
+
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(memberService, never()).levelUp(anyLong(), anyInt());
+    }
+
+    @Test
+    @DisplayName("정책표 행 수가 최대 레벨(20)과 다르면 LEVEL_POLICY_INVALID 로 멈춘다")
+    void levelTableWithWrongSizeIsInvalid() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
+        givenBalance(3, 400, 5_000);
+        when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
+        // 19줄짜리 표: LevelTable 자체는 유효하지만 최대 레벨(Member.MAX_LEVEL = 20)과 맞지 않는다
+        when(growthService.loadLevelTable()).thenReturn(
+                new com.wanted.moneybeetle.domain.growth.model.policy.LevelTable(
+                        LevelTableFixture.policies().subList(0, 19)));
+
+        assertThatThrownBy(() -> rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L))
+                .satisfies(e -> assertErrorCode(e, GrowthErrorCode.LEVEL_POLICY_INVALID));
+
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(memberService, never()).levelUp(anyLong(), anyInt());
+    }
+
+    @Test
+    @DisplayName("레벨 올리기가 실패하면 예외를 그대로 던지고 레벨업 캐시·경험치 이력을 남기지 않는다")
+    void levelUpFailureStopsBeforeExpHistory() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
+        givenBalance(3, 400, 5_000);
+        when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
+        when(memberService.levelUp(MEMBER, 4)).thenThrow(new IllegalArgumentException("새 레벨은 현재 레벨보다 높아야 합니다."));
+
+        assertThatThrownBy(() -> rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(memberService, never()).addReward(MEMBER, 40_000L, 0);
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("레벨업 캐시를 주다 실패해도 경험치 이력을 남기지 않는다")
+    void levelUpCashFailureStopsBeforeExpHistory() {
+        givenRule(RewardRule.COURSE_COMPLETE, 30_000, 100);
+        givenBalance(3, 400, 5_000);
+        when(memberService.addReward(MEMBER, 30_000L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 500, 35_000));
+        when(memberService.levelUp(MEMBER, 4)).thenReturn(MemberBalanceDTO.of(MEMBER, 4, 500, 35_000));
+        when(memberService.addReward(MEMBER, 40_000L, 0)).thenThrow(new IllegalStateException("캐시 지급 실패"));
+
+        assertThatThrownBy(() -> rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    /**
+     * 되돌림(롤백)은 Mock 으로 직접 볼 수 없다. 대신 되돌려지는 구조인지를 확인한다:
+     * grant 는 읽기 전용이 아닌 @Transactional 이라 하나의 쓰기 트랜잭션이고, 위에서 던지는 예외(BusinessException,
+     * IllegalArgumentException)는 모두 RuntimeException 이라 기본 규칙대로 그 트랜잭션을 되돌린다.
+     * 회원 잠금·캐시·경험치·이력은 모두 이 한 메서드 안에서 처리되고, MemberService·GrowthService 의 @Transactional 은
+     * 같은 트랜잭션에 참여한다. 실제 롤백은 DB 를 띄운 통합 테스트에서 확인해야 한다.
+     */
+    @Test
+    @DisplayName("grant 는 하나의 쓰기 트랜잭션이고, 실패 예외는 RuntimeException 이라 기본 규칙으로 되돌려진다")
+    void grantIsOneWriteTransaction() throws NoSuchMethodException {
+        var grant = RewardService.class.getMethod("grant", Long.class, String.class, Long.class);
+        var tx = grant.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+
+        assertThat(tx).as("grant 에 @Transactional 이 있어야 한다").isNotNull();
+        assertThat(tx.readOnly()).isFalse();
+        assertThat(tx.rollbackFor()).isEmpty();
+        assertThat(tx.noRollbackFor()).isEmpty();
+        assertThat(RuntimeException.class).isAssignableFrom(BusinessException.class);
+        // 호출되는 서비스는 참여(REQUIRED)라서 별도 트랜잭션을 열지 않는다
+        assertThat(org.springframework.transaction.annotation.Propagation.REQUIRED).isEqualTo(tx.propagation());
+        var memberLevelUp = MemberService.class.getMethod("levelUp", Long.class, int.class);
+        assertThat(memberLevelUp.getAnnotation(org.springframework.transaction.annotation.Transactional.class)
+                .propagation()).isEqualTo(org.springframework.transaction.annotation.Propagation.REQUIRED);
     }
 
     @Test

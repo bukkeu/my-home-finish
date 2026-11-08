@@ -60,11 +60,11 @@ public class MemberService {
         return MemberBalanceDTO.from(member);
     }
 
-    /** 레벨을 올리고 레벨업 캐시를 더한 뒤 바뀐 값을 돌려준다 (growth.RewardService 용). 레벨은 내려가지 않는다 */
+    /** 레벨만 올리고 바뀐 값을 돌려준다 (growth.RewardService 용). 레벨은 내려가지 않는다. 레벨업 캐시는 addReward 로 따로 준다 */
     @Transactional
-    public MemberBalanceDTO levelUp(Long memberId, int newLevel, long levelUpCash) {
+    public MemberBalanceDTO levelUp(Long memberId, int newLevel) {
         Member member = getMemberForUpdate(memberId);
-        member.levelUp(newLevel, levelUpCash);
+        member.levelUp(newLevel);
         return MemberBalanceDTO.from(member);
     }
 

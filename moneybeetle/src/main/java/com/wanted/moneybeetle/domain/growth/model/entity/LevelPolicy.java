@@ -26,6 +26,7 @@ public class LevelPolicy {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long levelPolicyId;
 
+    @Column(nullable = false)
     private int level;
 
     @Column(nullable = false)
@@ -35,6 +36,7 @@ public class LevelPolicy {
     private String title;
 
     /** 이 레벨에 올랐을 때 받는 캐시 (새 레벨 × 10,000, SP-14). Lv.1 은 0 */
+    @Column(nullable = false)
     private int levelupCash;
 
     /** 테스트용 정적 팩토리 */

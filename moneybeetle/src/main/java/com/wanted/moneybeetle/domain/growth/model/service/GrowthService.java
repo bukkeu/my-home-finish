@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   - loadLevelTable()   : 레벨 정책표를 읽어 검증한다 (RewardService 가 레벨 재계산에 쓴다)
 *   정책표는 20줄 안팎이라 캐시 없이 매번 읽는다. 호출이 많아지면 운영 설정 캐시(10분)에 맞춰 캐시한다.
 *  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -47,6 +49,8 @@ public class GrowthService {
         try {
             return new LevelTable(policies);
         } catch (IllegalArgumentException e) {
+            // BusinessException 은 원인(cause)을 담지 못한다(global 공통 클래스). 어느 줄이 잘못됐는지는 로그로 남긴다
+            log.error("레벨 정책표 검증 실패: {}", e.getMessage(), e);
             throw new BusinessException(GrowthErrorCode.LEVEL_POLICY_INVALID);
         }
     }

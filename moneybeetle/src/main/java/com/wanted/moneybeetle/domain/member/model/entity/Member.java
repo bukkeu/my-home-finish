@@ -20,7 +20,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 *   테이블 member - 회원(학습자·강사·관리자 role 구분)
 *   - 이메일은 소문자로 저장한다 (SP-01 대소문자 구분 없음)
 *   - 레벨·경험치·캐시 값 변경은 growth.RewardService 가 MemberService 메서드를 통해서만 한다 (직접 수정 금지).
-*     변경 메서드는 addReward(캐시·경험치 받기), levelUp(레벨 올리고 레벨업 캐시 받기, #11), spendCash(캐시 쓰기)다.
+*     변경 메서드는 addReward(캐시·경험치 받기, 레벨업 캐시도 이 경로), levelUp(레벨만 올리기, #11), spendCash(캐시 쓰기)다.
 *     새 레벨을 얼마로 할지(레벨 정책표 계산)는 growth 가 정하고, 여기서는 규칙만 확인한다.
 *   - 가입에 필요한 부분(#5): 생성(signup)과 상태·권한 상수.
 *  */
@@ -151,15 +151,14 @@ public class Member {
     }
 
     /**
-     * 레벨을 올리고 레벨업 캐시를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
+     * 레벨을 올린다 (growth.RewardService 가 MemberService 를 통해 부른다). 레벨만 바꾼다.
+     * 레벨업 캐시는 {@link #addReward} 경로로 따로 받는다 (캐시 변경 경로를 하나로 둔다).
      * 레벨은 내려가지 않고(SP-20) 최대 Lv.20 이다. 새 레벨이 지금보다 높아야 한다.
      */
-    public void levelUp(int newLevel, long levelUpCash) {
+    public void levelUp(int newLevel) {
         require(newLevel > this.level, "새 레벨은 현재 레벨보다 높아야 합니다.");
         require(newLevel <= MAX_LEVEL, "레벨은 " + MAX_LEVEL + " 이하여야 합니다.");
-        require(levelUpCash >= 0, "레벨업 캐시는 0 이상이어야 합니다.");
         this.level = newLevel;
-        this.cash += levelUpCash;
     }
 
     /** 캐시를 쓴다. 잔액은 0 미만이 될 수 없다 (SP-15) */

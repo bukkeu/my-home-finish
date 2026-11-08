@@ -13,6 +13,7 @@ import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.growth.model.policy.LevelTable;
 import com.wanted.moneybeetle.domain.growth.model.policy.UnlockRules;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
@@ -130,12 +131,14 @@ public class RewardService {
         if (exp > 0) {
             // 경험치로 레벨이 올랐으면 새 레벨까지 올리고, 오른 레벨마다 레벨업 캐시를 준다 (SP-23).
             // 이 작업은 위 회원 행 잠금 안에서 이어지므로 같은 트랜잭션이고, 이미 받은 활동은 위에서 걸러진다.
-            LevelTable table = growthService.loadLevelTable();
+            LevelTable table = loadValidLevelTable();
             int reached = table.levelFor(after.getExp());
             if (reached > levelFrom) {
                 levelUpCash = table.levelUpCashBetween(levelFrom, reached);
-                cashBalance = memberService.levelUp(memberId, reached, levelUpCash).getCash();
-                saveLevelUpCashHistories(memberId, table, levelFrom, reached, after.getCash());
+                memberService.levelUp(memberId, reached);                     // 레벨만 올린다
+                // 레벨업 캐시도 규칙 캐시와 같은 addReward 경로로 준다 (캐시 변경 경로를 하나로 둔다)
+                cashBalance = memberService.addReward(memberId, levelUpCash, 0).getCash();
+                saveLevelUpCashHistories(memberId, table, levelFrom, reached, cashBalance - levelUpCash);
                 levelTo = reached;
                 unlocks = UnlockRules.unlockedBetween(levelFrom, reached);
             }
@@ -143,6 +146,19 @@ public class RewardService {
                     memberId, expSource, sourceId, rule.getRewardRuleId(), exp, after.getExp(), levelTo));
         }
         return RewardResultDTO.granted(exp, cash, levelUpCash, cashBalance, after.getExp(), levelFrom, levelTo, unlocks);
+    }
+
+    /**
+     * 레벨 정책표를 읽는다. 행 수가 최대 레벨(Member.MAX_LEVEL)과 다르면 설정 오류로 보고 LEVEL_POLICY_INVALID 로 멈춘다
+     * (표가 짧으면 레벨이 모자라게 계산되고, 길면 Member 가 거절하는 레벨까지 올리려 한다).
+     * 이 예외는 grant 의 트랜잭션을 되돌려, 앞에서 더한 캐시·경험치와 이력이 모두 취소된다.
+     */
+    private LevelTable loadValidLevelTable() {
+        LevelTable table = growthService.loadLevelTable();
+        if (table.maxLevel() != Member.MAX_LEVEL) {
+            throw new BusinessException(GrowthErrorCode.LEVEL_POLICY_INVALID);
+        }
+        return table;
     }
 
     /** 오른 레벨마다 레벨업 캐시 내역을 한 줄씩 남긴다 (원인 종류 LEVEL_UP, 원인 ID = 레벨. 같은 레벨은 한 번만 기록된다) */
