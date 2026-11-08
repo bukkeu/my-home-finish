@@ -18,6 +18,7 @@ import com.wanted.moneybeetle.domain.trading.model.dto.SectorDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SectorSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.service.MarketAdminService;
+import com.wanted.moneybeetle.domain.trading.model.service.PriceAdminService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
 import java.util.List;
@@ -42,7 +43,7 @@ class AdminMarketControllerTest {
 
     private MockMvc mockMvc() {
         var json = new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build());
-        return MockMvcBuilders.standaloneSetup(new AdminMarketController(service))
+        return MockMvcBuilders.standaloneSetup(new AdminMarketController(service, mock(PriceAdminService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(json)
                 .build();

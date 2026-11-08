@@ -3162,7 +3162,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-19, ADM-22 |
-| 설명 | 종목(행) × 1~12턴(열). |
+| 설명 | 종목(행) × 1~12턴(열). 비어 있는 칸은 null. currentTurn 이하의 턴은 잠겨 있다(수정 불가). 종목 순서는 관리자 종목 목록(API 124)과 같다. |
 
 **Request**
 
@@ -3171,7 +3171,7 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 ```json
-{ "rows": [ { "stockId": 1, "stockName": "한빛반도체", "prices": [76800, 78900, 80100, 82200, 84500, null, null] } ] }
+{ "currentTurn": 5, "rows": [ { "stockId": 1, "stockName": "한빛반도체", "prices": [76800, 78900, 80100, 82200, 84500, null, null, null, null, null, null, null] } ] }
 ```
 
 #### 128. 턴별 가격 저장
@@ -3182,7 +3182,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-19~20, ADM-23~24, SP-60 |
-| 설명 | 가격 또는 변동률로 입력. 지난 턴은 수정 불가. ±30% 초과·0 이하는 warnings로 알려 주고 confirm=true면 저장. |
+| 설명 | 가격 또는 변동률(지난 턴 대비 %)로 입력. 변동률은 지난 턴 가격(없으면 시작 가격) × (1 + 변동률)을 50원 단위로 반올림해 가격으로 바꾼다. 현재 턴 이하(이미 지난 턴)는 수정 불가. 지난 턴보다 ±30%를 넘게 움직이면 warnings로 알려 주고, confirm=false면 저장하지 않고 `saved: 0`, confirm=true면 저장한다. 0원 이하는 DB가 받지 않으므로 경고가 아니라 거절. 저장할 때 변동률(change_rate)도 다시 계산한다. |
 
 **Request**
 
@@ -3196,7 +3196,7 @@ Header: Idempotency-Key: 4d8e...
 { "saved": 2, "warnings": [ { "stockId": 2, "turnNo": 6, "message": "한 턴에 ±30%를 넘는 변동이에요" } ] }
 ```
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_LOCKED`, `PRICE_NOT_POSITIVE`, `NOT_FOUND`
 
 #### 129. 가격표 CSV 내려받기
 
@@ -3206,7 +3206,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-21 |
-| 설명 | text/csv. |
+| 설명 | text/csv(UTF-8, 엑셀용 BOM). 제목 줄 `stockId,stockName,turn1,…,turn12`, 빈 칸은 가격 없음. |
 
 **Request**
 
@@ -3224,7 +3224,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-21 |
-| 설명 | 형식 오류가 있으면 전체 취소, 오류 행 반환. |
+| 설명 | 내려받은 CSV와 같은 형식. 빈 칸은 그대로 두고 값이 있는 칸만 저장한다. 지난 턴 칸은 기존 값과 같으면 통과, 다르면 오류. 형식 오류(제목 줄, 칸 수, 없는 종목, 같은 종목 중복, 1 이상의 정수가 아닌 값)가 하나라도 있으면 전체 취소하고 오류 행을 돌려준다. ±30% 경고는 저장한 뒤 warnings로 알려 준다. |
 
 **Request**
 
@@ -3233,7 +3233,13 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 ```json
-{ "saved": 360 }
+{ "saved": 360, "warnings": [] }
+```
+
+오류(400)
+
+```json
+{ "success": false, "data": { "errors": [ { "line": 3, "message": "없는 종목 번호예요: 99" } ] }, "error": { "code": "CSV_INVALID", "message": "CSV 형식이 맞지 않는 행이 있어요" } }
 ```
 
 **Error**: `CSV_INVALID`
@@ -3661,7 +3667,8 @@ Header: Idempotency-Key: 4d8e...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
-| 강사·관리자 | `CSV_INVALID` | 400 | N행의 형식이 맞지 않아요 |
+| 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |
+| 강사·관리자 | `PRICE_NOT_POSITIVE` | 400 | 가격은 1원 이상이어야 해요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
 
