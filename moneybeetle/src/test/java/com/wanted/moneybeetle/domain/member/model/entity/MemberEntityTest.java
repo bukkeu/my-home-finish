@@ -33,6 +33,13 @@ class MemberEntityTest {
     }
 
     @Test
+    @DisplayName("이메일은 앞뒤 공백을 지우고 소문자로 저장한다 (SignupRules.normalizeEmail 과 같은 규칙)")
+    void emailNormalizedLikeRules() {
+        Member m = Member.signup("  MinJi@Gmail.COM ", "hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
+        assertThat(m.getEmail()).isEqualTo("minji@gmail.com");
+    }
+
+    @Test
     @DisplayName("만 14세 미만은 가입할 수 없다 (SP-04)")
     void under14() {
         assertThatThrownBy(() -> Member.signup("a@b.com", "hash", "민지", LocalDate.of(2012, 11, 9), null, TODAY))

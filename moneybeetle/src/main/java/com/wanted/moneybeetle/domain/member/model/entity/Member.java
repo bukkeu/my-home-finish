@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.member.model.entity;
 
+import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -8,8 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Locale;
-import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -134,7 +133,7 @@ public class Member {
         require(birthDate != null && SignupRules.isAtLeastMinAge(birthDate, today), "만 14세 이상만 가입할 수 있습니다.");
         require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
                 "성별은 MALE 또는 FEMALE 이어야 합니다.");
-        return new Member(email.toLowerCase(Locale.ROOT), passwordHash, nickname, birthDate, gender);
+        return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, birthDate, gender);
     }
 
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
