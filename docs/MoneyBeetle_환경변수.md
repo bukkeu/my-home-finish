@@ -24,7 +24,7 @@
 | 7 | 키 이름은 `UPPER_SNAKE_CASE`로 쓴다 (예: `DB_PASSWORD`). |
 | 8 | 새 환경변수를 추가하면 **이 문서와 `.env.example`을 같은 PR에서 함께 고친다.** |
 
-> ⚠️ **현재 `moneybeetle/.gitignore`에 `.env`가 없습니다.** `.env`를 만들기 전에 `.gitignore`에 `.env`를 먼저 추가해야 합니다 (§6 체크리스트).
+> ✅ 저장소 루트 `.gitignore`에 `.env`, `.env.*`가 들어 있고 `.env.example`만 예외로 올라갑니다 (루트 규칙이 `moneybeetle/.env`에도 적용됨).
 
 ---
 
@@ -179,7 +179,7 @@ spring:
 
 ## 6. 새 팀원·새 환경 체크리스트
 
-- [ ] `moneybeetle/.gitignore`에 `.env`가 있는지 확인한다 (없으면 추가).
+- [x] 루트 `.gitignore`에 `.env`, `.env.*`(`.env.example` 제외)가 있다 (#67).
 - [ ] MySQL 8을 설치하고 `resources/sql/create_database.sql` → `schema.sql` → `sample-data.sql` 순서로 실행한다 (시드는 로컬 개발용).
 - [ ] `.env.example`을 복사해 `.env`(또는 IntelliJ 환경변수)를 만들고 `DB_PASSWORD`를 채운다.
 - [ ] `SPRING_PROFILES_ACTIVE=local`로 서버를 띄워 로그인 화면이 열리는지 확인한다.
@@ -202,7 +202,7 @@ spring:
 
 | 항목 | 현재 상태 | 정할 것 |
 | --- | --- | --- |
-| `.gitignore` | `moneybeetle/.gitignore`에 `.env` 항목이 없음 | `.env`, `.env.*`(단 `.env.example`은 제외) 추가 |
+| `.gitignore` | ✅ 루트 `.gitignore`에 `.env`, `.env.*`, `!.env.example` 추가 (#67) | 없음 |
 | 메일 발송 방식 | 정책(10분 유효 1회용 토큰)은 있으나 SMTP 서비스 미정 | 사용할 메일 서비스(예: Gmail SMTP 앱 비밀번호) |
 | 간편 로그인 | 우선순위 하. 구글·카카오 앱 등록 필요 | 구현 시점, 개인 테스트 앱을 쓸지 팀 공용 앱을 쓸지 |
 | 파일 저장 | 로컬 폴더와 S3 호환 스토리지 (시스템 설계서의 가정) | 운영에서 쓸 스토리지 서비스, 영상 파일 업로드 허용 여부 |
