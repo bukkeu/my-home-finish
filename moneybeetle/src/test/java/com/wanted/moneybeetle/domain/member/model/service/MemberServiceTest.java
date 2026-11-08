@@ -10,9 +10,13 @@ import static org.mockito.Mockito.when;
 
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
+import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
+import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,6 +85,45 @@ class MemberServiceTest {
         assertThat(max).hasSize(100);
         assertThat(memberService.isEmailAvailable(max).isAvailable()).isTrue();
         verify(memberRepository).existsByEmail(max);
+    }
+
+    private Member newMember() {
+        return Member.signup("minji@gmail.com", "$2a$10$hash", "민지", java.time.LocalDate.of(1999, 4, 12), null,
+                java.time.LocalDate.of(2026, 11, 8));
+    }
+
+    @Test
+    @DisplayName("잔액 조회는 회원의 레벨·경험치·캐시를 돌려주고, 없는 회원은 MEMBER_NOT_FOUND")
+    void getBalance() {
+        Member member = newMember();
+        member.addReward(12_000, 1_250);
+        when(memberRepository.findById(8L)).thenReturn(java.util.Optional.of(member));
+
+        MemberBalanceDTO balance = memberService.getBalance(8L);
+        assertThat(balance.getCash()).isEqualTo(12_000);
+        assertThat(balance.getExp()).isEqualTo(1_250);
+
+        assertThatThrownBy(() -> memberService.getBalance(99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(MemberErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("잠금 조회·보상 반영·캐시 차감은 회원 행을 잠그고(findByIdForUpdate) 읽는다")
+    void lockedUpdates() {
+        Member member = newMember();
+        when(memberRepository.findByIdForUpdate(8L)).thenReturn(java.util.Optional.of(member));
+
+        assertThat(memberService.lockBalance(8L).getCash()).isZero();
+        assertThat(memberService.addReward(8L, 30_000, 100).getCash()).isEqualTo(30_000);
+        assertThat(memberService.deductCash(8L, 10_000).getCash()).isEqualTo(20_000);
+        assertThat(member.getExp()).isEqualTo(100);
+        verify(memberRepository, org.mockito.Mockito.times(3)).findByIdForUpdate(8L);
+
+        assertThatThrownBy(() -> memberService.deductCash(8L, 999_999)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> memberService.lockBalance(99L))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

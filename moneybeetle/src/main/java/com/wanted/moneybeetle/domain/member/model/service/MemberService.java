@@ -1,12 +1,16 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
+import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
+import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   회원가입, 약관 조회, 이메일·닉네임 중복 확인 (이슈 #5). 이어서 내 정보·설정(#7), 비밀번호 변경·탈퇴(#8)를 맡는다.
-*   다른 도메인에 제공하는 메서드 : 회원 조회, 레벨·경험치·캐시 변경 (growth.RewardService 전용, #10 2차)
+*   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차).
+*   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5, 1차)
 *   - 구현됨: findAgreements(약관 목록), isEmailAvailable, isNicknameAvailable (중복 확인)
@@ -30,6 +35,43 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final TermsRepository termsRepository;
+
+    /** 회원의 현재 레벨·경험치·캐시 (growth.RewardService 용). 없는 회원이면 MEMBER_NOT_FOUND */
+    public MemberBalanceDTO getBalance(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+        return MemberBalanceDTO.from(member);
+    }
+
+    /**
+     * 회원 행을 잠그고 현재 값을 돌려준다 (growth.RewardService 용). 잠금은 호출한 쪽의 트랜잭션이 끝날 때까지 유지되므로,
+     * 이 메서드를 부른 뒤 같은 트랜잭션에서 이중 지급·잔액 확인을 해도 다른 요청이 끼어들지 못한다.
+     */
+    @Transactional
+    public MemberBalanceDTO lockBalance(Long memberId) {
+        return MemberBalanceDTO.from(getMemberForUpdate(memberId));
+    }
+
+    /** 활동 보상으로 받은 캐시·경험치를 회원에게 더하고 바뀐 값을 돌려준다 (growth.RewardService 용, 레벨은 #11) */
+    @Transactional
+    public MemberBalanceDTO addReward(Long memberId, long cashAmount, int expAmount) {
+        Member member = getMemberForUpdate(memberId);
+        member.addReward(cashAmount, expAmount);
+        return MemberBalanceDTO.from(member);
+    }
+
+    /** 캐시를 차감하고 바뀐 값을 돌려준다 (growth.RewardService 용). 잔액이 모자라면 Entity 가 거절한다 */
+    @Transactional
+    public MemberBalanceDTO deductCash(Long memberId, long amount) {
+        Member member = getMemberForUpdate(memberId);
+        member.spendCash(amount);
+        return MemberBalanceDTO.from(member);
+    }
+
+    private Member getMemberForUpdate(Long memberId) {
+        return memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
 
     /** 가입 화면에 보여 줄 약관(필수·선택) 목록 (API 1) */
     public List<TermsDTO> findAgreements() {

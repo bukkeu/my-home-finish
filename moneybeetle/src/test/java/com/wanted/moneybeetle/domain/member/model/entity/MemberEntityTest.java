@@ -57,6 +57,26 @@ class MemberEntityTest {
     }
 
     @Test
+    @DisplayName("보상을 받으면 캐시·경험치가 늘고, 캐시를 쓰면 줄어든다 (잔액은 0 미만이 될 수 없다)")
+    void rewardAndSpend() {
+        Member m = Member.signup("minji@gmail.com", "$2a$10$hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
+
+        m.addReward(30_000, 100);
+        assertThat(m.getCash()).isEqualTo(30_000);
+        assertThat(m.getExp()).isEqualTo(100);
+        assertThat(m.getLevel()).isEqualTo(1);   // 레벨 재계산은 #11
+
+        m.spendCash(30_000);
+        assertThat(m.getCash()).isZero();   // 잔액과 같은 금액은 쓸 수 있다
+
+        assertThatThrownBy(() -> m.spendCash(1)).isInstanceOf(IllegalArgumentException.class);   // 잔액 부족
+        assertThatThrownBy(() -> m.spendCash(0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.addReward(-1, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.addReward(0, -1)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(m.getCash()).isZero();   // 거절된 호출은 값을 바꾸지 않는다
+    }
+
+    @Test
     @DisplayName("약관은 이름·본문이 있어야 하고, 동의 기록은 회원·약관이 있어야 한다")
     void termsAndAgreement() {
         Terms t = Terms.create("서비스 이용약관", "본문", true, "1.0", LocalDateTime.of(2026, 11, 1, 0, 0));

@@ -8,11 +8,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
 import com.wanted.moneybeetle.domain.growth.model.dao.CashHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +39,7 @@ class RewardServiceHistoryTest {
     void setUp() {
         cashHistoryRepository = mock(CashHistoryRepository.class);
         rewardService = new RewardService(mock(RewardRuleRepository.class), cashHistoryRepository,
-                mock(ExpHistoryRepository.class));
+                mock(ExpHistoryRepository.class), mock(MemberService.class));
     }
 
     @Test
@@ -68,20 +71,11 @@ class RewardServiceHistoryTest {
     }
 
     @Test
-    @DisplayName("알 수 없는 type 은 거절한다")
+    @DisplayName("알 수 없는 type 은 INVALID_HISTORY_TYPE 으로 거절한다")
     void unknownType() {
         assertThatThrownBy(() -> rewardService.findCashHistories(1L, "GIFT", pageable))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("grant·spendCash·getBalance 는 아직 구현 전이라 호출하면 구현 전임을 알린다 (#10 2차)")
-    void notImplementedYet() {
-        assertThatThrownBy(() -> rewardService.grant(1L, "COURSE_COMPLETE", 15L))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> rewardService.spendCash(1L, CashHistory.SOURCE_SEASON_JOIN, 1L, 100))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> rewardService.getBalance(1L))
-                .isInstanceOf(UnsupportedOperationException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(GrowthErrorCode.INVALID_HISTORY_TYPE);
     }
 }
