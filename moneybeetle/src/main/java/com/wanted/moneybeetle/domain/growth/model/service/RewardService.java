@@ -93,6 +93,7 @@ public class RewardService {
             page = cashHistoryRepository.findByMemberIdAndHistoryTypeInOrderByCreatedAtDescCashHistoryIdDesc(
                     memberId, USE_TYPES, pageable);
         } else {
+            // TODO(#2 병합 후): BusinessException 이 올라오면 GrowthErrorCode.INVALID_HISTORY_TYPE(400)로 바꾼다
             throw new IllegalArgumentException("type 은 EARN 또는 USE 만 쓸 수 있습니다: " + type);
         }
         return page.map(CashHistoryDTO::from);

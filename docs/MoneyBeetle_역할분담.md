@@ -75,7 +75,7 @@
 | #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC), Docker·Nginx 헬스 체크 |
 | #85 | 브랜치 정리·보호 규칙 설정 | — | 2 | `sy`·`test` 등 남은 브랜치 정리, `main`·`dev` 보호(PR 필수·승인 1명), `main`은 `dev`에서만 병합 |
 
-**다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.findMyApplications(memberId)`(김예린 마이페이지 성장 탭), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
+**다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
 **서수영이 쓰는 것**: 김예린 `GrowthService.getLevel`, `RewardService.spend`, `NotificationService.send`
 
 ---
@@ -145,7 +145,7 @@
 | #55 | 문의 게시판 화면 (화면) | — | 4 | 문의 게시판 화면 |
 | #59 | 강사 로그인·가입·대시보드 화면 (화면) | — | 13 | 강사 로그인·가입·대시보드(내 강의, Q&A 탭) |
 | #60 | 강사 강의 생성 화면 (화면) | — | 5 | 강의 생성 화면(분류·정보·영상·요약글·퀴즈·검수 요청) |
-| #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·내 문의 탭, 강의로 이동. `fragments/mypage/learning` |
+| #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·스크랩(#18)·오답노트(#21)·내 문의(Q&A 모음) 탭, 강의로 이동. `fragments/mypage/learning`. 스크랩·오답노트는 신아림의 API라서 이 이슈에서 함께 맡는다(점수는 그대로) |
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
 | #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `schema.sql`을 같은 PR에서 수정 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (김예린과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
@@ -190,7 +190,7 @@
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (신아림과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
 
 **다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
-**김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.*`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
+**김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.openAccount`·`getDashboardSummary`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
 
 ---
 
@@ -219,10 +219,10 @@
 
 | 화면 | 틀 | 탭 / 영역 | 탭 담당 |
 | --- | --- | --- | --- |
-| 마이페이지 | 이재성 | `mypage/settings` (설정·비밀번호·탈퇴·내 문의) | **김예린** |
+| 마이페이지 | 이재성 | `mypage/settings` (설정·비밀번호·탈퇴) | **김예린** |
 | | | `mypage/learning` (시청 기록·학습 완료·스크랩·오답노트·Q&A 모음) (#71) | **신아림** |
 | | | `mypage/growth` (캐시·경험치·레벨표·수상 내역) (#69) | **김예린** (수상 내역은 이재성이 데이터 제공) |
-| | | `mypage/housing` (나의 청약통장·납입·내역·청약 신청 내역) (#70) | **서수영** |
+| | | `mypage/housing` (나의 청약통장·납입·내역) (#70). 청약 신청 내역은 청약 화면(#58)에서 보여 준다 | **서수영** |
 | 관리자 대시보드 | 김예린 | `?view=members` 회원·강사 / `?view=board` 문의 | **신아림** |
 | | | `?view=courses` 카테고리·강의 검수 | **신아림** |
 | | | `?view=terms` 경제 용어 / `?view=growth` 보상·캐시 / `?view=settings` 설정·작업 기록 | **김예린** |
@@ -245,7 +245,6 @@
 | 김예린 | `AdminLogService.write(adminId, action, targetId, before, after, reason)` | 전원 | 관리자 중요 작업 |
 | 김예린 | `InstructorService.apply(memberId, ...)` / `approve(applicationId)` | 신아림 | 강사 가입 신청(#30), 관리자 강사 승인(#37). `instructor_profile`은 김예린 `member` 도메인 소유 |
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
-| 서수영 | `HousingService.findMyApplications(memberId)` | 김예린 | 마이페이지 성장 탭 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
 | 서수영 | `FileStorageService.save(file, dir)` | 신아림, 김예린 | 썸네일·영상 파일, 프로필 이미지 |
 | 이재성 | `RankingService.findAwards(memberId)` | 김예린 | Drawer 수상 내역, 마이페이지 |

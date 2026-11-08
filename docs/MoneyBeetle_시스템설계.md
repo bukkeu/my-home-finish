@@ -39,18 +39,17 @@ MoneyBeetle은 **Spring Boot MVC + Thymeleaf(서버가 화면을 만들어 응�
 ```mermaid
 flowchart LR
     B["브라우저 (PC·모바일)<br/>Thymeleaf 화면 20개 · JS fetch"] -- HTTPS --> N["Nginx<br/>HTTPS 인증서 · 정적 파일 캐시<br/>요청을 서버로 전달 · 요청 수 제한"]
-    N -- 화면·/api --> A["웹 서버 (Spring Boot MVC)<br/>화면 렌더링 (Thymeleaf)<br/>인증·권한 필터 (세션)<br/>도메인 12개<br/>메모리 캐시 (Caffeine)<br/>예약 작업"]
+    N -- "화면·/api<br/>(영상·이미지 업로드 포함)" --> A["웹 서버 (Spring Boot MVC)<br/>화면 렌더링 (Thymeleaf)<br/>인증·권한 필터 (세션)<br/>도메인 12개<br/>메모리 캐시 (Caffeine)<br/>예약 작업"]
     A -- JPA --> D[("MySQL<br/>회원·학습·캐시<br/>거래·청약·감사")]
     A -. 서버 증설 시 .-> R[("Redis<br/>세션·캐시 공유")]
-    A -- 주소 서명 --> S["오브젝트 스토리지<br/>강의 영상·썸네일<br/>프로필·단지 이미지"]
-    B -- "직접 업로드 (Presigned URL)" --> S
+    A -- "파일 저장 · 재생용 서명 주소" --> S["오브젝트 스토리지<br/>강의 영상·썸네일<br/>프로필·단지 이미지"]
     B -- OAuth · 영상 재생 --> E["외부 서비스<br/>구글·카카오 로그인<br/>유튜브"]
     style A fill:#E6F1FB,stroke:#378ADD,stroke-width:2px
 ```
 
 강조 색: 판정을 내리는 유일한 곳 · 점선: 서버를 2대 이상으로 늘릴 때 추가
 
-브라우저의 모든 요청(화면 요청과 `/api` 요청)은 Nginx를 거쳐 Spring Boot 서버로 가고, 캐시·가점·당첨을 바꾸는 것은 이 서버뿐입니다. 서버가 화면(HTML)까지 만들어 응답합니다. 영상·이미지처럼 큰 파일만 예외로, 서버가 서명해 준 주소로 브라우저가 스토리지에 직접 올립니다.
+브라우저의 모든 요청(화면 요청과 `/api` 요청)은 Nginx를 거쳐 Spring Boot 서버로 가고, 캐시·가점·당첨을 바꾸는 것은 이 서버뿐입니다. 서버가 화면(HTML)까지 만들어 응답합니다. 영상·이미지 같은 파일도 예외 없이 서버를 거쳐 올립니다. 서버가 형식·용량을 검사한 뒤 스토리지에 저장하고, 영상을 재생할 때만 서버가 짧게 만료되는 서명 주소를 만들어 줍니다.
 
 | 구성 요소 | 배치 | 역할 |
 | --- | --- | --- |
@@ -205,7 +204,7 @@ flowchart LR
 
 | 파일 | 올리는 화면 | 업로드 방식 | 제한 |
 | --- | --- | --- | --- |
-| 강의 영상 | InstructorCourseCreate | 브라우저 → 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지. 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정) |
+| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 그 `videoUrl`들과 요약글만 담아 보낸다. 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
 | 강의 썸네일 | InstructorCourseCreate | 브라우저 → 서버(형식·용량 검사) → 스토리지 | 이미지, 용량 미정 |
 | 프로필 이미지 | UserMyPage | 위와 같음 | 2MB, jpg·png (DP-32) |
 | 청약 단지 이미지 | AdminHousingManagement | 위와 같음 | 이미지, 용량 미정 |
@@ -243,7 +242,7 @@ flowchart LR
     style RB fill:#FCEBEB,stroke:#E24B4A,stroke-width:2px
 ```
 
-저장소(github.com/bukkeu/MY-HOME)는 `moneybeetle/`(Spring Boot 프로젝트: 서버 코드, `templates/`, `static/`), `docs/`(설계 문서), `moneybeetle-page/`(페이지 구현본, 참고용)로 나뉩니다. 구현본의 `.dc.html` 화면은 ROUTES.md의 향후 URL대로 `templates/` 아래 Thymeleaf 템플릿으로 옮기고, 공통 스크립트(`mb-*.js`)와 CSS는 `static/`으로 옮깁니다.
+저장소(github.com/bukkeu/my-home-finish)는 `moneybeetle/`(Spring Boot 프로젝트: 서버 코드, `templates/`, `static/`), `docs/`(설계 문서), `moneybeetle-page/`(페이지 구현본, 참고용)로 나뉩니다. 구현본의 `.dc.html` 화면은 ROUTES.md의 향후 URL대로 `templates/` 아래 Thymeleaf 템플릿으로 옮기고, 공통 스크립트(`mb-*.js`)와 CSS는 `static/`으로 옮깁니다.
 
 **환경 구분**
 

@@ -83,7 +83,8 @@ class LayoutFragmentRenderTest {
     }
 
     /**
-     * 눈으로 확인하고 싶을 때만: ./gradlew test LAYOUT_DUMP=build/layout-preview 로 돌리면
+     * 눈으로 확인하고 싶을 때만: 환경변수를 명령 앞에 설정해 돌리면(Git Bash: LAYOUT_DUMP=build/layout-preview ./gradlew test,
+     * PowerShell: $env:LAYOUT_DUMP='build/layout-preview'; ./gradlew test)
      * 그려진 HTML 을 파일로 남긴다 (static 폴더와 함께 간단한 웹 서버로 열어 보면 된다). 평소 테스트에는 영향이 없다.
      */
     private void dumpIfRequested(String authority, String query, String html) throws Exception {
