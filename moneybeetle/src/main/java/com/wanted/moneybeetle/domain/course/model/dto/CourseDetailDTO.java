@@ -33,7 +33,7 @@ public class CourseDetailDTO {
     private CourseDetailDTO() {
     }
 
-    public static CourseDetailDTO from(Course course, Category category, List<Lesson> lessons) {
+    public static CourseDetailDTO from(Course course, Category category, List<Lesson> lessons, boolean scrapped) {
         CourseDetailDTO dto = new CourseDetailDTO();
         dto.courseId = course.getCourseId();
         dto.title = course.getTitle();
@@ -44,6 +44,7 @@ public class CourseDetailDTO {
         dto.infoBaseDate = course.getInfoBaseDate();
         dto.infoSource = course.getInfoSource();
         dto.lessons = lessons.stream().map(LessonItem::from).toList();
+        dto.scrapped = scrapped;
         return dto;
     }
 

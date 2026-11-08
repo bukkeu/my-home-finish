@@ -6,18 +6,21 @@ import com.wanted.moneybeetle.domain.course.model.dao.CourseRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LearningProgressRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonWatchRepository;
+import com.wanted.moneybeetle.domain.course.model.dao.ScrapRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.CategoryTreeDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CompletedCourseDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
+import com.wanted.moneybeetle.domain.course.model.entity.Scrap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,6 +48,7 @@ public class CourseService {
     private final LessonRepository lessonRepository;
     private final LearningProgressRepository learningProgressRepository;
     private final LessonWatchRepository lessonWatchRepository;
+    private final ScrapRepository scrapRepository;
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -63,28 +68,33 @@ public class CourseService {
     }
 
     /* API 30. 강의 목록: 허가 + 공개 + 삭제 안 된 강의만 (LRN-01, SP-31) */
-    public Page<CourseListDTO> findCourses(Long categoryId, Pageable pageable) {
+    public Page<CourseListDTO> findCourses(Long memberId, Long categoryId, Pageable pageable) {
         List<Long> categoryIds = findCategoryIdsWithChildren(categoryId);
 
-        return courseRepository
-                .findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
-                        categoryIds, Course.STATUS_APPROVED, pageable)
-                .map(course -> CourseListDTO.from(
-                        course,
-                        null,   // TODO 강사 이름: DBA ② 메서드가 생기면 연결
-                        (int) lessonRepository.countByCourseId(course.getCourseId()),
-                        null,   // TODO 내 학습 상태: 로그인 병합 후 연결
-                        false   // TODO 스크랩 여부: 스크랩 이슈(#18)에서 연결
-                ));
+        Page<Course> courses = courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
+                categoryIds, Course.STATUS_APPROVED, pageable);
+
+        // 이 페이지 강의 중 내가 스크랩한 것을 한 번에 조회 (강의마다 조회하지 않음)
+        Set<Long> scrappedIds = findScrappedCourseIds(memberId,
+                courses.getContent().stream().map(Course::getCourseId).toList());
+
+        return courses.map(course -> CourseListDTO.from(
+                course,
+                null,   // TODO 강사 이름: DBA ② 메서드가 생기면 연결
+                (int) lessonRepository.countByCourseId(course.getCourseId()),
+                null,   // TODO 내 학습 상태
+                scrappedIds.contains(course.getCourseId())
+        ));
     }
 
     /* API 31. 강의 상세 (LRN-02, LRN-04, SP-41) */
-    public CourseDetailDTO getCourseDetail(Long courseId) {
+    public CourseDetailDTO getCourseDetail(Long memberId, Long courseId) {
         Course course = getVisibleCourse(courseId);
         Category category = categoryRepository.findById(course.getCategoryId()).orElse(null);
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId);
+        boolean scrapped = scrapRepository.existsByMemberIdAndCourseId(memberId, courseId);
 
-        return CourseDetailDTO.from(course, category, lessons);
+        return CourseDetailDTO.from(course, category, lessons, scrapped);
     }
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
@@ -121,7 +131,6 @@ public class CourseService {
     public Page<WatchHistoryDTO> findWatchHistories(Long memberId, Pageable pageable) {
         Page<LessonWatch> watches = lessonWatchRepository.findByMemberIdOrderByLastWatchedAtDesc(memberId, pageable);
 
-        // 영상·강의 정보를 한 번씩만 모아서 조회한다 (항목마다 조회하면 쿼리가 N번 나감)
         Map<Long, Lesson> lessons = lessonRepository.findAllById(
                         watches.getContent().stream().map(LessonWatch::getLessonId).toList())
                 .stream()
@@ -146,7 +155,39 @@ public class CourseService {
         return completed.map(progress -> CompletedCourseDTO.from(progress, courses.get(progress.getCourseId())));
     }
 
-    /* ===== 스크랩 (#18에서 이 아래에 추가) ===== */
+    /* ===== 스크랩 (#18) ===== */
+
+    /* API 36. 스크랩 (LRN-08, SP-39: 같은 강의는 한 번만) */
+    @Transactional
+    public void createScrap(Long memberId, Long courseId) {
+        getVisibleCourse(courseId);
+
+        if (scrapRepository.existsByMemberIdAndCourseId(memberId, courseId)) {
+            throw new RuntimeException(CourseErrorCode.ALREADY_SCRAPPED.getMessage()); // TODO 공통 설정 병합 후 BusinessException으로
+        }
+        scrapRepository.save(Scrap.create(memberId, courseId));
+    }
+
+    /* API 37. 스크랩 해제 (실제 삭제). 강의가 비공개로 바뀌었어도 해제는 할 수 있어야 해서 공개 검사를 하지 않는다 */
+    @Transactional
+    public void deleteScrap(Long memberId, Long courseId) {
+        scrapRepository.deleteByMemberIdAndCourseId(memberId, courseId);
+    }
+
+    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11) */
+    public Page<ScrapListDTO> findScraps(Long memberId, Pageable pageable) {
+        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable);
+
+        Map<Long, Course> courses = findCoursesByIds(
+                scraps.getContent().stream().map(Scrap::getCourseId).toList());
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+
+        return scraps.map(scrap -> {
+            Course course = courses.get(scrap.getCourseId());
+            return ScrapListDTO.from(scrap, course, categoryPath(course.getCategoryId(), categories));
+        });
+    }
 
     /* ===== 다른 담당이 부르는 메서드 (역할분담 7장) ===== */
 
@@ -164,7 +205,7 @@ public class CourseService {
 
         return progresses.stream()
                 .map(progress -> courses.get(progress.getCourseId()))
-                .filter(course -> course != null && course.isVisibleToLearner())   // 그사이 비공개된 강의는 빼기
+                .filter(course -> course != null && course.isVisibleToLearner())
                 .map(course -> CourseListDTO.from(
                         course,
                         null,   // TODO 강사 이름
@@ -188,7 +229,7 @@ public class CourseService {
                 .orElseThrow(() -> new RuntimeException(CourseErrorCode.COURSE_NOT_PUBLIC.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
     }
 
-    /* 그 강의에 속한 영상인지 확인한다 (다른 강의의 lessonId를 넣어도 막힘) */
+    /* 그 강의에 속한 영상인지 확인한다 */
     private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
         return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
                 .orElseThrow(() -> new RuntimeException(CourseErrorCode.LESSON_NOT_FOUND.getMessage())); // TODO 공통 설정 병합 후 BusinessException으로
@@ -197,6 +238,22 @@ public class CourseService {
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
         return courseRepository.findAllById(courseIds).stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity()));
+    }
+
+    private Set<Long> findScrappedCourseIds(Long memberId, List<Long> courseIds) {
+        return scrapRepository.findByMemberIdAndCourseIdIn(memberId, courseIds).stream()
+                .map(Scrap::getCourseId)
+                .collect(Collectors.toSet());
+    }
+
+    /* "부동산 › 청약"처럼 상위 › 소주제 이름을 만든다 */
+    private String categoryPath(Long categoryId, Map<Long, Category> categories) {
+        Category category = categories.get(categoryId);
+        if (category == null) {
+            return null;
+        }
+        Category parent = category.isSubCategory() ? categories.get(category.getParentId()) : null;
+        return parent != null ? parent.getName() + " › " + category.getName() : category.getName();
     }
 
     /* 상위 카테고리를 고르면 그 아래 소주제 강의까지 함께 보여 준다 */

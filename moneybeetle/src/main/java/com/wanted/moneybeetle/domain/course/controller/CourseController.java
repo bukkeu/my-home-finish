@@ -6,6 +6,7 @@ import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
 import jakarta.validation.Valid;
@@ -14,10 +15,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,7 +65,7 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
         // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(PageResponse.from(...))로 감싸기
-        return courseService.findCourses(categoryId, toPageable(page, size, Sort.by("courseId")));
+        return courseService.findCourses(currentMemberId(), categoryId, toPageable(page, size, Sort.by("courseId")));
     }
 
     /* API 31. 강의 상세 */
@@ -69,7 +73,7 @@ public class CourseController {
     @ResponseBody
     public CourseDetailDTO getCourse(@PathVariable Long courseId) {
         // TODO 공통 설정(SCM) 병합 후 ApiResponse.success(...)로 감싸기
-        return courseService.getCourseDetail(courseId);
+        return courseService.getCourseDetail(currentMemberId(), courseId);
     }
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
@@ -108,10 +112,30 @@ public class CourseController {
         return courseService.findCompletedCourses(currentMemberId(), toPageable(page, size, Sort.unsorted()));
     }
 
-    /* ===== 스크랩 (#18) =====
-     * POST/DELETE /api/v1/courses/{courseId}/scrap
-     * GET /api/v1/members/me/scraps
-     */
+    /* ===== 스크랩 (#18) ===== */
+
+    /* API 36. 스크랩 → 201 Created */
+    @PostMapping("/api/v1/courses/{courseId}/scrap")
+    public ResponseEntity<Void> createScrap(@PathVariable Long courseId) {
+        courseService.createScrap(currentMemberId(), courseId);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /* API 37. 스크랩 해제 → 204 No Content */
+    @DeleteMapping("/api/v1/courses/{courseId}/scrap")
+    public ResponseEntity<Void> deleteScrap(@PathVariable Long courseId) {
+        courseService.deleteScrap(currentMemberId(), courseId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /* API 38. 스크랩 목록 */
+    @GetMapping("/api/v1/members/me/scraps")
+    @ResponseBody
+    public Page<ScrapListDTO> getScraps(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+        return courseService.findScraps(currentMemberId(), toPageable(page, size, Sort.unsorted()));
+    }
 
     /* ===== 화면 (#52) =====
      * GET /user/lectures, /user/lecture-detail → Thymeleaf 템플릿 반환
