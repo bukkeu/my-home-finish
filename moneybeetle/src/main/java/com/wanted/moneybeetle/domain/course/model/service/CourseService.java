@@ -129,7 +129,7 @@ public class CourseService {
 
     /* API 34. 시청 기록: 최근 본 영상 순 (LRN-06) */
     public Page<WatchHistoryDTO> findWatchHistories(Long memberId, Pageable pageable) {
-        Page<LessonWatch> watches = lessonWatchRepository.findByMemberIdOrderByLastWatchedAtDesc(memberId, pageable);
+        Page<LessonWatch> watches = lessonWatchRepository.findVisibleByMemberId(memberId, Course.STATUS_APPROVED, pageable);
 
         Map<Long, Lesson> lessons = lessonRepository.findAllById(
                         watches.getContent().stream().map(LessonWatch::getLessonId).toList())
@@ -146,8 +146,8 @@ public class CourseService {
 
     /* API 35. 학습 완료 목록 (LRN-06, LRN-07) */
     public Page<CompletedCourseDTO> findCompletedCourses(Long memberId, Pageable pageable) {
-        Page<LearningProgress> completed = learningProgressRepository.findByMemberIdAndStatusOrderByCompletedAtDesc(
-                memberId, LearningProgress.STATUS_COMPLETED, pageable);
+        Page<LearningProgress> completed = learningProgressRepository.findVisibleByMemberIdAndStatus(
+                memberId, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 completed.getContent().stream().map(LearningProgress::getCourseId).toList());

@@ -2,8 +2,18 @@ package com.wanted.moneybeetle.global.exception;
 
 /* comment.
 *   담당 : SCM (회원·공통)
-*   ErrorCode 를 담아서 던지는 업무 예외 (RuntimeException)
+*   ErrorCode 를 담아서 던지는 업무 예외 (RuntimeException) : 문제 생겼어!! 신고서 들고 던지는 예외
 *  */
-public class BusinessException {
+
+import lombok.Getter;
+
+@Getter
+public class BusinessException extends RuntimeException{
+    private final ErrorCode errorCode;
+
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+    }
 
 }

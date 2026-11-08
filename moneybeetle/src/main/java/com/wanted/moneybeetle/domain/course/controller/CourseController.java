@@ -9,6 +9,8 @@ import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.global.exception.BusinessException;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -43,7 +45,7 @@ public class CourseController {
 
     private static final int DEFAULT_PAGE_SIZE = 20;   // API 명세서 1-3
     private static final int MAX_PAGE_SIZE = 100;
-    private static final Long TEMP_MEMBER_ID = 8L;     // TODO 로그인(#4·#6) 병합 후 삭제. 시드의 8번 회원
+
 
     private final CourseService courseService;
 
@@ -146,8 +148,10 @@ public class CourseController {
         return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), sort);
     }
 
-    /* 본인 데이터는 주소로 회원 ID를 받지 않고 세션에서 꺼낸다 (NFR-03) */
+    /* 본인 데이터는 주소로 회원 ID를 받지 않고 세션에서 꺼낸다 (NFR-03)
+     * 로그인(#4·#6)이 병합되기 전에는 회원을 알 수 없으므로 막는다 (안전한 쪽으로 실패, LevelCheckInterceptor와 같은 방식) */
     private Long currentMemberId() {
-        return TEMP_MEMBER_ID; // TODO 로그인 병합 후 @AuthenticationPrincipal의 회원 ID로 바꾸기
+        // TODO 로그인 병합 후 @AuthenticationPrincipal AuthDetails의 getMemberId()로 교체
+        throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
     }
 }

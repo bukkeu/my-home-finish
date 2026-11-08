@@ -12,6 +12,10 @@
 - 기준 문서: 요구사항 명세서, 정책 정의서, 머니비틀 페이지 구현(Claude Design). 표의 ID는 요구사항·정책 번호입니다.
 - DBMS는 **MySQL 8.0 (InnoDB, utf8mb4)** 기준입니다. 시간은 모두 서버의 한국 시간(KST)으로 저장합니다(DP-42).
 - **(초안)** 표시는 정책 정의서 5장의 미확정 값입니다. 값이 바뀌어도 테이블 구조는 그대로 쓰도록 설정 테이블로 뺐습니다.
+- **SQL 파일**은 `moneybeetle/src/main/resources/sql/`에 있고 이 순서로 실행합니다: `create_database.sql`(DB 생성, 접속 계정 안내) → `schema.sql`(테이블 47개, 실행하면 기존 테이블을 지우고 다시 만들기 때문에 **새 DB를 만들 때만** 실행) → `sample-data.sql`(로컬 개발용 시드, 운영 DB에는 넣지 않음). 시드는 구역별로 담당 DBA가 관리합니다. **이미 만든 DB의 구조나 데이터를 바꿀 때는 모두** `schema.sql`을 다시 실행하지 않고 `sql/migration/`의 마이그레이션 파일을 씁니다. 변경은 이렇게 나눠 반영합니다.
+  - **구조 변경**(컬럼·제약·기본값): `sql/migration/`에 `ALTER` 파일을 추가하고(기존 DB용), 새 DB용으로 `schema.sql`에도 같은 변경을 반영합니다. 둘 다 DBA가 같은 PR에서 고칩니다.
+  - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
+  - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
 
 ---
 
@@ -384,7 +388,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `level` | TINYINT | N | UNIQUE | - | 레벨 1~20 |
 | `required_exp` | INT | N | - | - | 이 레벨이 되기 위한 누적 경험치 (150 XP 간격, 초안) |
 | `title` | VARCHAR(20) | N | - | - | 칭호: 텐트 / 원룸 / 투룸 / 아파트 / 내 집 |
-| `levelup_cash` | INT | N | - | 0 | 레벨업 캐시 (레벨 × 1,000, 초안) |
+| `levelup_cash` | INT | N | - | 0 | 레벨업 캐시 (새 레벨 × 10,000, 확정 #76) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
 
@@ -731,8 +735,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `current_turn` | TINYINT | N | - | 0 | 현재 턴 0~12 |
 | `total_turns` | TINYINT | N | - | 12 | 전체 턴 |
 | `unlock_level` | TINYINT | N | - | 8 | 참가 해금 레벨 |
-| `carryover_rate` | DECIMAL(5,2) | N | - | 30.00 | 이월 비율(%) |
-| `carryover_cap` | BIGINT | Y | - | - | 이월 상한 (미정) |
+| `carryover_rate` | DECIMAL(5,2) | N | - | 100.00 | 이월 비율(%). 기본 100(전액), 관리자가 시즌 설정(ADM-11)에서 바꿀 수 있다 |
+| `carryover_cap` | BIGINT | Y | - | - | 이월 상한. 기본 NULL(상한 없음), 관리자가 시즌 설정에서 정한다 |
 | `settled_at` | DATETIME | Y | - | - | 정산 일시 |
 | `ranking_published_at` | DATETIME | Y | - | - | 랭킹 공개 일시 |
 | `created_by` | BIGINT | N | FK → member.member_id | - | 만든 관리자 |
@@ -934,7 +938,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `subscription_account_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 통장 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE | - | 회원 (1:1) |
-| `balance` | BIGINT | N | - | 0 | 통장 잔액 |
+| `balance` | BIGINT | N | - | 0 | 통장 잔액 (납입액 전액) |
+| `recognized_amount` | BIGINT | N | - | 0 | 누적 인정금액 (납입 1회당 최대 250,000, SP-70 초안) |
 | `paid_count` | INT | N | - | 0 | 납입회차 |
 | `last_paid_date` | DATE | Y | - | - | 마지막 납입일 (KST) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -951,7 +956,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `subscription_deposit_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 납입 ID |
 | `subscription_account_id` | BIGINT | N | FK → subscription_account.subscription_account_id, UNIQUE(subscription_account_id, paid_date) | - | 통장 |
 | `paid_date` | DATE | N | UNIQUE(subscription_account_id, paid_date) | - | 납입일 (KST) |
-| `amount` | INT | N | - | - | 납입 캐시 (1회 1,000, 초안) |
+| `amount` | INT | N | - | - | 납입 캐시 (1회 20,000~500,000, SP-70 초안) |
+| `recognized_amount` | INT | N | - | - | 이번 납입의 인정금액 = min(amount, 250,000) |
 | `paid_count_after` | INT | N | - | - | 납입 후 회차 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 
@@ -1127,7 +1133,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- |
 | 사이트 문의 게시판 | `inquiry.course_id`가 NULL이면 사이트 문의로 처리 (페이지의 문의하기 게시판) | 강의 문의와 사이트 문의를 한 테이블로 둘지 나눌지 |
 | 강사 가입 방식 | `instructor_profile.approval_status` PENDING → 관리자 승인 (페이지의 강사 회원가입 반영) | 직접 가입 신청 허용 여부 |
-| 청약통장 납입액 | `subscription_deposit.amount` 1회 1,000캐시 (정책 초안). 페이지 목업은 2만~50만 캐시 | 금액 고정 여부 |
+| 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 초안, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
 | 청약 결과 | `result` WIN/LOSE (정책 SP-75). 페이지 목업에는 예비(RESERVE) 있음 | 예비 당첨 여부 |
 | 시즌 참가 캐시 차감 | `season_participant.saved_cash` 기록, 차감 시 `cash_history`에 SEASON_JOIN | 참가 때 캐시 차감 여부 |
 | 이월 상한 | `trading_season.carryover_cap` NULL 허용 | 상한 금액 |
