@@ -65,6 +65,8 @@
 
 ### 2-3 배포 시 (서버·CI)
 
+> 📌 **팀 결정 (2026-11-08)**: 배포하지 않고 로컬에서 발표하므로 이 절의 값은 **쓰지 않습니다.** CI(GitHub Actions)는 DB 없이 테스트만 돌려서 Secrets도 필요 없습니다.
+
 | 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 둘 곳 |
 | --- | --- | --- | --- | --- |
 | `STORAGE_ENDPOINT` | S3 호환 오브젝트 스토리지 주소 (`FILE_STORAGE_TYPE=s3`) | | 쓰지 않음 | 서버 `.env` |
@@ -171,6 +173,8 @@ spring:
 2. **`.env` 파일**: `moneybeetle/` 폴더에 `.env.example`을 복사해 `.env`로 만들고 값을 채웁니다. Spring Boot가 `.env`를 읽도록 `application.yaml`에 `spring.config.import: optional:file:.env[.properties]`를 추가합니다. (`.gitignore`에 `.env`가 있는지 **먼저** 확인합니다.)
 
 ### 5-4 서버(배포)에서
+
+> 📌 **팀 결정 (2026-11-08)**: 배포하지 않고 로컬에서 발표하므로 이 절의 값은 **쓰지 않습니다.** CI(GitHub Actions)는 DB 없이 테스트만 돌려서 Secrets도 필요 없습니다.
 
 - 서버의 `.env` 파일에 값을 두고 Docker Compose가 읽게 합니다. 서버 `.env`의 권한은 소유자만 읽을 수 있게 합니다.
 - GitHub Actions에서 쓰는 값은 저장소 Settings → Secrets and variables → Actions에 등록합니다.
