@@ -6,7 +6,7 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 /* comment.
- *   담당 : SCM (회원·공통) : 강의 내용 x
+ *   담당 : SCM (공통 기반·보안)
  *   목록 응답 형식 { items, page, size, totalElements, totalPages } (API 명세서 1-3)
  *   사용 : ApiResponse.success(PageResponse.from(page))
  *  */

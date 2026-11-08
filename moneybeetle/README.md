@@ -85,12 +85,17 @@ src/main/resources
 
 | 역할 | 담당 도메인 |
 | --- | --- |
-| SCM 서수영 | `housing`(모의 청약), `global` 공통 기반·보안 |
-| PM 이재성 | `trading`(모의투자), 통합 검색, 마이페이지 틀, 중복 요청 방지 |
-| DBA ① 신아림 | `course`, `quiz`, `inquiry`, 사용자·강사 관리 |
-| DBA ② 김예린 | `auth`, `member`, `growth`, `notification`, `home`, `term`, `operation`, 관리자 틀, 공통 레이아웃 |
+| SCM 서수영 | `housing`(모의 청약), `global` 공통 기반·보안, `auth/config`의 `SecurityConfig` |
+| PM 이재성 | `trading`(모의투자), 통합 검색(#15·#56), 마이페이지 틀(#54), `IdempotencyFilter`(#65) |
+| DBA ① 신아림 | `course`, `quiz`, `inquiry`, 사용자·강사 관리 API(#37의 `AdminMemberController` 포함) |
+| DBA ② 김예린 | `auth`(config 제외), `member`(단, `AdminMemberController` 제외), `growth`, `notification`, 홈(#13), `term`, `operation`, 관리자 틀, 공통 레이아웃 |
 
-최신 배정과 이슈 번호는 `docs/MoneyBeetle_역할분담.md`가 기준입니다.
+위 표는 기본 담당 영역을 요약한 것입니다. 실제 파일·기능의 담당자는 `docs/MoneyBeetle_역할분담.md`와 해당 GitHub 이슈의 담당자를 함께 기준으로 합니다. 같은 도메인 안에서도 이슈에 따라 담당자가 달라질 수 있습니다.
+
+- `AdminMemberController`는 도메인 경로가 `member`이지만 이슈 #37 담당자인 DBA ① 신아림이 맡습니다.
+- 홈 API(#13)는 DBA ② 김예린, 통합 검색 API(#15)와 검색 화면(#56)은 PM 이재성이 맡습니다. 따라서 `HomeController`의 홈·검색 기능 주석은 각각 구분합니다.
+- `auth/config/SecurityConfig`와 공통 기반 파일은 SCM 서수영, `auth`의 로그인·회원 인증 기능은 DBA ② 김예린이 맡습니다.
+- `global/security/IdempotencyFilter`는 경로와 달리 이슈 #65 담당자인 PM 이재성이 맡습니다.
 
 ## 충돌 방지 규칙
 

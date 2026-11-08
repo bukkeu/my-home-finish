@@ -26,7 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   RewardService 내역 조회 (API 22) - Repository 를 Mock 으로 두고 서버·DB 없이 돈다
 *  */
 class RewardServiceHistoryTest {
