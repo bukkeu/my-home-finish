@@ -1,0 +1,79 @@
+package com.wanted.moneybeetle.domain.member.model.policy;
+
+import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+
+/* comment.
+*   담당 : DBA ② (회원·인증)
+*   가입 규칙 (정책 정의서 SP-01~05) - 값만 보고 판단되는 순수한 검사들이다. 서버·DB 없이 테스트한다.
+*   DB 조회가 필요한 규칙(이메일·닉네임 중복, 금칙어)은 MemberService 가 이 규칙들과 함께 순서대로 부른다.
+*   위반하면 BusinessException 을 던지는 일은 Service 가 한다 (#2 의 BusinessException 이 올라온 뒤, #5 2차).
+*  */
+public final class SignupRules {
+
+    /** SP-02: 2~12자, 한글·영문·숫자만 */
+    public static final String NICKNAME_PATTERN = "^[가-힣a-zA-Z0-9]{2,12}$";
+
+    /** SP-03: 8~20자, 영문과 숫자를 모두 포함 */
+    public static final String PASSWORD_PATTERN = "^(?=.*[A-Za-z])(?=.*\\d)\\S{8,20}$";
+
+    /** SP-04: 가입 연령 */
+    public static final int MIN_AGE = 14;
+
+    private static final Validator EMAIL_VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
+
+    private SignupRules() {
+    }
+
+    /** SP-01: 대소문자를 구분하지 않으므로 앞뒤 공백을 지우고 소문자로 바꿔 저장·조회한다 */
+    public static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 이메일 형식·길이가 가입 요청(SignupDTO.email 의 @NotBlank·@Email·@Size)과 같은 규칙에 맞는가.
+     * DTO 에 선언한 제약을 그대로 불러 쓰므로 두 곳이 어긋나지 않는다. 중복 확인 전에 normalizeEmail 결과를 넣는다.
+     */
+    public static boolean isValidEmail(String email) {
+        return email != null && EMAIL_VALIDATOR.validateValue(SignupDTO.class, "email", email).isEmpty();
+    }
+
+    public static boolean isValidNickname(String nickname) {
+        return nickname != null && nickname.matches(NICKNAME_PATTERN);
+    }
+
+    public static boolean isValidPassword(String password) {
+        return password != null && password.matches(PASSWORD_PATTERN);
+    }
+
+    /** 생년월일은 오늘보다 이전이어야 한다. today 는 서울(KST) 기준 오늘이어야 하므로(DP-42) 공통 시계에서 받아 넘긴다 */
+    public static boolean isPastDate(LocalDate birthDate, LocalDate today) {
+        return birthDate != null && birthDate.isBefore(today);
+    }
+
+    /** SP-04: 만 14세 이상인가 (생일이 지났는지까지 본다) */
+    public static boolean isAtLeastMinAge(LocalDate birthDate, LocalDate today) {
+        return birthDate != null && !birthDate.plusYears(MIN_AGE).isAfter(today);
+    }
+
+    /**
+     * SP-05: 필수 약관에 모두 동의했는가. 선택 약관은 동의하지 않아도 된다.
+     *
+     * @param requiredTermsIds 필수 약관 ID 전체
+     * @param agreedTermsIds   회원이 동의한 약관 ID (null 이면 동의 없음)
+     */
+    public static boolean agreedAllRequired(Collection<Long> requiredTermsIds, Collection<Long> agreedTermsIds) {
+        Collection<Long> agreed = agreedTermsIds == null ? List.<Long>of() : agreedTermsIds;
+        if (agreed.stream().anyMatch(Objects::isNull)) {
+            return false;   // Set.copyOf 는 null 원소가 있으면 NullPointerException 을 던진다
+        }
+        return Set.copyOf(agreed).containsAll(requiredTermsIds);
+    }
+}
