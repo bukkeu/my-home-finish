@@ -61,9 +61,11 @@ public class QuizService {
                 .toList();
 
         int correctCount = (int) results.stream().filter(TestQuizResultDTO.ResultItem::isCorrect).count();
-        // 문항이 없으면 열지 않는다. 모든 문항에 실제로 답(보기 선택)했을 때만 영상이 열린다
+        // 문항이 없으면 열지 않는다. 모든 문항에서 "그 문항의 보기"를 골랐을 때만 영상이 열린다
         boolean allAnswered = !questions.isEmpty()
-                && questions.stream().allMatch(question -> selected.get(question.getQuizQuestionId()) != null);
+                && questions.stream().allMatch(question -> isChoiceOf(
+                choicesByQuestion.getOrDefault(question.getQuizQuestionId(), List.of()),
+                selected.get(question.getQuizQuestionId())));
 
         return TestQuizResultDTO.of(correctCount, results, allAnswered);
     }
@@ -93,6 +95,12 @@ public class QuizService {
             }
         }
         return selected;
+    }
+
+    /* 고른 보기가 이 문항의 보기 목록에 실제로 있는지. 없는 ID나 다른 문항의 보기 ID면 false */
+    private boolean isChoiceOf(List<QuizChoice> choices, Long choiceId) {
+        return choiceId != null
+                && choices.stream().anyMatch(choice -> choice.getQuizChoiceId().equals(choiceId));
     }
 
     private Long findCorrectChoiceId(List<QuizChoice> choices) {
