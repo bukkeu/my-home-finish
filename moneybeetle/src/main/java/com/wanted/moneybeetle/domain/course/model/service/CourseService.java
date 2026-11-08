@@ -185,7 +185,7 @@ public class CourseService {
 
     /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11) */
     public Page<ScrapListDTO> findScraps(Long memberId, Pageable pageable) {
-        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable);
+        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDescScrapIdDesc(memberId, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 scraps.getContent().stream().map(Scrap::getCourseId).toList());
