@@ -1,3 +1,11 @@
 # IntelliJ IDEA
 .idea/
 *.iml
+
+# 환경변수 파일 (비밀 값). 예시 파일 .env.example 만 저장소에 올린다
+.env
+.env.*
+!.env.example
+
+# 사용자 업로드 파일 (FileStorageService, file.upload-dir)
+uploads/
