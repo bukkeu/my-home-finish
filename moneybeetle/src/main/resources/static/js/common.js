@@ -29,7 +29,7 @@
       if (res.status === 401) {
         // 세션 만료·비로그인: 로그인 화면으로 보내고, 로그인 뒤 원래 화면으로 돌아오게 주소를 남긴다
         window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
-        return Promise.reject({ code: 'UNAUTHORIZED', message: '로그인이 필요해요.' });
+        return Promise.reject({ code: 'UNAUTHORIZED', message: '로그인이 필요해요.', fields: null });
       }
       if (res.status === 204) return null;
       return res.json().catch(function () { return null; }).then(function (body) {
