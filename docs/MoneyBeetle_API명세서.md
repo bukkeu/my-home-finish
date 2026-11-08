@@ -2085,19 +2085,26 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-02~03, SP-30, DP-31, DP-33 |
-| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상 파일은 먼저 한 개씩 올려서(아래 "영상 파일 올리기") 받은 `videoUrl`을 이 요청에 담아 저장한다. **이미 저장된 영상을 고칠 때만 `lessonId`를 넣고, 새 영상은 `lessonId`를 생략한다**(서버가 새 영상으로 만들고 응답 `lessonIds`에 돌려준다). 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
+| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상 파일은 먼저 한 개씩 올려서(아래 "영상 파일 올리기") 받은 `videoUrl`을 이 요청에 담아 저장한다. **이미 저장된 영상을 고칠 때만 `lessonId`를 넣고, 새 영상은 `lessonId`를 생략한다**(서버가 새 영상으로 만들고 응답 `lessonIds`에 돌려준다). 응답의 `lessonIds`는 요청 `lessons`와 **같은 순서로 하나씩 대응**하며, 요청한 모든 영상의 ID를 돌려준다(기존 영상은 보낸 `lessonId` 그대로, 새 영상은 새로 만든 ID). 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
 
 **Request**
 
 ```json
-{ "lessons": [ { "lessonId": 20, "sortOrder": 1, "title": "청약통장이 뭐예요?", "videoUrl": "https://...", "durationSeconds": 480, "summary": "..." } ] }
+{ "lessons": [
+  { "lessonId": 20, "sortOrder": 1, "title": "청약통장이 뭐예요?", "videoUrl": "https://...", "durationSeconds": 480, "summary": "..." },
+  { "sortOrder": 2, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "summary": "..." }
+] }
 ```
+
+첫 번째는 이미 저장된 영상(`lessonId` 있음), 두 번째는 새 영상(`lessonId` 없음)이다.
 
 **Response**
 
 ```json
-{ "lessonIds": [20, 21, 22] }
+{ "lessonIds": [20, 21] }
 ```
+
+요청 `lessons`와 같은 순서다: 첫 번째 영상은 기존 ID 20, 두 번째 새 영상은 새로 만든 ID 21.
 
 **Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
 
