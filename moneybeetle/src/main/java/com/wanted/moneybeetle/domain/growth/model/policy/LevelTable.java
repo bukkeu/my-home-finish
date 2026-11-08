@@ -28,6 +28,9 @@ public class LevelTable {
             if (i > 0 && policy.getRequiredExp() <= sortedPolicies.get(i - 1).getRequiredExp()) {
                 throw new IllegalArgumentException("필요 경험치는 레벨이 오를수록 커져야 합니다: Lv." + policy.getLevel());
             }
+            if (policy.getLevelupCash() < 0) {
+                throw new IllegalArgumentException("레벨업 캐시는 0 이상이어야 합니다: Lv." + policy.getLevel());
+            }
         }
         this.policies = List.copyOf(sortedPolicies);
     }
