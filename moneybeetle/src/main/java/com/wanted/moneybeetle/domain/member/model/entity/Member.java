@@ -172,6 +172,36 @@ public class Member {
         return this.cash >= amount;
     }
 
+    /** 로그인 실패 기록. 5회 실패하면 10분간 잠근다. */
+    public void recordLoginFailure(LocalDateTime now) {
+        if (isLoginLocked(now)) {
+            return;
+        }
+
+        // 이전 잠금 시간이 만료됐다면 새로운 실패 횟수를 계산한다.
+        if (lockedUntil != null) {
+            failedLoginCount = 0;
+            lockedUntil = null;
+        }
+
+        failedLoginCount++;
+
+        if (failedLoginCount >= 5) {
+            lockedUntil = now.plusMinutes(10);
+        }
+    }
+
+    /** 현재 로그인 잠금 상태인지 확인한다. */
+    public boolean isLoginLocked(LocalDateTime now) {
+        return lockedUntil != null && now.isBefore(lockedUntil);
+    }
+
+    /** 로그인 성공 시 실패 횟수와 잠금을 초기화하고 마지막 로그인 시간을 기록한다. */
+    public void recordLoginSuccess(LocalDateTime now) {
+        failedLoginCount = 0;
+        lockedUntil = null;
+        lastLoginAt = now;
+    }
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);
