@@ -13,7 +13,7 @@ reviews:
   high_level_summary: true           # PR 설명에 변경 요약 추가
   high_level_summary_instructions: |
     맨 첫 줄에 "변경 도메인: course, growth"처럼 이 PR이 수정한 com.wanted.moneybeetle.domain 하위 패키지를 적는다. global을 고쳤으면 global도 적는다.
-    둘째 줄에 PR 설명의 "Closes #번호"에서 찾은 관련 이슈 번호를 적는다. 없으면 "관련 이슈: 없음"이라고 적는다.
+    둘째 줄에 PR 설명의 "Closes #번호" 또는 "Refs #번호"에서 찾은 관련 이슈 번호를 적는다. 없으면 "관련 이슈: 없음"이라고 적는다.
     이어서 변경 내용을 한국어 글머리표 3~5개로 요약한다.
   collapse_walkthrough: false        # 변경 설명(Walkthrough)을 펼친 상태로 표시
   sequence_diagrams: true            # 요청 흐름을 시퀀스 다이어그램으로 표시
@@ -211,7 +211,7 @@ reviews:
       - name: "이슈·명세서 연결"
         mode: "warning"
         instructions: |
-          PR 설명에 "Closes #번호"가 없으면 실패. 단, dev → main 릴리스 PR과 docs 타입 PR은 예외로 통과.
+          PR 설명에 "Closes #번호" 또는 "Refs #번호"가 모두 없으면 실패. 완료한 이슈는 "Closes #번호", 일부 구현·후속 작업이 남은 이슈는 "Refs #번호"를 사용한다. "Refs"는 이슈를 자동 종료하지 않는다. 단, dev → main 릴리스 PR과 docs 타입 PR은 예외로 통과.
           Controller의 /api/v1 주소나 resources/sql 파일이 바뀌었는데 docs/MoneyBeetle_API명세서.md 또는 docs/MoneyBeetle_DB설계.md가 함께 바뀌지 않았으면 실패.
           해당 사항이 없으면 통과.
 
