@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# MoneyBeetle(MY-HOME) 팀 CodeRabbit 설정
+# MoneyBeetle(my-home-finish) 팀 CodeRabbit 설정
 # 기술 스택: Java 21 · Spring Boot 3.5 · MySQL 8 · JPA · Thymeleaf · Spring Security 6(세션 로그인)
 # 저장소 구조: moneybeetle/(Spring 서버) · moneybeetle-page/(HTML 프로토타입) · docs/(설계 문서)
 # 리뷰 초점: 역할과 책임 분리, 도메인 분리, 캐시·자산 정합성, 유지보수성
@@ -20,7 +20,7 @@ reviews:
   estimate_code_review_effort: true
   review_status: true
   poem: false
-  in_progrxess_fortune: false
+  in_progress_fortune: false         # 리뷰 진행 중 문구(운세 멘트) 끄기
   enable_prompt_for_ai_agents: true  # Claude Code에 붙여 넣을 수정 프롬프트 제공
 
   auto_review:

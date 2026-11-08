@@ -83,7 +83,9 @@ class LayoutFragmentRenderTest {
     }
 
     /**
-     * 눈으로 확인하고 싶을 때만: ./gradlew test LAYOUT_DUMP=build/layout-preview 로 돌리면
+     * 눈으로 확인하고 싶을 때만: 환경변수를 명령 앞에 설정해 돌리면(Git Bash: LAYOUT_DUMP=build/layout-preview ./gradlew test --rerun-tasks,
+     * PowerShell: $env:LAYOUT_DUMP='build/layout-preview'; ./gradlew test --rerun-tasks)
+     * 환경변수는 Gradle 의 입력이 아니라서 --rerun-tasks 가 없으면 test 가 UP-TO-DATE 로 건너뛰어 파일이 만들어지지 않는다.
      * 그려진 HTML 을 파일로 남긴다 (static 폴더와 함께 간단한 웹 서버로 열어 보면 된다). 평소 테스트에는 영향이 없다.
      */
     private void dumpIfRequested(String authority, String query, String html) throws Exception {
@@ -93,7 +95,8 @@ class LayoutFragmentRenderTest {
         }
         java.nio.file.Path out = java.nio.file.Path.of(dir);
         java.nio.file.Files.createDirectories(out);
-        String name = (authority == null ? "anonymous" : authority.toLowerCase()) + (query.contains("level=12") ? "-lv12" : "") + ".html";
+        String name = (authority == null ? "anonymous" : authority.toLowerCase()) + (query.contains("level=12") ? "-lv12" : "")
+                + (query.contains("withLayout=false") ? "-nolayout" : "") + ".html";
         java.nio.file.Files.writeString(out.resolve(name), html);
     }
 

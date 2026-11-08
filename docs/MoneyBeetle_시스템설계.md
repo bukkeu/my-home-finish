@@ -38,24 +38,24 @@ MoneyBeetle은 **Spring Boot MVC + Thymeleaf(서버가 화면을 만들어 응�
 
 ```mermaid
 flowchart LR
-    B["브라우저 (PC·모바일)<br/>Thymeleaf 화면 20개 · JS fetch"] -- HTTPS --> N["Nginx<br/>HTTPS 인증서 · 정적 파일 캐시<br/>요청을 서버로 전달 · 요청 수 제한"]
-    N -- 화면·/api --> A["웹 서버 (Spring Boot MVC)<br/>화면 렌더링 (Thymeleaf)<br/>인증·권한 필터 (세션)<br/>도메인 12개<br/>메모리 캐시 (Caffeine)<br/>예약 작업"]
+    B["브라우저 (PC·모바일)<br/>Thymeleaf 화면 20개 · JS fetch"] -- HTTPS --> N["Nginx<br/>HTTPS 인증서 · 정적 파일 캐시<br/>요청을 서버로 전달 · 요청 수 제한<br/>업로드 요청 크기 제한 510MB"]
+    N -- "화면·/api<br/>(영상·이미지 업로드 포함)" --> A["웹 서버 (Spring Boot MVC)<br/>화면 렌더링 (Thymeleaf)<br/>인증·권한 필터 (세션)<br/>도메인 12개<br/>메모리 캐시 (Caffeine)<br/>예약 작업"]
     A -- JPA --> D[("MySQL<br/>회원·학습·캐시<br/>거래·청약·감사")]
     A -. 서버 증설 시 .-> R[("Redis<br/>세션·캐시 공유")]
-    A -- 주소 서명 --> S["오브젝트 스토리지<br/>강의 영상·썸네일<br/>프로필·단지 이미지"]
-    B -- "직접 업로드 (Presigned URL)" --> S
+    A -- "파일 저장 · 서명 주소 발급(영상 재생·이미지 표시)" --> S["오브젝트 스토리지<br/>강의 영상·썸네일<br/>프로필·단지 이미지"]
+    B -- "영상·이미지 조회 (서버가 준 서명 주소로 직접)" --> S
     B -- OAuth · 영상 재생 --> E["외부 서비스<br/>구글·카카오 로그인<br/>유튜브"]
     style A fill:#E6F1FB,stroke:#378ADD,stroke-width:2px
 ```
 
 강조 색: 판정을 내리는 유일한 곳 · 점선: 서버를 2대 이상으로 늘릴 때 추가
 
-브라우저의 모든 요청(화면 요청과 `/api` 요청)은 Nginx를 거쳐 Spring Boot 서버로 가고, 캐시·가점·당첨을 바꾸는 것은 이 서버뿐입니다. 서버가 화면(HTML)까지 만들어 응답합니다. 영상·이미지처럼 큰 파일만 예외로, 서버가 서명해 준 주소로 브라우저가 스토리지에 직접 올립니다.
+브라우저의 모든 요청(화면 요청과 `/api` 요청)은 Nginx를 거쳐 Spring Boot 서버로 가고, 캐시·가점·당첨을 바꾸는 것은 이 서버뿐입니다. 서버가 화면(HTML)까지 만들어 응답합니다. 영상·이미지 같은 파일도 예외 없이 서버를 거쳐 올립니다. 서버가 형식·용량을 검사한 뒤 스토리지에 저장하고, DB에는 만료되지 않는 **파일 키**만 저장하고, 서명 주소는 저장하지 않습니다. 버킷은 비공개라서 dev·prod 환경에서 영상을 재생하거나 썸네일·프로필·단지 이미지를 보여 줄 때는, 서버가 저장된 키로 그때마다 짧게 만료되는 서명 주소를 새로 만들어 응답에 담아 주고, 브라우저는 그 주소로 버킷에서 직접 받아 보여 줍니다(조회는 업로드와 달리 서버를 거치지 않습니다). local 환경에는 버킷이 없어서 서버가 로컬 파일을 직접 내려 줍니다.
 
 | 구성 요소 | 배치 | 역할 |
 | --- | --- | --- |
 | 클라이언트 | 사용자 브라우저 | 서버가 만든 HTML을 보여 줌. 일부 동작만 `/api`를 `fetch`로 호출하고 브라우저에는 화면 편의 설정만 저장 |
-| 리버스 프록시 | 클라우드 서버 (Nginx 컨테이너) | HTTPS, 정적 파일(`static/`) 캐시, 요청을 Spring Boot 서버로 전달, 요청 수 제한 |
+| 리버스 프록시 | 클라우드 서버 (Nginx 컨테이너) | HTTPS, 정적 파일(`static/`) 캐시, 요청을 Spring Boot 서버로 전달, 요청 수 제한. 파일 업로드 경로(`/api/v1/**` 중 업로드 API)는 `client_max_body_size 510m`로 Spring Boot의 `max-request-size`(510MB)와 같게 둔다(Nginx 기본값 1MB면 영상이 Spring Boot에 닿기 전에 거절됨) |
 | 웹 서버 | 같은 서버 (Spring Boot 컨테이너) | 화면 렌더링(Thymeleaf), 인증·권한, 모든 업무 규칙, 메모리 캐시, 예약 작업(탈퇴 정보 정리, 만료 토큰 삭제) |
 | DB | 관리형 MySQL (또는 같은 서버의 컨테이너) | 모든 업무 데이터와 감사 기록. 매일 자동 백업 |
 | 스토리지 | S3 호환 오브젝트 스토리지 | 영상·썸네일·프로필·단지 이미지. 비공개 버킷에 두고 서명 주소로만 접근 |
@@ -205,7 +205,7 @@ flowchart LR
 
 | 파일 | 올리는 화면 | 업로드 방식 | 제한 |
 | --- | --- | --- | --- |
-| 강의 영상 | InstructorCourseCreate | 브라우저 → 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지. 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정) |
+| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 각 영상의 `sortOrder`(순서)·`title`·`videoUrl`·`durationSeconds`(재생 시간)·`summary`(요약글)를 담은 `lessons` 배열을 한 번에 보낸다. 이미 저장된 영상을 고칠 때만 `lessonId`를 함께 넣고, **새 영상은 `lessonId`를 생략**한다(서버가 새로 만들어 응답의 `lessonIds`로 돌려준다). 요청 예시는 API명세서 78번. 파일 업로드로 확정(#31). **구현 필요(운영 스토리지)**: 지금 `FileStorageService`는 로컬 폴더(`file.upload-dir`)에 저장하고 `/uploads/…` 주소를 돌려주는 구현뿐이다. 운영 환경에서는 영상이 오브젝트 스토리지에 저장되도록 스토리지 저장 구현(`FILE_STORAGE_TYPE=s3`, 환경변수 문서)을 추가해야 하고, 로컬 구현을 그대로 운영에 연결하지 않는다 | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
 | 강의 썸네일 | InstructorCourseCreate | 브라우저 → 서버(형식·용량 검사) → 스토리지 | 이미지, 용량 미정 |
 | 프로필 이미지 | UserMyPage | 위와 같음 | 2MB, jpg·png (DP-32) |
 | 청약 단지 이미지 | AdminHousingManagement | 위와 같음 | 이미지, 용량 미정 |
@@ -214,7 +214,7 @@ flowchart LR
 
 영상은 크기가 커서 저장·전송 비용이 큽니다. 파일 업로드로 받되 영상 1개 500MB 이하로 제한하고(확정), 서버의 multipart 한도(`max-file-size` 500MB)와 `FileStorageService`의 용도별 검사(이미지 2MB, 영상 500MB)를 함께 둡니다. 트래픽이 늘면 서버를 거치지 않는 직접 업로드(Presigned URL)로 바꾸는 것을 검토합니다(수업 범위 밖). 검수 중인 강의의 영상은 공개 주소가 아니라 짧게 만료되는 서명 주소로만 보여 줍니다.
 
-로컬·개발 환경에서는 같은 인터페이스로 로컬 폴더에 저장하고, 운영 환경에서만 스토리지를 씁니다.
+저장·조회 방식은 환경마다 다릅니다. 같은 인터페이스로 local 환경은 로컬 폴더에 저장하고 서버가 그 파일을 직접 제공하며, dev·prod 환경은 각 환경의 버킷(개발용·운영 버킷)에 저장하고 서명 주소로 버킷에서 직접 조회합니다. 다만 **지금 코드에는 로컬 폴더 저장만 있어서**, 배포(#67) 전에 `FileStorageService`가 환경변수(`FILE_STORAGE_TYPE`)에 따라 오브젝트 스토리지에도 저장하도록 구현해야 합니다(담당: `global/file` 서수영).
 
 **캐시**: 많이 읽고 거의 안 바뀌는 것만 캐시합니다. 캐시·자산처럼 정확해야 하는 값은 캐시하지 않고 항상 DB에서 읽습니다.
 
@@ -243,7 +243,7 @@ flowchart LR
     style RB fill:#FCEBEB,stroke:#E24B4A,stroke-width:2px
 ```
 
-저장소(github.com/bukkeu/MY-HOME)는 `moneybeetle/`(Spring Boot 프로젝트: 서버 코드, `templates/`, `static/`), `docs/`(설계 문서), `moneybeetle-page/`(페이지 구현본, 참고용)로 나뉩니다. 구현본의 `.dc.html` 화면은 ROUTES.md의 향후 URL대로 `templates/` 아래 Thymeleaf 템플릿으로 옮기고, 공통 스크립트(`mb-*.js`)와 CSS는 `static/`으로 옮깁니다.
+저장소(github.com/bukkeu/my-home-finish)는 `moneybeetle/`(Spring Boot 프로젝트: 서버 코드, `templates/`, `static/`), `docs/`(설계 문서), `moneybeetle-page/`(페이지 구현본, 참고용)로 나뉩니다. 구현본의 `.dc.html` 화면은 ROUTES.md의 향후 URL대로 `templates/` 아래 Thymeleaf 템플릿으로 옮기고, 공통 스크립트(`mb-*.js`)와 CSS는 `static/`으로 옮깁니다.
 
 **환경 구분**
 

@@ -109,7 +109,7 @@
 | #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC), Docker·Nginx 헬스 체크 |
 | #85 | 브랜치 정리·보호 규칙 설정 | — | 2 | `sy`·`test` 등 남은 브랜치 정리, `main`·`dev` 보호(PR 필수·승인 1명), `main`은 `dev`에서만 병합 |
 
-**다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.findMyApplications(memberId)`(김예린 마이페이지 성장 탭), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
+**다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
 **서수영이 쓰는 것**: 김예린 `GrowthService.getLevel`, `RewardService.spend`, `NotificationService.send`
 
 ---
@@ -136,8 +136,8 @@
 | #44 | 턴 달력·다음 턴 진행 API | 118~120 | 6 | 턴 달력, 다음 턴 점검(30종목 가격·뉴스 빈칸), 진행 기록. 되돌릴 수 없음 |
 | #45 | 참가자 관리·랭킹 미리보기 API | 135~137 | 3 | 참가자 목록·상세(순자산·수익률·보유·거래), 랭킹 미리보기 |
 | #46 | 시즌 정산·랭킹 공개·보상·통계 API | 138~141 | 7 | 정산 실행(이월금·최종 자산), 랭킹 공개·보상, 시즌 통계. 관리자 첫 화면용 요약 메서드 제공 |
-| #65 | 중복 요청 방지(Idempotency-Key) | — | 3 | `IdempotencyFilter`(`global/security`에 두되 서수영 검토). 키 24시간 보관, **같은 키에 다른 내용이면 409 거절**(`IDEMPOTENCY_KEY_CONFLICT`). 퀴즈 제출·매수·매도·청약통장 납입에 적용 |
-| #54 | 마이페이지 화면 (화면) | — | 7 | 마이페이지 **틀**(`member/mypage.html`). 탭 내용(`settings`·`learning`·`growth`)은 각 담당이 fragment로 제공 |
+| #65 | 중복 요청 방지(Idempotency-Key) | — | 3 | `IdempotencyFilter`(`global/security`에 두되 서수영 검토). 키 24시간 보관, **같은 키에 다른 내용이면 409 거절**(`IDEMPOTENCY_KEY_CONFLICT`). 퀴즈 제출·매수·매도·청약통장 납입·강의 영상 저장(API 78)에 적용 |
+| #54 | 마이페이지 화면 (화면) | — | 7 | **담당 범위는 틀뿐**: 마이페이지 **틀**(`member/mypage.html`)과 틀의 Controller·API 연동(탭 전환, 탭별 fragment 연결). 탭 내용은 각 담당이 fragment로 만든다: `settings`(설정·프로필 이미지·비밀번호·탈퇴)는 **김예린(#69)**, `learning`(스크랩·오답노트 포함)은 신아림(#71), `growth`는 김예린(#69), `housing`은 서수영(#70). 스크랩·오답노트·설정은 #54에서 구현하지 않고 각 fragment를 틀에 연결만 한다 |
 | #56 | 통합 검색 화면 (화면) | — | 4 | 통합 검색 화면(`home/search.html`), 상단 검색창 자동완성(`mb-search.js`) |
 | #57 | 모의투자 화면 (화면) | — | 9 | 모의투자 화면(참고: `new1/App.jsx`). Lv.8 미만 블러, 주문은 실제 데이터로 동작 |
 | #62 | 관리자 모의투자 운영 화면 (화면) | — | 9 | 관리자 모의투자 운영(시즌·종목·가격·뉴스·턴·정산·통계). 누락 데이터가 있으면 다음 턴 버튼 비활성화 |
@@ -179,7 +179,7 @@
 | #55 | 문의 게시판 화면 (화면) | — | 4 | 문의 게시판 화면 |
 | #59 | 강사 로그인·가입·대시보드 화면 (화면) | — | 13 | 강사 로그인·가입·대시보드(내 강의, Q&A 탭) |
 | #60 | 강사 강의 생성 화면 (화면) | — | 5 | 강의 생성 화면(분류·정보·영상·요약글·퀴즈·검수 요청) |
-| #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·내 문의 탭, 강의로 이동. `fragments/mypage/learning` |
+| #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·스크랩(#18)·오답노트(#21)·내 문의(Q&A 모음) 탭, 강의로 이동. `fragments/mypage/learning`. 스크랩·오답노트는 신아림의 API라서 이 이슈에서 함께 맡는다(점수는 그대로) |
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
 | #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `schema.sql`을 같은 PR에서 수정 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (김예린과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
@@ -218,13 +218,13 @@
 | #50 | 로그인·회원가입·계정 찾기 화면 (화면) | — | 4 | 로그인·회원가입·계정 찾기 화면 |
 | #51 | 홈 화면·햄버거 메뉴·알림 (화면) | — | 7 | 홈 화면(vr1/vr2)·햄버거 메뉴·알림. 서비스 소개 메인(`index.html`)도 여기서 맡음(별도 이슈 없음) |
 | #61 | 관리자 로그인·대시보드·운영 메뉴 화면 (화면) | — | 10 | 관리자 로그인·대시보드 **틀**·운영 메뉴. 탭(`?view=`) 내용은 각 담당이 fragment로 제공 |
-| #69 | 마이페이지 캐시 내역·레벨 탭 (화면) | — | 4 | "캐시 내역" 탭·프로필 요약(레벨·칭호·경험치·연속 출석·수상 내역). 수상 내역은 이재성이 데이터 제공. `fragments/mypage/growth` |
+| #69 | 마이페이지 설정·캐시 내역·레벨 탭 (화면) | — | 4 | "캐시 내역" 탭·프로필 요약(레벨·칭호·경험치·연속 출석·수상 내역)과 **"설정" 탭**(설정 수정·프로필 이미지·비밀번호 변경·회원 탈퇴, #7·#8 API). 수상 내역은 이재성이 데이터 제공. `fragments/mypage/growth`, `fragments/mypage/settings` (설정 탭은 #54에서 옮겨 온 것이라 점수는 그대로 두고 진행하며 조정) |
 | #75 | 샘플 데이터 — 경제 용어·알림 | — | 3 | 시연용 경제 용어 사전·날짜별 5개·개발용 알림 샘플 |
 | #87 | 인덱스·쿼리 점검 (신아림과 공동) | — | 2 | 성장·알림·경제 용어·청약·모의투자 구역의 조회 실행 계획·인덱스 점검 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (신아림과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
 
 **다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
-**김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.*`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
+**김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.openAccount`·`getDashboardSummary`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
 
 ---
 
@@ -253,10 +253,10 @@
 
 | 화면 | 틀 | 탭 / 영역 | 탭 담당 |
 | --- | --- | --- | --- |
-| 마이페이지 | 이재성 | `mypage/settings` (설정·비밀번호·탈퇴·내 문의) | **김예린** |
+| 마이페이지 | 이재성(틀, #54) | `mypage/settings` (설정·프로필 이미지·비밀번호·탈퇴) (#69) | **김예린** |
 | | | `mypage/learning` (시청 기록·학습 완료·스크랩·오답노트·Q&A 모음) (#71) | **신아림** |
 | | | `mypage/growth` (캐시·경험치·레벨표·수상 내역) (#69) | **김예린** (수상 내역은 이재성이 데이터 제공) |
-| | | `mypage/housing` (나의 청약통장·납입·내역·청약 신청 내역) (#70) | **서수영** |
+| | | `mypage/housing` (나의 청약통장·납입·내역) (#70). 청약 신청 내역은 청약 화면(#58)에서 보여 준다 | **서수영** |
 | 관리자 대시보드 | 김예린 | `?view=members` 회원·강사 / `?view=board` 문의 | **신아림** |
 | | | `?view=courses` 카테고리·강의 검수 | **신아림** |
 | | | `?view=terms` 경제 용어 / `?view=growth` 보상·캐시 / `?view=settings` 설정·작업 기록 | **김예린** |
@@ -279,12 +279,11 @@
 | 김예린 | `AdminLogService.write(adminId, action, targetId, before, after, reason)` | 전원 | 관리자 중요 작업 |
 | 김예린 | `InstructorService.apply(memberId, ...)` / `approve(applicationId)` | 신아림 | 강사 가입 신청(#30), 관리자 강사 승인(#37). `instructor_profile`은 김예린 `member` 도메인 소유 |
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
-| 서수영 | `HousingService.findMyApplications(memberId)` | 김예린 | 마이페이지 성장 탭 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
 | 서수영 | `FileStorageService.save(file, dir)` | 신아림, 김예린 | 썸네일·영상 파일, 프로필 이미지 |
 | 이재성 | `RankingService.findAwards(memberId)` | 김예린 | Drawer 수상 내역, 마이페이지 |
 | 이재성 | `TradingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
-| 이재성 | `IdempotencyFilter` (`Idempotency-Key` 헤더) | 전원 | 퀴즈 제출·매수·매도·청약통장 납입 |
+| 이재성 | `IdempotencyFilter` (`Idempotency-Key` 헤더) | 전원 | 퀴즈 제출·매수·매도·청약통장 납입·강의 영상 저장(API 78) |
 | 신아림 | `CourseService.hasLearningHistory(memberId)` | 김예린 | 로그인 후 홈 vr1/vr2 분기 |
 | 신아림 | `CourseService.findContinueWatching / findLearningSummary(memberId)` | 김예린 | 홈, Drawer |
 | 신아림 | `CourseService.search(q)` / `InquiryService.search(q)` | 이재성 | 통합 검색 |
