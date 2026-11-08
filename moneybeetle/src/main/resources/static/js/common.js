@@ -1,7 +1,7 @@
 /* comment.
 *   담당 : DBA ② (공통 레이아웃, 이슈 #49)
 *   공통 fetch 래퍼(ApiResponse 처리, 401 이면 로그인 이동), 토스트
-*   - MB.api(url, options)  : 성공하면 응답의 data 를 돌려주고, 실패하면 { code, message } 를 던진다
+*   - MB.api(url, options)  : 성공하면 응답의 data 를 돌려주고, 실패하면 { code, message } 를 던진다. POST·PUT·PATCH·DELETE 에는 CSRF 헤더를 붙인다
 *   - MB.toast(message, kind) : 오른쪽 아래에 잠깐 보이는 알림 (kind: 'error' 이면 붉은 테두리)
 *   응답 형식: { success, data, error: { code, message } } (API 명세서 1-2)
 *  */
@@ -13,6 +13,14 @@
   MB.api = function (url, options) {
     var opts = Object.assign({ credentials: 'same-origin', headers: {} }, options || {});
     opts.headers = Object.assign({ 'Accept': 'application/json' }, opts.headers);
+    // CSRF 보호가 켜져 있어서 데이터를 바꾸는 요청(POST·PUT·PATCH·DELETE)에는 토큰 헤더를 함께 보낸다.
+    // 토큰은 headFragment 가 <meta name="_csrf">·<meta name="_csrf_header"> 로 내려 준다.
+    var method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      var token = document.querySelector('meta[name="_csrf"]');
+      var header = document.querySelector('meta[name="_csrf_header"]');
+      if (token && header) opts.headers[header.content] = token.content;
+    }
     if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(opts.body);

@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -105,6 +106,21 @@ class LayoutFragmentRenderTest {
         assertThat(html).contains("data-mb-lock=\"8\"", "data-mb-lock=\"12\"", "Lv.8부터", "Lv.12부터");
         assertThat(html).contains("/css/common.css", "/js/drawer.js", "MB_SERVER_CONFIG");
         assertThat(html).doesNotContain("강사 센터", "관리자 · 전체 권한");
+    }
+
+    @Test
+    @DisplayName("CSRF 토큰이 meta 태그로 내려와서 MB.api 가 PATCH·POST 요청에 붙일 수 있다")
+    void csrfMetaTags() throws Exception {
+        // 같은 요청에서 Spring Security 가 만든 토큰·헤더 이름과 화면의 meta 값이 같은지 본다
+        var result = mockMvc.perform(get("/preview?level=5")
+                .with(user("tester").authorities(new SimpleGrantedAuthority("MEMBER")))).andReturn();
+        String html = result.getResponse().getContentAsString();
+        CsrfToken csrf = (CsrfToken) result.getRequest().getAttribute("_csrf");
+
+        assertThat(csrf).isNotNull();
+        assertThat(csrf.getToken()).isNotBlank();
+        assertThat(html).contains("<meta name=\"_csrf\" content=\"" + csrf.getToken() + "\">");
+        assertThat(html).contains("<meta name=\"_csrf_header\" content=\"" + csrf.getHeaderName() + "\">");
     }
 
     @Test
