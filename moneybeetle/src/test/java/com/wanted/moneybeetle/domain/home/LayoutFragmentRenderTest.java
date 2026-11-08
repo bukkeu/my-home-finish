@@ -112,6 +112,17 @@ class LayoutFragmentRenderTest {
     }
 
     @Test
+    @DisplayName("로그아웃 폼은 API 명세서 7의 POST /api/v1/auth/logout 으로 보낸다 (역할 3종 모두)")
+    void logoutFormAction() throws Exception {
+        for (String authority : new String[] {"MEMBER", "INSTRUCTOR", "ADMIN"}) {
+            String html = render(authority, "");
+
+            assertThat(html).as(authority).contains("action=\"/api/v1/auth/logout\"");
+            assertThat(html).as(authority).doesNotContain("action=\"/logout\"");
+        }
+    }
+
+    @Test
     @DisplayName("CSRF 토큰이 meta 태그로 내려와서 MB.api 가 PATCH·POST 요청에 붙일 수 있다")
     void csrfMetaTags() throws Exception {
         // 같은 요청에서 Spring Security 가 만든 토큰·헤더 이름과 화면의 meta 값이 같은지 본다

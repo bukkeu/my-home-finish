@@ -101,7 +101,7 @@
             </nav>
 
             <!--/* 로그아웃은 POST 이므로 form 이다. th:action 이 CSRF 토큰을 자동으로 넣는다 */-->
-            <form th:action="@{/logout}" method="post" class="mb-nav">
+            <form th:action="@{/api/v1/auth/logout}" method="post" class="mb-nav">
                 <button type="submit" class="mb-nav__group">로그아웃</button>
             </form>
         </aside>
@@ -132,7 +132,7 @@
                 <a th:href="@{/instructor/dashboard(tab='mypage')}" th:classappend="${active == 'mypage'} ? 'is-active'">마이페이지</a>
                 <a th:href="@{/user/home}">← 수강생 화면으로</a>
             </nav>
-            <form th:action="@{/logout}" method="post" class="mb-nav">
+            <form th:action="@{/api/v1/auth/logout}" method="post" class="mb-nav">
                 <button type="submit" class="mb-nav__group">로그아웃</button>
             </form>
         </aside>
@@ -161,7 +161,7 @@
                 <a th:href="@{/admin/dashboard(view='board')}" th:classappend="${active == 'board'} ? 'is-active'">문의 게시판</a>
                 <a th:href="@{/admin/dashboard(view='settings')}" th:classappend="${active == 'settings'} ? 'is-active'">설정·작업 기록</a>
             </nav>
-            <form th:action="@{/logout}" method="post" class="mb-nav">
+            <form th:action="@{/api/v1/auth/logout}" method="post" class="mb-nav">
                 <button type="submit" class="mb-nav__group">로그아웃</button>
             </form>
         </aside>
