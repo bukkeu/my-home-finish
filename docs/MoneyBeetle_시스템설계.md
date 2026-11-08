@@ -204,7 +204,7 @@ flowchart LR
 
 | 파일 | 올리는 화면 | 업로드 방식 | 제한 |
 | --- | --- | --- | --- |
-| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 각 영상의 `lessonId`·`sortOrder`(순서)·`title`·`videoUrl`·`durationSeconds`(재생 시간)·`summary`(요약글)를 담은 `lessons` 배열을 한 번에 보낸다(요청 예시는 API명세서 78번). 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
+| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 각 영상의 `sortOrder`(순서)·`title`·`videoUrl`·`durationSeconds`(재생 시간)·`summary`(요약글)를 담은 `lessons` 배열을 한 번에 보낸다. 이미 저장된 영상을 고칠 때만 `lessonId`를 함께 넣고, **새 영상은 `lessonId`를 생략**한다(서버가 새로 만들어 응답의 `lessonIds`로 돌려준다). 요청 예시는 API명세서 78번. 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
 | 강의 썸네일 | InstructorCourseCreate | 브라우저 → 서버(형식·용량 검사) → 스토리지 | 이미지, 용량 미정 |
 | 프로필 이미지 | UserMyPage | 위와 같음 | 2MB, jpg·png (DP-32) |
 | 청약 단지 이미지 | AdminHousingManagement | 위와 같음 | 이미지, 용량 미정 |
