@@ -378,8 +378,8 @@ CREATE TABLE IF NOT EXISTS `lesson_watch` (
 CREATE TABLE IF NOT EXISTS `level_policy` (
                                               `level_policy_id` bigint NOT NULL AUTO_INCREMENT COMMENT '레벨 정책 ID',
                                               `level` tinyint NOT NULL COMMENT '레벨 1~20',
-                                              `required_exp` int NOT NULL COMMENT '이 레벨이 되기 위한 누적 경험치 (150 XP 간격, 초안)',
-                                              `title` varchar(20) NOT NULL COMMENT '칭호: 텐트 / 원룸 / 투룸 / 아파트 / 내 집',
+                                              `required_exp` int NOT NULL COMMENT '이 레벨이 되기 위한 누적 경험치 (구간별 150·200·300·400·600 XP씩, Lv.8 = 1,250, 확정 #11)',
+                                              `title` varchar(20) NOT NULL COMMENT '칭호: 고시원 / 원룸 / 투룸 / 아파트 / 내 집',
     `levelup_cash` int NOT NULL DEFAULT '0' COMMENT '레벨업 캐시 (새 레벨 × 10,000, 확정 #76)',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',

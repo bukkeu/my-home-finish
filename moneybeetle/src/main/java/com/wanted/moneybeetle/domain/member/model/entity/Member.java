@@ -20,7 +20,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 *   테이블 member - 회원(학습자·강사·관리자 role 구분)
 *   - 이메일은 소문자로 저장한다 (SP-01 대소문자 구분 없음)
 *   - 레벨·경험치·캐시 값 변경은 growth.RewardService 가 MemberService 메서드를 통해서만 한다 (직접 수정 금지).
-*     변경 메서드는 addReward(캐시·경험치 받기)와 spendCash(캐시 쓰기)다 (#10 2차). 레벨 재계산은 #11 에서 붙인다.
+*     변경 메서드는 addReward(캐시·경험치 받기), levelUp(레벨 올리고 레벨업 캐시 받기, #11), spendCash(캐시 쓰기)다.
+*     새 레벨을 얼마로 할지(레벨 정책표 계산)는 growth 가 정하고, 여기서는 규칙만 확인한다.
 *   - 가입에 필요한 부분(#5): 생성(signup)과 상태·권한 상수.
 *  */
 @Entity
@@ -38,6 +39,9 @@ public class Member {
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_SUSPENDED = "SUSPENDED";
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
+
+    /** 최대 레벨 (SP-20) */
+    public static final int MAX_LEVEL = 20;
 
     public static final String GENDER_MALE = "MALE";
     public static final String GENDER_FEMALE = "FEMALE";
@@ -138,12 +142,24 @@ public class Member {
 
     /**
      * 활동 보상으로 캐시·경험치를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
-     * 레벨은 여기서 바꾸지 않는다 - 레벨 재계산과 레벨업 캐시는 #11 에서 붙인다.
+     * 레벨은 여기서 바꾸지 않는다 - 경험치로 레벨이 오르면 growth 가 {@link #levelUp} 을 이어서 부른다.
      */
     public void addReward(long cashAmount, int expAmount) {
         require(cashAmount >= 0 && expAmount >= 0, "보상 값은 0 이상이어야 합니다.");
         this.cash += cashAmount;
         this.exp += expAmount;
+    }
+
+    /**
+     * 레벨을 올리고 레벨업 캐시를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
+     * 레벨은 내려가지 않고(SP-20) 최대 Lv.20 이다. 새 레벨이 지금보다 높아야 한다.
+     */
+    public void levelUp(int newLevel, long levelUpCash) {
+        require(newLevel > this.level, "새 레벨은 현재 레벨보다 높아야 합니다.");
+        require(newLevel <= MAX_LEVEL, "레벨은 " + MAX_LEVEL + " 이하여야 합니다.");
+        require(levelUpCash >= 0, "레벨업 캐시는 0 이상이어야 합니다.");
+        this.level = newLevel;
+        this.cash += levelUpCash;
     }
 
     /** 캐시를 쓴다. 잔액은 0 미만이 될 수 없다 (SP-15) */

@@ -52,11 +52,19 @@ public class MemberService {
         return MemberBalanceDTO.from(getMemberForUpdate(memberId));
     }
 
-    /** 활동 보상으로 받은 캐시·경험치를 회원에게 더하고 바뀐 값을 돌려준다 (growth.RewardService 용, 레벨은 #11) */
+    /** 활동 보상으로 받은 캐시·경험치를 회원에게 더하고 바뀐 값을 돌려준다 (growth.RewardService 용, 레벨은 levelUp 이 올린다) */
     @Transactional
     public MemberBalanceDTO addReward(Long memberId, long cashAmount, int expAmount) {
         Member member = getMemberForUpdate(memberId);
         member.addReward(cashAmount, expAmount);
+        return MemberBalanceDTO.from(member);
+    }
+
+    /** 레벨을 올리고 레벨업 캐시를 더한 뒤 바뀐 값을 돌려준다 (growth.RewardService 용). 레벨은 내려가지 않는다 */
+    @Transactional
+    public MemberBalanceDTO levelUp(Long memberId, int newLevel, long levelUpCash) {
+        Member member = getMemberForUpdate(memberId);
+        member.levelUp(newLevel, levelUpCash);
         return MemberBalanceDTO.from(member);
     }
 

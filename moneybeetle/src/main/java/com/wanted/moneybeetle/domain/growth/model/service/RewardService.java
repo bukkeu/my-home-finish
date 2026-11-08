@@ -10,6 +10,8 @@ import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
+import com.wanted.moneybeetle.domain.growth.model.policy.LevelTable;
+import com.wanted.moneybeetle.domain.growth.model.policy.UnlockRules;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -35,7 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 *     · 회원의 캐시·경험치는 이 서비스가 직접 고치지 않고 member.MemberService 메서드로만 바꾼다.
 *     · 바꾸기 전에 회원 행을 잠가(비관적 락) 같은 사람의 동시 요청이 끼어들지 못하게 하고, 같은 트랜잭션 안에서
 *       이중 지급·잔액을 확인한다. 이력(cash_history·exp_history)의 UNIQUE 키가 마지막 방어선이다.
-*     · 레벨 재계산과 레벨업 캐시(SP-23)는 #11 에서 붙인다. 그때까지 지급 결과의 levelFrom·levelTo 는 현재 레벨이다.
+*     · 경험치를 받으면 레벨 정책표(level_policy)로 레벨을 다시 계산해 올리고, 오른 레벨마다 레벨업 캐시를 준다 (#11, SP-23).
+*       결과의 levelFrom·levelTo·levelUpCash·unlocks 로 화면이 레벨업·해금 모달을 띄운다.
+*       TODO(#14 병합 후): 새로 열린 기능(unlocks)이 있으면 NotificationService.send 로 해금 알림을 보낸다.
 *  */
 @Service
 @RequiredArgsConstructor
@@ -63,6 +67,7 @@ public class RewardService {
     private final CashHistoryRepository cashHistoryRepository;
     private final ExpHistoryRepository expHistoryRepository;
     private final MemberService memberService;
+    private final GrowthService growthService;
 
     /**
      * 활동 보상(캐시·경험치)을 지급한다.
@@ -107,7 +112,8 @@ public class RewardService {
             return RewardResultDTO.alreadyGranted(before.getCash(), before.getExp(), before.getLevel());
         }
         if (!rule.hasReward()) {
-            return RewardResultDTO.granted(0, 0, before.getCash(), before.getExp(), before.getLevel(), before.getLevel());
+            return RewardResultDTO.granted(0, 0, 0, before.getCash(), before.getExp(),
+                    before.getLevel(), before.getLevel(), List.of());
         }
 
         MemberBalanceDTO after = memberService.addReward(memberId, cash, exp);
@@ -115,12 +121,41 @@ public class RewardService {
             cashHistoryRepository.save(CashHistory.earn(
                     memberId, cashSource, sourceId, rule.getRewardRuleId(), cash, after.getCash()));
         }
+
+        int levelFrom = before.getLevel();
+        int levelTo = levelFrom;
+        long levelUpCash = 0;
+        long cashBalance = after.getCash();
+        List<String> unlocks = List.of();
         if (exp > 0) {
-            // TODO(#11): 레벨 재계산을 붙이면 levelAfter 는 새 레벨이 된다 (지금은 현재 레벨)
+            // 경험치로 레벨이 올랐으면 새 레벨까지 올리고, 오른 레벨마다 레벨업 캐시를 준다 (SP-23).
+            // 이 작업은 위 회원 행 잠금 안에서 이어지므로 같은 트랜잭션이고, 이미 받은 활동은 위에서 걸러진다.
+            LevelTable table = growthService.loadLevelTable();
+            int reached = table.levelFor(after.getExp());
+            if (reached > levelFrom) {
+                levelUpCash = table.levelUpCashBetween(levelFrom, reached);
+                cashBalance = memberService.levelUp(memberId, reached, levelUpCash).getCash();
+                saveLevelUpCashHistories(memberId, table, levelFrom, reached, after.getCash());
+                levelTo = reached;
+                unlocks = UnlockRules.unlockedBetween(levelFrom, reached);
+            }
             expHistoryRepository.save(ExpHistory.create(
-                    memberId, expSource, sourceId, rule.getRewardRuleId(), exp, after.getExp(), after.getLevel()));
+                    memberId, expSource, sourceId, rule.getRewardRuleId(), exp, after.getExp(), levelTo));
         }
-        return RewardResultDTO.granted(exp, cash, after.getCash(), after.getExp(), before.getLevel(), after.getLevel());
+        return RewardResultDTO.granted(exp, cash, levelUpCash, cashBalance, after.getExp(), levelFrom, levelTo, unlocks);
+    }
+
+    /** 오른 레벨마다 레벨업 캐시 내역을 한 줄씩 남긴다 (원인 종류 LEVEL_UP, 원인 ID = 레벨. 같은 레벨은 한 번만 기록된다) */
+    private void saveLevelUpCashHistories(Long memberId, LevelTable table, int fromLevel, int toLevel, long balanceBefore) {
+        long balance = balanceBefore;
+        for (int level = fromLevel + 1; level <= toLevel; level++) {
+            long levelCash = table.policyOf(level).getLevelupCash();
+            if (levelCash > 0) {
+                balance += levelCash;
+                cashHistoryRepository.save(CashHistory.earn(
+                        memberId, CashHistory.SOURCE_LEVEL_UP, (long) level, null, levelCash, balance));
+            }
+        }
     }
 
     /**
