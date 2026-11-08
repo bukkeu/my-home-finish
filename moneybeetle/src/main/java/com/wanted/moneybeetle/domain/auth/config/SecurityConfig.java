@@ -8,6 +8,55 @@ package com.wanted.moneybeetle.domain.auth.config;
 *   - 경로는 도메인 단위로 미리 등록해 두고, 새 API 를 만들 때마다 고치지 않는다 (충돌 방지)
 *   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글·카카오)
 *  */
+
+import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration                                 // ① 설정 클래스
+@EnableWebSecurity                             // ② Security 설정을 켜는 어노테이션
 public class SecurityConfig {
 
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();    // ③ BCrypt 암호화 클래스
+    }
+
+    @Bean
+    public SecurityFilterChain configure(HttpSecurity http,
+                                         SecurityErrorHandler securityErrorHandler) throws Exception {
+
+        http.authorizeHttpRequests(auth -> {
+                    auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
+                            "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
+                    auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAnyAuthority("ADMIN");          // ⑤
+                    auth.requestMatchers("/instructor/**", "/api/v1/instructor/**").hasAnyAuthority("INSTRUCTOR"); // ⑥
+                    auth.anyRequest().authenticated();                                         // ⑦ 로그인만 하면
+                })
+                .formLogin(login -> {
+                    login.loginPage("/login");                      // 로그인 화면 GET
+                    login.loginProcessingUrl("/api/v1/auth/login");   // 로그인 처리 POST
+                    login.usernameParameter("email");
+                    login.passwordParameter("password");
+                })
+                .logout(logout -> {
+                    logout.logoutUrl("/api/v1/auth/logout");           // ⑧
+                    logout.deleteCookies("JSESSIONID");
+                    logout.invalidateHttpSession(true); // ⑨
+                    logout.logoutSuccessUrl("/");
+                })
+                // ⑫ 인증·권한 실패 응답 (API 는 401·403 JSON, 화면은 로그인 화면·403 화면)
+                .exceptionHandling(ex -> {
+                    ex.authenticationEntryPoint(securityErrorHandler);   // 로그인 안 함
+                    ex.accessDeniedHandler(securityErrorHandler);        // 권한 없음
+                });
+
+        return http.build();
+    }
 }
