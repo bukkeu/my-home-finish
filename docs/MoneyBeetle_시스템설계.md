@@ -205,7 +205,7 @@ flowchart LR
 
 | 파일 | 올리는 화면 | 업로드 방식 | 제한 |
 | --- | --- | --- | --- |
-| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 각 영상의 `sortOrder`(순서)·`title`·`videoUrl`·`durationSeconds`(재생 시간)·`summary`(요약글)를 담은 `lessons` 배열을 한 번에 보낸다. 이미 저장된 영상을 고칠 때만 `lessonId`를 함께 넣고, **새 영상은 `lessonId`를 생략**한다(서버가 새로 만들어 응답의 `lessonIds`로 돌려준다). 요청 예시는 API명세서 78번. 파일 업로드로 확정(#31) | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
+| 강의 영상 | InstructorCourseCreate | 영상마다 한 번씩 `POST /api/v1/instructor/courses/{courseId}/lessons/video`(파일 하나)로 올리면 서버(`@RequestParam MultipartFile`, 형식·용량 검사) → `FileStorageService` → 스토리지에 저장하고 `videoUrl`을 돌려준다. 강의 저장(`PUT .../lessons`, API 78)은 각 영상의 `sortOrder`(순서)·`title`·`videoUrl`·`durationSeconds`(재생 시간)·`summary`(요약글)를 담은 `lessons` 배열을 한 번에 보낸다. 이미 저장된 영상을 고칠 때만 `lessonId`를 함께 넣고, **새 영상은 `lessonId`를 생략**한다(서버가 새로 만들어 응답의 `lessonIds`로 돌려준다). 요청 예시는 API명세서 78번. 파일 업로드로 확정(#31). **구현 필요(운영 스토리지)**: 지금 `FileStorageService`는 로컬 폴더(`file.upload-dir`)에 저장하고 `/uploads/…` 주소를 돌려주는 구현뿐이다. 운영 환경에서는 영상이 오브젝트 스토리지에 저장되도록 스토리지 저장 구현(`FILE_STORAGE_TYPE=s3`, 환경변수 문서)을 추가해야 하고, 로컬 구현을 그대로 운영에 연결하지 않는다 | 강의당 3개, 영상 1개 500MB 이하 mp4 (DP-33, 확정). 한 요청에 파일 하나만 담아 요청 한도 510MB를 넘지 않는다 |
 | 강의 썸네일 | InstructorCourseCreate | 브라우저 → 서버(형식·용량 검사) → 스토리지 | 이미지, 용량 미정 |
 | 프로필 이미지 | UserMyPage | 위와 같음 | 2MB, jpg·png (DP-32) |
 | 청약 단지 이미지 | AdminHousingManagement | 위와 같음 | 이미지, 용량 미정 |
@@ -214,7 +214,7 @@ flowchart LR
 
 영상은 크기가 커서 저장·전송 비용이 큽니다. 파일 업로드로 받되 영상 1개 500MB 이하로 제한하고(확정), 서버의 multipart 한도(`max-file-size` 500MB)와 `FileStorageService`의 용도별 검사(이미지 2MB, 영상 500MB)를 함께 둡니다. 트래픽이 늘면 서버를 거치지 않는 직접 업로드(Presigned URL)로 바꾸는 것을 검토합니다(수업 범위 밖). 검수 중인 강의의 영상은 공개 주소가 아니라 짧게 만료되는 서명 주소로만 보여 줍니다.
 
-로컬·개발 환경에서는 같은 인터페이스로 로컬 폴더에 저장하고, 운영 환경에서만 스토리지를 씁니다.
+로컬·개발 환경에서는 같은 인터페이스로 로컬 폴더에 저장하고, 운영 환경에서만 스토리지를 씁니다. 다만 **지금 코드에는 로컬 폴더 저장만 있어서**, 배포(#67) 전에 `FileStorageService`가 환경변수(`FILE_STORAGE_TYPE`)에 따라 오브젝트 스토리지에도 저장하도록 구현해야 합니다(담당: `global/file` 서수영).
 
 **캐시**: 많이 읽고 거의 안 바뀌는 것만 캐시합니다. 캐시·자산처럼 정확해야 하는 값은 캐시하지 않고 항상 DB에서 읽습니다.
 

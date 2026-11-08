@@ -34,7 +34,7 @@
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
-| 중복 요청 | 퀴즈 제출, 주문, 청약 납입은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37) |
+| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37) |
 
 ### 1-2 응답 형식
 
@@ -2085,11 +2085,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-02~03, SP-30, DP-31, DP-33 |
-| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상 파일은 먼저 한 개씩 올려서(아래 "영상 파일 올리기") 받은 `videoUrl`을 이 요청에 담아 저장한다. **이미 저장된 영상을 고칠 때만 `lessonId`를 넣고, 새 영상은 `lessonId`를 생략한다**(서버가 새 영상으로 만들고 응답 `lessonIds`에 돌려준다). 응답의 `lessonIds`는 요청 `lessons`와 **같은 순서로 하나씩 대응**하며, 요청한 모든 영상의 ID를 돌려준다(기존 영상은 보낸 `lessonId` 그대로, 새 영상은 새로 만든 ID). 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
+| 설명 | 영상 1~3개를 순서대로 일괄 저장. 요약글 2,000자. 영상 파일은 먼저 한 개씩 올려서(아래 "영상 파일 올리기") 받은 `videoUrl`을 이 요청에 담아 저장한다. **이미 저장된 영상을 고칠 때만 `lessonId`를 넣고, 새 영상은 `lessonId`를 생략한다**(서버가 새 영상으로 만들고 응답 `lessonIds`에 돌려준다). 응답의 `lessonIds`는 요청 `lessons`와 **같은 순서로 하나씩 대응**하며, 요청한 모든 영상의 ID를 돌려준다(기존 영상은 보낸 `lessonId` 그대로, 새 영상은 새로 만든 ID). **재시도**: 새 영상은 `lessonId`가 없어 저장 뒤 응답이 유실된 채 다시 보내면 중복 생성될 수 있으므로, 이 요청도 `Idempotency-Key` 헤더를 보낸다(DP-37). 같은 키로 다시 오면 영상을 또 만들지 않고 **최초 응답의 `lessonIds`를 같은 순서로** 돌려주며, 같은 키에 내용이 다르면 거절한다(409, `IDEMPOTENCY_KEY_CONFLICT`). 기존 영상의 `lessonId` 처리와 응답 순서 규칙은 그대로다. 영상은 1개 500MB 이하, mp4 (DP-33, 확정). |
 
 **Request**
 
 ```json
+Header: Idempotency-Key: 4d8e...
 { "lessons": [
   { "lessonId": 20, "sortOrder": 1, "title": "청약통장이 뭐예요?", "videoUrl": "https://...", "durationSeconds": 480, "summary": "..." },
   { "sortOrder": 2, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "summary": "..." }
