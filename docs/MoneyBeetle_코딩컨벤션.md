@@ -254,7 +254,7 @@ public class MyInfoDTO {
 | 화면 요청 | `ModelAndView`(또는 `Model`)에 DTO를 담고 View 이름을 지정한다. Model 이름은 템플릿의 `th:each` 등과 **이름을 맞춘다** (예: `menuList`) | 학습 |
 | 데이터 요청 | `@ResponseBody`로 JSON을 반환한다. 팀 공통 형식은 `ApiResponse` | 학습·골격 |
 | 요청 값 받기 | 단일 값은 `@RequestParam`, 폼 전체는 DTO를 `@ModelAttribute`(생략 가능, 이름은 클래스명 첫 글자 소문자)로, URL 일부는 `@PathVariable`로 받는다. HTML `input`의 `name`과 DTO 필드 이름이 다르면 그 값은 **조용히 무시된다**(400이 나지 않는다). 예를 들어 `int price`에 `@Min(0)`을 붙이고 폼에서 `prcie`를 보내면 `price`는 0으로 남아 검증을 통과한다. 필수 숫자 값은 `Integer`에 `@NotNull`을 함께 달아서 빠졌을 때 걸리게 한다. 메서드 제한이 없는 `@RequestMapping` 대신 `@GetMapping`·`@PostMapping`을 쓴다. `@RequestParam`에 직접 건 `@Min` 위반은 `HandlerMethodValidationException`이 처리한다 | 학습 (08 chap01·02, 09 module07) |
-| View 이름 | 앞에 `/`를 붙이지 않는다 (`return "member/signup"`). jar로 배포하면 템플릿을 못 찾을 수 있다. Model에 키 없이 객체를 넣으면 클래스명 첫 글자 소문자가 키가 된다 | 학습 (08 chap07) |
+| View 이름 | 앞에 `/`를 붙이지 않는다 (`return "member/signup"`). jar로 묶어 실행하면 템플릿을 못 찾을 수 있다. Model에 키 없이 객체를 넣으면 클래스명 첫 글자 소문자가 키가 된다 | 학습 (08 chap07) |
 | 등록·수정·삭제 후 | 화면으로 바로 응답하지 않고 **redirect** 한다 (PRG 패턴: 새로고침 시 POST가 반복되는 것을 막음). 예: 등록 후 상세 조회로 302. `return "redirect:/경로"`로 하고, redirect 뒤 화면에 넘길 값(결과 메시지 등)은 Model이 아니라 `RedirectAttributes.addFlashAttribute()`에 담는다 (Model 값은 두 번째 요청에서 사라진다) | 학습 (08 chap03) |
 | `@Valid`를 붙여야 검증된다 | DTO에 `@NotBlank` 등을 선언만 해서는 실행되지 않는다. **Controller 파라미터에 `@Valid`가 있어야** 검사한다. 검증은 Service에 들어가기 전에 끝난다 | 학습 |
 | 수정·삭제 입력도 검증 | 등록뿐 아니라 **수정 요청에도 검증**을 단다. 검증이 비어 있으면 빈 값·중복 값·너무 긴 값이 그대로 저장되거나 빈 200 응답이 나간다 | 학습 |
