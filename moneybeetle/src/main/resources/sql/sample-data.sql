@@ -11,7 +11,8 @@ USE money_beetle;
 -- ---------------------------------------------------------------------
 
 -- 회원: 1 관리자 / 2~6 강사 / 7~8 학습자 (7은 수강 이력 없음, 8은 이력 있음 용도)
--- 8(민지)은 해금 확인용으로 Lv.8·캐시를 넣어 두었다. 원장(cash_history·exp_history)은 DBA ② 구역에서 맞춘다
+-- 8(민지)은 해금 확인용으로 Lv.8·경험치·캐시를 넣어 두었고, 같은 값의 원장(cash_history·exp_history)은 DBA ② 구역에 있다.
+-- 1(관리자)의 Lv.20·경험치는 화면 확인용 값이라 원장이 없다 (관리자는 보상·원장 대상이 아니다)
 INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role, status, level, exp, cash) VALUES
 (1, 'admin@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '관리자', '1999-04-12', 'ADMIN', 'ACTIVE', 20, 6000, 0),
 (2, 'seoyeon@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '박서연', '1999-04-12', 'INSTRUCTOR', 'ACTIVE', 1, 0, 0),
@@ -285,3 +286,15 @@ INSERT INTO scrap (member_id, course_id) VALUES (8, 15), (8, 12);
 -- [DBA ②] 성장·알림·경제 용어·모의투자 구역 (DBA ②가 이 아래에 추가)
 -- 청약통장(subscription_account)은 회원가입 때 자동 개설되므로, 시드 회원 1~8의 통장도 이 구역에서 만든다
 -- ---------------------------------------------------------------------
+
+-- 청약통장: 회원당 하나(member_id 유니크). 잔액·납입회차는 기본값 0
+INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8);
+
+-- 민지(8)의 원장: member.cash·exp 값과 내역이 맞게 한 줄씩 둔다 (SP-15, GRW-07).
+-- 보상 규칙(reward_rule) 시드는 XP·캐시 값이 확정된 뒤(#68, #76) 생기므로 reward_rule_id는 비워 둔다
+INSERT INTO cash_history (member_id, history_type, source_type, source_id, amount, balance_after, reason, admin_id) VALUES
+(8, 'ADMIN_GIVE', 'ADMIN', NULL, 12000, 12000, '시드 초기 지급 (로컬 개발용)', 1);
+
+-- 경험치 1,250 = 누적 Lv.8 (이슈 #11 기준). 시드에서는 완료한 강의 4 한 건으로 묶었다
+INSERT INTO exp_history (member_id, source_type, source_id, amount, exp_after, level_after) VALUES
+(8, 'COURSE_COMPLETE', 4, 1250, 1250, 8);

@@ -37,6 +37,40 @@
 - GitHub 담당자(Assignee)는 이 문서의 배정과 같게 지정되어 있습니다. 담당을 옮길 때는 이 문서와 GitHub 담당자를 같이 고칩니다.
 - API 합계는 148개이고 모든 API가 한 번씩 배정되어 있습니다. API 수가 DBA ①에 많은 것은 강의·문의·강사 관리 API가 많기 때문이고, 화면과 난이도는 점수에 반영했습니다.
 
+### FE / BE 구분
+
+우리 팀은 **기능(도메인) 단위로 담당**합니다. 한 사람이 자기 기능의 BE(서버)와 FE(화면)를 모두 맡고, 기능 하나가 끝나면 화면까지 열려야 합니다(세로로 자르기). 대신 아래처럼 FE와 BE를 이슈·폴더·약속으로 분명히 나눕니다.
+
+**담당자별 BE / FE 이슈** (점수는 부록 기준, 기타 = 문서·시드·브랜치·점검 이슈)
+
+| 담당 | BE 이슈 | FE 이슈 | 기타 |
+| --- | --- | --- | --- |
+| 서수영 | 9개 · 54점<br>#2 #4 #27 #28 #29 #47 #48 #67 #84 | 3개 · 29점<br>#58 #63 #70 | #68 #74 #83 #85 |
+| 이재성 | 13개 · 58점<br>#15 #23~#26 #40~#46 #65 | 4개 · 29점<br>#54 #56 #57 #62 | #72 #76 #86 |
+| 신아림 | 14개 · 60점<br>#16~#22 #30 #31 #32 #34 #35 #37 #38 | 6개 · 39점<br>#52 #53 #55 #59 #60 #71 | #73 #87 #95 |
+| 김예린 | 15개 · 64점<br>#5~#14 #33 #36 #39 #64 #66 | 5개 · 35점<br>#49 #50 #51 #61 #69 | #75 #87 #95 |
+
+**폴더·이슈 소유** — 자기 이슈가 아닌 쪽의 파일은 직접 고치지 않고 이슈로 요청합니다(§8). 아래 경로는 모두 **저장소 루트** 기준이고, 저장소 루트에는 Gradle 래퍼가 없어서 명령은 `moneybeetle/` 폴더에서 실행합니다.
+
+| 구분 | 폴더 | 이슈 라벨·브랜치 | 끝났다는 확인 |
+| --- | --- | --- | --- |
+| BE | `moneybeetle/src/main/java/**`, `moneybeetle/src/main/resources/sql/**`, `moneybeetle/src/main/resources/application.yaml`, `moneybeetle/src/test/**` | `be` · `feat/be-…` | `moneybeetle/` 폴더에서 테스트 통과(Git Bash는 `./gradlew test`, PowerShell은 `.\gradlew.bat test`), API가 명세서와 같음 |
+| FE | `moneybeetle/src/main/resources/templates/**`, `moneybeetle/src/main/resources/static/**` (공통 틀 `fragments/layout`·`static/**`은 김예린, 마이페이지·관리자 대시보드 탭은 §6 표대로) | `fe` · `feat/fe-…` | 서버를 띄워 화면이 열리고 PC·모바일에서 동작 확인 |
+| 문서·설정 | `docs/**`, `.github/**`, `.coderabbit.yaml`, `CLAUDE.md` | `docs`·`chore` | 관련 문서가 같은 PR에서 고쳐짐 |
+
+**FE와 BE가 만나는 약속**
+
+1. **화면 요청** — Controller(BE)가 View 이름과 Model 이름을 정하고, 템플릿(FE)이 그 이름으로 그립니다. 이름과 DTO는 FE 이슈의 "관련 BE 이슈"와 화면설계 §10.2(Model 표)에 적고, 바뀌면 같은 PR에서 고칩니다. 모든 화면이 쓰는 공통 값은 `layout`(`LayoutDTO`)입니다.
+2. **데이터 요청(fetch)** — API 명세서가 계약입니다. 화면 JS는 `static/js/common.js`의 `MB.api()`로 부르고, 명세서에 없는 필드에 기대지 않습니다. 실패하면 `MB.api()`는 `{ code, message, fields }`를 던지며, `fields`는 입력칸별 오류(`@Valid` 실패, 없으면 `null`)라서 입력칸 아래 문구에 씁니다. 서버에 닿지 못한 네트워크 실패도 같은 모양(`code`는 `NETWORK_ERROR`, `fields`는 `null`)으로 던지므로 화면은 응답 오류와 같은 방식으로 처리합니다.
+3. **한쪽이 먼저 끝날 때** — 약속한 이름으로 `Fake` 데이터(코딩컨벤션 §11)를 쓰고, 값이 없어도(null) 화면이 깨지지 않게 그립니다. 나중에 진짜 값으로 바꿉니다.
+4. **권한·레벨** — 화면은 `sec:authorize`(`MEMBER`·`INSTRUCTOR`·`ADMIN`)와 잠금 표시로 보여 주기만 하고, 실제 차단은 BE(`SecurityConfig`, `LevelCheckInterceptor`)가 합니다.
+5. **한 이슈가 양쪽을 건드릴 때** — 자기 이슈의 BE와 FE는 한 사람이 같은 브랜치 흐름으로 하되, PR은 BE와 FE를 이슈별로 나눕니다(`feat/be-…`, `feat/fe-…`). 한 PR = 한 이슈 규칙은 그대로입니다. 한 이슈에 BE와 FE 작업이 함께 들어 있다면 이렇게 나눕니다.
+   1. 기존 이슈는 **추적용**으로 열어 둡니다. 본문에 `- [ ] #BE이슈`, `- [ ] #FE이슈` 체크리스트를 적습니다(GitHub 하위 이슈 기능을 써도 됩니다).
+   2. BE 이슈(`be` 라벨, `feat/be-…`)와 FE 이슈(`fe` 라벨, `feat/fe-…`)를 새로 만들고, 각 본문에 `Refs #추적이슈`를 적어 연결합니다. FE 이슈의 "관련 BE 이슈"에 BE 이슈 번호를 적습니다.
+   3. 각 PR에는 자기 작업 이슈의 `Closes #번호` 하나만 적습니다. 추적 이슈는 PR에 `Closes`로 걸지 않고, 두 작업 이슈가 모두 닫히면 직접 닫습니다.
+
+**리뷰 기준** — FE PR은 화면을 직접 열어 확인한 방법(스크린샷 또는 확인 순서)을 본문에 적고, BE PR은 테스트와 명세서 일치를 봅니다. 가능하면 FE PR은 연결된 BE 이슈 담당자가, BE PR은 연결된 FE 이슈 담당자가 리뷰합니다.
+
 ### 담당자별 고유 업무 (코드 외)
 
 | 역할 | 고유 업무 |
@@ -75,7 +109,7 @@
 | #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC), Docker·Nginx 헬스 체크 |
 | #85 | 브랜치 정리·보호 규칙 설정 | — | 2 | `sy`·`test` 등 남은 브랜치 정리, `main`·`dev` 보호(PR 필수·승인 1명), `main`은 `dev`에서만 병합 |
 
-**다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.findMyApplications(memberId)`(김예린 마이페이지 성장 탭), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
+**다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
 **서수영이 쓰는 것**: 김예린 `GrowthService.getLevel`, `RewardService.spend`, `NotificationService.send`
 
 ---
@@ -102,8 +136,8 @@
 | #44 | 턴 달력·다음 턴 진행 API | 118~120 | 6 | 턴 달력, 다음 턴 점검(30종목 가격·뉴스 빈칸), 진행 기록. 되돌릴 수 없음 |
 | #45 | 참가자 관리·랭킹 미리보기 API | 135~137 | 3 | 참가자 목록·상세(순자산·수익률·보유·거래), 랭킹 미리보기 |
 | #46 | 시즌 정산·랭킹 공개·보상·통계 API | 138~141 | 7 | 정산 실행(이월금·최종 자산), 랭킹 공개·보상, 시즌 통계. 관리자 첫 화면용 요약 메서드 제공 |
-| #65 | 중복 요청 방지(Idempotency-Key) | — | 3 | `IdempotencyFilter`(`global/security`에 두되 서수영 검토). 키 24시간 보관, **같은 키에 다른 내용이면 409 거절**(`IDEMPOTENCY_KEY_CONFLICT`). 퀴즈 제출·매수·매도·청약통장 납입에 적용 |
-| #54 | 마이페이지 화면 (화면) | — | 7 | 마이페이지 **틀**(`member/mypage.html`). 탭 내용(`settings`·`learning`·`growth`)은 각 담당이 fragment로 제공 |
+| #65 | 중복 요청 방지(Idempotency-Key) | — | 3 | `IdempotencyFilter`(`global/security`에 두되 서수영 검토). 키 24시간 보관, **같은 키에 다른 내용이면 409 거절**(`IDEMPOTENCY_KEY_CONFLICT`). 퀴즈 제출·매수·매도·청약통장 납입·강의 영상 저장(API 78)에 적용 |
+| #54 | 마이페이지 화면 (화면) | — | 7 | **담당 범위는 틀뿐**: 마이페이지 **틀**(`member/mypage.html`)과 틀의 Controller·API 연동(탭 전환, 탭별 fragment 연결). 탭 내용은 각 담당이 fragment로 만든다: `settings`(설정·프로필 이미지·비밀번호·탈퇴)는 **김예린(#69)**, `learning`(스크랩·오답노트 포함)은 신아림(#71), `growth`는 김예린(#69), `housing`은 서수영(#70). 스크랩·오답노트·설정은 #54에서 구현하지 않고 각 fragment를 틀에 연결만 한다 |
 | #56 | 통합 검색 화면 (화면) | — | 4 | 통합 검색 화면(`home/search.html`), 상단 검색창 자동완성(`mb-search.js`) |
 | #57 | 모의투자 화면 (화면) | — | 9 | 모의투자 화면(참고: `new1/App.jsx`). Lv.8 미만 블러, 주문은 실제 데이터로 동작 |
 | #62 | 관리자 모의투자 운영 화면 (화면) | — | 9 | 관리자 모의투자 운영(시즌·종목·가격·뉴스·턴·정산·통계). 누락 데이터가 있으면 다음 턴 버튼 비활성화 |
@@ -145,7 +179,7 @@
 | #55 | 문의 게시판 화면 (화면) | — | 4 | 문의 게시판 화면 |
 | #59 | 강사 로그인·가입·대시보드 화면 (화면) | — | 13 | 강사 로그인·가입·대시보드(내 강의, Q&A 탭) |
 | #60 | 강사 강의 생성 화면 (화면) | — | 5 | 강의 생성 화면(분류·정보·영상·요약글·퀴즈·검수 요청) |
-| #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·내 문의 탭, 강의로 이동. `fragments/mypage/learning` |
+| #71 | 마이페이지 학습 기록·Q&A 모음 탭 (화면) | — | 4 | 시청 기록·학습 완료·스크랩(#18)·오답노트(#21)·내 문의(Q&A 모음) 탭, 강의로 이동. `fragments/mypage/learning`. 스크랩·오답노트는 신아림의 API라서 이 이슈에서 함께 맡는다(점수는 그대로) |
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
 | #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `schema.sql`을 같은 PR에서 수정 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (김예린과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
@@ -184,13 +218,13 @@
 | #50 | 로그인·회원가입·계정 찾기 화면 (화면) | — | 4 | 로그인·회원가입·계정 찾기 화면 |
 | #51 | 홈 화면·햄버거 메뉴·알림 (화면) | — | 7 | 홈 화면(vr1/vr2)·햄버거 메뉴·알림. 서비스 소개 메인(`index.html`)도 여기서 맡음(별도 이슈 없음) |
 | #61 | 관리자 로그인·대시보드·운영 메뉴 화면 (화면) | — | 10 | 관리자 로그인·대시보드 **틀**·운영 메뉴. 탭(`?view=`) 내용은 각 담당이 fragment로 제공 |
-| #69 | 마이페이지 캐시 내역·레벨 탭 (화면) | — | 4 | "캐시 내역" 탭·프로필 요약(레벨·칭호·경험치·연속 출석·수상 내역). 수상 내역은 이재성이 데이터 제공. `fragments/mypage/growth` |
+| #69 | 마이페이지 설정·캐시 내역·레벨 탭 (화면) | — | 4 | "캐시 내역" 탭·프로필 요약(레벨·칭호·경험치·연속 출석·수상 내역)과 **"설정" 탭**(설정 수정·프로필 이미지·비밀번호 변경·회원 탈퇴, #7·#8 API). 수상 내역은 이재성이 데이터 제공. `fragments/mypage/growth`, `fragments/mypage/settings` (설정 탭은 #54에서 옮겨 온 것이라 점수는 그대로 두고 진행하며 조정) |
 | #75 | 샘플 데이터 — 경제 용어·알림 | — | 3 | 시연용 경제 용어 사전·날짜별 5개·개발용 알림 샘플 |
 | #87 | 인덱스·쿼리 점검 (신아림과 공동) | — | 2 | 성장·알림·경제 용어·청약·모의투자 구역의 조회 실행 계획·인덱스 점검 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (신아림과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
 
 **다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
-**김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.*`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
+**김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.openAccount`·`getDashboardSummary`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
 
 ---
 
@@ -219,10 +253,10 @@
 
 | 화면 | 틀 | 탭 / 영역 | 탭 담당 |
 | --- | --- | --- | --- |
-| 마이페이지 | 이재성 | `mypage/settings` (설정·비밀번호·탈퇴·내 문의) | **김예린** |
+| 마이페이지 | 이재성(틀, #54) | `mypage/settings` (설정·프로필 이미지·비밀번호·탈퇴) (#69) | **김예린** |
 | | | `mypage/learning` (시청 기록·학습 완료·스크랩·오답노트·Q&A 모음) (#71) | **신아림** |
 | | | `mypage/growth` (캐시·경험치·레벨표·수상 내역) (#69) | **김예린** (수상 내역은 이재성이 데이터 제공) |
-| | | `mypage/housing` (나의 청약통장·납입·내역·청약 신청 내역) (#70) | **서수영** |
+| | | `mypage/housing` (나의 청약통장·납입·내역) (#70). 청약 신청 내역은 청약 화면(#58)에서 보여 준다 | **서수영** |
 | 관리자 대시보드 | 김예린 | `?view=members` 회원·강사 / `?view=board` 문의 | **신아림** |
 | | | `?view=courses` 카테고리·강의 검수 | **신아림** |
 | | | `?view=terms` 경제 용어 / `?view=growth` 보상·캐시 / `?view=settings` 설정·작업 기록 | **김예린** |
@@ -245,12 +279,11 @@
 | 김예린 | `AdminLogService.write(adminId, action, targetId, before, after, reason)` | 전원 | 관리자 중요 작업 |
 | 김예린 | `InstructorService.apply(memberId, ...)` / `approve(applicationId)` | 신아림 | 강사 가입 신청(#30), 관리자 강사 승인(#37). `instructor_profile`은 김예린 `member` 도메인 소유 |
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
-| 서수영 | `HousingService.findMyApplications(memberId)` | 김예린 | 마이페이지 성장 탭 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
 | 서수영 | `FileStorageService.save(file, dir)` | 신아림, 김예린 | 썸네일·영상 파일, 프로필 이미지 |
 | 이재성 | `RankingService.findAwards(memberId)` | 김예린 | Drawer 수상 내역, 마이페이지 |
 | 이재성 | `TradingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
-| 이재성 | `IdempotencyFilter` (`Idempotency-Key` 헤더) | 전원 | 퀴즈 제출·매수·매도·청약통장 납입 |
+| 이재성 | `IdempotencyFilter` (`Idempotency-Key` 헤더) | 전원 | 퀴즈 제출·매수·매도·청약통장 납입·강의 영상 저장(API 78) |
 | 신아림 | `CourseService.hasLearningHistory(memberId)` | 김예린 | 로그인 후 홈 vr1/vr2 분기 |
 | 신아림 | `CourseService.findContinueWatching / findLearningSummary(memberId)` | 김예린 | 홈, Drawer |
 | 신아림 | `CourseService.search(q)` / `InquiryService.search(q)` | 이재성 | 통합 검색 |
@@ -299,7 +332,7 @@
 | --- | --- |
 | 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#87·#95(81개). #3(DB 스키마 SQL)은 닫힘, 나머지 열림. **담당자(Assignee) 지정 완료**(이 문서 배정과 같음, #3·#87·#95는 DBA 두 명). #83~#87은 2026-11-07, #95는 11-08에 추가 |
 | PR 번호 | 이슈와 PR이 번호를 같이 씀: PR은 #1, #77~#82 |
-| 최근 확정 사항 | #9 본인인증·간편 로그인은 **가상**, #11 최대 Lv.20·칭호 구간별 필요 XP(첫 칭호 **고시원**), #20 통과 **70점**, #23 시즌 참가 시 **캐시 차감 없음**, #31 영상은 **파일 업로드**, #48 청약 당첨 규칙은 **임시안**(추후 확정), #68 XP 값·#76 캐시·청약통장 기준 확정 필요 |
+| 최근 확정 사항 | #9 본인인증·간편 로그인은 **가상**, #11 최대 Lv.20·칭호 구간별 필요 XP(첫 칭호 **고시원**), #20 통과 **70점**, #23 시즌 참가 시 **캐시 차감 없음**, #31 영상은 **파일 업로드**(1개 500MB 이하·mp4, DP-33), #48 청약 당첨 규칙은 **임시안**(추후 확정), #68 XP 값·#76 캐시·청약통장 기준 확정 필요 |
 | 브랜치 | 원격에 `main`, `dev`, `sy`, `test`, `feat/be-3-schema-course`, `fix/issue-auto-close`. 작업은 `feat/…` → `dev` → `main` 흐름(Git 규칙) |
 | 코드 | `moneybeetle/`는 골격(대부분 주석만). `./gradlew compileJava`는 성공하지만 `MoneyBeetleApplication`에 `@SpringBootApplication`·main이 없고 `application.yaml`이 비어 있어 `bootRun`은 실패(#2에서 해결) |
 | 저장소 | `.idea/`는 `.gitignore`로 제외됨. 설계 문서는 `docs/`에 있음 |

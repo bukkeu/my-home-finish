@@ -24,7 +24,7 @@
 | 7 | 키 이름은 `UPPER_SNAKE_CASE`로 쓴다 (예: `DB_PASSWORD`). |
 | 8 | 새 환경변수를 추가하면 **이 문서와 `.env.example`을 같은 PR에서 함께 고친다.** |
 
-> ⚠️ **현재 `moneybeetle/.gitignore`에 `.env`가 없습니다.** `.env`를 만들기 전에 `.gitignore`에 `.env`를 먼저 추가해야 합니다 (§6 체크리스트).
+> ✅ 저장소 루트 `.gitignore`에 `.env`, `.env.*`가 들어 있고 `.env.example`만 예외로 올라갑니다 (루트 규칙이 `moneybeetle/.env`에도 적용됨).
 
 ---
 
@@ -34,13 +34,13 @@
 
 | 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 상태 |
 | --- | --- | --- | --- | --- |
-| `SPRING_PROFILES_ACTIVE` | 실행 프로필 선택 (`application-{local,dev,prod}.yml`) | | `local` | 필수 |
+| `SPRING_PROFILES_ACTIVE` | 실행 프로필 선택 (`application-{local,dev,prod}.yaml`) | | `local` | 필수 |
 | `DB_URL` | `spring.datasource.url` — MySQL 접속 주소 | | `jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&characterEncoding=UTF-8` | 필수 |
 | `DB_USERNAME` | `spring.datasource.username` — 로컬 MySQL에 각자 만든 계정 (`create_database.sql` 맨 아래 주석 참고) | | `moneybeetle` | 필수 |
 | `DB_PASSWORD` | `spring.datasource.password` | ✅ | 각자 정함 (아래 참고) | 필수 |
 
 - `DB_USERNAME`·`DB_PASSWORD`는 로컬 MySQL에 만든 계정(`resources/sql/create_database.sql` 맨 아래 주석의 `CREATE USER` 예시)과 **같아야** 합니다. DB 이름은 `money_beetle`입니다. 비밀번호 값은 문서에 적지 않고 각자 로컬에서 정합니다. `.env.example`에는 `change-me`만 적습니다.
-- 서버 시간대는 `Asia/Seoul`, 세션 만료 30분, 업로드 한도 2MB는 **환경에 따라 달라지지 않으므로** 환경변수가 아니라 `application.yaml`에 고정합니다 (§4).
+- 서버 시간대는 `Asia/Seoul`, 세션 만료 30분, 업로드 한도(프로필 이미지 2MB, 강의 영상 500MB)는 **환경에 따라 달라지지 않으므로** 환경변수가 아니라 `application.yaml`에 고정합니다 (§4).
 
 ### 2-2 기능 구현 시 추가
 
@@ -107,9 +107,10 @@
 | `spring.application.name` | `moneybeetle` | |
 | `spring.jpa.hibernate.ddl-auto` | `none` (테이블은 `resources/sql` 스크립트로 만든다) | 학습·골격 |
 | `server.servlet.session.timeout` | `30m` | DP-11 |
-| `spring.servlet.multipart.max-file-size` | `2MB` | DP-32 |
+| `spring.servlet.multipart.max-file-size` | `500MB` (강의 영상 한도. 프로필 이미지 2MB는 `FileStorageService`가 용도별로 따로 검사한다). **구현 예정**: 설정과 `FileStorageService`는 #2, 영상 검증은 #31. 그전에는 Spring Boot 기본값(파일 1MB)이다 | DP-32, DP-33 |
+| `spring.servlet.multipart.max-request-size` | `510MB` (영상은 한 요청에 한 개씩 올리므로 파일 한 개 한도보다 조금 크게. 영상 한 개당 업로드는 API명세서 #78 "영상 파일 올리기") | DP-33 |
 | 시간대 | `Asia/Seoul` (서버·DB·Jackson) | DP-42 |
-| `spring.jpa.show-sql`, `format_sql` | `local`에서만 켬 (`application-local.yml`) | |
+| `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql` | `local`에서만 켬 (`application-local.yaml`). `format_sql`은 `properties.hibernate` 아래에 써야 적용된다 | 학습 (09 module07) |
 
 ---
 
@@ -178,7 +179,7 @@ spring:
 
 ## 6. 새 팀원·새 환경 체크리스트
 
-- [ ] `moneybeetle/.gitignore`에 `.env`가 있는지 확인한다 (없으면 추가).
+- [x] 루트 `.gitignore`에 `.env`, `.env.*`(`.env.example` 제외)가 있다 (#67).
 - [ ] MySQL 8을 설치하고 `resources/sql/create_database.sql` → `schema.sql` → `sample-data.sql` 순서로 실행한다 (시드는 로컬 개발용).
 - [ ] `.env.example`을 복사해 `.env`(또는 IntelliJ 환경변수)를 만들고 `DB_PASSWORD`를 채운다.
 - [ ] `SPRING_PROFILES_ACTIVE=local`로 서버를 띄워 로그인 화면이 열리는지 확인한다.
@@ -201,7 +202,7 @@ spring:
 
 | 항목 | 현재 상태 | 정할 것 |
 | --- | --- | --- |
-| `.gitignore` | `moneybeetle/.gitignore`에 `.env` 항목이 없음 | `.env`, `.env.*`(단 `.env.example`은 제외) 추가 |
+| `.gitignore` | ✅ 루트 `.gitignore`에 `.env`, `.env.*`, `!.env.example` 추가 (#67) | 없음 |
 | 메일 발송 방식 | 정책(10분 유효 1회용 토큰)은 있으나 SMTP 서비스 미정 | 사용할 메일 서비스(예: Gmail SMTP 앱 비밀번호) |
 | 간편 로그인 | 우선순위 하. 구글·카카오 앱 등록 필요 | 구현 시점, 개인 테스트 앱을 쓸지 팀 공용 앱을 쓸지 |
 | 파일 저장 | 로컬 폴더와 S3 호환 스토리지 (시스템 설계서의 가정) | 운영에서 쓸 스토리지 서비스, 영상 파일 업로드 허용 여부 |

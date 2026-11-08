@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# MoneyBeetle(MY-HOME) 팀 CodeRabbit 설정
+# MoneyBeetle(my-home-finish) 팀 CodeRabbit 설정
 # 기술 스택: Java 21 · Spring Boot 3.5 · MySQL 8 · JPA · Thymeleaf · Spring Security 6(세션 로그인)
 # 저장소 구조: moneybeetle/(Spring 서버) · moneybeetle-page/(HTML 프로토타입) · docs/(설계 문서)
 # 리뷰 초점: 역할과 책임 분리, 도메인 분리, 캐시·자산 정합성, 유지보수성
@@ -20,7 +20,7 @@ reviews:
   estimate_code_review_effort: true
   review_status: true
   poem: false
-  in_progrxess_fortune: false
+  in_progress_fortune: false         # 리뷰 진행 중 문구(운세 멘트) 끄기
   enable_prompt_for_ai_agents: true  # Claude Code에 붙여 넣을 수정 프롬프트 제공
 
   auto_review:
@@ -33,6 +33,12 @@ reviews:
       - "WIP"
 
   path_filters:                      # 리뷰에서 뺄 파일
+    # 리뷰는 moneybeetle/(Spring 서버) 코드만 한다. 문서·저장소 설정 파일만 바뀐 PR은 코멘트를 달지 않는다
+    - "!docs/**"
+    - "!.github/**"
+    - "!*.md"                        # 저장소 루트의 README.md, CLAUDE.md
+    - "!.coderabbit.yaml"
+    - "!.gitignore"
     # 빌드 결과물·IDE 설정
     - "!**/build/**"
     - "!**/out/**"
@@ -159,7 +165,7 @@ reviews:
       instructions: |
         - DB 비밀번호, OAuth 키, 메일 비밀번호, 스토리지 키가 값으로 직접 들어 있으면 반드시 지적하고 환경 변수로 분리하게 한다.
         - spring.jpa.hibernate.ddl-auto는 none이어야 한다(테이블은 resources/sql 스크립트로 생성). create나 create-drop이면 팀 공용 DB 데이터가 지워질 수 있음을 알린다.
-        - 시간대는 Asia/Seoul, 세션 타임아웃 30분, 업로드 최대 2MB가 유지되는지 확인한다.
+        - 시간대는 Asia/Seoul, 세션 타임아웃 30분, 업로드 한도(multipart 최대 500MB, 프로필 이미지 2MB는 코드에서 따로 검사)가 유지되는지 확인한다.
     - path: "moneybeetle/src/main/resources/sql/**/*.sql"
       instructions: |
         - SQL은 schema.sql(테이블)과 sample-data.sql(시드 데이터) 두 파일로 나누고 DBA가 관리한다. 시드는 로컬 개발용이라 운영에 넣지 않는다. 다른 도메인의 테이블을 담당 DBA 확인 없이 바꾸면 알린다.
