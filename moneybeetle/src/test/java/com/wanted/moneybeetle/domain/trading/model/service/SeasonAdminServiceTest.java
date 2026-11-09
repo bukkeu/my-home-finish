@@ -141,6 +141,19 @@ class SeasonAdminServiceTest {
     }
 
     @Test
+    void 정산_중인_시즌의_설정을_바꾸면_SEASON_CLOSED() {
+        TradingSeason season = savedSeason(7L, "시즌 7");
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
+        when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
+
+        assertThatThrownBy(() -> service.changeSetting(7L,
+                new SeasonSettingDTO(new BigDecimal("80.00"), null, 9)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.SEASON_CLOSED);
+    }
+
+    @Test
     void 없는_시즌의_상태를_바꾸면_NOT_FOUND() {
         when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
 

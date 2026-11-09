@@ -78,6 +78,11 @@ class TradingSeasonTest {
     }
 
     @Test
+    void 다음_상태가_없으면_바꿀_수_없다고_답한다() {
+        assertThat(season().canChangeStatusTo(null)).isFalse();
+    }
+
+    @Test
     void 설정은_바꿀_수_있지만_정산_중에는_SEASON_CLOSED() {
         TradingSeason season = season();
         season.changeSetting(new BigDecimal("50.00"), 300_000L, 10);

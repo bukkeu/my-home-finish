@@ -137,6 +137,9 @@ public class TradingSeason {
     }
 
     public boolean canChangeStatusTo(String nextStatus) {
+        if (nextStatus == null) {
+            return false;
+        }
         return NEXT_STATUSES.getOrDefault(this.status, Set.of()).contains(nextStatus);
     }
 

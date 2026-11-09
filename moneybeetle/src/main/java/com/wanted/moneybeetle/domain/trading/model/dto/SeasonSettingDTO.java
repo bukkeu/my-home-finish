@@ -29,7 +29,8 @@ public class SeasonSettingDTO {
     @PositiveOrZero
     private Long carryoverCap;
 
+    @NotNull
     @Min(1)
     @Max(20)
-    private int unlockLevel;
+    private Integer unlockLevel;
 }
