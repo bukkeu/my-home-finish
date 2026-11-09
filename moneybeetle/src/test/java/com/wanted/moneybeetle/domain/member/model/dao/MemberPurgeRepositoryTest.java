@@ -99,17 +99,21 @@ class MemberPurgeRepositoryTest {
     }
 
     @Test
-    @DisplayName("만료된 토큰만 지우고 만료되지 않은 토큰은 남긴다")
-    void deletesOnlyExpiredTokens() {
+    @DisplayName("사용했거나 만료된 토큰은 지우고, 아직 쓸 수 있는(쓰지 않았고 만료 전인) 토큰은 남긴다 (DB설계 3-2)")
+    void deletesUsedOrExpiredTokensOnly() {
         LocalDateTime now = LocalDateTime.of(2026, 11, 9, 3, 0);
-        tokenRepository.save(PasswordResetToken.issue(1L, "expired-hash", now.minusMinutes(30)));   // 20분 전에 만료
-        tokenRepository.save(PasswordResetToken.issue(1L, "fresh-hash", now.minusMinutes(1)));      // 9분 뒤 만료
+        tokenRepository.save(PasswordResetToken.issue(1L, "expired-hash", now.minusMinutes(30)));   // 20분 전에 만료, 쓰지 않음
+        PasswordResetToken used = PasswordResetToken.issue(2L, "used-hash", now.minusMinutes(2));    // 8분 뒤 만료지만 이미 사용
+        used.markUsed(now.minusMinutes(1));
+        tokenRepository.save(used);
+        tokenRepository.save(PasswordResetToken.issue(3L, "fresh-hash", now.minusMinutes(1)));      // 9분 뒤 만료, 쓰지 않음
         tokenRepository.flush();
 
-        int deleted = tokenRepository.deleteExpired(now);
+        int deleted = tokenRepository.deleteUsedOrExpired(now);
 
-        assertThat(deleted).isEqualTo(1);
+        assertThat(deleted).isEqualTo(2);
         assertThat(tokenRepository.findByTokenHash("expired-hash")).isEmpty();
+        assertThat(tokenRepository.findByTokenHash("used-hash")).isEmpty();
         assertThat(tokenRepository.findByTokenHash("fresh-hash")).isPresent();
     }
 

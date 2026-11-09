@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 
 class MemberCleanupJobTest {
@@ -68,17 +69,17 @@ class MemberCleanupJobTest {
     @DisplayName("회원 정리가 실패해도 예외를 밖으로 던지지 않고 토큰 삭제는 계속한다")
     void memberFailureDoesNotBlockTokenCleanup() {
         when(memberService.purgeWithdrawnMembers(any(), anyInt())).thenThrow(new IllegalStateException("db down"));
-        when(accountService.deleteExpiredPasswordResetTokens(NOW)).thenReturn(4);
+        when(accountService.deleteUsedOrExpiredPasswordResetTokens(NOW)).thenReturn(4);
 
         job.runDaily();
 
-        verify(accountService).deleteExpiredPasswordResetTokens(NOW);
+        verify(accountService).deleteUsedOrExpiredPasswordResetTokens(NOW);
     }
 
     @Test
     @DisplayName("토큰 삭제가 실패해도 예외를 밖으로 던지지 않는다")
     void tokenFailureIsContained() {
-        when(accountService.deleteExpiredPasswordResetTokens(any())).thenThrow(new IllegalStateException("db down"));
+        when(accountService.deleteUsedOrExpiredPasswordResetTokens(any())).thenThrow(new IllegalStateException("db down"));
 
         job.runDaily();
 
@@ -86,11 +87,19 @@ class MemberCleanupJobTest {
     }
 
     @Test
-    @DisplayName("예약 시각 기본값(매일 03:00)은 올바른 크론식이고 서울 시간으로 3시를 가리킨다")
-    void defaultCronIsValid() {
-        CronExpression cron = CronExpression.parse("0 0 3 * * *");
+    @DisplayName("runDaily 에 실제로 선언된 @Scheduled 는 서울 시간대이고, 설정이 없을 때의 기본 크론식은 매일 03:00 이다")
+    void scheduledAnnotationIsDailyThreeAmSeoul() throws Exception {
+        Scheduled scheduled = MemberCleanupJob.class.getMethod("runDaily").getAnnotation(Scheduled.class);
 
-        LocalDateTime next = cron.next(LocalDateTime.of(2026, 11, 9, 3, 0));
-        assertThat(next).isEqualTo(LocalDateTime.of(2026, 11, 10, 3, 0));
+        assertThat(scheduled).isNotNull();
+        assertThat(scheduled.zone()).isEqualTo("Asia/Seoul");
+        // "${app.cleanup.cron:기본값}" 모양에서 설정이 없을 때 쓰는 기본 크론식을 꺼낸다
+        String expression = scheduled.cron();
+        assertThat(expression).startsWith("${app.cleanup.cron:").endsWith("}");
+        String defaultCron = expression.substring("${app.cleanup.cron:".length(), expression.length() - 1);
+
+        CronExpression cron = CronExpression.parse(defaultCron);
+        assertThat(cron.next(LocalDateTime.of(2026, 11, 9, 3, 0))).isEqualTo(LocalDateTime.of(2026, 11, 10, 3, 0));
+        assertThat(cron.next(LocalDateTime.of(2026, 11, 9, 0, 0))).isEqualTo(LocalDateTime.of(2026, 11, 9, 3, 0));
     }
 }

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 *   담당 : DBA ② (회원·인증)
 *   매일 한 번 도는 정리 작업 (이슈 #66, DB설계 3-2·3-3)
 *   1) 탈퇴한 지 30일이 지난 회원의 개인정보를 지운다 (DP-06): 이메일·비밀번호 해시·생년월일·성별·프로필 이미지 NULL, 닉네임 "탈퇴한 사용자#ID"
-*   2) 만료된 비밀번호 재설정 토큰을 지운다 (DP-12)
+*   2) 사용했거나 만료된 비밀번호 재설정 토큰을 지운다 (DP-12)
 *   - 시각: 매일 03:00 (서울). 접속이 적은 새벽으로 정했고, 설정 app.cleanup.cron 으로 바꿀 수 있다.
 *   - 두 작업은 서로 막지 않는다. 한쪽이 실패해도 로그만 남기고 다른 쪽은 계속한다 (다음 날 다시 시도한다).
 *   - 회원은 BATCH_SIZE 명씩 끊어 처리한다. 묶음마다 트랜잭션이 따로라서 중간에 실패해도 앞서 끝난 묶음은 남는다.
@@ -34,7 +34,7 @@ public class MemberCleanupJob {
     @Scheduled(cron = "${app.cleanup.cron:0 0 3 * * *}", zone = "Asia/Seoul")
     public void runDaily() {
         purgeWithdrawnMembers();
-        deleteExpiredTokens();
+        deleteUsedOrExpiredTokens();
     }
 
     void purgeWithdrawnMembers() {
@@ -54,12 +54,12 @@ public class MemberCleanupJob {
         }
     }
 
-    void deleteExpiredTokens() {
+    void deleteUsedOrExpiredTokens() {
         try {
-            int deleted = accountService.deleteExpiredPasswordResetTokens(LocalDateTime.now(clock));
-            log.info("만료된 비밀번호 재설정 토큰 삭제: {}건", deleted);
+            int deleted = accountService.deleteUsedOrExpiredPasswordResetTokens(LocalDateTime.now(clock));
+            log.info("사용했거나 만료된 비밀번호 재설정 토큰 삭제: {}건", deleted);
         } catch (RuntimeException e) {
-            log.error("만료된 비밀번호 재설정 토큰 삭제에 실패했어요. 다음 실행에 다시 시도해요.", e);
+            log.error("사용했거나 만료된 비밀번호 재설정 토큰 삭제에 실패했어요. 다음 실행에 다시 시도해요.", e);
         }
     }
 }
