@@ -65,4 +65,33 @@ public class HousingApplication {
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
+    // 청약 신청 (#29) : 신청 시점의 입력값·납입회차·항목별 점수를 그대로 저장한다 (나중에 통장이 바뀌어도 신청 점수는 그대로)
+    //  결과(result·resultRank)는 발표 전이라 비워 두고, 당첨 산정(#48)에서 채운다. 신청 후 취소·수정 불가 (SP-73)
+    public static HousingApplication create(Long memberId, Long housingComplexId, String receiptNo,
+                                            int homelessYears, int dependents, int paidCountSnapshot,
+                                            int homelessScore, int dependentScore, int accountScore,
+                                            LocalDateTime appliedAt) {
+        HousingApplication application = new HousingApplication();
+        application.memberId = memberId;
+        application.housingComplexId = housingComplexId;
+        application.receiptNo = receiptNo;
+        application.homelessYears = homelessYears;
+        application.dependents = dependents;
+        application.paidCountSnapshot = paidCountSnapshot;
+        application.homelessScore = homelessScore;
+        application.dependentScore = dependentScore;
+        application.accountScore = accountScore;
+        application.totalScore = homelessScore + dependentScore + accountScore;
+        application.appliedAt = appliedAt;
+        return application;
+    }
+
+    // 결과가 나왔나? (산정 전이면 null)
+    public boolean hasResult() {
+        return result != null;
+    }
+
+    public boolean isWin() {
+        return RESULT_WIN.equals(result);
+    }
 }

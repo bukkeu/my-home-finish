@@ -1,6 +1,11 @@
 package com.wanted.moneybeetle.domain.auth.config;
 
+import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
+import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *   DB 없이 Security 와 MVC 만 띄우고, 로그인은 가짜 사용자(authority = member.role)로 대신한다
 *  */
 @SpringBootTest(classes = {SecurityConfigTest.TestApp.class, SecurityConfig.class,
-        SecurityErrorHandler.class, SecurityConfigTest.DummyController.class})
+        SecurityErrorHandler.class, AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
+        com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler.class,
+        SecurityConfigTest.DummyController.class})
 class SecurityConfigTest {
 
     @Configuration
@@ -51,6 +58,18 @@ class SecurityConfigTest {
             return "ok";
         }
     }
+
+    /** 로그인 핸들러(#6)가 필요로 하는 서비스. 이 테스트는 URL 권한만 보므로 가짜로 둔다 */
+    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 출석 자체를 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
+    @MockitoBean
+    private AuthService authService;
+    /** 로그인해 둔 세션의 계정 상태 확인(ActiveMemberFilter)이 쓴다. 이 테스트의 가짜 사용자는 AuthDetails 가 아니라 호출되지 않는다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberService memberService;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider loginAuthenticationProvider;
 
     @Autowired
     private WebApplicationContext context;

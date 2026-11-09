@@ -19,4 +19,7 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     /** 분야의 사용 중 종목 수 (분야당 2개 규칙, ADM-17) */
     long countBySectorIdAndIsActiveTrue(Long sectorId);
+
+    /** 사용 중인 종목 (#24) */
+    List<Stock> findByIsActiveTrueOrderByStockIdAsc();
 }
