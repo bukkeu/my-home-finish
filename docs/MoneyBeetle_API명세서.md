@@ -1889,7 +1889,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-06, SP-71 |
-| 설명 | 무주택 기간과 부양가족 수를 넣으면 납입회차를 자동 반영해 계산. 저장하지 않음. |
+| 설명 | 무주택 기간과 부양가족 수를 넣으면 내 청약통장 납입회차를 자동 반영해 계산. 저장하지 않음. 점수표는 실제 청약 가점제(SP-71 확정, #29) |
 
 **Request**
 
@@ -1897,11 +1897,18 @@ Header: Idempotency-Key: 31aa...
 { "homelessYears": 3, "dependents": 1 }
 ```
 
+- `homelessYears`: 무주택 기간(년, 1년 미만은 0), `dependents`: 부양가족 수. 둘 다 0 이상.
+
 **Response**
 
 ```json
 { "homelessScore": 8, "dependentScore": 10, "accountScore": 6, "totalScore": 24, "maxScore": 84, "baseDate": "2026-11-01" }
 ```
+
+- 무주택(32): 1년 미만 2점, 1년마다 +2점, 15년 이상 32점 / 부양가족(35): 0명 5점, 1명마다 +5점, 6명 이상 35점 / 통장(17): 납입 1회 = 1개월로 보고 6회 미만 1점, 6~11회 2점, 12~23회 3점, 이후 12회마다 +1점, 180회 이상 17점. 예시는 납입 48회.
+- `baseDate`: 계산한 날(오늘, Asia/Seoul). 화면에 기준일로 표시한다.
+
+**Error**: `LEVEL_LOCKED`, `INVALID_SCORE_INPUT`(400, 무주택 기간 0~50년·부양가족 0~20명 밖), `NOT_FOUND`(청약통장 없음)
 
 #### 69. 청약 신청
 
@@ -1911,7 +1918,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-07~08, SP-72~73 |
-| 설명 | 신청 기간 안에서만, 같은 단지 1회. 신청 후 취소·수정 불가. 신청 시점 가점을 저장. |
+| 설명 | 신청 기간(신청 시작일·마감일 당일 포함) 안에서만, 같은 단지 1회. 신청 후 취소·수정 불가. 신청 시점의 입력값·납입회차·항목별 점수를 저장(이후 납입해도 신청 점수는 그대로). 접수번호는 `MB-신청일(yyMMdd)-그날 순번 4자리`. |
 
 **Request**
 
@@ -1926,7 +1933,7 @@ Header: Idempotency-Key: 31aa...
 { "applicationId": 40, "receiptNo": "MB-261105-0042", "totalScore": 24 }
 ```
 
-**Error**: `LEVEL_LOCKED`, `NOT_IN_APPLY_PERIOD`, `ALREADY_APPLIED`
+**Error**: `LEVEL_LOCKED`, `NOT_IN_APPLY_PERIOD`(409), `ALREADY_APPLIED`(409, 같은 단지에 동시에 두 번 신청해 회원+단지 유니크 키에 걸린 경우 포함), `RECEIPT_NO_CONFLICT`(409, 다른 회원과 같은 순간에 신청해 접수번호가 겹침. 저장되지 않았으니 다시 신청), `INVALID_SCORE_INPUT`(400), `NOT_FOUND`(없거나 삭제된 단지, 청약통장 없음)
 
 #### 70. 내 신청 내역
 
@@ -1936,7 +1943,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-09, SUB-11 |
-| 설명 | 신청 단지, 상태, 발표 후 결과. |
+| 설명 | 신청 단지, 접수번호, 가점, 발표일, 발표 후 결과. 기본 20개씩 신청 최신순(`sort=appliedAt,desc`). 목록 응답 형식(1-3). `result`는 관리자가 발표하기 전에는 저장돼 있어도 `null`(SP-75). |
 
 **Request**
 
@@ -1945,8 +1952,10 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "applicationId": 40, "complexName": "그린숲 행복주택", "receiptNo": "MB-261105-0042", "totalScore": 24, "announceDate": "2026-11-17", "result": null } ] }
+{ "items": [ { "applicationId": 40, "complexName": "그린숲 행복주택", "receiptNo": "MB-261105-0042", "totalScore": 24, "announceDate": "2026-11-17", "result": null } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
+
+**Error**: `LEVEL_LOCKED`
 
 #### 71. 당첨 결과
 
@@ -1956,7 +1965,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 (본인) |
 | 관련 | SUB-11 |
-| 설명 | 발표일 이후에만. |
+| 설명 | 관리자가 발표한 뒤에만(단지 `status = ANNOUNCED`이고 산정 결과가 있을 때). 본인 신청만 볼 수 있다. 레벨 조건 없음. |
 
 **Request**
 
@@ -1968,7 +1977,9 @@ Header: Idempotency-Key: 31aa...
 { "result": "LOSE", "totalScore": 24, "message": "이번에는 낙첨이에요. 내 가점은 24점이었어요" }
 ```
 
-**Error**: `NOT_ANNOUNCED_YET`
+- 당첨이면 `"result": "WIN"`, `"message": "축하해요! 당첨이에요. 내 가점은 N점이었어요"`.
+
+**Error**: `NOT_ANNOUNCED_YET`(403, 발표 전 또는 산정 전), `NOT_FOUND`(없는 신청이거나 남의 신청)
 
 ### 강사
 
@@ -3652,10 +3663,12 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
+| 모의 청약 | `RECEIPT_NO_CONFLICT` | 409 | 신청이 몰려 접수하지 못했어요. 다시 신청해 주세요 |
 | 모의 청약 | `ALREADY_PAID_TODAY` | 409 | 오늘은 이미 납입했어요 |
 | 모의 청약 | `DEPOSIT_BELOW_MIN` | 400 | 최소 20,000 캐시부터 납입할 수 있어요 |
 | 모의 청약 | `DEPOSIT_ABOVE_MAX` | 400 | 한 번에 최대 500,000 캐시까지 납입할 수 있어요 |
 | 모의 청약 | `NOT_ANNOUNCED_YET` | 403 | 발표는 ○월 ○일이에요 |
+| 모의 청약 | `INVALID_SCORE_INPUT` | 400 | 무주택 기간은 0~50년, 부양가족 수는 0~20명으로 입력해 주세요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |

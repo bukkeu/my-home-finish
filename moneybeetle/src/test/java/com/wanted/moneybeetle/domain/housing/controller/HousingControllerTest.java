@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDetailDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositPolicyDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositResultDTO;
+import com.wanted.moneybeetle.domain.housing.model.service.HousingApplicationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -65,6 +66,7 @@ class HousingControllerTest {
     private static final Long MEMBER_ID = 8L;
 
     private final HousingService housingService = mock(HousingService.class);
+    private final HousingApplicationService applicationService = mock(HousingApplicationService.class);
     private final GrowthService growthService = mock(GrowthService.class);
 
     @BeforeEach
@@ -86,7 +88,7 @@ class HousingControllerTest {
         // Spring Boot 서버와 같은 JSON 설정 (Boot 는 날짜를 "2026-11-03" 글자로 내보낸다)
         var json = new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json()
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS).build());
-        return MockMvcBuilders.standaloneSetup(new HousingController(housingService))
+        return MockMvcBuilders.standaloneSetup(new HousingController(housingService, applicationService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver(),     // Boot 처럼 Pageable 받기
                         new AuthenticationPrincipalArgumentResolver())                       // @AuthenticationPrincipal 받기
@@ -193,5 +195,79 @@ class HousingControllerTest {
 
         assertThat(pageable.getValue().getPageSize()).isEqualTo(20);
         assertThat(pageable.getValue().getSort().getOrderFor("paidDate").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    // ── #29 가점·신청·결과 ──
+
+    @Test
+    void 가점_계산기는_본문을_받아_로그인_회원으로_계산한다_Lv11_은_막힌다() throws Exception {
+        when(applicationService.previewScore(eq(MEMBER_ID), any())).thenReturn(
+                new com.wanted.moneybeetle.domain.housing.model.dto.ScoreDTO(8, 10, 6, 24, 84, LocalDate.of(2026, 11, 9)));
+
+        mockMvcAtLevel(12).perform(post("/api/v1/housing/score-preview")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"homelessYears\": 3, \"dependents\": 1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalScore").value(24))
+                .andExpect(jsonPath("$.data.maxScore").value(84))
+                .andExpect(jsonPath("$.data.baseDate").value("2026-11-09"));
+
+        mockMvcAtLevel(11).perform(post("/api/v1/housing/score-preview")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"homelessYears\": 3, \"dependents\": 1}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("LEVEL_LOCKED"));
+    }
+
+    @Test
+    void 청약_신청은_주소의_단지와_본문을_받아_201() throws Exception {
+        when(applicationService.apply(eq(MEMBER_ID), eq(1L), any())).thenReturn(
+                new com.wanted.moneybeetle.domain.housing.model.dto.ApplyResultDTO(40L, "MB-261105-0042", 24));
+
+        mockMvcAtLevel(12).perform(post("/api/v1/housing/complexes/1/applications")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"homelessYears\": 3, \"dependents\": 1}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.receiptNo").value("MB-261105-0042"));
+    }
+
+    @Test
+    void 중복_신청은_409_ALREADY_APPLIED() throws Exception {
+        when(applicationService.apply(eq(MEMBER_ID), eq(1L), any()))
+                .thenThrow(new BusinessException(HousingErrorCode.ALREADY_APPLIED));
+
+        mockMvcAtLevel(12).perform(post("/api/v1/housing/complexes/1/applications")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"homelessYears\": 3, \"dependents\": 1}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("ALREADY_APPLIED"));
+    }
+
+    @Test
+    void 내_신청_내역은_기본_20개씩_신청_최신순() throws Exception {
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        when(applicationService.findMyApplications(eq(MEMBER_ID), pageable.capture())).thenReturn(PageResponse.from(
+                new PageImpl<>(List.of(new com.wanted.moneybeetle.domain.housing.model.dto.ApplicationDTO(
+                        40L, "그린숲 행복주택", "MB-261105-0042", 24, LocalDate.of(2026, 11, 17), null)),
+                        PageRequest.of(0, 20), 1)));
+
+        mockMvcAtLevel(12).perform(get("/api/v1/housing/applications/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].complexName").value("그린숲 행복주택"))
+                .andExpect(jsonPath("$.data.items[0].result").doesNotExist());
+
+        assertThat(pageable.getValue().getSort().getOrderFor("appliedAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void 당첨_결과는_레벨과_무관하고_발표_전이면_403_NOT_ANNOUNCED_YET() throws Exception {
+        when(applicationService.getResult(MEMBER_ID, 40L)).thenReturn(
+                new com.wanted.moneybeetle.domain.housing.model.dto.ApplicationResultDTO(
+                        "LOSE", 24, "이번에는 낙첨이에요. 내 가점은 24점이었어요"));
+        mockMvcAtLevel(1).perform(get("/api/v1/housing/applications/40/result"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("LOSE"));
+
+        when(applicationService.getResult(MEMBER_ID, 41L))
+                .thenThrow(new BusinessException(HousingErrorCode.NOT_ANNOUNCED_YET));
+        mockMvcAtLevel(1).perform(get("/api/v1/housing/applications/41/result"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("NOT_ANNOUNCED_YET"));
     }
 }
