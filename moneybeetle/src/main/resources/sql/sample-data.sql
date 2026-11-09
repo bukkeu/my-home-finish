@@ -325,6 +325,7 @@ INSERT INTO exp_history (member_id, source_type, source_id, amount, exp_after, l
 (8, 'COURSE_COMPLETE', 4, 1250, 1250, 8);
 -- 모의투자 (#72, 이재성) ─ 프로토타입 moneybeetle-page/new1/Admin.jsx 기준
 -- 시즌 1개(시즌 7, 2026-10-19 월 시작, 14일·12턴)를 5턴 진행 중 상태로 넣는다. 시즌 만든 관리자 = 1
+-- 주의: 날짜는 프로토타입 기준 고정값이라 오늘보다 과거일 수 있다. 현재 턴은 current_turn 으로만 판단하고 날짜와 비교하지 않는다
 -- 가격: 5턴 = 프로토타입 현재 가격, 1~4턴·6턴은 프로토타입 seedPrices() 식, 7~12턴은 같은 식을 이어서 계산 (50원 단위)
 -- 미래 턴(6~12) 가격·뉴스도 미리 넣어 두지만, 사용자 화면에는 현재 턴까지만 보여야 한다 (조회 API에서 거른다)
 
@@ -378,6 +379,15 @@ INSERT INTO stock (stock_id, sector_id, name, start_price, intro, business) VALU
 (28, 14, '단단컴포짓', 43750, '소재 분야의 가상 기업이에요.', NULL),
 (29, 15, '누리여행', 23250, '여행 분야의 가상 기업이에요.', NULL),
 (30, 15, '쉼표투어', 18200, '여행 분야의 가상 기업이에요.', NULL);
+
+-- 기업정보 나머지 칸은 관리자 프로토타입(new1/Admin.jsx stockList) 기본값으로 채운다.
+-- 주요 사업은 비어 있는 종목만 "분야 + 관련 제품·서비스"로 채우고, 매출·영업이익은 모든 시드 종목에 같은 가상 값을 넣는다
+UPDATE stock s
+JOIN sector sc ON sc.sector_id = s.sector_id
+SET s.business = COALESCE(s.business, CONCAT(sc.name, ' 관련 제품·서비스')),
+    s.revenue = '1조 2,000억',
+    s.operating_profit = '1,450억'
+WHERE s.stock_id BETWEEN 1 AND 30;
 
 -- 매매 이유 선택지 6개
 INSERT INTO trade_reason (trade_reason_id, label, sort_order) VALUES
