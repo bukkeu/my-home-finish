@@ -81,4 +81,10 @@ public class Inquiry extends BaseTimeEntity {
     public void delete(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;
     }
+
+    /* 관리자 숨김·해제 (API 107, DP-22). 해제하면 숨긴 관리자 기록도 지운다 */
+    public void changeHidden(boolean hidden, Long adminId) {
+        this.isHidden = hidden;
+        this.hiddenBy = hidden ? adminId : null;
+    }
 }
