@@ -2253,12 +2253,15 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | ADM-01, DP-10 |
-| 설명 | ADMIN 권한 계정만 성공. 5회 실패 시 잠금. |
+| 설명 | ADMIN 권한 계정만 성공. 일반 로그인(API 6)과 같은 **폼 로그인**이라 요청은 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이고 CSRF 토큰도 함께 보낸다. 5회 연속 실패 시 잠금은 일반 로그인과 같은 규칙(1분, 이후 5회마다 5분)이고 잠금 횟수도 함께 센다. 일반 회원·강사 계정은 비밀번호가 맞아도 `FORBIDDEN`(403)이고 로그인 성공으로 기록되지 않는다. |
 
 **Request**
 
-```json
-{ "email": "admin@moneybeetle.kr", "password": "..." }
+```
+POST /api/v1/admin/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+email=admin@moneybeetle.kr&password=...
 ```
 
 **Response**

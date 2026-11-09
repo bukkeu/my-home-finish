@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.housing.controller;
 
 import com.wanted.moneybeetle.domain.auth.config.SecurityConfig;
+import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
@@ -58,7 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *            / 청약통장은 Lv.1 도 통과 / 납입 POST 는 CSRF 토큰이 있어야 한다
 *  */
 @SpringBootTest(classes = {HousingSecurityFlowTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
-        AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
+        AuthSuccessHandler.class, AdminAuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
         WebConfig.class, LevelCheckInterceptor.class, HousingController.class, GlobalExceptionHandler.class})
 class HousingSecurityFlowTest {
 
