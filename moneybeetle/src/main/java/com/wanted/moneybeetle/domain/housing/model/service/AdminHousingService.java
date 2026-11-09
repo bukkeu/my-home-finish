@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.housing.model.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanted.moneybeetle.domain.housing.exception.HousingErrorCode;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingApplicationRepository;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingComplexRepository;
@@ -14,6 +16,7 @@ import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;   // 제목 길이 상수만 쓴다 (저장은 NotificationService)
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
+import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,7 +42,8 @@ import java.util.stream.Collectors;
 *   - 산정 : 신청 마감 다음 날부터 한 번만. 가점 → 납입회차 → 추첨 순으로 공급 세대 수만큼 WIN (HousingWinnerPolicy)
 *   - 발표 : 산정한 뒤 발표일부터 한 번만. 신청자 모두에게 알림(김예린 NotificationService)
 *   - 수정·삭제·산정·발표·신청(#29)은 단지 행을 먼저 잠근다(findForUpdate) → 같은 단지 작업이 동시에 섞이지 않는다
-*   TODO 관리자 작업 기록 : AdminLogService(김예린, 역할분담 §7)가 생기면 등록·수정·삭제·산정·발표를 남긴다
+*   #178 관리자 작업 기록 : 등록·수정·삭제·산정·발표를 admin_log 에 남긴다 (김예린 AdminLogService, DP-43)
+*   - 작업과 같은 트랜잭션이라, 작업이 실패해 되돌려지면 기록도 남지 않는다
 *  */
 @Service
 @RequiredArgsConstructor
@@ -48,12 +53,22 @@ public class AdminHousingService {
     static final String NOTIFICATION_TYPE = "HOUSING_RESULT";                       // DB 설계 notification.type
     static final String NOTIFICATION_LINK = "/user/demo-housing-subscription";      // 화면 설계 모의 청약 화면
 
+    // admin_log (DB 설계 admin_log.action / target_type)
+    static final String TARGET_TYPE = "HOUSING_COMPLEX";
+    static final String ACTION_CREATE = "HOUSING_COMPLEX_CREATE";
+    static final String ACTION_UPDATE = "HOUSING_COMPLEX_UPDATE";
+    static final String ACTION_DELETE = "HOUSING_COMPLEX_DELETE";
+    static final String ACTION_COMPUTE = "HOUSING_COMPUTE";
+    static final String ACTION_ANNOUNCE = "HOUSING_ANNOUNCE";
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private final HousingComplexRepository complexRepository;
     private final HousingApplicationRepository applicationRepository;
     private final Clock clock;
     private final HousingWinnerPolicy winnerPolicy;
     private final MemberService memberService;                 // 다른 도메인은 Service 로만 (역할분담 §7)
     private final NotificationService notificationService;
+    private final AdminLogService adminLogService;
 
     // API 142 단지 목록 : 삭제 안 된 단지 + 신청자 수 (한 번에 센다)
     public List<AdminComplexDTO> findComplexes() {
@@ -74,14 +89,17 @@ public class AdminHousingService {
                 request.getSupplyUnits(), request.getSupplyType(),
                 request.getNoticeDate(), request.getApplyStartDate(), request.getApplyEndDate(),
                 request.getAnnounceDate(), adminId);
-        return complexRepository.save(complex).getId();
+        Long complexId = complexRepository.save(complex).getId();
+        adminLogService.record(adminId, ACTION_CREATE, TARGET_TYPE, complexId, toJson(Map.of("after", snapshot(complex))));
+        return complexId;
     }
 
     // API 144 공고 수정 : 신청자가 있으면 일정·공급 세대 수를 바꾸는 수정은 거절, 정보만 바꾸는 수정은 허용 (SP-76)
     @Transactional
-    public void updateComplex(Long complexId, ComplexRequestDTO request) {
+    public void updateComplex(Long adminId, Long complexId, ComplexRequestDTO request) {
         checkInput(request);
         HousingComplex complex = getComplex(complexId);
+        Map<String, Object> before = snapshot(complex);
 
         boolean scheduleChanged = !complex.hasSameSchedule(request.getNoticeDate(), request.getApplyStartDate(),
                 request.getApplyEndDate(), request.getAnnounceDate(), request.getSupplyUnits());
@@ -99,16 +117,19 @@ public class AdminHousingService {
         complex.changeSchedule(request.getNoticeDate(), request.getApplyStartDate(), request.getApplyEndDate(),
                 request.getAnnounceDate(), request.getSupplyUnits());
         // save 를 부르지 않아도 트랜잭션이 끝날 때 변경 감지로 저장된다
+        adminLogService.record(adminId, ACTION_UPDATE, TARGET_TYPE, complexId,
+                toJson(Map.of("before", before, "after", snapshot(complex))));
     }
 
     // API 145 공고 삭제 : 신청자가 없을 때만, Soft Delete
     @Transactional
-    public void deleteComplex(Long complexId) {
+    public void deleteComplex(Long adminId, Long complexId) {
         HousingComplex complex = getComplex(complexId);
         if (hasApplicants(complexId)) {
             throw new BusinessException(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         }
         complex.delete(LocalDateTime.now(clock));
+        adminLogService.record(adminId, ACTION_DELETE, TARGET_TYPE, complexId, toJson(Map.of("before", snapshot(complex))));
     }
 
     // 입력값 확인 : 빈 값·0 이하 → INVALID_COMPLEX_INPUT, 일정 순서 → INVALID_SCHEDULE
@@ -142,7 +163,7 @@ public class AdminHousingService {
 
     // API 147 당첨자 산정 : 신청 마감 다음 날부터, 한 번만
     @Transactional
-    public ComputeResultDTO compute(Long complexId) {
+    public ComputeResultDTO compute(Long adminId, Long complexId) {
         HousingComplex complex = getComplex(complexId);
         if (!complex.isApplyClosed(LocalDate.now(clock))) {
             throw new BusinessException(HousingErrorCode.APPLY_NOT_CLOSED);
@@ -156,12 +177,15 @@ public class AdminHousingService {
         LocalDateTime now = LocalDateTime.now(clock);
         complex.markComputed(now);
         // 신청마다 result·result_rank 가 바뀌었고, 트랜잭션이 끝날 때 변경 감지로 저장된다
+        adminLogService.record(adminId, ACTION_COMPUTE, TARGET_TYPE, complexId,
+                toJson(Map.of("applicants", applications.size(), "winners", winners,
+                        "supplyUnits", complex.getSupplyUnits())));
         return new ComputeResultDTO(applications.size(), winners, now);
     }
 
     // API 148 결과 발표 : 산정한 뒤 발표일부터, 한 번만. 이때부터 회원에게 결과가 보인다 (#29 API 71)
     @Transactional
-    public AnnounceResultDTO announce(Long complexId) {
+    public AnnounceResultDTO announce(Long adminId, Long complexId) {
         HousingComplex complex = getComplex(complexId);
         if (complex.isAnnounced()) {
             throw new BusinessException(HousingErrorCode.ALREADY_ANNOUNCED);
@@ -179,7 +203,33 @@ public class AdminHousingService {
         String title = resultTitle(complex.getName());
         applications.forEach(app ->
                 notificationService.send(app.getMemberId(), NOTIFICATION_TYPE, title, NOTIFICATION_LINK));
+        adminLogService.record(adminId, ACTION_ANNOUNCE, TARGET_TYPE, complexId,
+                toJson(Map.of("notified", applications.size())));
         return new AnnounceResultDTO(now, applications.size());
+    }
+
+    // 기록용 단지 값 (날짜는 "2026-11-03" 글자로). 순서를 지키려고 LinkedHashMap
+    private static Map<String, Object> snapshot(HousingComplex c) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("name", c.getName());
+        values.put("location", c.getLocation());
+        values.put("areaType", c.getAreaType());
+        values.put("salePrice", c.getSalePrice());
+        values.put("supplyUnits", c.getSupplyUnits());
+        values.put("supplyType", c.getSupplyType());
+        values.put("noticeDate", String.valueOf(c.getNoticeDate()));
+        values.put("applyStartDate", String.valueOf(c.getApplyStartDate()));
+        values.put("applyEndDate", String.valueOf(c.getApplyEndDate()));
+        values.put("announceDate", String.valueOf(c.getAnnounceDate()));
+        return values;
+    }
+
+    private static String toJson(Map<String, Object> detail) {
+        try {
+            return JSON.writeValueAsString(detail);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("관리자 작업 기록을 JSON 으로 바꾸지 못했습니다.", e);
+        }
     }
 
     // 발표 알림 제목 "<단지 이름> 청약 결과가 발표됐어요"
