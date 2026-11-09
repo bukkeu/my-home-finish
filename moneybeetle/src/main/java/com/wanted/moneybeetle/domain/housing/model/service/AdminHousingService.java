@@ -128,8 +128,11 @@ public class AdminHousingService {
         if (hasApplicants(complexId)) {
             throw new BusinessException(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         }
-        complex.delete(LocalDateTime.now(clock));
-        adminLogService.record(adminId, ACTION_DELETE, TARGET_TYPE, complexId, toJson(Map.of("before", snapshot(complex))));
+        Map<String, Object> before = snapshot(complex);            // 삭제 전 값을 먼저 담아 둔다
+        LocalDateTime now = LocalDateTime.now(clock);
+        complex.delete(now);
+        adminLogService.record(adminId, ACTION_DELETE, TARGET_TYPE, complexId,
+                toJson(Map.of("before", before, "deletedAt", now.toString())));
     }
 
     // 입력값 확인 : 빈 값·0 이하 → INVALID_COMPLEX_INPUT, 일정 순서 → INVALID_SCHEDULE

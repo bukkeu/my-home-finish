@@ -109,7 +109,9 @@ class AdminHousingLogTest {
     void 공고_삭제를_기록한다() throws Exception {
         serviceOn(LocalDate.of(2026, 10, 20)).deleteComplex(ADMIN_ID, 5L);
 
-        assertThat(recorded("HOUSING_COMPLEX_DELETE").at("/before/name").asText()).isEqualTo("비틀 파크");
+        JsonNode detail = recorded("HOUSING_COMPLEX_DELETE");
+        assertThat(detail.at("/before/name").asText()).isEqualTo("비틀 파크");
+        assertThat(detail.get("deletedAt").asText()).isEqualTo("2026-10-20T00:00");
     }
 
     @Test
