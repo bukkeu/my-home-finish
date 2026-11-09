@@ -910,11 +910,12 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | GRW-08 |
-| 설명 | 안 읽은 알림 수와 목록. |
+| 설명 | 안 읽은 알림 수와 목록. 최신순이다. 로그인한 회원 자신의 알림만 준다. |
 
 **Request**
 
 - Query: page=0&size=20
+    - `page` 기본값은 0이고 0 미만이면 0으로 본다. `size` 기본값은 20이고 1 미만이면 1, 50을 넘으면 50으로 맞춘다(최대 50).
 
 **Response**
 
