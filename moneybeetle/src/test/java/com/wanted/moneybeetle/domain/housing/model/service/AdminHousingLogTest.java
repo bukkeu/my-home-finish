@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.housing.model.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wanted.moneybeetle.domain.housing.exception.HousingErrorCode;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingApplicationRepository;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingComplexRepository;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexRequestDTO;
@@ -143,19 +144,23 @@ class AdminHousingLogTest {
     void 거절된_작업은_기록하지_않는다() {
         // 마감 전 산정 → APPLY_NOT_CLOSED
         assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 10)).compute(ADMIN_ID, 5L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(HousingErrorCode.APPLY_NOT_CLOSED);
         // 신청자가 있는 공고 삭제 → COMPLEX_HAS_APPLICANTS
         when(applicationRepository.countByHousingComplexId(5L)).thenReturn(1L);
         assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 5)).deleteComplex(ADMIN_ID, 5L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         // 신청자가 있는 공고의 공급 세대 수 변경 → COMPLEX_HAS_APPLICANTS
         ComplexRequestDTO changed = request("비틀 파크");
         changed.setSupplyUnits(3);
         assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 5)).updateComplex(ADMIN_ID, 5L, changed))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         // 산정하지 않은 공고 발표 → NOT_COMPUTED
         assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 17)).announce(ADMIN_ID, 5L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(HousingErrorCode.NOT_COMPUTED);
 
         verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
     }
