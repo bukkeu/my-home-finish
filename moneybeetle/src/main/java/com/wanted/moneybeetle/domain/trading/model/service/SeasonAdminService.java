@@ -48,6 +48,10 @@ public class SeasonAdminService {
     /** API 115 시즌 생성 : 14일·12턴 달력을 함께 만든다 */
     @Transactional
     public SeasonCreatedDTO createSeason(SeasonSaveDTO request, Long adminId) {
+        // trading_season.created_by 는 NOT NULL + FK 라, 로그인한 관리자 번호가 없으면 저장 단계에서 500 이 난다
+        if (adminId == null) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
         request.checkStartDate();
 
         TradingSeason season = TradingSeason.create(request.getName(), request.getStartDate(), adminId);

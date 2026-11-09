@@ -68,6 +68,14 @@ class SeasonAdminServiceTest {
     }
 
     @Test
+    void 로그인한_관리자_번호가_없으면_시즌을_만들지_않고_UNAUTHORIZED() {
+        assertThatThrownBy(() -> service.createSeason(new SeasonSaveDTO("시즌 8", MONDAY, null), null))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.UNAUTHORIZED);
+        verify(seasonRepository, never()).save(any());
+    }
+
+    @Test
     void 시즌을_만들면_12턴_달력을_함께_만든다() {
         SeasonCreatedDTO result = service.createSeason(new SeasonSaveDTO("시즌 8", MONDAY, null), ADMIN_ID);
 

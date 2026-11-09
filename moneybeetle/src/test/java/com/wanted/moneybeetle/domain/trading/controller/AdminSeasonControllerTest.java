@@ -1,5 +1,11 @@
 package com.wanted.moneybeetle.domain.trading.controller;
 
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.junit.jupiter.api.AfterEach;
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -45,6 +51,7 @@ class AdminSeasonControllerTest {
         var json = new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json()
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS).build());
         return MockMvcBuilders.standaloneSetup(new AdminSeasonController(service))
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(json)
                 .build();
@@ -76,6 +83,26 @@ class AdminSeasonControllerTest {
                 .andExpect(jsonPath("$.data.seasonId").value(8))
                 .andExpect(jsonPath("$.data.turns[0].turnNo").value(1))
                 .andExpect(jsonPath("$.data.turns[0].tradeDate").value("2026-11-16"));
+    }
+
+    @Test
+    void 시즌_생성은_로그인한_관리자_번호를_만든_사람으로_넘긴다() throws Exception {
+        AuthDetails admin = mock(AuthDetails.class);
+        when(admin.getMemberId()).thenReturn(3L);
+        SecurityContextHolder.setContext(new SecurityContextImpl(
+                new UsernamePasswordAuthenticationToken(admin, null, List.of())));
+        when(service.createSeason(any(), eq(3L))).thenReturn(new SeasonCreatedDTO(8L, List.of()));
+
+        mockMvc().perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"시즌 8\",\"startDate\":\"2026-11-16\"}"))
+                .andExpect(status().isCreated());
+
+        verify(service).createSeason(any(), eq(3L));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
