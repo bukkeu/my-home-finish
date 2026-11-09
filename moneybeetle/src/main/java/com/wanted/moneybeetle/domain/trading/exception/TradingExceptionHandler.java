@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.exception;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   CSV 형식 오류(API 130)만 따로 처리 : 공통 응답 모양 { success, data, error } 에 오류 행 목록을 data.errors 로 담는다
 *   - 관리자 시장 관리 Controller 에만 적용하고, 나머지 예외는 공통 GlobalExceptionHandler 가 처리한다
 *  */

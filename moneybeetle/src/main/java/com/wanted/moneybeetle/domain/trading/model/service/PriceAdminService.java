@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.service;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   관리자 턴별 가격표 (#42, API 127~130, ADM-19~24, SP-60)
 *   - 지난 턴 잠금 : 현재 턴 이하(이미 거래에 쓰인 가격)는 바꿀 수 없다 -> PAST_TURN_LOCKED
 *   - 변동률 입력 : 지난 턴 가격 x (1 + 변동률%) 를 50원 단위로 반올림 (지난 턴 가격이 없으면 시작 가격 기준)

@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /* comment.
-*   담당 : PM 이재성 (#42)
+*   담당 : PM (#42)
 *   AdminMarketController 가격표 부분 확인 (Service 는 가짜, DB·로그인 없이)
 *   - 가격표·저장 응답 모양, CSV 내려받기 헤더, CSV 오류 응답(data.errors), 지난 턴 409
 *  */

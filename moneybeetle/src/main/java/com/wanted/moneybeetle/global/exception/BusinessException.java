@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.exception;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   ErrorCode 를 담아서 던지는 업무 예외 (RuntimeException) : 문제 생겼어!! 신고서 들고 던지는 예외
 *  */
 

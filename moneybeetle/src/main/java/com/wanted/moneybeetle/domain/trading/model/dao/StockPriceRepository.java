@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   테이블 stock_price
 *  */
 public interface StockPriceRepository extends JpaRepository<StockPrice, Long> {

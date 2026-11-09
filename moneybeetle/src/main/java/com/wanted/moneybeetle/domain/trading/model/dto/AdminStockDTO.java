@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   관리자 종목 목록의 한 줄 (API 124) : 종목, 분야, 시작 가격, 기업정보
 *   (사용자 시세 화면의 StockDTO 와 따로 둔다)
 *  */

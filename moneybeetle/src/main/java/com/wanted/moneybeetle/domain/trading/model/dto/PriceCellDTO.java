@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   가격표 한 칸 입력 (API 128) : stockId, turnNo 와 price 또는 changeRate(지난 턴 대비 %) 중 하나
 *   - 둘 다 있으면 price 를 쓴다
 *  */

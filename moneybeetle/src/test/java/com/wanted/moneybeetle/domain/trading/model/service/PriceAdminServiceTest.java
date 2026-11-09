@@ -36,7 +36,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
-*   담당 : PM 이재성 (#42)
+*   담당 : PM (#42)
 *   PriceAdminService 확인 (DB 없이 Repository 는 가짜(mock))
 *   - 가격표 모양, 지난 턴 잠금, 변동률 입력(50원 반올림), ±30% 경고와 confirm, 0원 이하 거절, 변동률 재계산
 *   - CSV 내려받기 모양, 올리기 성공·오류 행(전체 취소)

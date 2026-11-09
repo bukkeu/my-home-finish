@@ -26,7 +26,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
-*   담당 : PM 이재성 (#41)
+*   담당 : PM (#41)
 *   MarketAdminService 분야·종목 확인 (DB 없이 Repository 는 가짜(mock))
 *   - 이름 중복 409(동시 요청으로 DB UNIQUE 가 막은 경우 포함), 없는 분야·종목 404, 수정 값 반영, 종목 목록 정렬(분야 순서)
 *  */

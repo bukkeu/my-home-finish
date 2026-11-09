@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   테이블 reward_rule
 *  */
 public interface RewardRuleRepository extends JpaRepository<RewardRule, Long> {

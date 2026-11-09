@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.exception;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   모의투자 에러 코드 (API 명세서 4장). 필요한 코드는 각 이슈에서 추가한다
 *   - #40 시즌 관리 : START_DATE_NOT_MONDAY, INVALID_STATUS_TRANSITION, SEASON_CLOSED
 *   - #41 분야·종목 관리 : SECTOR_DUPLICATED, STOCK_DUPLICATED
