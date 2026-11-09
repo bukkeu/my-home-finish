@@ -28,7 +28,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 /* comment.
 *   담당 : PM (#41)
 *   MarketAdminService 분야·종목 확인 (DB 없이 Repository 는 가짜(mock))
-*   - 이름 중복 409(동시 요청으로 DB UNIQUE 가 막은 경우 포함), 없는 분야·종목 404, 수정 값 반영, 종목 목록 정렬(분야 순서)
+*   - 이름 중복 409(동시 요청으로 DB UNIQUE 가 막은 경우 포함), 분야당 사용 중 종목 2개, 없는 분야·종목 404,
+*     수정 값 반영, 종목 목록 정렬(분야 순서)
 *  */
 class MarketAdminServiceTest {
 
@@ -224,6 +225,31 @@ class MarketAdminServiceTest {
     }
 
     @Test
+    void 분야_동시_등록으로_이름_UNIQUE가_막으면_SECTOR_DUPLICATED() {
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenThrow(new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Duplicate entry '핀테크' for key 'sector.uk_sector_name'")));
+
+        assertThatThrownBy(() -> service.createSector(new SectorSaveDTO("핀테크", 15, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.SECTOR_DUPLICATED);
+    }
+
+    @Test
+    void 종목_동시_수정으로_이름_UNIQUE가_막으면_STOCK_DUPLICATED() {
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock(1L, 1L, "한빛반도체")));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        org.mockito.Mockito.doThrow(new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Duplicate entry for key 'stock.uk_stock_name'")))
+                .when(stockRepository).flush();
+
+        assertThatThrownBy(() -> service.changeStock(1L,
+                new StockSaveDTO(1L, "모아모빌리티", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.STOCK_DUPLICATED);
+    }
+
+    @Test
     void 이름_UNIQUE가_아닌_무결성_오류는_그대로_던진다() {
         when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
         when(stockRepository.existsByName("새종목")).thenReturn(false);
@@ -233,6 +259,50 @@ class MarketAdminServiceTest {
 
         assertThatThrownBy(() -> service.createStock(new StockSaveDTO(1L, "새종목", 1_000, null, null, null, null)))
                 .isSameAs(other);
+    }
+
+    @Test
+    void 사용_중_종목이_2개인_분야에_등록하면_STOCK_LIMIT_EXCEEDED() {
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(stockRepository.existsByName("세번째반도체")).thenReturn(false);
+        when(stockRepository.countBySectorIdAndIsActiveTrue(1L)).thenReturn(2L);
+
+        assertThatThrownBy(() -> service.createStock(new StockSaveDTO(1L, "세번째반도체", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.STOCK_LIMIT_EXCEEDED);
+        verify(stockRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void 사용_중_종목을_2개인_분야로_옮기면_STOCK_LIMIT_EXCEEDED() {
+        Stock stock = stock(1L, 1L, "한빛반도체");
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock));
+        when(sectorRepository.findById(2L)).thenReturn(Optional.of(sector(2L, "모빌리티", 2)));
+        when(stockRepository.countBySectorIdAndIsActiveTrue(2L)).thenReturn(2L);
+
+        assertThatThrownBy(() -> service.changeStock(1L,
+                new StockSaveDTO(2L, "한빛반도체", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.STOCK_LIMIT_EXCEEDED);
+        assertThat(stock.getSectorId()).isEqualTo(1L);
+    }
+
+    @Test
+    void 같은_분야_안에서_고치거나_사용_안_함_종목을_옮길_때는_개수를_세지_않는다() {
+        Stock active = stock(1L, 1L, "한빛반도체");
+        Stock inactive = stock(2L, 1L, "옛반도체");
+        inactive.deactivate();
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(active));
+        when(stockRepository.findById(2L)).thenReturn(Optional.of(inactive));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(sectorRepository.findById(2L)).thenReturn(Optional.of(sector(2L, "모빌리티", 2)));
+        when(stockRepository.countBySectorIdAndIsActiveTrue(any())).thenReturn(2L);
+
+        service.changeStock(1L, new StockSaveDTO(1L, "한빛반도체", 90_000, "새 소개", null, null, null));
+        service.changeStock(2L, new StockSaveDTO(2L, "옛반도체", 1_000, null, null, null, null));
+
+        assertThat(active.getStartPrice()).isEqualTo(90_000);
+        assertThat(inactive.getSectorId()).isEqualTo(2L);
     }
 
     @Test
