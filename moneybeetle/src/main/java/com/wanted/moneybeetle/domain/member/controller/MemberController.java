@@ -1,7 +1,18 @@
 
 package com.wanted.moneybeetle.domain.member.controller;
 
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
+import com.wanted.moneybeetle.domain.member.model.service.MemberProfileService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.multipart.MultipartFile;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsListDTO;
@@ -32,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService memberService;
+    private final MemberProfileService memberProfileService;
 
     // API 1. 약관 목록 조회
     @GetMapping("/api/v1/agreements")
@@ -62,5 +74,33 @@ public class MemberController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(result));
+    }
+
+    // API 13. 내 정보 (메뉴 프로필)
+    @GetMapping("/api/v1/members/me")
+    public ApiResponse<MyInfoDTO> getMyInfo(@AuthenticationPrincipal AuthDetails me) {
+        return ApiResponse.success(memberProfileService.getMyInfo(me.getMemberId()));
+    }
+
+    // API 14. 설정 수정
+    @PatchMapping("/api/v1/members/me")
+    public ApiResponse<MemberUpdateResultDTO> updateMyInfo(
+            @AuthenticationPrincipal AuthDetails me,
+            @Valid @RequestBody MemberUpdateDTO request) {
+        return ApiResponse.success(memberService.updateProfile(me.getMemberId(), request));
+    }
+
+    // API 15. 프로필 이미지 변경
+    @PostMapping("/api/v1/members/me/profile-image")
+    public ApiResponse<ProfileImageDTO> changeProfileImage(
+            @AuthenticationPrincipal AuthDetails me,
+            @RequestParam("file") MultipartFile file) {
+        return ApiResponse.success(memberProfileService.changeProfileImage(me.getMemberId(), file));
+    }
+
+    // API 18. 다른 회원 공개 프로필
+    @GetMapping("/api/v1/members/{memberId}/profile")
+    public ApiResponse<PublicProfileDTO> getPublicProfile(@PathVariable Long memberId) {
+        return ApiResponse.success(memberProfileService.getPublicProfile(memberId));
     }
 }

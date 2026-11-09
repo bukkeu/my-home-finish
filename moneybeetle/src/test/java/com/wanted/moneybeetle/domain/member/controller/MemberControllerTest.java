@@ -42,7 +42,7 @@ class MemberControllerTest {
                 Jackson2ObjectMapperBuilder.json().build());
 
         return MockMvcBuilders.standaloneSetup(
-                        new MemberController(memberService))
+                        new MemberController(memberService, mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(json)
                 .build();

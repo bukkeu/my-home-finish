@@ -7,6 +7,10 @@ import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
@@ -160,6 +164,73 @@ public class MemberService {
     private Member getMemberForUpdate(Long memberId) {
         return memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    /** 회원의 프로필 원본 값 (member.MemberProfileService 용). 없는 회원이면 MEMBER_NOT_FOUND */
+    public MemberProfileDTO getProfile(Long memberId) {
+        return MemberProfileDTO.from(getMember(memberId));
+    }
+
+    /** 다른 회원에게 보여 줄 프로필 원본 값. 탈퇴·정지 회원은 없는 회원처럼 MEMBER_NOT_FOUND (DP-03) */
+    public MemberProfileDTO getActiveProfile(Long memberId) {
+        Member member = getMember(memberId);
+        if (!member.isActive()) {
+            throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND);
+        }
+        return MemberProfileDTO.from(member);
+    }
+
+    /**
+     * 설정 수정 (API 14). 값이 없는 항목은 그대로 둔다. 닉네임이 바뀔 때만 형식·금칙어·중복을 확인하고(SP-02),
+     * 생년월일은 가입 때와 같이 과거 날짜·만 14세 이상인지 확인한다. 이메일은 받지 않는다.
+     * 같은 닉네임으로 동시에 바꿔 중복 확인을 둘 다 통과해도 저장 시점의 DB 고유 제약에서 409 로 바꾼다.
+     */
+    @Transactional
+    public MemberUpdateResultDTO updateProfile(Long memberId, MemberUpdateDTO request) {
+        Member member = getMemberForUpdate(memberId);
+
+        String nickname = member.getNickname();
+        if (request.getNickname() != null && !request.getNickname().equals(nickname)) {
+            validateNickname(request.getNickname());
+            nickname = request.getNickname();
+        }
+
+        LocalDate birthDate = member.getBirthDate();
+        if (request.getBirthDate() != null) {
+            validateBirthDate(request.getBirthDate(), LocalDate.now(clock));
+            birthDate = request.getBirthDate();
+        }
+
+        String gender = request.getGender() != null ? request.getGender() : member.getGender();
+
+        member.changeProfile(nickname, birthDate, gender);
+        flushProfile();
+        return new MemberUpdateResultDTO(member.getMemberId(), member.getNickname());
+    }
+
+    /** 프로필 이미지 주소를 저장한다 (member.MemberProfileService 가 파일을 저장한 뒤 부른다) */
+    @Transactional
+    public ProfileImageDTO changeProfileImageUrl(Long memberId, String profileImageUrl) {
+        Member member = getMemberForUpdate(memberId);
+        member.changeProfileImageUrl(profileImageUrl);
+        return new ProfileImageDTO(member.getProfileImageUrl());
+    }
+
+    private Member getMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    /** 변경을 DB 에 바로 보내 고유 제약(닉네임) 위반을 이 자리에서 409 로 바꾼다 */
+    private void flushProfile() {
+        try {
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            if (UK_MEMBER_NICKNAME.equals(findConstraintName(e))) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
+        }
     }
 
     /** 가입 화면에 보여 줄 약관(필수·선택) 목록 (API 1) */
