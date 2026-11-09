@@ -40,6 +40,9 @@ public interface HousingApplicationRepository extends JpaRepository<HousingAppli
     // #29 내 신청 내역 (API 70)
     Page<HousingApplication> findByMemberId(Long memberId, Pageable pageable);
 
+    // #48 단지 신청자 전체 (신청자 목록·산정·발표 알림)
+    List<HousingApplication> findByHousingComplexId(Long housingComplexId);
+
     // #47 관리자 단지 목록 : 여러 단지의 신청자 수를 한 번에 센다 (단지마다 count 를 부르면 N+1)
     //  결과 한 줄 = [단지 ID, 신청자 수]
     @Query("SELECT a.housingComplexId, COUNT(a) FROM HousingApplication a "
