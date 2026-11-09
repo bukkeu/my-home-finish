@@ -54,7 +54,8 @@ import org.springframework.web.context.WebApplicationContext;
 *   회원 저장소만 가짜로 둔다 (DB 없이 돈다). 로그인 요청이 폼 형식(email, password)이라는 것과 CSRF 토큰이 필요하다는 것도 여기서 고정한다.
 *  */
 @SpringBootTest(classes = {LoginHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
-        AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
+        AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
+        com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler.class, AuthService.class,
         com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider.class,
         MemberService.class,
         LoginHttpTest.ProtectedController.class})
@@ -92,6 +93,9 @@ class LoginHttpTest {
         }
     }
 
+    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 출석 자체를 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
     @MockitoBean
     private MemberRepository memberRepository;
     @MockitoBean
@@ -119,6 +123,7 @@ class LoginHttpTest {
         when(memberRepository.findByEmail(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(8L)).thenReturn(Optional.of(member));
     }
 
     private org.springframework.test.web.servlet.ResultActions loginForm(String email, String password, MockHttpSession session)
