@@ -98,6 +98,10 @@ class LoginHttpTest {
     private InstructorProfileRepository instructorProfileRepository;
     @MockitoBean
     private TermsRepository termsRepository;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository memberTermsAgreementRepository;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService forbiddenWordService;
 
     @Autowired
     private WebApplicationContext context;
