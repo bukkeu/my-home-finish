@@ -123,16 +123,43 @@ class SeasonAdminServiceTest {
     }
 
     @Test
-    void 시즌_목록에는_참가자_수가_들어간다() {
-        when(seasonRepository.findAllByOrderByStartDateDesc()).thenReturn(List.of(savedSeason(7L, "시즌 7")));
-        when(participantRepository.countByTradingSeasonId(7L)).thenReturn(1240L);
+    void 시즌_목록에는_참가자_수가_들어가고_참가자가_없는_시즌은_0이다() {
+        when(seasonRepository.findAllByOrderByStartDateDesc())
+                .thenReturn(List.of(savedSeason(7L, "시즌 7"), savedSeason(8L, "시즌 8")));
+        when(participantRepository.countByTradingSeasonIds(List.of(7L, 8L)))
+                .thenReturn(List.of(participantCount(7L, 1240L)));
 
         List<SeasonSummaryDTO> seasons = service.findSeasons();
 
-        assertThat(seasons).hasSize(1);
+        assertThat(seasons).hasSize(2);
         assertThat(seasons.get(0).getSeasonId()).isEqualTo(7L);
         assertThat(seasons.get(0).getStatus()).isEqualTo("READY");
         assertThat(seasons.get(0).getParticipants()).isEqualTo(1240L);
+        assertThat(seasons.get(1).getParticipants()).isZero();
+        // 시즌마다 세지 않고 한 번에 센다 (N+1 방지)
+        verify(participantRepository, never()).countByTradingSeasonId(any());
+    }
+
+    @Test
+    void 시즌이_없으면_참가자_수를_조회하지_않는다() {
+        when(seasonRepository.findAllByOrderByStartDateDesc()).thenReturn(List.of());
+
+        assertThat(service.findSeasons()).isEmpty();
+        verify(participantRepository, never()).countByTradingSeasonIds(any());
+    }
+
+    private static SeasonParticipantRepository.SeasonParticipantCount participantCount(long seasonId, long count) {
+        return new SeasonParticipantRepository.SeasonParticipantCount() {
+            @Override
+            public Long getSeasonId() {
+                return seasonId;
+            }
+
+            @Override
+            public long getParticipantCount() {
+                return count;
+            }
+        };
     }
 
     @Test

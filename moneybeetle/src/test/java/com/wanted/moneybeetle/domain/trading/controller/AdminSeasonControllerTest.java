@@ -1,11 +1,5 @@
 package com.wanted.moneybeetle.domain.trading.controller;
 
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
-import org.springframework.security.core.context.SecurityContextImpl;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.junit.jupiter.api.AfterEach;
-import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -19,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dto.SeasonCreatedDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SeasonStatusDTO;
@@ -28,10 +23,15 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
 import java.time.LocalDate;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -45,6 +45,11 @@ class AdminSeasonControllerTest {
     private static final String BASE = "/api/v1/admin/trading/seasons";
 
     private final SeasonAdminService service = mock(SeasonAdminService.class);
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     private MockMvc mockMvc() {
         // Spring Boot 서버와 같은 JSON 설정 (날짜를 "2026-11-16" 글자로 내보낸다)
@@ -98,11 +103,6 @@ class AdminSeasonControllerTest {
                 .andExpect(status().isCreated());
 
         verify(service).createSeason(any(), eq(3L));
-    }
-
-    @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
     }
 
     @Test

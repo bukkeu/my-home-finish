@@ -24,6 +24,8 @@ import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,9 +41,17 @@ public class SeasonAdminService {
 
     /** API 114 시즌 목록 */
     public List<SeasonSummaryDTO> findSeasons() {
-        return seasonRepository.findAllByOrderByStartDateDesc().stream()
-                .map(season -> SeasonSummaryDTO.from(season,
-                        participantRepository.countByTradingSeasonId(season.getTradingSeasonId())))
+        List<TradingSeason> seasons = seasonRepository.findAllByOrderByStartDateDesc();
+        if (seasons.isEmpty()) {
+            return List.of();
+        }
+        // 시즌마다 세지 않고 한 번에 센다. 참가자가 없는 시즌은 결과에 없으므로 0으로 둔다
+        Map<Long, Long> counts = participantRepository
+                .countByTradingSeasonIds(seasons.stream().map(TradingSeason::getTradingSeasonId).toList()).stream()
+                .collect(Collectors.toMap(SeasonParticipantRepository.SeasonParticipantCount::getSeasonId,
+                        SeasonParticipantRepository.SeasonParticipantCount::getParticipantCount));
+        return seasons.stream()
+                .map(season -> SeasonSummaryDTO.from(season, counts.getOrDefault(season.getTradingSeasonId(), 0L)))
                 .toList();
     }
 
