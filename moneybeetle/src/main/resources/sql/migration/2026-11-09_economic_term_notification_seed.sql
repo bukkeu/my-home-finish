@@ -59,6 +59,14 @@ WHERE NOT EXISTS (
 -- - 번호가 같다고 시드 회원이라고 믿지 않는다: 회원 번호와 시드 이메일이 모두 맞는 회원에게만 넣는다.
 --   (시드가 아닌 DB 에서 8번·5번이 실제 회원이어도 샘플 알림이 붙지 않는다)
 -- - 샘플마다 같은 회원·종류·제목·이동 주소의 알림이 이미 있으면 그 행만 건너뛴다 (문의 답변 알림은 이동 주소가 NULL 이라 NULL 도 비교하는 <=> 를 쓴다)
+
+-- 이전 시드로 이미 들어간 문의 답변 알림은 없는 문의(/user/inquiry/1)를 가리키므로 이동 주소만 비운다 (읽음 상태는 그대로 둔다).
+-- 그러면 아래 INSERT 의 중복 검사(<=>)가 이 행을 같은 알림으로 보고 다시 넣지 않는다. 시드 회원(번호와 이메일이 모두 맞는 8번)만 건드린다.
+UPDATE notification n
+JOIN member m ON m.member_id = n.member_id AND m.email = 'minji@moneybeetle.local'
+SET n.link_url = NULL
+WHERE n.member_id = 8 AND n.type = 'INQUIRY_REPLY' AND n.title = '문의에 답변이 등록됐어요' AND n.link_url = '/user/inquiry/1';
+
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at)
 SELECT v.member_id, v.type, v.title, v.link_url, v.is_read, v.created_at
 FROM (
