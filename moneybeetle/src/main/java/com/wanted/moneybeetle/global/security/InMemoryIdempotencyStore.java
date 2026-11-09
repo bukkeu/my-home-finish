@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.security;
 
 /* comment.
-*   담당 : PM 이재성 (#65), 검토 : SCM 서수영
+*   담당 : PM (중복 요청 방지, #65), 검토 : SCM
 *   Idempotency-Key 기록을 메모리에 24시간 보관한다 (DP-37 초안 값)
 *   - 보관 기간이 지난 기록은 새 기록을 남길 때 함께 지운다 (별도 예약 작업 없음)
 *   - 서버를 재시작하면 기록이 사라진다. 한 대로 시연하는 지금 구성에서는 충분하다

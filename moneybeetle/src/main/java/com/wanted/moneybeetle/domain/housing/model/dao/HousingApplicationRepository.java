@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 /* comment.
-*   담당 : SCM (성장·홈·모의 청약)
+*   담당 : SCM (모의 청약)
 *   - 이 단지 신청자는 몇 명?
 *   - 이 회원이 이 단지에 신청한 내역은?
 *   - 이 회원이 신청한 단지들은?(여러 단지를 한 번에)

@@ -1,5 +1,5 @@
 /* comment.
-*   담당 : DBA ② (공통 레이아웃, 이슈 #49)
+*   담당 : DBA ② 김예린 (#49, 공통 설정)
 *   프로토타입 mb-config.js 대체. 설정값의 기준은 서버(system_setting 테이블)다.
 *   header 조각(fragments/layout/header :: scripts)이 서버 값을 window.MB_SERVER_CONFIG 로 먼저 넣어 주고,
 *   이 파일은 그 값에 아래 기본값을 덮어 MB_CONFIG 를 만든다. 서버 값이 없으면(정적 미리보기) 기본값을 쓴다.

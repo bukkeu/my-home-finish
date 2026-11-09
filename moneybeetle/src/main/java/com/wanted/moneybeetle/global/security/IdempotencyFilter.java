@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.security;
 
 /* comment.
-*   담당 : PM 이재성 (#65), 검토 : SCM 서수영
+*   담당 : PM (중복 요청 방지, #65), 검토 : SCM
 *   Idempotency-Key 헤더로 같은 요청을 한 번만 처리 (DP-37, API 명세서 1-1)
 *   대상 : 퀴즈 제출, 매수·매도, 청약통장 납입, 강의 영상·요약글 저장(API 78)
 *   - 키는 "로그인 회원 + 메서드 + 주소 + Idempotency-Key" 로 구분한다

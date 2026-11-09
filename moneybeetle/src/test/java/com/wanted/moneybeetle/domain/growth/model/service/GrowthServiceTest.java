@@ -19,7 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   GrowthService (이슈 #11) - Repository·MemberService 를 Mock 으로 두고 서버·DB 없이 돈다
 *  */
 class GrowthServiceTest {

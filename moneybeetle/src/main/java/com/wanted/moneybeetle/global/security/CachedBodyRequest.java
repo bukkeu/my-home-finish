@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.security;
 
 /* comment.
-*   담당 : PM 이재성 (#65), 검토 : SCM 서수영
+*   담당 : PM (중복 요청 방지, #65), 검토 : SCM
 *   요청 본문을 미리 읽어 두는 래퍼. IdempotencyFilter 가 본문 해시를 만든 뒤에도
 *   Controller(@RequestBody)가 본문을 다시 읽을 수 있게 한다
 *  */

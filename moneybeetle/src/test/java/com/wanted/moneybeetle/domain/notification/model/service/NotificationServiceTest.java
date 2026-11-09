@@ -26,7 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.repository.query.parser.PartTree;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (알림)
 *   NotificationService · Notification · NotificationDTO - Repository 를 Mock 으로 두고 서버·DB 없이 돈다
 *  */
 class NotificationServiceTest {

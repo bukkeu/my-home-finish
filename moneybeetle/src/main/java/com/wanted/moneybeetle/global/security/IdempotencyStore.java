@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.security;
 
 /* comment.
-*   담당 : PM 이재성 (#65), 검토 : SCM 서수영
+*   담당 : PM (중복 요청 방지, #65), 검토 : SCM
 *   Idempotency-Key 처리 기록 보관소 (DP-37)
 *   지금은 메모리 구현(InMemoryIdempotencyStore)만 쓴다. 서버를 여러 대 띄우거나
 *   재시작 후에도 기록이 필요해지면 이 인터페이스로 DB 구현을 따로 만든다

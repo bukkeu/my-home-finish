@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.security;
 
 /* comment.
-*   담당 : PM 이재성 (#65), 검토 : SCM 서수영
+*   담당 : PM (중복 요청 방지, #65), 검토 : SCM
 *   Idempotency-Key 한 건의 처리 기록 : 요청 내용 해시, 처리 상태, 처음 응답(상태 코드·본문)
 *  */
 

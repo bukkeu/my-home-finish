@@ -20,7 +20,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 /* comment.
-*   담당 : PM 이재성 (#65)
+*   담당 : PM (중복 요청 방지, #65)
 *   IdempotencyFilter 확인 (스프링 없이 단독 실행)
 *   - 같은 키·같은 내용은 한 번만 처리하고 처음 결과를 다시 돌려준다
 *   - 같은 키·다른 내용은 409 IDEMPOTENCY_KEY_CONFLICT, 처리 중이면 409 DUPLICATE_REQUEST

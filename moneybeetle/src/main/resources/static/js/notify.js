@@ -1,5 +1,5 @@
 /* comment.
-*   담당 : DBA ② (공통 레이아웃, 이슈 #49)
+*   담당 : DBA ② 김예린 (#49, 공통 알림 UI)
 *   알림 벨 (원본 mb-notify.js) - 목업 데이터 대신 서버 API 를 쓴다
 *   - 벨 버튼([data-mb-bell])을 누르면 오른쪽 알림 패널이 열린다
 *   - GET   /api/v1/notifications           { unreadCount, items:[{ notificationId, title, linkUrl, isRead, createdAt }] }
