@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
@@ -95,7 +96,7 @@ public class Course {
 
     /* 이 강의의 강사인지 (본인 강의만 수정·검수 요청, #30·#32) */
     public boolean isOwnedBy(Long instructorId) {
-        return this.instructorId.equals(instructorId);
+        return Objects.equals(this.instructorId, instructorId);
     }
 
     /* 검수 요청 (API 81, DP-34). 작성 중·반려 상태에서만 → 반려된 강의를 고쳐 다시 요청할 수 있다 */
