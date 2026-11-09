@@ -9,10 +9,13 @@ package com.wanted.moneybeetle.domain.auth.config;
 *   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글·카카오)
 *  */
 
+import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -31,7 +34,37 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();    // ③ BCrypt 암호화 클래스
     }
 
+    /**
+     * 관리자 로그인 (API 83, 이슈 #33). 일반 로그인과 같은 인증 제공자(잠금·실패 기록 공유)를 쓰고, 이 주소로 온 시도에는
+     * AdminLoginDetails 표시를 붙여 ADMIN 권한이 아니면 인증 제공자가 막게 한다. 이 주소만 따로 처리하려고 필터 체인을 하나 더 둔다.
+     * 요청은 일반 로그인처럼 폼 형식(email, password)이고 CSRF 토큰이 필요하다.
+     */
     @Bean
+    @Order(1)
+    public SecurityFilterChain adminLoginChain(HttpSecurity http,
+                                               SecurityErrorHandler securityErrorHandler,
+                                               AdminAuthSuccessHandler adminAuthSuccessHandler,
+                                               AuthFailHandler authFailHandler) throws Exception {
+        http.securityMatcher("/api/v1/admin/auth/login")
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .formLogin(login -> {
+                    login.loginPage("/admin/login");
+                    login.loginProcessingUrl("/api/v1/admin/auth/login");
+                    login.usernameParameter("email");
+                    login.passwordParameter("password");
+                    login.authenticationDetailsSource(AdminLoginDetails::new);
+                    login.successHandler(adminAuthSuccessHandler);
+                    login.failureHandler(authFailHandler);
+                })
+                .exceptionHandling(ex -> {
+                    ex.authenticationEntryPoint(securityErrorHandler);
+                    ex.accessDeniedHandler(securityErrorHandler);
+                });
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain configure(HttpSecurity http,
                                          SecurityErrorHandler securityErrorHandler,
                                          AuthSuccessHandler authSuccessHandler,
