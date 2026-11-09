@@ -8,6 +8,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberCountDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
@@ -178,6 +179,15 @@ public class MemberService {
      * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
      * 없는 회원이면 false 다.
      */
+    /**
+     * 관리자 대시보드용 회원 수 (operation.DashboardService 전용, #33). 학습자(MEMBER) 기준이고, total 에는 탈퇴한 회원도 들어 있다.
+     * 강사·관리자는 세지 않는다.
+     */
+    public MemberCountDTO countMembers() {
+        return new MemberCountDTO(memberRepository.countByRole(Member.ROLE_MEMBER),
+                memberRepository.countByRoleAndStatus(Member.ROLE_MEMBER, Member.STATUS_WITHDRAWN));
+    }
+
     public boolean isActiveMember(Long memberId) {
         return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
     }

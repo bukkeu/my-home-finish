@@ -19,6 +19,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     /** 이메일 중복 확인 (SP-01). 넘기는 값은 이미 소문자여야 한다 */
     boolean existsByEmail(String email);
 
+    /** 역할별 회원 수 (관리자 대시보드, #33) */
+    long countByRole(String role);
+
+    /** 역할·상태별 회원 수 (관리자 대시보드, #33) */
+    long countByRoleAndStatus(String role, String status);
+
     /** 닉네임 중복 확인 (SP-02) */
     boolean existsByNickname(String nickname);
 
