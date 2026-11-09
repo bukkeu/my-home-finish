@@ -28,6 +28,8 @@ public class StockSaveDTO {
     @Min(1)
     private int startPrice;
 
+    // DB TEXT 는 65,535바이트까지. 한 글자가 최대 4바이트(UTF-8)라 16,000자면 넘지 않는다
+    @Size(max = 16000)
     private String intro;
 
     @Size(max = 300)

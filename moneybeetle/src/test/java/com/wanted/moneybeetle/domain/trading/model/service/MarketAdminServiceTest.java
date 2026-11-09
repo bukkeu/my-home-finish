@@ -22,12 +22,13 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
 *   담당 : PM 이재성 (#41)
 *   MarketAdminService 분야·종목 확인 (DB 없이 Repository 는 가짜(mock))
-*   - 이름 중복 409, 없는 분야·종목 404, 수정 값 반영, 종목 목록 정렬(분야 순서)
+*   - 이름 중복 409(동시 요청으로 DB UNIQUE 가 막은 경우 포함), 없는 분야·종목 404, 수정 값 반영, 종목 목록 정렬(분야 순서)
 *  */
 class MarketAdminServiceTest {
 
@@ -57,7 +58,7 @@ class MarketAdminServiceTest {
     @Test
     void 분야를_등록하면_번호를_돌려준다() {
         when(sectorRepository.existsByName("핀테크")).thenReturn(false);
-        when(sectorRepository.save(any(Sector.class))).thenAnswer(invocation -> {
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> {
             Sector saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "sectorId", 15L);
             return saved;
@@ -74,7 +75,7 @@ class MarketAdminServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.SECTOR_DUPLICATED);
-        verify(sectorRepository, never()).save(any());
+        verify(sectorRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -102,7 +103,7 @@ class MarketAdminServiceTest {
     void 종목을_등록하면_기업정보까지_저장한다() {
         when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
         when(stockRepository.existsByName("한빛반도체")).thenReturn(false);
-        when(stockRepository.save(any(Stock.class))).thenAnswer(invocation -> {
+        when(stockRepository.saveAndFlush(any(Stock.class))).thenAnswer(invocation -> {
             Stock saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "stockId", 1L);
             return saved;
@@ -112,7 +113,7 @@ class MarketAdminServiceTest {
                 "1조 2,000억", "1,450억"));
 
         assertThat(id).isEqualTo(1L);
-        verify(stockRepository).save(org.mockito.ArgumentMatchers.argThat(stock ->
+        verify(stockRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(stock ->
                 stock.getStartPrice() == 76_800
                         && "메모리".equals(stock.getBusiness())
                         && "1,450억".equals(stock.getOperatingProfit())));
@@ -149,6 +150,89 @@ class MarketAdminServiceTest {
         assertThat(stock.getSectorId()).isEqualTo(2L);
         assertThat(stock.getStartPrice()).isEqualTo(80_000);
         assertThat(stock.getIntro()).isEqualTo("새 소개");
+    }
+
+    @Test
+    void 분야_수정은_다른_분야와_이름이_같으면_SECTOR_DUPLICATED() {
+        Sector sector = sector(1L, "반도체", 1);
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector));
+        when(sectorRepository.existsByNameAndSectorIdNot("모빌리티", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.changeSector(1L, new SectorSaveDTO("모빌리티", null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.SECTOR_DUPLICATED);
+        assertThat(sector.getName()).isEqualTo("반도체");
+    }
+
+    @Test
+    void 종목_수정은_다른_종목과_이름이_같으면_STOCK_DUPLICATED() {
+        Stock stock = stock(1L, 1L, "한빛반도체");
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(stockRepository.existsByNameAndStockIdNot("모아모빌리티", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.changeStock(1L,
+                new StockSaveDTO(1L, "모아모빌리티", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.STOCK_DUPLICATED);
+        assertThat(stock.getName()).isEqualTo("한빛반도체");
+    }
+
+    @Test
+    void 없는_종목을_고치면_NOT_FOUND() {
+        when(stockRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.changeStock(99L,
+                new StockSaveDTO(1L, "새종목", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void 종목을_없는_분야로_옮기면_NOT_FOUND() {
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock(1L, 1L, "한빛반도체")));
+        when(sectorRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.changeStock(1L,
+                new StockSaveDTO(99L, "한빛반도체", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void 동시_등록으로_이름_UNIQUE가_막으면_STOCK_DUPLICATED() {
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(stockRepository.existsByName("한빛반도체")).thenReturn(false);
+        when(stockRepository.saveAndFlush(any(Stock.class))).thenThrow(new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Duplicate entry '한빛반도체' for key 'stock.uk_stock_name'")));
+
+        assertThatThrownBy(() -> service.createStock(new StockSaveDTO(1L, "한빛반도체", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.STOCK_DUPLICATED);
+    }
+
+    @Test
+    void 동시_수정으로_이름_UNIQUE가_막으면_SECTOR_DUPLICATED() {
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        org.mockito.Mockito.doThrow(new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Duplicate entry for key 'sector.UK_SECTOR_NAME'")))
+                .when(sectorRepository).flush();
+
+        assertThatThrownBy(() -> service.changeSector(1L, new SectorSaveDTO("모빌리티", null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.SECTOR_DUPLICATED);
+    }
+
+    @Test
+    void 이름_UNIQUE가_아닌_무결성_오류는_그대로_던진다() {
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(stockRepository.existsByName("새종목")).thenReturn(false);
+        DataIntegrityViolationException other = new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Cannot add or update a child row: fk_stock_sector"));
+        when(stockRepository.saveAndFlush(any(Stock.class))).thenThrow(other);
+
+        assertThatThrownBy(() -> service.createStock(new StockSaveDTO(1L, "새종목", 1_000, null, null, null, null)))
+                .isSameAs(other);
     }
 
     @Test

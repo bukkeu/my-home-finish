@@ -4,6 +4,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   담당 : PM 이재성 (모의투자)
 *   관리자 시장 관리
 *   - #41 분야·종목·기업정보 (API 121~126) : 이름 중복 금지(DB UNIQUE 도 함께), 없는 분야·종목은 404
+*     같은 이름이 동시에 들어와 중복 확인을 둘 다 통과하면 DB UNIQUE 가 막는다 -> 바로 flush 해서 409 로 바꾼다
 *   - 가격표(#42 : 지난 턴 잠금, ±30% 경고, CSV)·뉴스(#43)는 이 서비스에 이어서 추가한다
 *  */
 
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MarketAdminService {
+
+    /** schema.sql 의 이름 UNIQUE 제약 이름 */
+    private static final String SECTOR_NAME_KEY = "uk_sector_name";
+    private static final String STOCK_NAME_KEY = "uk_stock_name";
 
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
@@ -52,7 +58,11 @@ public class MarketAdminService {
             throw new BusinessException(TradingErrorCode.SECTOR_DUPLICATED);
         }
         int sortOrder = request.getSortOrder() == null ? 0 : request.getSortOrder();
-        return sectorRepository.save(Sector.create(request.getName(), sortOrder)).getSectorId();
+        try {
+            return sectorRepository.saveAndFlush(Sector.create(request.getName(), sortOrder)).getSectorId();
+        } catch (DataIntegrityViolationException e) {
+            throw duplicatedOrRethrow(e, SECTOR_NAME_KEY, TradingErrorCode.SECTOR_DUPLICATED);
+        }
     }
 
     /** API 123 분야 수정 : 이름, 사용 여부(주면), 정렬 순서(주면) */
@@ -70,6 +80,11 @@ public class MarketAdminService {
             sector.activate();
         } else if (Boolean.FALSE.equals(request.getIsActive())) {
             sector.deactivate();
+        }
+        try {
+            sectorRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw duplicatedOrRethrow(e, SECTOR_NAME_KEY, TradingErrorCode.SECTOR_DUPLICATED);
         }
     }
 
@@ -101,7 +116,11 @@ public class MarketAdminService {
         Stock stock = Stock.create(request.getSectorId(), request.getName(), request.getStartPrice());
         stock.changeCompanyInfo(request.getIntro(), request.getBusiness(), request.getRevenue(),
                 request.getOperatingProfit());
-        return stockRepository.save(stock).getStockId();
+        try {
+            return stockRepository.saveAndFlush(stock).getStockId();
+        } catch (DataIntegrityViolationException e) {
+            throw duplicatedOrRethrow(e, STOCK_NAME_KEY, TradingErrorCode.STOCK_DUPLICATED);
+        }
     }
 
     /** API 126 종목·기업정보 수정 */
@@ -116,11 +135,26 @@ public class MarketAdminService {
         stock.changeBasicInfo(request.getSectorId(), request.getName(), request.getStartPrice());
         stock.changeCompanyInfo(request.getIntro(), request.getBusiness(), request.getRevenue(),
                 request.getOperatingProfit());
+        try {
+            stockRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw duplicatedOrRethrow(e, STOCK_NAME_KEY, TradingErrorCode.STOCK_DUPLICATED);
+        }
     }
 
     private Sector getSector(Long sectorId) {
         return sectorRepository.findById(sectorId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    /** 이름 UNIQUE 위반이면 중복 에러(409)로 바꾸고, 다른 무결성 오류는 그대로 던진다 */
+    private static RuntimeException duplicatedOrRethrow(DataIntegrityViolationException e, String uniqueKey,
+            TradingErrorCode duplicated) {
+        String cause = e.getMostSpecificCause().getMessage();
+        if (cause != null && cause.toLowerCase().contains(uniqueKey)) {
+            return new BusinessException(duplicated);
+        }
+        return e;
     }
 
     private static String sectorNameOf(Map<Long, Sector> sectorById, Long sectorId) {
