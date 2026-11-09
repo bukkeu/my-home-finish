@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 *   진행 상태 (이슈 #5)
 *   - 구현됨: findAgreements(약관 목록), isEmailAvailable, isNicknameAvailable (중복 확인), signup (회원가입)
 *   - signup 은 입력 규칙을 확인하고 비밀번호를 BCrypt 로 저장한다. 동시 가입으로 DB 고유 제약에 걸리면 409 로 바꾼다.
-*   - 남은 일: 가입 직후 청약통장 개설(서수영 HousingService.openAccount)은 아직 연결하지 않았다.
+*   - 가입 직후 청약통장 개설은 MemberSignupService 가 이 메서드 다음에 같은 트랜잭션에서 한다 (HousingService 와 서로 물리지 않게).
 *  */
 @Service
 @RequiredArgsConstructor
@@ -329,7 +329,7 @@ public class MemberService {
 
     /**
      * 회원가입 (API 4). 순서: 이메일 → 닉네임(형식·금칙어·중복) → 비밀번호 → 생년월일·만 14세 → 약관 → 저장(회원 → 약관 동의 기록).
-     * 청약통장 개설(서수영 HousingService.openAccount)은 아직 연결하지 않았다.
+     * 청약통장 개설은 이 메서드 안이 아니라 MemberSignupService 가 이어서 한다 (컨트롤러는 MemberSignupService.signup 을 부른다).
      *
      * @return 만들어진 회원 (memberId, nickname)
      */

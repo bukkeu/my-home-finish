@@ -1,6 +1,8 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceStatusDTO;
+import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.LevelTable;
 import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
@@ -21,7 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   내 정보·공개 프로필·프로필 이미지 (이슈 #7, API 13·15·18)
-*   - 레벨 칭호·다음 레벨까지 경험치는 growth.GrowthService, 학습 수는 course.CourseService 를 거쳐 받는다 (다른 도메인 Repository 는 쓰지 않는다).
+*   - 레벨 칭호·다음 레벨까지 경험치는 growth.GrowthService, 연속 출석·보상까지 남은 일수는 growth.AttendanceService(출석 현황, API 21과 같은 값),
+*     학습 수는 course.CourseService 를 거쳐 받는다 (다른 도메인 Repository 는 쓰지 않는다).
 *   - growth.GrowthService 가 MemberService 를 쓰므로, MemberService 가 growth 를 부르면 서로 물려 버린다.
 *     그래서 여러 도메인 값을 모으는 일은 MemberService 가 아니라 이 클래스가 맡는다.
 *   - 트랜잭션은 부르는 Service 메서드가 각각 연다. 이 클래스는 읽기와 파일 저장만 한다.
@@ -30,12 +33,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class MemberProfileService {
 
-    /** 연속 출석 캐시가 시작되는 연속 일수 (SP-12) */
-    static final int STREAK_REWARD_DAYS = 5;
-
     private final MemberService memberService;
     private final GrowthService growthService;
     private final CourseService courseService;
+    private final AttendanceService attendanceService;
     private final FileStorageService fileStorageService;
 
     /** 내 정보 (API 13) */
@@ -49,6 +50,8 @@ public class MemberProfileService {
                 ? 0
                 : Math.max(0, levelTable.policyOf(level + 1).getRequiredExp() - profile.exp());
 
+        // 연속 출석은 회원 행에 저장된 값이 아니라 오늘(서울) 기준으로 이어지고 있는 일수다. 어제 빠졌으면 0이고, 남은 일수도 같은 기준으로 계산된다
+        AttendanceStatusDTO attendance = attendanceService.getStatus(memberId);
         long watchedLessons = courseService.findWatchHistories(memberId, PageRequest.of(0, 1)).getTotalElements();
         long completedCourses = courseService.findCompletedCourses(memberId, PageRequest.of(0, 1)).getTotalElements();
 
@@ -56,7 +59,7 @@ public class MemberProfileService {
                 profile.memberId(), profile.email(), profile.nickname(), profile.profileImageUrl(),
                 profile.birthDate(), profile.gender(), profile.role(),
                 level, levelTable.titleOf(level), profile.exp(), expToNextLevel, profile.cash(),
-                new MyInfoDTO.Attendance(profile.attendanceStreak(), daysToReward(profile.attendanceStreak())),
+                new MyInfoDTO.Attendance(attendance.getStreak(), attendance.getDaysToReward()),
                 new MyInfoDTO.Learning(watchedLessons, completedCourses),
                 new MyInfoDTO.Unlocks(level >= UnlockRules.TRADING_LEVEL, level >= UnlockRules.HOUSING_LEVEL,
                         UnlockRules.HOUSING_LEVEL));
@@ -88,10 +91,5 @@ public class MemberProfileService {
             throw new BusinessException(CommonErrorCode.INTERNAL_ERROR);
         }
         return memberService.changeProfileImageUrl(memberId, url);
-    }
-
-    /** 연속 출석 캐시(연속 5일째부터)까지 남은 일수. 이미 5일 이상이면 0 */
-    static int daysToReward(int streak) {
-        return Math.max(0, STREAK_REWARD_DAYS - streak);
     }
 }
