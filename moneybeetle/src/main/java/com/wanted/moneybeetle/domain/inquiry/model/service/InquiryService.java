@@ -16,6 +16,7 @@ import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
 // ← 여기에 복사해 둔 NotificationService import 붙이기
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -58,7 +60,8 @@ public class InquiryService {
     private final CourseService courseService;
     private final ForbiddenWordService forbiddenWordService;
     private final NotificationService notificationService;
-    private final Clock clock;                                          // Asia/Seoul 공통 시계 (global TimeConfig)
+    private final Clock clock; // Asia/Seoul 공통 시계 (global TimeConfig)
+    private final MemberService memberService;                          // 하루 한도 동시 요청 직렬화용 회원 행 잠금
 
     /* API 47 문의 목록 */
     public PageResponse<InquiryListItemDTO> findInquiries(Long memberId, boolean admin,
@@ -87,8 +90,8 @@ public class InquiryService {
         forbiddenWordService.check(request.title());
         forbiddenWordService.check(request.content());
 
-        // 조회 후 저장 사이에 동시 요청이 끼면 한도를 살짝 넘을 수 있다. 영향이 작아 지금은 두고,
-        // 엄격히 막아야 하면 회원 행 비관적 락(MemberService.lockBalance 방식) 또는 요청 직렬화로 보강한다
+        // 같은 회원의 작성 요청을 한 줄로 세운다: 회원 행을 잠근 뒤 세고 저장 (트랜잭션 끝까지 잠금 유지)
+        memberService.lockBalance(memberId);
         LocalDateTime startOfToday = LocalDate.now(clock).atStartOfDay();
         if (inquiryRepository.countByMemberIdAndCreatedAtGreaterThanEqual(memberId, startOfToday) >= DAILY_LIMIT) {
             throw new BusinessException(InquiryErrorCode.INQUIRY_DAILY_LIMIT);
