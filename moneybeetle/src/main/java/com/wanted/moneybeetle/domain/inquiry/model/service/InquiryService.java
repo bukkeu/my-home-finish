@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -59,6 +60,7 @@ public class InquiryService {
     private final CourseService courseService;
     private final ForbiddenWordService forbiddenWordService;
     private final NotificationService notificationService;
+    private final Clock clock;                                          // Asia/Seoul 공통 시계 (global TimeConfig)
 
     /* API 47 문의 목록 */
     public PageResponse<InquiryListItemDTO> findInquiries(Long memberId, boolean admin,
@@ -87,7 +89,7 @@ public class InquiryService {
         forbiddenWordService.check(request.title());
         forbiddenWordService.check(request.content());
 
-        LocalDateTime startOfToday = LocalDate.now(SEOUL).atStartOfDay();
+        LocalDateTime startOfToday = LocalDate.now(clock).atStartOfDay();
         if (inquiryRepository.countByMemberIdAndCreatedAtGreaterThanEqual(memberId, startOfToday) >= DAILY_LIMIT) {
             throw new BusinessException(InquiryErrorCode.INQUIRY_DAILY_LIMIT);
         }
@@ -151,7 +153,7 @@ public class InquiryService {
         if (!admin && !inquiry.isWrittenBy(memberId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
-        inquiry.delete(LocalDateTime.now(SEOUL));
+        inquiry.delete(LocalDateTime.now(clock));
     }
 
     /* API 52 답글 작성: 강사·관리자 답글이면 ANSWERED + 작성자에게 알림 */
