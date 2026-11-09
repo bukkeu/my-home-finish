@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 *   - getStatus(memberId)  : 출석 현황 (API 21, 메뉴의 연속 출석 표시 HOM-05)
 *   - 연속 출석 일수는 회원 테이블(member.attendance_streak·last_attended_date)에 두고 MemberService 로만 바꾼다.
 *     출석한 날마다 attendance 에 한 줄을 남기고, 연속 5일째부터는 그 출석 ID 로 RewardService.grant 를 불러 캐시를 준다.
-*   - 모두 한 트랜잭션이다. 캐시 지급에 실패하면(보상 규칙이 없는 등) 출석 기록도 함께 되돌려져, 다음 접속 때 다시 시도된다.
+*   - 모두 한 트랜잭션이다. 캐시 지급이 실패하면 출석 기록도 함께 되돌려져, 다음 접속 때 다시 시도된다.
+*   - 단, 보상 규칙이 꺼져 있거나 없으면(지급액 0) 지급을 건너뛰고 출석만 기록한다. 규칙을 끈다고 연속 출석이 끊기거나
+*     (나중에 로그인에 연결했을 때) 로그인이 실패하지 않게 하려는 것이다. 이 사이에 규칙이 꺼지는 아주 짧은 경우만 지급 예외가 남는다.
 *   - '오늘'은 공통 Clock(서울)으로 판단한다 (DP-42)
 *  */
 @Service
@@ -48,7 +50,10 @@ public class AttendanceService {
         Attendance attendance = attendanceRepository.save(Attendance.create(memberId, today, state.getStreak()));
 
         long rewardCash = 0;
-        if (state.getStreak() >= REWARD_START_STREAK) {
+        // 관리자가 연속 출석 보상 규칙을 꺼 두었으면(사용 중인 규칙 없음) 보상만 건너뛴다. 출석 기록과 연속 일수는 그대로 쌓여서,
+        // 규칙을 다시 켜도 연속 일수가 끊기지 않는다 (규칙이 꺼진 동안 지나간 날의 보상은 소급하지 않는다)
+        if (state.getStreak() >= REWARD_START_STREAK
+                && rewardService.findActiveCash(RewardRule.ATTENDANCE_STREAK) > 0) {
             // 원인 ID = 출석 ID 라서 같은 날 출석으로는 두 번 지급되지 않는다 (SP-18)
             rewardCash = rewardService
                     .grant(memberId, RewardRule.ATTENDANCE_STREAK, attendance.getAttendanceId())

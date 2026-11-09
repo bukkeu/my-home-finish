@@ -95,6 +95,7 @@ class AttendanceServiceTest {
         verify(rewardService, never()).grant(anyLong(), any(), anyLong());
 
         givenRecorded(5, true);
+        when(rewardService.findActiveCash(RewardRule.ATTENDANCE_STREAK)).thenReturn(10_000L);
         when(rewardService.grant(MEMBER, RewardRule.ATTENDANCE_STREAK, 500L))
                 .thenReturn(RewardResultDTO.granted(0, 10_000, 0, 10_000, 0, 1, 1, List.of()));
 
@@ -109,6 +110,7 @@ class AttendanceServiceTest {
     @DisplayName("5일 넘게 이어져도 매일 지급한다 (6일째)")
     void rewardEveryDayAfterFifth() {
         givenRecorded(6, true);
+        when(rewardService.findActiveCash(RewardRule.ATTENDANCE_STREAK)).thenReturn(10_000L);
         when(rewardService.grant(eq(MEMBER), eq(RewardRule.ATTENDANCE_STREAK), anyLong()))
                 .thenReturn(RewardResultDTO.granted(0, 10_000, 0, 20_000, 0, 1, 1, List.of()));
 
@@ -131,9 +133,25 @@ class AttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("보상 규칙이 꺼져 있으면 지급만 건너뛰고 출석은 기록한다 - 연속 일수가 끊기지 않고 예외도 나지 않는다")
+    void rewardRuleOffSkipsRewardButKeepsAttendance() {
+        givenRecorded(5, true);
+        when(rewardService.findActiveCash(RewardRule.ATTENDANCE_STREAK)).thenReturn(0L);
+
+        AttendanceResultDTO result = service.checkToday(MEMBER);
+
+        assertThat(result.getStreak()).isEqualTo(5);
+        assertThat(result.isNewlyChecked()).isTrue();
+        assertThat(result.getRewardCash()).isZero();
+        verify(attendanceRepository).save(any());
+        verify(rewardService, never()).grant(anyLong(), any(), anyLong());
+    }
+
+    @Test
     @DisplayName("보상 지급이 실패하면 예외를 그대로 던진다 (같은 트랜잭션이라 출석 기록도 함께 되돌려진다)")
     void rewardFailurePropagates() {
         givenRecorded(5, true);
+        when(rewardService.findActiveCash(RewardRule.ATTENDANCE_STREAK)).thenReturn(10_000L);
         when(rewardService.grant(MEMBER, RewardRule.ATTENDANCE_STREAK, 500L))
                 .thenThrow(new BusinessException(GrowthErrorCode.REWARD_RULE_NOT_FOUND));
 
