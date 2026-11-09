@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -31,7 +32,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -84,6 +85,7 @@ class AuthLoginFlowTest {
     private InstructorProfileRepository instructorProfileRepository;
     private AuthenticationManager authenticationManager;
     private AuthFailHandler failHandler;
+    private org.springframework.transaction.PlatformTransactionManager txManager;
     private AuthSuccessHandler successHandler;
     private Member member;
 
@@ -96,11 +98,12 @@ class AuthLoginFlowTest {
 
         AuthService authService = new AuthService(
                 new MemberService(memberRepository, mock(TermsRepository.class), instructorProfileRepository), clock);
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(authService);
-        provider.setPasswordEncoder(encoder);
+        txManager = mock(org.springframework.transaction.PlatformTransactionManager.class);
+        when(txManager.getTransaction(any())).thenReturn(mock(org.springframework.transaction.TransactionStatus.class));
+        LoginAuthenticationProvider provider = new LoginAuthenticationProvider(authService, encoder, txManager);
         authenticationManager = new ProviderManager(provider);
-        failHandler = new AuthFailHandler(authService, objectMapper);
-        successHandler = new AuthSuccessHandler(authService, objectMapper);
+        failHandler = new AuthFailHandler(objectMapper);
+        successHandler = new AuthSuccessHandler(objectMapper);
     }
 
     private void givenMember(String role, String status) {
@@ -321,6 +324,41 @@ class AuthLoginFlowTest {
 
         when(instructorProfileRepository.findByMemberId(8L)).thenReturn(Optional.empty());
         assertThat(login(EMAIL, PASSWORD).json().path("data").path("role").asText()).isEqualTo("MEMBER");
+    }
+
+    @Test
+    @DisplayName("로그인 한 번은 하나의 트랜잭션이고, 실패해도 실패 기록은 커밋된다 (롤백하지 않는다)")
+    void everyAttemptIsOneCommittedTransaction() throws Exception {
+        login(EMAIL, "wrong-password1");   // 실패
+        login(EMAIL, PASSWORD);            // 성공
+
+        org.mockito.Mockito.verify(txManager, org.mockito.Mockito.times(2)).getTransaction(any());
+        org.mockito.Mockito.verify(txManager, org.mockito.Mockito.times(2)).commit(any());
+        org.mockito.Mockito.verify(txManager, org.mockito.Mockito.never()).rollback(any());
+        assertThat(member.getFailedLoginCount()).isZero();   // 실패 뒤 성공이라 0 으로 돌아가 있다
+    }
+
+    @Test
+    @DisplayName("이번 실패로 5회째가 되면 비밀번호 오류가 아니라 잠금(423)으로 응답한다 (같은 트랜잭션 안에서 잠금까지 기록)")
+    void fifthFailureIsReportedAsLockedInSameTransaction() throws Exception {
+        for (int i = 0; i < 4; i++) {
+            login(EMAIL, "wrong-password1");
+        }
+        Outcome fifth = login(EMAIL, "wrong-password1");
+
+        assertThat(fifth.status()).isEqualTo(423);
+        assertThat(member.getLockedUntil()).isNotNull();
+        org.mockito.Mockito.verify(txManager, org.mockito.Mockito.never()).rollback(any());
+    }
+
+    @Test
+    @DisplayName("loadUserByUsername 는 인증 예외(잠금·정지·탈퇴·없는 이메일)로 트랜잭션을 롤백 전용으로 만들지 않는다 (실제 DB 에서 UnexpectedRollbackException 이 났던 문제)")
+    void loadUserDoesNotMarkTransactionRollbackOnly() throws NoSuchMethodException {
+        var tx = AuthService.class.getMethod("loadUserByUsername", String.class)
+                .getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+
+        assertThat(tx).isNotNull();
+        assertThat(tx.noRollbackFor()).contains(org.springframework.security.core.AuthenticationException.class);
     }
 
     @Test

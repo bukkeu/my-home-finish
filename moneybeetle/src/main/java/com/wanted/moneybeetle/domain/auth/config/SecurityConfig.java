@@ -38,6 +38,10 @@ public class SecurityConfig {
                                          AuthFailHandler authFailHandler,
                                          AuthLogoutSuccessHandler authLogoutSuccessHandler) throws Exception {
 
+        // 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶는 인증 제공자 LoginAuthenticationProvider 는
+        // 빈으로 등록돼 있어 Spring Security 가 인증 관리자에 자동으로 넣는다. 여기서 http.authenticationProvider 로 한 번 더 넣으면
+        // 같은 제공자가 위·아래 두 인증 관리자에 모두 들어가 로그인 한 번에 실패가 두 번 기록된다 (LoginHttpTest 가 이를 확인한다)
+
         http.authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나

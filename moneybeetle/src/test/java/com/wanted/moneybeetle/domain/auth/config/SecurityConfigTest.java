@@ -61,6 +61,8 @@ class SecurityConfigTest {
     /** 로그인 핸들러(#6)가 필요로 하는 서비스. 이 테스트는 URL 권한만 보므로 가짜로 둔다 */
     @MockitoBean
     private AuthService authService;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider loginAuthenticationProvider;
 
     @Autowired
     private WebApplicationContext context;

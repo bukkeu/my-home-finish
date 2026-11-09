@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (회원·인증)
 *   회원가입, 약관 조회, 이메일·닉네임 중복 확인 (이슈 #5). 이어서 내 정보·설정(#7), 비밀번호 변경·탈퇴(#8)를 맡는다.
 *   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차),
-*   findLoginMember / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6).
+*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5, 1차)
@@ -84,16 +84,19 @@ public class MemberService {
     }
 
     /**
-     * 로그인할 회원을 이메일로 찾는다 (auth.AuthService 용). 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 조회한다 (SP-01).
+     * 로그인할 회원을 이메일로 찾고 그 행을 잠근다 (auth.AuthService 용). 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 조회한다 (SP-01).
+     * 잠금은 호출한 쪽의 트랜잭션이 끝날 때까지 유지된다. 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶어
+     * 같은 계정의 동시 시도가 차례로 처리되게 한다 (auth.LoginAuthenticationProvider 가 그 트랜잭션을 연다).
      * 부여할 권한(grantedRole)도 여기서 정한다: 회원 정보상 강사여도 관리자가 승인(APPROVED)하기 전에는 MEMBER 다 (SP-07).
      * 이메일이 비었거나 없는 회원이면 빈 값이다.
      */
-    public Optional<LoginMemberDTO> findLoginMember(String email) {
+    @Transactional
+    public Optional<LoginMemberDTO> findLoginMemberForUpdate(String email) {
         String normalized = SignupRules.normalizeEmail(email);
         if (normalized == null || normalized.isBlank()) {
             return Optional.empty();
         }
-        return memberRepository.findByEmail(normalized).map(member -> LoginMemberDTO.from(member, grantedRole(member)));
+        return memberRepository.findByEmailForUpdate(normalized).map(member -> LoginMemberDTO.from(member, grantedRole(member)));
     }
 
     /**

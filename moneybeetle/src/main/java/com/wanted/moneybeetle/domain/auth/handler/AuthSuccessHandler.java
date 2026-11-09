@@ -3,7 +3,6 @@ package com.wanted.moneybeetle.domain.auth.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.auth.model.dto.LoginResultDTO;
-import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +20,8 @@ import org.springframework.stereotype.Component;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
-*   로그인 성공 처리 (API 6, 이슈 #6) - 실패 횟수 초기화, last_login_at 기록, 원래 보던 화면 주소를 돌려준다 (DP-11)
+*   로그인 성공 응답 (API 6, 이슈 #6) - 원래 보던 화면 주소를 돌려준다 (DP-11)
+*   - 실패 횟수 초기화와 last_login_at 기록은 인증 제공자(LoginAuthenticationProvider)가 같은 트랜잭션 안에서 이미 했다
 *   - 응답은 ApiResponse JSON { memberId, nickname, role, redirectUrl } 이고 화면(JS)이 redirectUrl 로 이동한다
 *   - 이동할 곳: 로그인 요청의 next 값(사이트 안 경로일 때만) → 로그인 전에 가려던 화면(저장된 요청) → 역할별 첫 화면
 *   - TODO(#12): 오늘 첫 접속이면 growth.AttendanceService 로 출석을 기록하고 응답에 attendance 를 담는다 (GRW-01)
@@ -30,7 +30,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AuthSuccessHandler implements AuthenticationSuccessHandler {
 
-    private final AuthService authService;
     private final ObjectMapper objectMapper;
     private final RequestCache requestCache = new HttpSessionRequestCache();
 
@@ -38,7 +37,6 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         AuthDetails details = (AuthDetails) authentication.getPrincipal();
-        authService.recordLoginSuccess(details.getMemberId());
 
         LoginResultDTO result = new LoginResultDTO(details.getMemberId(), details.getNickname(),
                 details.getRole(), redirectUrl(request, response, details.getRole()));

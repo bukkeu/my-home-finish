@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -35,9 +36,16 @@ public class AuthService implements UserDetailsService {
     private final MemberService memberService;
     private final Clock clock;
 
+    /**
+     * 로그인할 회원을 행 잠금으로 읽는다. 잠금은 이 로그인 시도의 트랜잭션이 끝날 때까지 유지된다
+     * (LoginAuthenticationProvider 가 비밀번호 확인과 실패·성공 기록까지 한 트랜잭션으로 묶는다).
+     * 정지·탈퇴·잠금·없는 이메일은 예외(AuthenticationException)로 알리는데, 이 예외가 이 메서드의 @Transactional 경계를 지나가면
+     * 바깥 트랜잭션이 롤백 전용으로 표시되어 로그인 한 번이 UnexpectedRollbackException 으로 깨진다. 그래서 롤백하지 않도록 정해 둔다.
+     */
     @Override
+    @Transactional(noRollbackFor = AuthenticationException.class)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        LoginMemberDTO member = memberService.findLoginMember(email)
+        LoginMemberDTO member = memberService.findLoginMemberForUpdate(email)
                 .orElseThrow(() -> new UsernameNotFoundException(MemberErrorCode.LOGIN_FAILED.getCode()));
 
         if (member.isWithdrawn()) {

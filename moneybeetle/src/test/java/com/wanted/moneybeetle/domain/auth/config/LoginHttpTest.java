@@ -55,6 +55,7 @@ import org.springframework.web.context.WebApplicationContext;
 *  */
 @SpringBootTest(classes = {LoginHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
         AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
+        com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider.class,
         MemberService.class,
         LoginHttpTest.ProtectedController.class})
 class LoginHttpTest {
@@ -67,6 +68,15 @@ class LoginHttpTest {
             DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
             HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
     static class TestApp {
+        @Bean
+        org.springframework.transaction.PlatformTransactionManager transactionManager() {
+            // DB 없이 도는 테스트라 아무것도 하지 않는 트랜잭션 관리자를 쓴다 (로그인이 트랜잭션으로 감싸지는 것만 필요하다)
+            var manager = org.mockito.Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class);
+            org.mockito.Mockito.when(manager.getTransaction(org.mockito.ArgumentMatchers.any()))
+                    .thenReturn(org.mockito.Mockito.mock(org.springframework.transaction.TransactionStatus.class));
+            return manager;
+        }
+
         @Bean
         Clock clock() {
             return Clock.fixed(Instant.parse("2026-11-09T00:00:00Z"), ZoneId.of("Asia/Seoul"));
