@@ -11,17 +11,23 @@ import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository;
 import com.wanted.moneybeetle.domain.member.model.entity.MemberTermsAgreement;
+import com.wanted.moneybeetle.domain.member.model.entity.Terms;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Set;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
@@ -29,16 +35,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 *   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
-*   진행 상태 (이슈 #5, 1차)
-*   - 구현됨: findAgreements(약관 목록), isEmailAvailable, isNicknameAvailable (중복 확인)
-*   - signup 은 시그니처만 공개한다. 비밀번호를 BCrypt 로 저장(PasswordEncoder Bean 은 #4)하고, 규칙을 어기면
-*     BusinessException 을 던지고(#2), 가입 직후 청약통장을 만들어야(서수영 HousingService.openAccount) 해서
-*     그 셋이 올라온 뒤 2차로 구현한다. 그전에 부르면 UnsupportedOperationException.
+*   진행 상태 (이슈 #5)
+*   - 구현됨: findAgreements(약관 목록), isEmailAvailable, isNicknameAvailable (중복 확인), signup (회원가입)
+*   - signup 은 입력 규칙을 확인하고 비밀번호를 BCrypt 로 저장한다. 동시 가입으로 DB 고유 제약에 걸리면 409 로 바꾼다.
+*   - 남은 일: 가입 직후 청약통장 개설(서수영 HousingService.openAccount)은 아직 연결하지 않았다.
 *  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MemberService {
+
+    /** DB 고유 키 이름 (schema.sql). 동시 가입의 중복을 알아보는 데 쓴다 */
+    private static final String UK_MEMBER_EMAIL = "uk_member_email";
+    private static final String UK_MEMBER_NICKNAME = "uk_member_nickname";
 
     private final MemberRepository memberRepository;
     private final TermsRepository termsRepository;
@@ -126,7 +135,8 @@ public class MemberService {
     }
 
     /**
-     * 회원가입 (API 4). 순서: 입력 규칙 → 이메일·닉네임 중복 → 금칙어 → 만 14세 → 필수 약관 → 비밀번호 해시 저장 → 약관 동의 기록 → 청약통장 개설.
+     * 회원가입 (API 4). 순서: 이메일 → 닉네임(형식·금칙어·중복) → 비밀번호 → 생년월일·만 14세 → 약관 → 저장(회원 → 약관 동의 기록).
+     * 청약통장 개설(서수영 HousingService.openAccount)은 아직 연결하지 않았다.
      *
      * @return 만들어진 회원 (memberId, nickname)
      */
@@ -136,101 +146,126 @@ public class MemberService {
             throw new IllegalArgumentException("회원가입 정보가 필요합니다.");
         }
 
-        // 1. 이메일 형식 및 중복 검사
         String email = SignupRules.normalizeEmail(request.getEmail());
+        validateEmail(request.getEmail(), email);
 
-        if (!SignupRules.isValidEmail(request.getEmail())) {
+        String nickname = request.getNickname();
+        validateNickname(nickname);
+
+        validatePassword(request.getPassword(), request.getPasswordConfirm());
+
+        LocalDate today = LocalDate.now(clock);
+        validateBirthDate(request.getBirthDate(), today);
+
+        List<Terms> agreedTerms = findAgreedTerms(request.getAgreedTermsIds());
+
+        Member member = Member.signup(
+                email,
+                passwordEncoder.encode(request.getPassword()),
+                nickname,
+                request.getBirthDate(),
+                request.getGender(),
+                today);
+        Member savedMember = saveMember(member);
+        saveAgreements(savedMember.getMemberId(), agreedTerms);
+
+        return SignupResultDTO.from(savedMember);
+    }
+
+    /** 이메일 형식(원본 그대로)과 중복(정규화한 값, 대소문자 구분 없음)을 확인한다 */
+    private void validateEmail(String rawEmail, String normalizedEmail) {
+        if (!SignupRules.isValidEmail(rawEmail)) {
             throw new BusinessException(MemberErrorCode.EMAIL_INVALID);
         }
-
-        if (memberRepository.existsByEmail(email)) {
+        if (memberRepository.existsByEmail(normalizedEmail)) {
             throw new BusinessException(MemberErrorCode.EMAIL_DUPLICATED);
         }
+    }
 
-        // 2. 닉네임 형식 및 중복 검사
-        String nickname = request.getNickname();
-
+    private void validateNickname(String nickname) {
         if (!SignupRules.isValidNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_INVALID);
         }
-
         forbiddenWordService.check(nickname);
-
         if (memberRepository.existsByNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
         }
+    }
 
-        // 3. 비밀번호 검증
-        if (!SignupRules.isValidPassword(request.getPassword())) {
+    private void validatePassword(String password, String passwordConfirm) {
+        if (!SignupRules.isValidPassword(password)) {
             throw new BusinessException(MemberErrorCode.PASSWORD_INVALID);
         }
-
-        if (!request.getPassword().equals(request.getPasswordConfirm())) {
+        if (!password.equals(passwordConfirm)) {
             throw new BusinessException(MemberErrorCode.PASSWORD_MISMATCH);
         }
+    }
 
-        // 4. 생년월일 및 가입 연령 검증
-        LocalDate today = LocalDate.now(clock);
-        LocalDate birthDate = request.getBirthDate();
-
+    private void validateBirthDate(LocalDate birthDate, LocalDate today) {
         if (!SignupRules.isPastDate(birthDate, today)) {
             throw new BusinessException(MemberErrorCode.BIRTH_DATE_INVALID);
         }
-
         if (!SignupRules.isAtLeastMinAge(birthDate, today)) {
             throw new BusinessException(MemberErrorCode.AGE_UNDER_14);
         }
+    }
 
-        // 5. 약관 동의 정보 검증
-        if (request.getAgreedTermsIds() == null
-                || request.getAgreedTermsIds().isEmpty()
-                || request.getAgreedTermsIds().stream().anyMatch(java.util.Objects::isNull)) {
+    /** 동의한 약관이 모두 있는 약관이고 필수 약관을 모두 포함하는지 확인한 뒤, 동의한 약관을 돌려준다 */
+    private List<Terms> findAgreedTerms(List<Long> agreedTermsIds) {
+        if (agreedTermsIds == null || agreedTermsIds.isEmpty() || agreedTermsIds.stream().anyMatch(Objects::isNull)) {
             throw new BusinessException(MemberErrorCode.REQUIRED_TERMS_NOT_AGREED);
         }
 
-        Set<Long> agreedIds = new java.util.LinkedHashSet<>(request.getAgreedTermsIds());
-
-        List<com.wanted.moneybeetle.domain.member.model.entity.Terms> agreedTerms =
-                termsRepository.findByTermsIdIn(agreedIds);
-
+        Set<Long> agreedIds = new LinkedHashSet<>(agreedTermsIds);
+        List<Terms> agreedTerms = termsRepository.findByTermsIdIn(agreedIds);
         if (agreedTerms.size() != agreedIds.size()) {
             throw new BusinessException(MemberErrorCode.TERMS_NOT_FOUND);
         }
 
-        List<Long> requiredIds = termsRepository.findByRequiredTrue()
-                .stream()
-                .map(term -> term.getTermsId())
-                .toList();
-
+        List<Long> requiredIds = termsRepository.findByRequiredTrue().stream().map(Terms::getTermsId).toList();
         if (!SignupRules.agreedAllRequired(requiredIds, agreedIds)) {
             throw new BusinessException(MemberErrorCode.REQUIRED_TERMS_NOT_AGREED);
         }
+        return agreedTerms;
+    }
 
-        // 6. 비밀번호 암호화 및 회원 저장
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
+    /**
+     * 회원을 저장한다. 같은 이메일·닉네임으로 동시에 가입하면 위의 중복 확인을 둘 다 통과할 수 있으므로,
+     * 저장 시점(flush)에 DB 고유 제약 위반을 받아 uk_member_email / uk_member_nickname 만 각각의 중복 오류(409)로 바꾼다.
+     * 다른 무결성 오류는 그대로 던진다.
+     */
+    private Member saveMember(Member member) {
+        try {
+            return memberRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException e) {
+            String constraint = findConstraintName(e);
+            if (UK_MEMBER_EMAIL.equals(constraint)) {
+                throw new BusinessException(MemberErrorCode.EMAIL_DUPLICATED);
+            }
+            if (UK_MEMBER_NICKNAME.equals(constraint)) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
+        }
+    }
 
-        Member member = Member.signup(
-                email,
-                encodedPassword,
-                nickname,
-                birthDate,
-                request.getGender(),
-                today
-        );
+    private void saveAgreements(Long memberId, List<Terms> agreedTerms) {
+        memberTermsAgreementRepository.saveAll(agreedTerms.stream()
+                .map(term -> MemberTermsAgreement.create(memberId, term.getTermsId(), true))
+                .toList());
+    }
 
-        Member savedMember = memberRepository.save(member);
-
-        // 7. 동의한 약관 기록 저장
-        List<MemberTermsAgreement> agreements = agreedTerms.stream()
-                .map(term -> MemberTermsAgreement.create(
-                        savedMember.getMemberId(),
-                        term.getTermsId(),
-                        true
-                ))
-                .toList();
-
-        memberTermsAgreementRepository.saveAll(agreements);
-
-        return SignupResultDTO.from(savedMember);
+    /**
+     * 예외 원인 사슬에서 Hibernate 가 알려 주는 위반 제약 이름을 찾는다. 오류 메시지 문자열은 입력한 이메일·닉네임이 섞일 수 있어 보지 않는다.
+     * MySQL 은 "테이블.제약이름"으로 알려 줄 수 있어서 마지막 점 뒤만 소문자로 비교한다. 못 찾으면 null.
+     */
+    private static String findConstraintName(Throwable exception) {
+        for (Throwable current = exception; current != null; current = current.getCause()) {
+            if (current instanceof ConstraintViolationException violation && violation.getConstraintName() != null) {
+                String name = violation.getConstraintName();
+                return name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+            }
+        }
+        return null;
     }
 }
