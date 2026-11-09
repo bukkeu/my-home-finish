@@ -89,6 +89,17 @@ class MemberProfileUpdateTest {
     }
 
     @Test
+    @DisplayName("대소문자만 바꾼 닉네임은 내 행이 중복으로 걸리지 않도록 중복 검사를 건너뛰고 변경된다")
+    void caseOnlyNicknameChangeSkipsDuplicateCheck() {
+        ReflectionTestUtils.setField(member, "nickname", "Minji");
+
+        memberService.updateProfile(1L, new MemberUpdateDTO("minji", null, null));
+
+        verify(memberRepository, never()).existsByNickname(anyString());
+        assertThat(member.getNickname()).isEqualTo("minji");
+    }
+
+    @Test
     @DisplayName("닉네임을 그대로 두면 중복·금칙어를 다시 검사하지 않는다 (내 닉네임과 중복으로 오인하지 않는다)")
     void sameNicknameSkipsChecks() {
         memberService.updateProfile(1L, new MemberUpdateDTO("민지", null, "MALE"));

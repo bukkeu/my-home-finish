@@ -195,7 +195,8 @@ public class MemberService {
 
         String nickname = member.getNickname();
         if (request.getNickname() != null && !request.getNickname().equals(nickname)) {
-            validateNickname(request.getNickname());
+            // 대소문자만 바꾼 경우는 DB 정렬 규칙(대소문자 구분 없음) 때문에 내 행이 중복으로 걸리므로 중복 검사만 건너뛴다
+            validateNickname(request.getNickname(), !request.getNickname().equalsIgnoreCase(nickname));
             nickname = request.getNickname();
         }
 
@@ -337,11 +338,15 @@ public class MemberService {
     }
 
     private void validateNickname(String nickname) {
+        validateNickname(nickname, true);
+    }
+
+    private void validateNickname(String nickname, boolean checkDuplicate) {
         if (!SignupRules.isValidNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_INVALID);
         }
         forbiddenWordService.check(nickname);
-        if (memberRepository.existsByNickname(nickname)) {
+        if (checkDuplicate && memberRepository.existsByNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
         }
     }
