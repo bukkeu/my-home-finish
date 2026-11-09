@@ -3270,7 +3270,7 @@ Header: Idempotency-Key: 4d8e...
 { "newsId": 40 }
 ```
 
-**Error**: `PAST_TURN_LOCKED`(현재 턴 이하), `NOT_FOUND`(없는 시즌·분야·종목)
+**Error**: `PAST_TURN_NEWS_LOCKED`(현재 턴 이하), `NOT_FOUND`(없는 시즌·분야·종목)
 
 #### 133. 뉴스 수정
 
@@ -3280,7 +3280,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-27, SP-60 |
-| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
+| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
 
 **Request**
 
@@ -3290,7 +3290,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`, `NOT_FOUND`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
 
 #### 134. 뉴스 삭제
 
@@ -3310,7 +3310,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`, `NOT_FOUND`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
 
 #### 135. 참가자 목록
 
@@ -3652,6 +3652,7 @@ Header: Idempotency-Key: 4d8e...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
+| 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
 | 강사·관리자 | `CSV_INVALID` | 400 | N행의 형식이 맞지 않아요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |

@@ -37,7 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 /* comment.
 *   담당 : PM (#43)
 *   NewsAdminService 확인 (DB 없이 Repository 는 가짜(mock))
-*   - 지난 턴(현재 턴 이하) 뉴스 : 제목·본문·메모만 수정, 턴·관련 분야·종목 변경과 삭제는 PAST_TURN_LOCKED
+*   - 지난 턴(현재 턴 이하) 뉴스 : 제목·본문·메모만 수정, 턴·관련 분야·종목 변경과 삭제는 PAST_TURN_NEWS_LOCKED
 *   - 지난 턴에 등록하거나 옮기기 막음, 없는 분야·종목은 404, 목록에 관리자 메모 포함
 *  */
 class NewsAdminServiceTest {
@@ -124,7 +124,7 @@ class NewsAdminServiceTest {
     void 지난_턴에는_뉴스를_등록할_수_없다() {
         assertThatThrownBy(() -> service.createNews(SEASON_ID, request(5, List.of(), List.of())))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PAST_TURN_LOCKED);
+                .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         verify(newsRepository, never()).save(any());
     }
 
@@ -165,7 +165,7 @@ class NewsAdminServiceTest {
 
         assertThatThrownBy(() -> service.changeNews(40L, request(5, List.of(), List.of())))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PAST_TURN_LOCKED);
+                .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         assertThat(news.getTurnNo()).isEqualTo(6);
     }
 
@@ -189,10 +189,10 @@ class NewsAdminServiceTest {
 
         assertThatThrownBy(() -> service.changeNews(9L, request(6, List.of(), List.of(1L))))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PAST_TURN_LOCKED);
+                .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         assertThatThrownBy(() -> service.changeNews(9L, request(5, List.of(1L), List.of(1L))))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PAST_TURN_LOCKED);
+                .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         assertThat(news.getTitle()).isEqualTo("원래 제목");
     }
 
@@ -203,7 +203,7 @@ class NewsAdminServiceTest {
 
         assertThatThrownBy(() -> service.deleteNews(9L))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PAST_TURN_LOCKED);
+                .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         verify(newsRepository, never()).delete(past);
 
         service.deleteNews(40L);

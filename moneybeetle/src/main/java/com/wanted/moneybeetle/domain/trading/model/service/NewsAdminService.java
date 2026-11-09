@@ -5,7 +5,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   관리자 가상 뉴스 관리 (#43, API 131~134, ADM-25~27, SP-60, DP-41)
 *   - 지난 턴 = 현재 턴 이하 (이미 사용자에게 공개된 뉴스). 가격표(#42)와 같은 기준
 *   - 지난 턴 뉴스는 오타 수정만 : 제목·본문·관리자 메모만 고칠 수 있고, 공개 턴과 관련 분야·종목은 바꿀 수 없다.
-*     삭제도 막는다 -> PAST_TURN_LOCKED. 지난 턴에 새 뉴스를 넣거나 다음 턴 뉴스를 지난 턴으로 옮기는 것도 막는다
+*     삭제도 막는다 -> PAST_TURN_NEWS_LOCKED. 지난 턴에 새 뉴스를 넣거나 다음 턴 뉴스를 지난 턴으로 옮기는 것도 막는다
 *   - 관련 분야·종목은 등록할 때와 다음 턴 이후 뉴스를 고칠 때 통째로 바꾼다. 없는 번호면 404
 *   - 관리자 메모는 이 관리자 API 에만 나오고 사용자 뉴스 API(#24)에는 나오지 않는다
 *   - TODO(#6, operation AdminLogService) 지난 턴 뉴스 수정은 admin_log 에 남긴다 (DB설계 데이터 정책).
@@ -100,7 +100,7 @@ public class NewsAdminService {
 
         if (news.isPublishedBy(season.getCurrentTurn())) {
             if (news.getTurnNo() != request.getTurnNo() || !sameTags(newsTagRepository.findByNewsId(newsId), request)) {
-                throw new BusinessException(TradingErrorCode.PAST_TURN_LOCKED);
+                throw new BusinessException(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
             }
             news.changeContent(request.getTitle(), request.getContent(), request.getAdminMemo());
             return;
@@ -120,7 +120,7 @@ public class NewsAdminService {
         News news = getNews(newsId);
         TradingSeason season = getSeason(news.getTradingSeasonId());
         if (news.isPublishedBy(season.getCurrentTurn())) {
-            throw new BusinessException(TradingErrorCode.PAST_TURN_LOCKED);
+            throw new BusinessException(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         }
         newsTagRepository.deleteByNewsId(newsId);
         newsRepository.delete(news);
@@ -139,7 +139,7 @@ public class NewsAdminService {
     /** 현재 턴 이하(이미 공개된 턴)에는 뉴스를 넣거나 옮길 수 없다 */
     private static void checkNotPastTurn(int turnNo, TradingSeason season) {
         if (turnNo <= season.getCurrentTurn()) {
-            throw new BusinessException(TradingErrorCode.PAST_TURN_LOCKED);
+            throw new BusinessException(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         }
     }
 
