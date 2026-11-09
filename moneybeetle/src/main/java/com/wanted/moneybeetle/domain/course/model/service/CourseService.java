@@ -7,14 +7,7 @@ import com.wanted.moneybeetle.domain.course.model.dao.LearningProgressRepository
 import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonWatchRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.ScrapRepository;
-import com.wanted.moneybeetle.domain.course.model.dto.CategoryTreeDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.CompletedCourseDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
-import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.*;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
@@ -227,6 +220,24 @@ public class CourseService {
     /* 퀴즈(quiz 도메인): 강의가 공개 상태인지 확인. 아니면 COURSE_NOT_PUBLIC */
     public void checkCourseVisible(Long courseId) {
         getVisibleCourse(courseId);
+    }
+
+    /* 퀴즈(quiz 도메인) 오답노트: 보이는 강의(허가+공개+미삭제)의 이름표.
+     * categoryId(하위 소주제 포함)·courseId로 좁힐 수 있고, 둘 다 null이면 보이는 강의 전체 */
+    public List<CourseLabelDTO> findVisibleCourseLabels(Long categoryId, Long courseId) {
+        List<Course> courses = (categoryId == null)
+                ? courseRepository.findByStatusAndIsPublicTrueAndDeletedAtIsNull(Course.STATUS_APPROVED)
+                : courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
+                findCategoryIdsWithChildren(categoryId), Course.STATUS_APPROVED);
+
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+
+        return courses.stream()
+                .filter(course -> courseId == null || course.getCourseId().equals(courseId))
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPath(course.getCategoryId(), categories)))
+                .toList();
     }
 
     /* 이재성: 통합 검색 */
