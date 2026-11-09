@@ -126,6 +126,17 @@ class HousingApplicationServiceTest {
                 HousingErrorCode.INVALID_SCORE_INPUT);
     }
 
+    @Test
+    void 상한을_넘는_입력은_INVALID_SCORE_INPUT() {
+        // 아주 큰 값은 점수 계산에서 int 가 넘쳐 음수 점수가 될 수 있어 막는다
+        assertRejected(() -> serviceOn(TODAY).previewScore(MEMBER_ID, new ScoreRequestDTO(Integer.MAX_VALUE, 0)),
+                HousingErrorCode.INVALID_SCORE_INPUT);
+        assertRejected(() -> serviceOn(TODAY).apply(MEMBER_ID, 1L,
+                        new ScoreRequestDTO(0, ScoreRequestDTO.MAX_DEPENDENTS + 1)),
+                HousingErrorCode.INVALID_SCORE_INPUT);
+        verify(applicationRepository, never()).saveAndFlush(any());
+    }
+
     // ── API 69 청약 신청 ──
 
     @Test
@@ -170,12 +181,23 @@ class HousingApplicationServiceTest {
     }
 
     @Test
-    void 동시에_신청해_DB_유니크_키에_걸려도_ALREADY_APPLIED() {
+    void 동시에_신청해_회원_단지_유니크_키에_걸리면_ALREADY_APPLIED() {
         when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
-        when(applicationRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("uk"));
+        when(applicationRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException(
+                "Duplicate entry '8-1' for key 'housing_application.uk_housing_application_1'"));
 
         assertRejected(() -> serviceOn(TODAY).apply(MEMBER_ID, 1L, new ScoreRequestDTO(3, 1)),
                 HousingErrorCode.ALREADY_APPLIED);
+    }
+
+    @Test
+    void 접수번호가_겹치면_신청_완료가_아니라_RECEIPT_NO_CONFLICT() {
+        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
+        when(applicationRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException(
+                "Duplicate entry 'MB-261105-0001' for key 'housing_application.uk_housing_application_receipt_no'"));
+
+        assertRejected(() -> serviceOn(TODAY).apply(MEMBER_ID, 1L, new ScoreRequestDTO(3, 1)),
+                HousingErrorCode.RECEIPT_NO_CONFLICT);
     }
 
     @Test

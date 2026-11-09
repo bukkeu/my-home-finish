@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
  *   담당 : SCM (모의 청약)
  *   청약 도메인 에러 코드 (API 명세서 4장)
  *   #28 : ALREADY_PAID_TODAY, DEPOSIT_BELOW_MIN, DEPOSIT_ABOVE_MAX
- *   #29 : INVALID_SCORE_INPUT, NOT_IN_APPLY_PERIOD, ALREADY_APPLIED, NOT_ANNOUNCED_YET
+ *   #29 : INVALID_SCORE_INPUT, NOT_IN_APPLY_PERIOD, ALREADY_APPLIED, RECEIPT_NO_CONFLICT, NOT_ANNOUNCED_YET
  *   #47·#48 에서 추가 : BEFORE_ANNOUNCE_DATE, COMPLEX_HAS_APPLICANTS
  *  */
 @Getter
@@ -22,9 +22,10 @@ public enum HousingErrorCode implements ErrorCode {          // ① #2 에서 �
     DEPOSIT_ABOVE_MAX(HttpStatus.BAD_REQUEST, "한 번에 최대 500,000 캐시까지 납입할 수 있어요"),
 
     // #29 가점·신청·결과 (정책 정의서 4장. 날짜가 들어가는 문구는 화면이 단지 일정으로 채운다)
-    INVALID_SCORE_INPUT(HttpStatus.BAD_REQUEST, "무주택 기간과 부양가족 수는 0 이상으로 입력해 주세요"),
+    INVALID_SCORE_INPUT(HttpStatus.BAD_REQUEST, "무주택 기간은 0~50년, 부양가족 수는 0~20명으로 입력해 주세요"),
     NOT_IN_APPLY_PERIOD(HttpStatus.CONFLICT, "지금은 신청 기간이 아니에요"),
     ALREADY_APPLIED(HttpStatus.CONFLICT, "신청 완료"),
+    RECEIPT_NO_CONFLICT(HttpStatus.CONFLICT, "신청이 몰려 접수하지 못했어요. 다시 신청해 주세요"),
     NOT_ANNOUNCED_YET(HttpStatus.FORBIDDEN, "아직 발표 전이에요");
 
     private final HttpStatus status;

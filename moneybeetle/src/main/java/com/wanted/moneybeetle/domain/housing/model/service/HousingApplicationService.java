@@ -84,11 +84,22 @@ public class HousingApplicationService {
                 score.getHomelessScore(), score.getDependentScore(), score.getAccountScore(),
                 LocalDateTime.now(clock));
         try {
-            // 같은 단지에 동시에 두 번 신청하면 DB 유니크 키(회원+단지)가 막는다 → 중복 신청으로 답한다
             return ApplyResultDTO.from(applicationRepository.saveAndFlush(application));
         } catch (DataIntegrityViolationException e) {
+            // 유니크 키가 2개라 어느 키에 걸렸는지 나눈다
+            // - 접수번호(uk_housing_application_receipt_no) : 다른 회원과 같은 순간에 신청해 번호가 겹침 → 저장 안 됨, 다시 신청 안내
+            // - 회원+단지(uk_housing_application_1)        : 같은 단지에 동시에 두 번 신청 → 중복 신청
+            if (isReceiptNoConflict(e)) {
+                throw new BusinessException(HousingErrorCode.RECEIPT_NO_CONFLICT);
+            }
             throw new BusinessException(HousingErrorCode.ALREADY_APPLIED);
         }
+    }
+
+    // MySQL 메시지 예 : Duplicate entry 'MB-261103-0001' for key 'housing_application.uk_housing_application_receipt_no'
+    private boolean isReceiptNoConflict(DataIntegrityViolationException e) {
+        String message = String.valueOf(e.getMostSpecificCause().getMessage());
+        return message.toLowerCase().contains("receipt_no");
     }
 
     // API 70 내 신청 내역 : 신청 최신순. 단지 이름·발표일은 한 번에 조회한다
@@ -115,9 +126,9 @@ public class HousingApplicationService {
         return ApplicationResultDTO.from(application);
     }
 
-    // 무주택 기간·부양가족 수는 0 이상 (입력값만으로 판단하는 규칙)
+    // 무주택 기간 0~50년, 부양가족 0~20명 (가점 계산기·신청 모두 이 검사를 거친다)
     private void checkScoreInput(ScoreRequestDTO request) {
-        if (request.getHomelessYears() < 0 || request.getDependents() < 0) {
+        if (!request.isInRange()) {
             throw new BusinessException(HousingErrorCode.INVALID_SCORE_INPUT);
         }
     }
