@@ -168,9 +168,6 @@
     if (status === 'ENDED') { out.textContent = '시즌이 끝났어요'; return; }
     if (!nextTurnAt) { out.textContent = '마지막 턴이에요'; return; }
     var target = new Date(nextTurnAt).getTime();
-    // 새로 불러왔는데도 같은 시각이면 서버가 아직 턴을 넘기지 않은 것(또는 PC 시계가 빠른 것)이다 -> 천천히 다시 확인한다
-    var repeated = S.lastTarget === target;
-    S.lastTarget = target;
     var tick = function () {
       var left = Math.max(0, Math.floor((target - Date.now()) / 1000));
       var hh = String(Math.floor(left / 3600)).padStart(2, '0');
@@ -179,7 +176,15 @@
       out.textContent = '다음 턴까지 ' + hh + ':' + mm + ':' + ss;
       if (left === 0) {
         clearInterval(S.timer);
-        setTimeout(function () { refreshAll(true); }, repeated ? REFRESH_RETRY_MS : REFRESH_DELAY_MS);
+        // 같은 시각으로 또 0이 되면 서버가 아직 턴을 넘기지 않은 것(또는 PC 시계가 빠른 것)이다 -> 천천히 다시 확인한다.
+        // 주문·참가 뒤의 일반 새로고침은 0이 되지 않으므로 이 판단에 끼지 않는다
+        var repeated = S.expiredTarget === target;
+        S.expiredTarget = target;
+        setTimeout(function () {
+          refreshAll(true).then(function (ok) {
+            if (!ok) startCountdown(nextTurnAt, status);   // 새로고침이 실패했으면 멈추지 않고 다시 확인한다
+          });
+        }, repeated ? REFRESH_RETRY_MS : REFRESH_DELAY_MS);
       }
     };
     tick();
@@ -691,8 +696,11 @@
         var keepText = skipOrderReset ? errBox.textContent : null;
         loadStock(S.stock.stockId).then(function () { if (keepText) orderError(keepText); });
       }
+      return true;
     }).catch(function (err) {
-      if (!fatal(err)) MB.toast(errText(err), 'error');
+      if (fatal(err)) return true;   // 잠금·시즌 없음은 화면이 이미 바뀌었으므로 다시 시도하지 않는다
+      MB.toast(errText(err), 'error');
+      return false;                  // 호출한 쪽(카운트다운)이 실패를 알고 다시 확인한다
     });
   }
 
