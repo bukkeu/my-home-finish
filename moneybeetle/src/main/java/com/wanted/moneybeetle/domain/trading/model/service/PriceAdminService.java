@@ -10,6 +10,8 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   - 변동률로 계산한 가격이 int 범위를 넘으면 잘린 값이 저장되지 않게 거절 -> PRICE_OUT_OF_RANGE
 *   - 변동률(change_rate)은 저장할 때 지난 턴 가격으로 다시 계산한다 (1턴은 null)
 *   - CSV : 제목 줄 stockId,stockName,turn1..turn12. 빈 칸은 그대로 두고, 오류 행이 하나라도 있으면 전체 취소
+*     종목 이름에 쉼표·따옴표·줄바꿈이 있어도 다시 올릴 수 있게 RFC 4180 방식으로 감싸고 읽는다
+*     이름이 = + - @ 로 시작하면 엑셀이 수식으로 읽지 않게 앞에 ' 를 붙인다 (올릴 때 이름 칸은 쓰지 않는다)
 *  */
 
 import com.wanted.moneybeetle.domain.trading.exception.CsvInvalidException;
@@ -27,10 +29,8 @@ import com.wanted.moneybeetle.domain.trading.model.entity.StockPrice;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +57,8 @@ public class PriceAdminService {
     private static final String UTF8_BOM = "﻿";
     /** 가격은 50원 단위 */
     private static final BigDecimal PRICE_UNIT = BigDecimal.valueOf(50);
+    /** 엑셀이 수식으로 읽는 첫 글자 */
+    private static final String FORMULA_START = "=+-@\t\r";
 
     private final TradingSeasonRepository seasonRepository;
     private final StockRepository stockRepository;
@@ -86,7 +88,7 @@ public class PriceAdminService {
         PriceTableDTO table = findPriceTable(seasonId);
         StringBuilder csv = new StringBuilder(UTF8_BOM).append(header(season.getTotalTurns())).append("\r\n");
         for (PriceTableDTO.Row row : table.getRows()) {
-            csv.append(row.getStockId()).append(',').append(row.getStockName());
+            csv.append(row.getStockId()).append(',').append(csvCell(row.getStockName()));
             for (Integer price : row.getPrices()) {
                 csv.append(',').append(price == null ? "" : price);
             }
@@ -103,21 +105,21 @@ public class PriceAdminService {
         Set<Long> stockIds = stockRepository.findAll().stream().map(Stock::getStockId).collect(Collectors.toSet());
         Map<Long, Map<Integer, StockPrice>> existing = pricesByStock(seasonId);
 
-        List<String> lines = readLines(csv);
+        List<CsvRow> rows = readRows(csv);
         List<CsvError> errors = new ArrayList<>();
         List<PriceCellDTO> cells = new ArrayList<>();
-        if (lines.isEmpty() || !lines.get(0).trim().equals(header(totalTurns))) {
+        if (rows.isEmpty() || !String.join(",", rows.get(0).values()).trim().equals(header(totalTurns))) {
             errors.add(new CsvError(1, "제목 줄은 " + header(totalTurns) + " 이어야 해요"));
             throw new CsvInvalidException(errors);
         }
         Set<Long> seen = new HashSet<>();
-        for (int i = 1; i < lines.size(); i++) {
-            int lineNo = i + 1;
-            String line = lines.get(i);
-            if (line.isBlank()) {
+        for (int i = 1; i < rows.size(); i++) {
+            int lineNo = rows.get(i).line();
+            List<String> row = rows.get(i).values();
+            if (row.size() == 1 && row.get(0).isBlank()) {
                 continue;
             }
-            String[] values = line.split(",", -1);
+            String[] values = row.toArray(String[]::new);
             if (values.length != totalTurns + 2) {
                 errors.add(new CsvError(lineNo, "칸 수가 " + (totalTurns + 2) + "개여야 해요"));
                 continue;
@@ -299,14 +301,72 @@ public class PriceAdminService {
         return header.toString();
     }
 
-    private static List<String> readLines(InputStream csv) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(csv, StandardCharsets.UTF_8))) {
-            List<String> lines = reader.lines().collect(Collectors.toCollection(ArrayList::new));
-            if (!lines.isEmpty() && lines.get(0).startsWith(UTF8_BOM)) {
-                lines.set(0, lines.get(0).substring(1));
-            }
-            return lines;
+    /** 이름 칸 : 수식으로 읽히는 첫 글자 앞에 ' 를 붙이고, 쉼표·따옴표·줄바꿈이 있으면 큰따옴표로 감싼다 (안쪽 " 는 "") */
+    static String csvCell(String value) {
+        if (value == null) {
+            return "";
         }
+        String safe = !value.isEmpty() && FORMULA_START.indexOf(value.charAt(0)) >= 0 ? "'" + value : value;
+        if (safe.contains(",") || safe.contains("\"") || safe.contains("\n") || safe.contains("\r")) {
+            return "\"" + safe.replace("\"", "\"\"") + "\"";
+        }
+        return safe;
+    }
+
+    /** CSV 한 행 : 시작 줄 번호(오류 안내용)와 칸 값들 */
+    private record CsvRow(int line, List<String> values) {
+    }
+
+    /** RFC 4180 방식으로 읽는다 : 큰따옴표 안의 쉼표·줄바꿈은 값, "" 는 따옴표 하나 */
+    private static List<CsvRow> readRows(InputStream csv) throws IOException {
+        String text = new String(csv.readAllBytes(), StandardCharsets.UTF_8);
+        if (text.startsWith(UTF8_BOM)) {
+            text = text.substring(1);
+        }
+        List<CsvRow> rows = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        StringBuilder value = new StringBuilder();
+        boolean quoted = false;
+        int line = 1;
+        int rowLine = 1;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (quoted) {
+                if (c == '"' && i + 1 < text.length() && text.charAt(i + 1) == '"') {
+                    value.append('"');
+                    i++;
+                } else if (c == '"') {
+                    quoted = false;
+                } else {
+                    if (c == '\n') {
+                        line++;
+                    }
+                    value.append(c);
+                }
+            } else if (c == '"') {
+                quoted = true;
+            } else if (c == ',') {
+                values.add(value.toString());
+                value.setLength(0);
+            } else if (c == '\r' || c == '\n') {
+                if (c == '\r' && i + 1 < text.length() && text.charAt(i + 1) == '\n') {
+                    i++;
+                }
+                values.add(value.toString());
+                value.setLength(0);
+                rows.add(new CsvRow(rowLine, values));
+                values = new ArrayList<>();
+                line++;
+                rowLine = line;
+            } else {
+                value.append(c);
+            }
+        }
+        if (!values.isEmpty() || value.length() > 0) {
+            values.add(value.toString());
+            rows.add(new CsvRow(rowLine, values));
+        }
+        return rows;
     }
 
     private static Long parseLong(String value) {

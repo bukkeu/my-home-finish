@@ -229,6 +229,27 @@ class PriceAdminServiceTest {
     }
 
     @Test
+    void 이름에_쉼표_따옴표가_있어도_내려받은_CSV를_그대로_올릴_수_있다() throws Exception {
+        when(marketAdminService.findStocks()).thenReturn(List.of(new AdminStockDTO(1L, 1L, "반도체",
+                "한빛,\"반도체\"", 10_000, null, null, null, null, true)));
+        String csv = service.exportCsv(SEASON_ID);
+        assertThat(csv).contains("1,\"한빛,\"\"반도체\"\"\",,,");
+
+        PriceSaveResultDTO result = service.importCsv(SEASON_ID,
+                stream(csv.replace("\"\",,,", "\"\",10000,10100,")));
+
+        assertThat(result.getSaved()).isEqualTo(2);
+        assertThat(insertedRows()).extracting(StockPrice::getTurnNo).containsExactlyInAnyOrder(1, 2);
+    }
+
+    @Test
+    void CSV_이름_칸은_수식으로_읽히지_않게_내려받는다() {
+        assertThat(PriceAdminService.csvCell("=SUM(A1)")).isEqualTo("'=SUM(A1)");
+        assertThat(PriceAdminService.csvCell("-1,000")).isEqualTo("\"'-1,000\"");
+        assertThat(PriceAdminService.csvCell("한빛반도체")).isEqualTo("한빛반도체");
+    }
+
+    @Test
     void CSV에_오류_행이_있으면_전체를_저장하지_않고_오류_행을_알려준다() {
         currentTurn(1);
         existingPrice(1, 10_000);
