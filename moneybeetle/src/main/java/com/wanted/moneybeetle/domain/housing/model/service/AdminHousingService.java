@@ -84,6 +84,11 @@ public class AdminHousingService {
 
         boolean scheduleChanged = !complex.hasSameSchedule(request.getNoticeDate(), request.getApplyStartDate(),
                 request.getApplyEndDate(), request.getAnnounceDate(), request.getSupplyUnits());
+        // 산정한 공고는 신청자가 없어도 일정·세대 수를 바꿀 수 없다 (#48 SP-75)
+        //  → 마감일을 미래로 옮겨 신청을 다시 받으면, 결과·순위가 없는 신청자가 생기고 재산정도 막혀 있기 때문
+        if (scheduleChanged && complex.isComputed()) {
+            throw new BusinessException(HousingErrorCode.ALREADY_COMPUTED);
+        }
         if (scheduleChanged && hasApplicants(complexId)) {
             throw new BusinessException(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         }
@@ -124,7 +129,7 @@ public class AdminHousingService {
                 applications.stream().map(HousingApplication::getMemberId).toList());
 
         Comparator<HousingApplication> order = complex.isComputed()
-                ? Comparator.comparing(HousingApplication::getResultRank)
+                ? Comparator.comparing(HousingApplication::getResultRank, Comparator.nullsLast(Comparator.naturalOrder()))
                 : Comparator.comparingInt(HousingApplication::getTotalScore).reversed()
                         .thenComparing(Comparator.comparingInt(HousingApplication::getPaidCountSnapshot).reversed())
                         .thenComparing(HousingApplication::getAppliedAt);

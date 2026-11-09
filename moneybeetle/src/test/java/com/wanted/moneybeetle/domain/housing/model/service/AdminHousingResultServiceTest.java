@@ -5,6 +5,7 @@ import com.wanted.moneybeetle.domain.housing.model.dao.HousingApplicationReposit
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingComplexRepository;
 import com.wanted.moneybeetle.domain.housing.model.dto.AnnounceResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ApplicantDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.ComplexRequestDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComputeResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingApplication;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
 *   AdminHousingService #48 확인 - 신청자 목록·당첨자 산정·결과 발표 (SP-75)
 *   단지 : 신청 11/3 ~ 11/10, 발표 11/17, 2세대
 *   - 산정 : 마감 다음 날(11/11)부터, 한 번만, 단지 행 잠금 조회 사용
+*   - 산정한 공고는 일정·세대 수를 바꿀 수 없다 (신청이 다시 열리지 않게, 정보 수정은 가능)
 *   - 발표 : 산정 뒤 발표일(11/17)부터, 한 번만, 신청자 모두에게 알림
 *  */
 class AdminHousingResultServiceTest {
@@ -127,6 +129,30 @@ class AdminHousingResultServiceTest {
     void 신청_마감일까지는_산정할_수_없다() {
         assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 10)).compute(1L), HousingErrorCode.APPLY_NOT_CLOSED);
         assertThat(complex.isComputed()).isFalse();
+    }
+
+    @Test
+    void 산정한_공고는_신청자가_없어도_일정을_바꿔_신청을_다시_열_수_없다() {
+        complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
+        when(applicationRepository.countByHousingComplexId(1L)).thenReturn(0L);
+        ComplexRequestDTO reopen = new ComplexRequestDTO("비틀 파크", "서울 강서구", "84㎡", 650_000_000L, 2, "일반공급",
+                LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
+                LocalDate.of(2026, 11, 30), LocalDate.of(2026, 12, 7));   // 마감·발표를 미래로
+
+        assertRejected(() -> serviceOn(CLOSED_DAY).updateComplex(1L, reopen), HousingErrorCode.ALREADY_COMPUTED);
+        assertThat(complex.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+    }
+
+    @Test
+    void 산정한_공고도_정보만_바꾸는_수정은_된다() {
+        complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
+        ComplexRequestDTO rename = new ComplexRequestDTO("비틀 파크 2차", "서울 강서구", "84㎡", 650_000_000L, 2,
+                "일반공급", LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
+                LocalDate.of(2026, 11, 10), ANNOUNCE_DAY);
+
+        serviceOn(CLOSED_DAY).updateComplex(1L, rename);
+
+        assertThat(complex.getName()).isEqualTo("비틀 파크 2차");
     }
 
     @Test

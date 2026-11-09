@@ -3543,7 +3543,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400), `NOT_FOUND`(404, 없거나 삭제된 단지), `COMPLEX_HAS_APPLICANTS`(409)
+**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400), `NOT_FOUND`(404, 없거나 삭제된 단지), `COMPLEX_HAS_APPLICANTS`(409), `ALREADY_COMPUTED`(409, 산정한 공고는 신청자가 없어도 일정·세대 수 변경 불가 — 신청이 다시 열리지 않게, #48)
 
 #### 145. 공고 삭제
 
