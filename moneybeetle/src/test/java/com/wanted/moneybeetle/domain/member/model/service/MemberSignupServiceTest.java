@@ -170,6 +170,8 @@ class MemberSignupServiceTest {
 
         assertThatThrownBy(() -> signupService.signup(request)).isInstanceOf(IllegalStateException.class);
 
+        // 가짜 관리자는 바깥·안쪽 트랜잭션을 구분하지 못해 "어딘가에서 되돌렸다"까지만 안다. 가입이 실제로 취소되는지(회원이 DB 에 남지 않는지)는
+        // MemberSignupRollbackTest 가 H2 실제 DB 로 확인한다.
         verify(transactionManager, atLeastOnce()).rollback(any());
     }
 
