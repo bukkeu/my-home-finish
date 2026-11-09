@@ -189,7 +189,7 @@
 | #132 | 로그인 병합 후 강의·스크랩 API에 로그인 회원 ID 연결 (후속) | — | — | #17·#18 리뷰 지적. `CourseController.currentMemberId()`·`currentMemberIdOrNull()`을 `@AuthenticationPrincipal` 기반으로 교체. 선행 #4·#6 |
 
 **다른 사람에게 줘야 하는 것**: `CourseService.hasLearningHistory(memberId)`(김예린 홈·로그인 분기), `CourseService.findContinueWatching / findLearningSummary(memberId)`(김예린 홈·Drawer), `CourseService.search(q)`·`InquiryService.search(q)`(이재성 검색)
-**신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.write`, 서수영 `FileStorageService.save`
+**신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.record`, 서수영 `FileStorageService.save`
 
 ---
 
@@ -204,7 +204,7 @@
 | 이슈 | 작업 | API | 점수 | 핵심 내용 · 확정 사항 |
 | --- | --- | --- | --- | --- |
 | #5 | 회원가입 API | 1~5 | 5 | 약관·이메일·닉네임 중복 확인·가입·본인인증. 가입 직후 서수영 `HousingService.openAccount()` 호출 |
-| #6 | 로그인·로그아웃 API | 6,7 | 4 | 로그인·로그아웃. Controller 없이 Security 폼 로그인 + 성공·실패 핸들러, 5회 실패 10분 잠금, 출석 호출 |
+| #6 | 로그인·로그아웃 API | 6,7 | 4 | 로그인·로그아웃. Controller 없이 Security 폼 로그인 + 성공·실패 핸들러, 5회 실패 1분 잠금(이후 5회마다 5분), 출석 호출 |
 | #7 | 내 정보·설정 수정 API | 13~15, 18 | 6 | 내 정보·설정 수정·프로필 이미지·다른 회원 공개 프로필 (Drawer 프로필 응답 포함) |
 | #8 | 아이디 찾기·비밀번호 재설정·변경·회원 탈퇴 API | 9~11, 16,17 | 4 | 아이디 찾기·비밀번호 재설정(메일)·비밀번호 변경·회원 탈퇴(비활성화) |
 | #9 | 본인인증·간편 로그인 | 8 | 2 | 본인인증·간편 로그인(구글·카카오)은 실제 연동 없이 **가상 방식**으로 구현 (팀 결정, 우선순위 하) |
@@ -229,7 +229,7 @@
 | #119 | 사이드바 로그아웃 폼 주소 수정 (후속, 닫힘) | — | — | `fragments/layout/sidebar.html` 로그아웃 폼을 `/api/v1/auth/logout`(API 7)으로 수정 |
 | #123 | 알림 패널 버튼 포커스 표시·읽음 요청 keepalive (후속, 닫힘) | — | — | 릴리스 PR #106 리뷰 FE 지적. `common.css` `:focus-visible`, `notify.js` `keepalive` (PR #124) |
 
-**다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
+**다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.record(adminId, action, targetType, targetId, detailJson)`
 **김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.openAccount`·`getDashboardSummary`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
 
 ---
@@ -282,7 +282,7 @@
 | 김예린 | `NotificationService.send(memberId, type, title, link)` | 신아림, 이재성, 서수영 | 검수 결과, 턴 진행·랭킹 공개, 청약 결과 |
 | 김예린 | `AttendanceService.checkToday(memberId)` | 김예린 | 로그인 성공 |
 | 김예린 | `ForbiddenWordService.check(text)` | 신아림, 김예린 | 문의·닉네임·강의 글 |
-| 김예린 | `AdminLogService.write(adminId, action, targetId, before, after, reason)` | 전원 | 관리자 중요 작업 |
+| 김예린 | `AdminLogService.record(adminId, action, targetType, targetId, detailJson)` | 전원 | 관리자 중요 작업 |
 | 김예린 | `InstructorService.apply(memberId, ...)` / `approve(applicationId)` | 신아림 | 강사 가입 신청(#30), 관리자 강사 승인(#37). `instructor_profile`은 김예린 `member` 도메인 소유 |
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
