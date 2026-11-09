@@ -10,6 +10,9 @@ package com.wanted.moneybeetle.global.security;
 *   - 처음 요청이 아직 처리 중이면 409 DUPLICATE_REQUEST
 *   - 결과는 24시간 보관한다. 단 4xx(요청이 거절됨)는 기록을 지워서 같은 키로 다시 시도할 수 있다
 *     5xx는 처리됐는지 알 수 없어서(커밋 뒤 응답 중 오류 등) 그대로 보관한다 -> 같은 키로 다시 실행되지 않는다
+*     응답을 만들지 못하고 필터 밖으로 예외·Error 가 나간 경우도 같다: 처리됐는지 알 수 없으므로 500 INTERNAL_ERROR 결과로
+*     보관하고 예외는 그대로 다시 던진다. 지우면 커밋 뒤 예외에서 같은 키 재시도가 다시 실행되고, 그대로 두면 "처리 중"이
+*     24시간 남아 같은 키가 계속 DUPLICATE_REQUEST 가 되기 때문이다
 *   - 헤더가 없으면 막지 않고 그대로 처리한다 (화면은 항상 헤더를 보낸다)
 *   Spring Security 필터 다음에 실행되므로 로그인 정보(getUserPrincipal)를 쓸 수 있다
 *  */
@@ -98,10 +101,10 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             handled = true;
         } finally {
             // 보통 예외는 GlobalExceptionHandler 가 500 응답으로 바꿔서 여기까지 오지 않는다.
-            // 여기 오는 것은 응답을 만들지 못한 경우(Error 포함)라 돌려줄 결과가 없으므로 기록을 지운다.
-            // 지우지 않으면 "처리 중" 기록이 24시간 남아 같은 키가 계속 DUPLICATE_REQUEST 가 된다
+            // 여기 오는 것은 응답을 만들지 못한 경우(Error 포함)다. 처리가 끝났는지(커밋됐는지) 알 수 없으므로
+            // 5xx 와 같게 500 결과로 보관해, 같은 키로 다시 와도 한 번 더 실행되지 않게 한다
             if (!handled) {
-                store.remove(storeKey);
+                storeUnknownFailure(storeKey);
             }
         }
 
@@ -114,6 +117,18 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                     cachedResponse.getContentAsByteArray());
         }
         cachedResponse.copyBodyToResponse();
+    }
+
+    /** 응답 없이 끝난 요청을 500 INTERNAL_ERROR 결과로 보관한다. 여기서 실패해도 원래 예외를 가리지 않는다 */
+    private void storeUnknownFailure(String storeKey) {
+        try {
+            store.complete(storeKey, CommonErrorCode.INTERNAL_ERROR.getStatus().value(),
+                    MediaType.APPLICATION_JSON_VALUE,
+                    objectMapper.writeValueAsBytes(ApiResponse.fail(CommonErrorCode.INTERNAL_ERROR)));
+        } catch (RuntimeException | IOException e) {
+            // 보관하지 못하면 기록을 지운다(처리 중으로 남기지 않는다)
+            store.remove(storeKey);
+        }
     }
 
     /** 같은 키가 이미 있을 때: 내용이 다르면 거절, 처리 중이면 거절, 끝났으면 처음 결과를 다시 보낸다 */

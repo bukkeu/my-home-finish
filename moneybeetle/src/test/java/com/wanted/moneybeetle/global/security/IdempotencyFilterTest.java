@@ -25,7 +25,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 *   IdempotencyFilter 확인 (스프링 없이 단독 실행)
 *   - 같은 키·같은 내용은 한 번만 처리하고 처음 결과를 다시 돌려준다
 *   - 같은 키·다른 내용은 409 IDEMPOTENCY_KEY_CONFLICT, 처리 중이면 409 DUPLICATE_REQUEST
-*   - 4xx 응답은 저장하지 않고, 5xx 응답은 저장한다. 24시간이 지나면 기록이 지워진다
+*   - 4xx 응답은 저장하지 않고, 5xx 응답과 응답 없이 난 예외·Error 는 500 결과로 저장한다. 24시간이 지나면 기록이 지워진다
 *  */
 class IdempotencyFilterTest {
 
@@ -165,20 +165,26 @@ class IdempotencyFilterTest {
     }
 
     @Test
-    void 처리_중_예외가_나면_기록을_지운다() throws Exception {
+    void 처리_중_예외가_나면_500_결과로_보관해_같은_키로_다시_실행하지_않는다() throws Exception {
         FilterChain broken = (req, res) -> {
             throw new IllegalStateException("처리 실패");
         };
+        AtomicInteger calls = new AtomicInteger();
 
         // 예외는 삼키지 않고 그대로 위로 전달된다
         assertThatThrownBy(() -> send(request("minji", "k-1", BUY_BODY), broken))
                 .isInstanceOf(IllegalStateException.class);
+        MockHttpServletResponse retried = send(request("minji", "k-1", BUY_BODY), chain(calls, 201, CREATED_BODY));
 
-        assertThat(store.find("minji POST " + ORDER_PATH + " k-1")).isEmpty();
+        // 커밋 뒤에 난 예외일 수 있으므로 처리하지 않고 처음 결과(500)를 돌려준다
+        assertThat(calls).hasValue(0);
+        assertThat(retried.getStatus()).isEqualTo(500);
+        assertThat(retried.getContentAsString(StandardCharsets.UTF_8)).contains("INTERNAL_ERROR");
+        assertThat(retried.getHeader(IdempotencyFilter.REPLAYED_HEADER)).isEqualTo("true");
     }
 
     @Test
-    void 처리_중_Error가_나도_기록을_지운다() throws Exception {
+    void 처리_중_Error가_나도_처리_중으로_남지_않고_500_결과로_보관한다() throws Exception {
         FilterChain broken = (req, res) -> {
             throw new StackOverflowError("처리 실패");
         };
@@ -187,7 +193,9 @@ class IdempotencyFilterTest {
         assertThatThrownBy(() -> send(request("minji", "k-1", BUY_BODY), broken))
                 .isInstanceOf(StackOverflowError.class);
 
-        assertThat(store.find("minji POST " + ORDER_PATH + " k-1")).isEmpty();
+        IdempotencyRecord record = store.find("minji POST " + ORDER_PATH + " k-1").orElseThrow();
+        assertThat(record.isInProgress()).isFalse();
+        assertThat(record.status()).isEqualTo(500);
     }
 
     @Test
