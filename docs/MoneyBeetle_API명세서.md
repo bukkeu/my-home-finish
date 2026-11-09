@@ -3196,7 +3196,7 @@ Header: Idempotency-Key: 4d8e...
 { "saved": 2, "warnings": [ { "stockId": 2, "turnNo": 6, "message": "한 턴에 ±30%를 넘는 변동이에요" } ] }
 ```
 
-**Error**: `PAST_TURN_LOCKED`, `PRICE_NOT_POSITIVE`, `NOT_FOUND`
+**Error**: `PAST_TURN_LOCKED`, `PRICE_NOT_POSITIVE`, `PRICE_OUT_OF_RANGE`(변동률로 계산한 가격이 너무 큼), `NOT_FOUND`
 
 #### 129. 가격표 CSV 내려받기
 
@@ -3669,6 +3669,7 @@ Header: Idempotency-Key: 4d8e...
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
 | 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |
 | 강사·관리자 | `PRICE_NOT_POSITIVE` | 400 | 가격은 1원 이상이어야 해요 |
+| 강사·관리자 | `PRICE_OUT_OF_RANGE` | 400 | 변동률이 너무 커서 가격을 계산할 수 없어요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
 

@@ -7,6 +7,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   - 변동률 입력 : 지난 턴 가격 x (1 + 변동률%) 를 50원 단위로 반올림 (지난 턴 가격이 없으면 시작 가격 기준)
 *   - 이상값 : 지난 턴보다 ±30% 넘게 움직이면 경고. confirm=false 면 저장하지 않고 경고만 돌려준다
 *   - 0원 이하 : DB 가 1원 이상만 받으므로(ck_stock_price_1) 경고가 아니라 거절 -> PRICE_NOT_POSITIVE
+*   - 변동률로 계산한 가격이 int 범위를 넘으면 잘린 값이 저장되지 않게 거절 -> PRICE_OUT_OF_RANGE
 *   - 변동률(change_rate)은 저장할 때 지난 턴 가격으로 다시 계산한다 (1턴은 null)
 *   - CSV : 제목 줄 stockId,stockName,turn1..turn12. 빈 칸은 그대로 두고, 오류 행이 하나라도 있으면 전체 취소
 *  */
@@ -54,6 +55,8 @@ public class PriceAdminService {
     static final BigDecimal WARNING_RATE = new BigDecimal("30");
     static final String WARNING_MESSAGE = "한 턴에 ±30%를 넘는 변동이에요";
     private static final String UTF8_BOM = "﻿";
+    /** 가격은 50원 단위 */
+    private static final BigDecimal PRICE_UNIT = BigDecimal.valueOf(50);
 
     private final TradingSeasonRepository seasonRepository;
     private final StockRepository stockRepository;
@@ -242,7 +245,13 @@ public class PriceAdminService {
     static int priceFromRate(int base, BigDecimal changeRate) {
         BigDecimal raw = BigDecimal.valueOf(base)
                 .multiply(BigDecimal.ONE.add(changeRate.movePointLeft(2)));
-        return raw.divide(BigDecimal.valueOf(50), 0, RoundingMode.HALF_UP).intValue() * 50;
+        BigDecimal rounded = raw.divide(PRICE_UNIT, 0, RoundingMode.HALF_UP).multiply(PRICE_UNIT);
+        try {
+            return rounded.intValueExact();
+        } catch (ArithmeticException e) {
+            // intValue() 는 넘치는 앞자리를 말없이 잘라서 엉뚱한 가격이 될 수 있다
+            throw new BusinessException(TradingErrorCode.PRICE_OUT_OF_RANGE);
+        }
     }
 
     static BigDecimal changeRate(int before, int after) {

@@ -187,6 +187,13 @@ class PriceAdminServiceTest {
     }
 
     @Test
+    void 변동률로_계산한_가격이_int_범위를_넘으면_PRICE_OUT_OF_RANGE() {
+        assertThatThrownBy(() -> PriceAdminService.priceFromRate(76_800, new BigDecimal("5000000")))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PRICE_OUT_OF_RANGE);
+    }
+
+    @Test
     void 기존_칸을_바꾸면_다음_턴_변동률도_다시_계산한다() {
         existingPrice(1, 10_000);
         StockPrice turn2 = existingPrice(2, 10_000);
