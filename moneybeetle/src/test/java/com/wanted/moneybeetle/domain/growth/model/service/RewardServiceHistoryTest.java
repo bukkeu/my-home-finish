@@ -39,7 +39,8 @@ class RewardServiceHistoryTest {
     void setUp() {
         cashHistoryRepository = mock(CashHistoryRepository.class);
         rewardService = new RewardService(mock(RewardRuleRepository.class), cashHistoryRepository,
-                mock(ExpHistoryRepository.class), mock(MemberService.class), mock(GrowthService.class));
+                mock(ExpHistoryRepository.class), mock(MemberService.class), mock(GrowthService.class),
+                mock(com.wanted.moneybeetle.domain.notification.model.service.NotificationService.class));
     }
 
     @Test

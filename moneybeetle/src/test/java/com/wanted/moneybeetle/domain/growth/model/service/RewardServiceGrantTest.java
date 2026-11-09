@@ -40,6 +40,7 @@ class RewardServiceGrantTest {
     private ExpHistoryRepository expHistoryRepository;
     private MemberService memberService;
     private GrowthService growthService;
+    private com.wanted.moneybeetle.domain.notification.model.service.NotificationService notificationService;
     private RewardService rewardService;
 
     @BeforeEach
@@ -49,10 +50,11 @@ class RewardServiceGrantTest {
         expHistoryRepository = mock(ExpHistoryRepository.class);
         memberService = mock(MemberService.class);
         growthService = mock(GrowthService.class);
+        notificationService = mock(com.wanted.moneybeetle.domain.notification.model.service.NotificationService.class);
         // 레벨 정책표는 이슈 #11 확정값(Lv.8 = 1,250, Lv.12 = 2,450)을 쓴다
         when(growthService.loadLevelTable()).thenReturn(LevelTableFixture.table());
         rewardService = new RewardService(ruleRepository, cashHistoryRepository, expHistoryRepository,
-                memberService, growthService);
+                memberService, growthService, notificationService);
     }
 
     private void givenRule(String code, int cash, int exp) {
@@ -160,6 +162,7 @@ class RewardServiceGrantTest {
         assertThat(result.getLevelTo()).isEqualTo(8);
         assertThat(result.getLevelUpCash()).isEqualTo(350_000);
         assertThat(result.getUnlocks()).containsExactly(UnlockRules.TRADING);
+        verify(notificationService).send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
 
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository, org.mockito.Mockito.times(7)).save(cash.capture());
@@ -186,6 +189,22 @@ class RewardServiceGrantTest {
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
         assertThat(result.getUnlocks()).containsExactly(UnlockRules.HOUSING);
+        verify(notificationService).send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+        verify(notificationService, org.mockito.Mockito.times(1))
+                .send(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("레벨이 올라도 새로 열린 기능이 없으면 해금 알림을 보내지 않는다")
+    void noUnlockNotificationWithoutUnlock() {
+        givenRule(RewardRule.COURSE_COMPLETE, 0, 100);
+        givenBalance(2, 150, 0);
+        when(memberService.addReward(MEMBER, 0L, 100)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 250, 0));
+
+        rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
+
+        org.mockito.Mockito.verifyNoInteractions(notificationService);
     }
 
     @Test
