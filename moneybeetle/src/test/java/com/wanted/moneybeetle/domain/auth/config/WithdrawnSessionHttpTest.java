@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -57,7 +58,8 @@ import org.springframework.web.context.WebApplicationContext;
 @SpringBootTest(classes = {WithdrawnSessionHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
         AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
         com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider.class,
-        MemberService.class,
+        MemberService.class, com.wanted.moneybeetle.domain.member.model.service.AccountService.class,
+        com.wanted.moneybeetle.domain.member.controller.MemberController.class,
         WithdrawnSessionHttpTest.ProtectedController.class})
 class WithdrawnSessionHttpTest {
 
@@ -99,6 +101,8 @@ class WithdrawnSessionHttpTest {
     private InstructorProfileRepository instructorProfileRepository;
     @MockitoBean
     private TermsRepository termsRepository;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.dao.PasswordResetTokenRepository passwordResetTokenRepository;
     @MockitoBean
     private com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository memberTermsAgreementRepository;
     @MockitoBean
@@ -144,12 +148,18 @@ class WithdrawnSessionHttpTest {
         mockMvc.perform(get("/api/v1/courses").session(phone)).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/courses").session(laptop)).andExpect(status().isOk());
 
-        member.withdraw(LocalDateTime.of(2026, 11, 9, 9, 0));   // 한 세션에서 탈퇴(AccountService.withdraw 와 같은 변경)
+        // phone 세션에서 실제 탈퇴 API 로 탈퇴한다 (MemberController → AccountService.withdraw)
+        mockMvc.perform(delete("/api/v1/members/me").with(csrf()).session(phone)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isNoContent());
+        assertThat(member.getStatus()).isEqualTo(Member.STATUS_WITHDRAWN);
+        assertThat(phone.isInvalid()).isTrue();   // 탈퇴한 세션 자신은 컨트롤러가 끝낸다
 
+        // 탈퇴 요청을 보내지 않은 laptop 세션은 ActiveMemberFilter 가 막는다
         mockMvc.perform(get("/api/v1/courses").session(laptop))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
-        mockMvc.perform(get("/api/v1/courses").session(phone)).andExpect(status().isUnauthorized());
         assertThat(laptop.isInvalid()).isTrue();
     }
 

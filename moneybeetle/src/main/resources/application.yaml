@@ -36,6 +36,11 @@ spring:
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
+    # 메일 서버가 응답하지 않아도 발송 스레드(2개)가 무기한 묶이지 않도록 SMTP 연결·읽기·쓰기 제한 시간(ms)을 둔다
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   servlet:
     multipart:
       max-file-size: 500MB
