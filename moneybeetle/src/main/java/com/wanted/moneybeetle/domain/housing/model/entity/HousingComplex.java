@@ -99,6 +99,16 @@ public class HousingComplex extends BaseTimeEntity {
         return STATUS_OPEN;
     }
 
+    // 오늘 신청할 수 있나? (신청 시작일~마감일, 당일 포함 / 발표된 단지는 불가) - #29 SP-73
+    public boolean isApplyOpen(LocalDate today) {
+        return STATUS_OPEN.equals(currentStatus(today));
+    }
+
+    // 관리자가 결과를 발표했나? 발표 전에는 당첨 결과를 보여 주지 않는다 - #29 SP-75
+    public boolean isAnnounced() {
+        return STATUS_ANNOUNCED.equals(status);
+    }
+
     // ── #47 관리자 공고 관리 ──────────────────────────────
 
     // 공고 등록 : 처음 상태는 접수 전(UPCOMING). 화면 상태는 날짜로 계산하므로 발표 전까지 status 는 바꾸지 않는다

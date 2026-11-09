@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.housing.controller;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.housing.model.dto.*;
+import com.wanted.moneybeetle.domain.housing.model.service.HousingApplicationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import com.wanted.moneybeetle.global.common.PageResponse;
@@ -31,7 +32,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HousingController {
 
-    private final HousingService housingService;
+    private final HousingService housingService;                       // #27·#28 캘린더·공고·청약통장
+    private final HousingApplicationService applicationService;        // #29 가점·신청·결과
 
     // API 63 청약 캘린더 : GET /api/v1/housing/complexes?month=2026-11   (Lv.12)
     @RequireLevel(UnlockFeature.HOUSING)
@@ -70,5 +72,39 @@ public class HousingController {
             @PageableDefault(size = 20, sort = "paidDate", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal AuthDetails auth) {
         return ApiResponse.success(housingService.findDeposits(auth.getMemberId(), pageable));
+    }
+
+    // API 68 가점 계산기 : POST /api/v1/housing/score-preview   (Lv.12)
+    @RequireLevel(UnlockFeature.HOUSING)
+    @PostMapping("/score-preview")
+    public ApiResponse<ScoreDTO> previewScore(@RequestBody ScoreRequestDTO request,
+                                              @AuthenticationPrincipal AuthDetails auth) {
+        return ApiResponse.success(applicationService.previewScore(auth.getMemberId(), request));
+    }
+
+    // API 69 청약 신청 : POST /api/v1/housing/complexes/{complexId}/applications   (Lv.12, 201)
+    @RequireLevel(UnlockFeature.HOUSING)
+    @PostMapping("/complexes/{complexId}/applications")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<ApplyResultDTO> apply(@PathVariable Long complexId,
+                                             @RequestBody ScoreRequestDTO request,
+                                             @AuthenticationPrincipal AuthDetails auth) {
+        return ApiResponse.success(applicationService.apply(auth.getMemberId(), complexId, request));
+    }
+
+    // API 70 내 신청 내역 : GET /api/v1/housing/applications/me   (Lv.12, 최신순)
+    @RequireLevel(UnlockFeature.HOUSING)
+    @GetMapping("/applications/me")
+    public ApiResponse<PageResponse<ApplicationDTO>> findMyApplications(
+            @PageableDefault(size = 20, sort = "appliedAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal AuthDetails auth) {
+        return ApiResponse.success(applicationService.findMyApplications(auth.getMemberId(), pageable));
+    }
+
+    // API 71 당첨 결과 : GET /api/v1/housing/applications/{applicationId}/result   (본인, 레벨 조건 없음)
+    @GetMapping("/applications/{applicationId}/result")
+    public ApiResponse<ApplicationResultDTO> getResult(@PathVariable Long applicationId,
+                                                       @AuthenticationPrincipal AuthDetails auth) {
+        return ApiResponse.success(applicationService.getResult(auth.getMemberId(), applicationId));
     }
 }

@@ -34,7 +34,7 @@
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
-| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37) |
+| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 거절된 4xx 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 5xx 응답은 처리 여부를 알 수 없어 보관하고 같은 키로 다시 오면 그 응답을 돌려준다(이미 저장된 주문·납입이 다시 실행되지 않게). 5xx를 받은 화면은 자동으로 다시 보내지 않고, 내역(거래 내역·청약통장·퀴즈 결과)을 다시 조회해 처리됐는지 먼저 확인한 뒤 처리되지 않았을 때만 새 키로 시도한다(새 키는 기존 기록이 적용되지 않아 그대로 다시 실행된다). 응답을 만들지 못하고 필터 밖으로 예외·Error가 전파된 경우도 처리 여부를 알 수 없으므로 5xx와 같게 500(`INTERNAL_ERROR`) 결과로 보관한다(같은 키로 다시 와도 재실행되지 않고, "처리 중"으로 남아 `DUPLICATE_REQUEST`가 계속되지도 않는다). 헤더가 없으면 막지 않고 그대로 처리한다. 키는 100자까지이고(UUID 36자), 넘으면 처리하지 않고 400 `IDEMPOTENCY_KEY_TOO_LONG` (`IdempotencyFilter`, #65) |
 
 ### 1-2 응답 형식
 
@@ -528,7 +528,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-08 |
-| 설명 | 닉네임과 생년월일로 이메일 일부를 가려서 알려 준다. |
+| 설명 | 닉네임과 생년월일로 이메일 일부를 가려서 알려 준다. 탈퇴·정지 회원은 알려 주지 않고 `MEMBER_NOT_FOUND`다. |
 
 **Request**
 
@@ -552,7 +552,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 본인 확인 메일을 보낸다. 인증은 10분 유효, 1회용. |
+| 설명 | 본인 확인 메일을 보낸다. 인증은 10분 유효, 1회용이다. 가입 여부를 숨기려고 없는 이메일이어도 같은 202로 답한다. 새로 요청하면 이전 메일의 링크는 쓸 수 없다. 메일의 링크는 `{APP_BASE_URL}/password-reset?token=...`. |
 
 **Request**
 
@@ -572,7 +572,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. |
+| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. |
 
 **Request**
 
@@ -584,7 +584,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 
 - 204 No Content
 
-**Error**: `TOKEN_EXPIRED`, `TOKEN_USED`, `PASSWORD_MISMATCH`
+**Error**: `TOKEN_EXPIRED`, `TOKEN_USED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`
 
 #### 12. 강사 가입 신청
 
@@ -718,7 +718,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 계정을 비활성화(WITHDRAWN)한다. 개인정보는 30일 뒤 파기. |
+| 설명 | 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -730,7 +730,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`
+**Error**: `PASSWORD_WRONG`, `FORBIDDEN`
 
 #### 18. 다른 회원 공개 프로필
 
@@ -1889,7 +1889,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-06, SP-71 |
-| 설명 | 무주택 기간과 부양가족 수를 넣으면 납입회차를 자동 반영해 계산. 저장하지 않음. |
+| 설명 | 무주택 기간과 부양가족 수를 넣으면 내 청약통장 납입회차를 자동 반영해 계산. 저장하지 않음. 점수표는 실제 청약 가점제(SP-71 확정, #29) |
 
 **Request**
 
@@ -1897,11 +1897,18 @@ Header: Idempotency-Key: 31aa...
 { "homelessYears": 3, "dependents": 1 }
 ```
 
+- `homelessYears`: 무주택 기간(년, 1년 미만은 0), `dependents`: 부양가족 수. 둘 다 0 이상.
+
 **Response**
 
 ```json
 { "homelessScore": 8, "dependentScore": 10, "accountScore": 6, "totalScore": 24, "maxScore": 84, "baseDate": "2026-11-01" }
 ```
+
+- 무주택(32): 1년 미만 2점, 1년마다 +2점, 15년 이상 32점 / 부양가족(35): 0명 5점, 1명마다 +5점, 6명 이상 35점 / 통장(17): 납입 1회 = 1개월로 보고 6회 미만 1점, 6~11회 2점, 12~23회 3점, 이후 12회마다 +1점, 180회 이상 17점. 예시는 납입 48회.
+- `baseDate`: 계산한 날(오늘, Asia/Seoul). 화면에 기준일로 표시한다.
+
+**Error**: `LEVEL_LOCKED`, `INVALID_SCORE_INPUT`(400, 무주택 기간 0~50년·부양가족 0~20명 밖), `NOT_FOUND`(청약통장 없음)
 
 #### 69. 청약 신청
 
@@ -1911,7 +1918,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-07~08, SP-72~73 |
-| 설명 | 신청 기간 안에서만, 같은 단지 1회. 신청 후 취소·수정 불가. 신청 시점 가점을 저장. |
+| 설명 | 신청 기간(신청 시작일·마감일 당일 포함) 안에서만, 같은 단지 1회. 신청 후 취소·수정 불가. 신청 시점의 입력값·납입회차·항목별 점수를 저장(이후 납입해도 신청 점수는 그대로). 접수번호는 `MB-신청일(yyMMdd)-그날 순번 4자리`. |
 
 **Request**
 
@@ -1926,7 +1933,7 @@ Header: Idempotency-Key: 31aa...
 { "applicationId": 40, "receiptNo": "MB-261105-0042", "totalScore": 24 }
 ```
 
-**Error**: `LEVEL_LOCKED`, `NOT_IN_APPLY_PERIOD`, `ALREADY_APPLIED`
+**Error**: `LEVEL_LOCKED`, `NOT_IN_APPLY_PERIOD`(409), `ALREADY_APPLIED`(409, 같은 단지에 동시에 두 번 신청해 회원+단지 유니크 키에 걸린 경우 포함), `RECEIPT_NO_CONFLICT`(409, 다른 회원과 같은 순간에 신청해 접수번호가 겹침. 저장되지 않았으니 다시 신청), `INVALID_SCORE_INPUT`(400), `NOT_FOUND`(없거나 삭제된 단지, 청약통장 없음)
 
 #### 70. 내 신청 내역
 
@@ -1936,7 +1943,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-09, SUB-11 |
-| 설명 | 신청 단지, 상태, 발표 후 결과. |
+| 설명 | 신청 단지, 접수번호, 가점, 발표일, 발표 후 결과. 기본 20개씩 신청 최신순(`sort=appliedAt,desc`). 목록 응답 형식(1-3). `result`는 관리자가 발표하기 전에는 저장돼 있어도 `null`(SP-75). |
 
 **Request**
 
@@ -1945,8 +1952,10 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "applicationId": 40, "complexName": "그린숲 행복주택", "receiptNo": "MB-261105-0042", "totalScore": 24, "announceDate": "2026-11-17", "result": null } ] }
+{ "items": [ { "applicationId": 40, "complexName": "그린숲 행복주택", "receiptNo": "MB-261105-0042", "totalScore": 24, "announceDate": "2026-11-17", "result": null } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
+
+**Error**: `LEVEL_LOCKED`
 
 #### 71. 당첨 결과
 
@@ -1956,7 +1965,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 (본인) |
 | 관련 | SUB-11 |
-| 설명 | 발표일 이후에만. |
+| 설명 | 관리자가 발표한 뒤에만(단지 `status = ANNOUNCED`이고 산정 결과가 있을 때). 본인 신청만 볼 수 있다. 레벨 조건 없음. |
 
 **Request**
 
@@ -1968,7 +1977,9 @@ Header: Idempotency-Key: 31aa...
 { "result": "LOSE", "totalScore": 24, "message": "이번에는 낙첨이에요. 내 가점은 24점이었어요" }
 ```
 
-**Error**: `NOT_ANNOUNCED_YET`
+- 당첨이면 `"result": "WIN"`, `"message": "축하해요! 당첨이에요. 내 가점은 N점이었어요"`.
+
+**Error**: `NOT_ANNOUNCED_YET`(403, 발표 전 또는 산정 전), `NOT_FOUND`(없는 신청이거나 남의 신청)
 
 ### 강사
 
@@ -3631,8 +3642,9 @@ email=admin@moneybeetle.kr&password=...
 | 공통 | `FORBIDDEN` | 403 | 이 페이지를 볼 수 있는 권한이 없어요 |
 | 공통 | `LEVEL_LOCKED` | 403 | Lv.8부터 열려요. 지금은 Lv.5예요 |
 | 공통 | `NOT_FOUND` | 404 | 찾을 수 없는 페이지예요 |
-| 공통 | `DUPLICATE_REQUEST` | 409 | (기존 처리 결과를 그대로 반환) |
+| 공통 | `DUPLICATE_REQUEST` | 409 | 이미 처리된 요청이에요 (같은 `Idempotency-Key`의 처음 요청이 아직 처리 중일 때. 처리가 끝났으면 이 에러 대신 처음 결과를 그대로 반환) |
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
+| 공통 | `IDEMPOTENCY_KEY_TOO_LONG` | 400 | 요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
@@ -3662,10 +3674,12 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
+| 모의 청약 | `RECEIPT_NO_CONFLICT` | 409 | 신청이 몰려 접수하지 못했어요. 다시 신청해 주세요 |
 | 모의 청약 | `ALREADY_PAID_TODAY` | 409 | 오늘은 이미 납입했어요 |
 | 모의 청약 | `DEPOSIT_BELOW_MIN` | 400 | 최소 20,000 캐시부터 납입할 수 있어요 |
 | 모의 청약 | `DEPOSIT_ABOVE_MAX` | 400 | 한 번에 최대 500,000 캐시까지 납입할 수 있어요 |
 | 모의 청약 | `NOT_ANNOUNCED_YET` | 403 | 발표는 ○월 ○일이에요 |
+| 모의 청약 | `INVALID_SCORE_INPUT` | 400 | 무주택 기간은 0~50년, 부양가족 수는 0~20명으로 입력해 주세요 |
 | 모의 청약 | `INVALID_COMPLEX_INPUT` | 400 | 단지 정보를 모두 입력해 주세요. 분양가와 공급 세대 수는 1 이상이에요 |
 | 모의 청약 | `INVALID_SCHEDULE` | 400 | 일정 순서가 맞지 않아요. 공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 발표일로 정해 주세요 |
 | 모의 청약 | `COMPLEX_HAS_APPLICANTS` | 409 | 신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요 |

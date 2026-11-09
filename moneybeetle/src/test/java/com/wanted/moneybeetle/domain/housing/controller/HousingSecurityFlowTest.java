@@ -12,6 +12,7 @@ import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.housing.model.dto.AccountDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositPolicyDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositResultDTO;
+import com.wanted.moneybeetle.domain.housing.model.service.HousingApplicationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.config.WebConfig;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
@@ -75,12 +76,17 @@ class HousingSecurityFlowTest {
     @MockitoBean
     private HousingService housingService;
     @MockitoBean
+    private HousingApplicationService applicationService;
+    @MockitoBean
     private GrowthService growthService;
     /** 로그인 핸들러(#6)가 필요로 하는 것들. 이 테스트는 로그인 뒤 흐름만 보므로 가짜로 둔다 */
     @MockitoBean
     private AuthService authService;
     @MockitoBean
     private LoginAuthenticationProvider loginAuthenticationProvider;
+    /** SecurityConfig 의 ActiveMemberFilter(#8)가 요청마다 계정 상태를 확인한다. 이 테스트의 회원은 정상 계정이다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberService memberService;
 
     @Autowired
     private WebApplicationContext context;
@@ -88,6 +94,7 @@ class HousingSecurityFlowTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.when(memberService.isActiveMember(org.mockito.ArgumentMatchers.anyLong())).thenReturn(true);
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
