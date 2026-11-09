@@ -29,6 +29,8 @@ public class Notification {
     public static final String TYPE_INQUIRY_REPLY = "INQUIRY_REPLY";
     public static final String TYPE_HOUSING_RESULT = "HOUSING_RESULT";
     public static final String TYPE_RANKING = "RANKING";
+    /** 강의 반려 (강사에게 반려 사유를 알린다, #35) */
+    public static final String TYPE_COURSE_REJECTED = "COURSE_REJECTED";
 
     public static final int TYPE_MAX_LENGTH = 30;
     public static final int TITLE_MAX_LENGTH = 100;

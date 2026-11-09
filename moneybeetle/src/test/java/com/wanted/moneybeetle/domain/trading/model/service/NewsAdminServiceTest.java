@@ -65,7 +65,7 @@ class NewsAdminServiceTest {
         TradingSeason season = TradingSeason.create("시즌 7", LocalDate.of(2026, 10, 19), new BigDecimal("100.00"),
                 null, 1L);
         ReflectionTestUtils.setField(season, "tradingSeasonId", SEASON_ID);
-        season.start();
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
         for (int i = 0; i < 5; i++) {
             season.advanceTurn();
         }

@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.entity;
 
+import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -7,8 +9,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,7 +24,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /* comment.
 *   담당 : PM (모의투자)
-*   테이블 trading_season (READY -> RUNNING -> HOLIDAY -> SETTLING -> ENDED)
+*   테이블 trading_season
+*   상태 : READY -> RUNNING <-> HOLIDAY -> SETTLING -> ENDED (SP-65, 거꾸로 가지 않음.
+*          일요일 휴장 뒤에는 다시 진행 중으로 돌아온다)
 *  */
 @Entity
 @Table(name = "trading_season")
@@ -31,10 +40,20 @@ public class TradingSeason {
     public static final String STATUS_SETTLING = "SETTLING";
     public static final String STATUS_ENDED = "ENDED";
 
-    /** 시즌 기간: 시작일(월) 포함 14일, 종료일 = 시작일 + 13일 */
+    /** 지금 상태에서 바꿀 수 있는 다음 상태 (SP-65) */
+    private static final Map<String, Set<String>> NEXT_STATUSES = Map.of(
+            STATUS_READY, Set.of(STATUS_RUNNING),
+            STATUS_RUNNING, Set.of(STATUS_HOLIDAY, STATUS_SETTLING),
+            STATUS_HOLIDAY, Set.of(STATUS_RUNNING, STATUS_SETTLING),
+            STATUS_SETTLING, Set.of(STATUS_ENDED),
+            STATUS_ENDED, Set.of());
+
+    /** 시즌 기간: 시작일(월) 포함 14일, 종료일 = 시작일 + 13일 (SP-50) */
     public static final int SEASON_DAYS = 14;
     public static final int DEFAULT_TOTAL_TURNS = 12;
     public static final int DEFAULT_UNLOCK_LEVEL = 8;
+    /** 이월 비율 기본값: 최종 순자산 전액 이월 (SP-63, #76 확정) */
+    public static final BigDecimal DEFAULT_CARRYOVER_RATE = new BigDecimal("100.00");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -65,7 +84,7 @@ public class TradingSeason {
     /** 만든 관리자 (member 도메인 - ID 참조) */
     private Long createdBy;
 
-    // TODO(#2): BaseTimeEntity 가 생기면 상속으로 바꾼다
+    // TODO(#2): BaseTimeEntity 로 바꿀지 팀과 맞춘다
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -74,48 +93,71 @@ public class TradingSeason {
     private LocalDateTime updatedAt;
 
     private TradingSeason(String name, LocalDate startDate, BigDecimal carryoverRate,
-            Long carryoverCap, Long createdBy) {
+            Long carryoverCap, int unlockLevel, Long createdBy) {
         this.name = name;
         this.startDate = startDate;
         this.endDate = startDate.plusDays(SEASON_DAYS - 1);
         this.status = STATUS_READY;
         this.currentTurn = 0;
         this.totalTurns = DEFAULT_TOTAL_TURNS;
-        this.unlockLevel = DEFAULT_UNLOCK_LEVEL;
+        this.unlockLevel = unlockLevel;
         this.carryoverRate = carryoverRate;
         this.carryoverCap = carryoverCap;
         this.createdBy = createdBy;
     }
 
+    /** 기본 설정(이월 100%, 상한 없음, 해금 Lv.8)으로 만든다 */
+    public static TradingSeason create(String name, LocalDate startDate, Long createdBy) {
+        return new TradingSeason(name, startDate, DEFAULT_CARRYOVER_RATE, null, DEFAULT_UNLOCK_LEVEL,
+                createdBy);
+    }
+
     public static TradingSeason create(String name, LocalDate startDate, BigDecimal carryoverRate,
             Long carryoverCap, Long createdBy) {
-        return new TradingSeason(name, startDate, carryoverRate, carryoverCap, createdBy);
+        return new TradingSeason(name, startDate, carryoverRate, carryoverCap, DEFAULT_UNLOCK_LEVEL,
+                createdBy);
     }
 
-    public void changeSetting(String name, BigDecimal carryoverRate, Long carryoverCap) {
-        this.name = name;
+    /** 이월 비율·상한·해금 레벨 (ADM-11). 정산 중이거나 끝난 시즌은 바꿀 수 없다 */
+    public void changeSetting(BigDecimal carryoverRate, Long carryoverCap, int unlockLevel) {
+        if (isSettlingOrEnded()) {
+            throw new BusinessException(TradingErrorCode.SEASON_CLOSED);
+        }
         this.carryoverRate = carryoverRate;
         this.carryoverCap = carryoverCap;
+        this.unlockLevel = unlockLevel;
     }
 
-    public void start() {
-        this.status = STATUS_RUNNING;
+    /** 정해진 순서로만 상태를 바꾼다 (SP-65) */
+    public void changeStatus(String nextStatus) {
+        if (!canChangeStatusTo(nextStatus)) {
+            throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        this.status = nextStatus;
     }
 
-    public void startHoliday() {
-        this.status = STATUS_HOLIDAY;
+    public boolean canChangeStatusTo(String nextStatus) {
+        if (nextStatus == null) {
+            return false;
+        }
+        return NEXT_STATUSES.getOrDefault(this.status, Set.of()).contains(nextStatus);
     }
 
-    public void endHoliday() {
-        this.status = STATUS_RUNNING;
+    /** 12턴의 거래일: 시작일부터 일요일을 빼고 하루 1턴 (SP-50) */
+    public List<LocalDate> tradeDates() {
+        List<LocalDate> dates = new ArrayList<>();
+        LocalDate date = this.startDate;
+        while (dates.size() < this.totalTurns) {
+            if (date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                dates.add(date);
+            }
+            date = date.plusDays(1);
+        }
+        return dates;
     }
 
     public void advanceTurn() {
         this.currentTurn++;
-    }
-
-    public void startSettling() {
-        this.status = STATUS_SETTLING;
     }
 
     public void completeSettlement(LocalDateTime settledAt) {
@@ -141,6 +183,10 @@ public class TradingSeason {
 
     public boolean isEnded() {
         return STATUS_ENDED.equals(this.status);
+    }
+
+    public boolean isSettlingOrEnded() {
+        return STATUS_SETTLING.equals(this.status) || STATUS_ENDED.equals(this.status);
     }
 
     public boolean isLastTurn() {
