@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.quiz.model.entity;
 
+import com.wanted.moneybeetle.global.common.CreatedTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -9,7 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+
 
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 @Table(name = "wrong_answer_note")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class WrongAnswerNote {
+public class WrongAnswerNote extends CreatedTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,13 +29,12 @@ public class WrongAnswerNote {
     private Long memberId;
     private Long quizQuestionId;
     private Long lastChoiceId;          // 마지막으로 고른 오답. 안 풀었으면 null
-    private LocalDateTime createdAt;
 
     private WrongAnswerNote(Long memberId, Long quizQuestionId, Long lastChoiceId) {
         this.memberId = memberId;
         this.quizQuestionId = quizQuestionId;
         this.lastChoiceId = lastChoiceId;
-        this.createdAt = LocalDateTime.now();
+
     }
 
     /* 퀴즈 제출(#20)에서 틀린 문제를 처음 저장할 때 */
