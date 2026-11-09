@@ -2826,7 +2826,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-30, SP-17, DP-43 |
-| 설명 | 사유 필수. 회수로 0 미만이 되면 거절. |
+| 설명 | 사유 필수(200자 이하). 금액은 1 이상 1,000,000,000(10억) 캐시 이하이고(SP-17), 회수로 0 미만이 되면 거절. |
 
 **Request**
 
@@ -2841,7 +2841,7 @@ email=admin@moneybeetle.kr&password=...
 { "cashHistoryId": 130, "balanceAfter": 14400 }
 ```
 
-**Error**: `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
+**Error**: `INVALID_AMOUNT`, `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
 
 #### 111. 서비스 설정
 
@@ -2895,7 +2895,8 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: targetType=SEASON&targetId=7&page=0&size=50
+- Query (모두 선택): targetType=SEASON&targetId=7&adminId=1&from=2026-11-01&to=2026-11-05&page=0&size=50
+    - `from`·`to` 는 날짜(yyyy-MM-dd)이고 둘 다 그날을 포함한다. `size` 기본 50, 최대 100. 최신순.
 
 **Response**
 
