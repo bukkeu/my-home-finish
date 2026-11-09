@@ -98,12 +98,12 @@ class AccountServiceTest {
     // ---- 비밀번호 재설정 토큰 발급 ----
 
     @Test
-    @DisplayName("가입된 정상 회원이면 이전 토큰을 쓸 수 없게 하고 10분짜리 새 토큰을 저장한다")
+    @DisplayName("가입된 정상 회원이면 10분짜리 새 토큰을 저장한다 (이전 토큰은 메일이 대기열에 들어간 뒤에 따로 막는다)")
     void issuesToken() {
         Optional<String> to = service.issuePasswordResetToken("  MinJi@Gmail.com ", "hash-1");
 
         assertThat(to).contains("minji@gmail.com");
-        verify(tokenRepository).invalidateUnused(eq(1L), any(LocalDateTime.class));
+        verify(tokenRepository, never()).invalidateUnusedExcept(any(), any(), any());
         org.mockito.ArgumentCaptor<PasswordResetToken> saved = org.mockito.ArgumentCaptor.forClass(PasswordResetToken.class);
         verify(tokenRepository).save(saved.capture());
         assertThat(saved.getValue().getTokenHash()).isEqualTo("hash-1");

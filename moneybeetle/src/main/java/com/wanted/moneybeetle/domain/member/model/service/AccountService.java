@@ -62,10 +62,22 @@ public class AccountService {
                 .filter(member -> member.isActive() && member.getPasswordHash() != null)
                 .map(member -> {
                     LocalDateTime now = LocalDateTime.now(clock);
-                    passwordResetTokenRepository.invalidateUnused(member.getMemberId(), now);
                     passwordResetTokenRepository.save(PasswordResetToken.issue(member.getMemberId(), tokenHash, now));
                     return member.getEmail();
                 });
+    }
+
+    /** 새 토큰의 메일이 발송 대기열에 들어간 뒤 부른다. 이 회원의 쓰지 않은 이전 토큰을 쓸 수 없게 한다 (새 토큰은 남긴다) */
+    @Transactional
+    public void invalidateOtherPasswordResetTokens(String tokenHash) {
+        passwordResetTokenRepository.findByTokenHash(tokenHash).ifPresent(token ->
+                passwordResetTokenRepository.invalidateUnusedExcept(token.getMemberId(), tokenHash, LocalDateTime.now(clock)));
+    }
+
+    /** 메일을 보내지 못했을 때 부른다. 새로 저장한 토큰을 지워서 이전 토큰이 그대로 유효하게 둔다 */
+    @Transactional
+    public void discardPasswordResetToken(String tokenHash) {
+        passwordResetTokenRepository.deleteUnusedByTokenHash(tokenHash);
     }
 
     /**

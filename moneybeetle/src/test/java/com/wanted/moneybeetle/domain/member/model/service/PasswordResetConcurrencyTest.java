@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
 import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -70,7 +71,7 @@ class PasswordResetConcurrencyTest {
 
         @Bean
         Clock clock() {
-            return Clock.system(ZoneId.of("Asia/Seoul"));
+            return Clock.fixed(Instant.parse("2026-11-09T03:00:00Z"), ZoneId.of("Asia/Seoul"));   // 고정 시계: 토큰 만료 판단이 실행 시각·환경에 흔들리지 않게
         }
     }
 

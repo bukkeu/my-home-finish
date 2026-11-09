@@ -57,6 +57,32 @@ class PasswordResetServiceTest {
     }
 
     @Test
+    @DisplayName("메일이 대기열에 들어가면 그 뒤에 이전 토큰을 쓸 수 없게 한다")
+    void invalidatesOldTokensAfterMailAccepted() {
+        when(accountService.issuePasswordResetToken(anyString(), anyString())).thenReturn(Optional.of("minji@gmail.com"));
+
+        service.requestReset("minji@gmail.com");
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(mailer, accountService);
+        order.verify(mailer).send(anyString(), anyString());
+        order.verify(accountService).invalidateOtherPasswordResetTokens(anyString());
+        verify(accountService, never()).discardPasswordResetToken(anyString());
+    }
+
+    @Test
+    @DisplayName("발송 대기열이 가득 차 거절되면 새 토큰을 지우고 이전 토큰은 건드리지 않으며 예외도 내지 않는다")
+    void discardsTokenWhenMailQueueFull() {
+        when(accountService.issuePasswordResetToken(anyString(), anyString())).thenReturn(Optional.of("minji@gmail.com"));
+        org.mockito.Mockito.doThrow(new org.springframework.core.task.TaskRejectedException("full"))
+                .when(mailer).send(anyString(), anyString());
+
+        service.requestReset("minji@gmail.com");
+
+        verify(accountService).discardPasswordResetToken(anyString());
+        verify(accountService, never()).invalidateOtherPasswordResetTokens(anyString());
+    }
+
+    @Test
     @DisplayName("재설정할 때는 받은 토큰 원문을 해시해서 넘긴다")
     void confirmHashesToken() {
         service.confirmReset("raw-token", "beetle5678", "beetle5678");

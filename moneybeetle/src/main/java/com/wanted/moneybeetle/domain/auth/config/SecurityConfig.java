@@ -46,7 +46,7 @@ public class SecurityConfig {
         // 같은 제공자가 위·아래 두 인증 관리자에 모두 들어가 로그인 한 번에 실패가 두 번 기록된다 (LoginHttpTest 가 이를 확인한다)
 
         http.authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
+                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
                     auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
                     // ⑥ 승인된 강사만 INSTRUCTOR 권한을 받도록 하는 것은 로그인(AuthService, 김예린 #6)에서 확인

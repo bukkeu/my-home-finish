@@ -8,6 +8,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.stereotype.Service;
 
 /* comment.
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 *   - 메일 발송이 느리거나 실패해도 응답은 같다 (발송 실패는 PasswordResetMailer 가 로그에만 남긴다).
 *   - 이 클래스는 트랜잭션을 열지 않는다. 토큰 저장은 AccountService 가 열고 끝낸 뒤 메일을 보낸다 (메일 서버가 느려도 DB 를 붙잡지 않는다).
 *  */
+@Slf4j
 @Service
 public class PasswordResetService {
 
@@ -37,8 +40,21 @@ public class PasswordResetService {
     public void requestReset(String email) {
         String token = newToken();
         Optional<String> recipient = accountService.issuePasswordResetToken(email, hash(token));
-        // 발송은 다른 스레드에서 한다 (PasswordResetMailer). 느려도 실패해도 이 요청의 응답은 같다
-        recipient.ifPresent(to -> mailer.send(to, token));
+        if (recipient.isEmpty()) {
+            return;
+        }
+        String tokenHash = hash(token);
+        try {
+            // 발송은 다른 스레드에서 한다 (PasswordResetMailer). 느려도 실패해도 이 요청의 응답은 같다
+            mailer.send(recipient.get(), token);
+        } catch (TaskRejectedException e) {
+            // 발송 대기열이 가득 찼다. 새 토큰을 지우고 이전 토큰은 그대로 둔다. 이메일·토큰은 로그에 남기지 않는다
+            accountService.discardPasswordResetToken(tokenHash);
+            log.warn("비밀번호 재설정 메일 대기열이 가득 차 요청을 건너뛰었어요.");
+            return;
+        }
+        // 메일이 대기열에 들어간 뒤에만 이전 토큰을 쓸 수 없게 한다
+        accountService.invalidateOtherPasswordResetTokens(tokenHash);
     }
 
     /** 메일의 토큰으로 새 비밀번호를 정한다 (API 11) */
