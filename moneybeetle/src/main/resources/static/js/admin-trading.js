@@ -58,6 +58,8 @@
   function dateTime(iso) { return iso ? String(iso).replace(/^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2}).*$/, '$1.$2 $3') : '-'; }
   function api(path, opts) { return MB.api(BASE + path, opts); }
   function seasonPath(suffix) { return '/seasons/' + state.season.seasonId + suffix; }
+  // 응답을 받은 시점에 관리자가 고른 시즌. 요청 중에 다른 시즌을 골랐다면 그 선택을 유지한다
+  function currentSeasonId() { return state.season ? state.season.seasonId : null; }
   // 시즌별 요청의 순번. 시즌을 A -> B -> A 로 바꿔도 먼저 보낸 요청의 늦은 응답이 지금 화면을 덮어쓰지 않게 한다
   var req = { turn: 0, prices: 0, news: 0, people: 0, stats: 0, rank: 0 };
   var personReq = 0;   // 참가자 상세 요청 순번: 가장 나중에 고른 참가자의 응답만 그린다
@@ -266,7 +268,7 @@
         if (!ok) return;
         return busy(btn, api(seasonPath('/status'), { method: 'PATCH', body: { status: to } })).then(function () {
           MB.toast('시즌 상태를 ‘' + statusLabel(to) + '’(으)로 바꿨어요');
-          return loadSeasons(s.seasonId).then(renderSeasonTab);
+          return loadSeasons(currentSeasonId()).then(renderSeasonTab);
         }, toastError);
       });
   }
@@ -384,7 +386,7 @@
         if (!ok) return;
         return busy(nextBtn, api(seasonPath('/turns/next'), { method: 'POST', body: { expectedCurrentTurn: s.currentTurn } })).then(function (data) {
           MB.toast((data && data.currentTurn ? data.currentTurn : next) + '턴으로 넘겼어요');
-        }, toastError).then(function () { return loadSeasons(s.seasonId); }).then(loadTurn);
+        }, toastError).then(function () { return loadSeasons(currentSeasonId()); }).then(loadTurn);
       });
   });
   $('at-check-reload').addEventListener('click', function () { loadSeasons().then(loadTurn); });
@@ -631,6 +633,10 @@
   $('at-price-reset').addEventListener('click', function () { state.edits = {}; renderPrices(); });
 
   function savePrices(confirm) {
+    // 화면의 가격표가 지금 고른 시즌의 것인지 확인한다 (다르면 다른 시즌에 저장될 수 있다)
+    if (!state.season || !state.prices || String(state.prices.seasonId) !== String(state.season.seasonId)) {
+      return MB.toast('가격표를 다시 불러온 뒤 저장해 주세요', 'error');
+    }
     var cells = Object.keys(state.edits).map(function (k) {
       var ed = state.edits[k];
       return ed.mode === 'rate' ? { stockId: ed.stockId, turnNo: ed.turnNo, changeRate: ed.value } : { stockId: ed.stockId, turnNo: ed.turnNo, price: ed.value };
@@ -946,7 +952,7 @@
       if (!ok) return;
       return busy(btn, api(seasonPath('/settle'), { method: 'POST' })).then(function (d) {
         MB.toast((d && d.participants != null ? fmt(d.participants) + '명의 ' : '') + '정산을 마쳤어요');
-        return loadSeasons(s.seasonId).then(loadRanking);
+        return loadSeasons(currentSeasonId()).then(loadRanking);
       }, toastError);
     });
   });
