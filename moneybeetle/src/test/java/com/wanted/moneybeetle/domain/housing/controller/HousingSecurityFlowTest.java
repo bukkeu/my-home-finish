@@ -158,7 +158,8 @@ class HousingSecurityFlowTest {
     @Test
     void 공고_상세에서_로그인_회원의_신청_여부를_넘긴다() throws Exception {
         when(growthService.getLevel(MEMBER_ID)).thenReturn(12);
-        mockMvc.perform(get("/api/v1/housing/complexes/1").with(user(member())));
+        mockMvc.perform(get("/api/v1/housing/complexes/1").with(user(member())))
+                .andExpect(status().isOk());   // 막혔다면(401·403) 여기서 바로 원인이 보인다
         verify(housingService).getComplex(1L, MEMBER_ID);
     }
 }
