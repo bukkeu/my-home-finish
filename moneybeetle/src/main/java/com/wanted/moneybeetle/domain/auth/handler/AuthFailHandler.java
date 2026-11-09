@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.auth.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wanted.moneybeetle.domain.auth.model.service.AdminOnlyException;
+import com.wanted.moneybeetle.domain.auth.exception.AdminOnlyException;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.exception.ErrorCode;

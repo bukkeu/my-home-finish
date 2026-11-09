@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.auth.model.service;
 
+import com.wanted.moneybeetle.domain.auth.exception.AdminOnlyException;
 import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;

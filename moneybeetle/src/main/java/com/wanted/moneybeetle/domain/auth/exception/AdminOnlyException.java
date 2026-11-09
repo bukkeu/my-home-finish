@@ -1,4 +1,4 @@
-package com.wanted.moneybeetle.domain.auth.model.service;
+package com.wanted.moneybeetle.domain.auth.exception;
 
 import org.springframework.security.core.AuthenticationException;
 
