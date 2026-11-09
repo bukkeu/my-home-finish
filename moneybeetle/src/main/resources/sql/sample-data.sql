@@ -357,9 +357,9 @@ INSERT INTO term_schedule (show_date, economic_term_id, sort_order, is_auto) VAL
 -- 알림 (이슈 #75): 개발용 샘플. 종류별(UNLOCK · INQUIRY_REPLY · HOUSING_RESULT · RANKING · COURSE_REJECTED) 1건 이상.
 -- 제목·이동 주소는 실제로 알림을 보내는 코드와 같은 형식이다. content 는 실제 알림처럼 비워 둔다 (알림 목록 API 에도 content 가 없다).
 -- 민지(8)는 읽지 않은 알림 3건(종의 빨간 점·안 읽은 수 확인용)과 읽은 알림 1건, 강사 5번은 반려된 강의 17의 반려 알림을 받는다.
--- 문의·단지 번호는 문의 시드가 없어 예시 번호다 (이동 주소 모양만 확인한다).
+-- 문의 답변 알림은 문의 시드가 없어 이동 주소를 비워 둔다 (없는 문의로 이동하지 않게 한다. 종은 주소가 없으면 눌러도 이동하지 않는다).
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at) VALUES
-(8, 'INQUIRY_REPLY', '문의에 답변이 등록됐어요', '/user/inquiry/1', 0, NOW() - INTERVAL 5 MINUTE),
+(8, 'INQUIRY_REPLY', '문의에 답변이 등록됐어요', NULL, 0, NOW() - INTERVAL 5 MINUTE),
 (8, 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, NOW() - INTERVAL 3 HOUR),
 (8, 'HOUSING_RESULT', '머니숲 리버뷰 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, NOW() - INTERVAL 1 DAY),
 (8, 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, NOW() - INTERVAL 2 DAY),

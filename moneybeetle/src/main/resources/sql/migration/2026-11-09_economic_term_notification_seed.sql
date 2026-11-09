@@ -58,11 +58,11 @@ WHERE NOT EXISTS (
 -- 알림 샘플 (시드 회원 8 민지 4건, 강사 5번 1건).
 -- - 번호가 같다고 시드 회원이라고 믿지 않는다: 회원 번호와 시드 이메일이 모두 맞는 회원에게만 넣는다.
 --   (시드가 아닌 DB 에서 8번·5번이 실제 회원이어도 샘플 알림이 붙지 않는다)
--- - 샘플마다 같은 회원·종류·제목·이동 주소의 알림이 이미 있으면 그 행만 건너뛴다
+-- - 샘플마다 같은 회원·종류·제목·이동 주소의 알림이 이미 있으면 그 행만 건너뛴다 (문의 답변 알림은 이동 주소가 NULL 이라 NULL 도 비교하는 <=> 를 쓴다)
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at)
 SELECT v.member_id, v.type, v.title, v.link_url, v.is_read, v.created_at
 FROM (
-    SELECT 8 AS member_id, 'minji@moneybeetle.local' AS seed_email, 'INQUIRY_REPLY' AS type, '문의에 답변이 등록됐어요' AS title, '/user/inquiry/1' AS link_url, 0 AS is_read, NOW() - INTERVAL 5 MINUTE AS created_at
+    SELECT 8 AS member_id, 'minji@moneybeetle.local' AS seed_email, 'INQUIRY_REPLY' AS type, '문의에 답변이 등록됐어요' AS title, NULL AS link_url, 0 AS is_read, NOW() - INTERVAL 5 MINUTE AS created_at
     UNION ALL SELECT 8, 'minji@moneybeetle.local', 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, NOW() - INTERVAL 3 HOUR
     UNION ALL SELECT 8, 'minji@moneybeetle.local', 'HOUSING_RESULT', '머니숲 리버뷰 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, NOW() - INTERVAL 1 DAY
     UNION ALL SELECT 8, 'minji@moneybeetle.local', 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, NOW() - INTERVAL 2 DAY
@@ -71,5 +71,5 @@ FROM (
 JOIN member m ON m.member_id = v.member_id AND m.email = v.seed_email
 WHERE NOT EXISTS (
     SELECT 1 FROM notification n
-    WHERE n.member_id = v.member_id AND n.type = v.type AND n.title = v.title AND n.link_url = v.link_url
+    WHERE n.member_id = v.member_id AND n.type = v.type AND n.title = v.title AND n.link_url <=> v.link_url
 );
