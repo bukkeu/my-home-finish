@@ -1,0 +1,69 @@
+name: Auto label and assign
+
+# 새 이슈·PR 에 라벨과 담당자(Assignees)를 자동으로 붙인다 (#186)
+# 규칙은 .github/scripts/auto-label.js, 설명은 docs/MoneyBeetle_Git규칙.md 4장
+# - 이슈 이벤트는 기본 브랜치(main)의 워크플로로 돈다 → main 에 반영된 뒤부터 동작
+# - pull_request_target 은 PR 대상 브랜치(dev·main)의 워크플로로 돈다. PR 코드는 체크아웃하지 않는다
+on:
+  issues:
+    types: [opened, edited, reopened]
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      # 규칙 파일만 쓰려고 대상 브랜치(PR 이 아닌 쪽)를 받는다
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          ref: ${{ github.event_name == 'pull_request_target' && github.base_ref || '' }}
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const rules = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/auto-label.js`);
+            const repo = context.repo;
+            const names = (list) => (list || []).map((x) => x.name ?? x.login);
+
+            let number, decision;
+            if (context.eventName === 'issues') {
+              const issue = context.payload.issue;
+              number = issue.number;
+              decision = rules.decideForIssue({
+                title: issue.title, body: issue.body, author: issue.user.login,
+                labels: names(issue.labels), assignees: names(issue.assignees),
+              });
+            } else {
+              const pr = context.payload.pull_request;
+              number = pr.number;
+              // 연결된 이슈의 라벨을 미리 읽어 둔다 (없는 번호·PR 번호는 건너뜀)
+              const issueLabels = {};
+              for (const n of rules.linkedIssueNumbers(pr.title, pr.body)) {
+                try {
+                  const { data } = await github.rest.issues.get({ ...repo, issue_number: n });
+                  issueLabels[n] = data.pull_request ? [] : names(data.labels);
+                } catch (e) {
+                  issueLabels[n] = [];
+                }
+              }
+              decision = rules.decideForPullRequest({
+                title: pr.title, body: pr.body, author: pr.user.login, branch: pr.head.ref,
+                labels: names(pr.labels), assignees: names(pr.assignees),
+              }, (n) => issueLabels[n] || []);
+            }
+
+            core.info(`#${number} 더할 라벨: [${decision.labels}] 담당자: [${decision.assignees}]`);
+            if (decision.labels.length) {
+              await github.rest.issues.addLabels({ ...repo, issue_number: number, labels: decision.labels });
+            }
+            if (decision.assignees.length) {
+              // 저장소 팀원이 아닌 사람(봇 등)은 GitHub 가 조용히 건너뛴다
+              await github.rest.issues.addAssignees({ ...repo, issue_number: number, assignees: decision.assignees });
+            }
