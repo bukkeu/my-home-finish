@@ -172,6 +172,40 @@ public class Member {
         this.level = newLevel;
     }
 
+    /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 가 MemberService 를 통해 부른다). 하루에 한 번만 기록된다 (SP-10).
+     * 어제도 출석했으면 연속 일수가 1 늘고, 하루라도 빠졌거나 처음이면 1 부터 다시 센다 (SP-11).
+     *
+     * @param today 서울(KST) 오늘 날짜. 테스트하기 쉽게 밖에서 받는다
+     * @return 오늘 처음 기록했으면 true, 이미 오늘 출석했으면 false (값은 바뀌지 않는다)
+     */
+    public boolean checkAttendance(LocalDate today) {
+        require(today != null, "오늘 날짜가 필요합니다.");
+        if (lastAttendedDate != null && !today.isAfter(lastAttendedDate)) {
+            return false;   // 오늘(또는 기기 시간이 어긋난 미래 날짜) 이미 기록됨
+        }
+        boolean consecutive = lastAttendedDate != null && lastAttendedDate.plusDays(1).equals(today);
+        this.attendanceStreak = consecutive ? attendanceStreak + 1 : 1;
+        this.lastAttendedDate = today;
+        return true;
+    }
+
+    /**
+     * 오늘 기준으로 이어지고 있는 연속 출석 일수. 어제나 오늘 출석했으면 저장된 값이고, 그보다 오래됐으면 이미 끊겨서 0 이다.
+     * (저장된 값은 다음 출석 때 1 로 다시 시작하므로, 화면에는 이 값을 보여 준다)
+     */
+    public int currentStreak(LocalDate today) {
+        if (lastAttendedDate == null || lastAttendedDate.plusDays(1).isBefore(today)) {
+            return 0;
+        }
+        return attendanceStreak;
+    }
+
+    /** 오늘 이미 출석했는가 */
+    public boolean hasAttended(LocalDate today) {
+        return lastAttendedDate != null && lastAttendedDate.equals(today);
+    }
+
     /** 캐시를 쓴다. 잔액은 0 미만이 될 수 없다 (SP-15) */
     public void spendCash(long amount) {
         require(amount > 0, "사용 금액은 0보다 커야 합니다.");
@@ -222,6 +256,42 @@ public class Member {
         lockedUntil = null;
         lastLoginAt = now;
     }
+    /** 비밀번호를 바꾼다 (#8). 평문이 아니라 이미 BCrypt 로 만든 해시를 받는다 (DP-02) */
+    public void changePasswordHash(String passwordHash) {
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        this.passwordHash = passwordHash;
+    }
+
+    /**
+     * 탈퇴한다 (#8, USR-14, DP-06). 계정을 비활성화(WITHDRAWN)하고 탈퇴 시각을 남긴다.
+     * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
+     */
+    public void withdraw(LocalDateTime now) {
+        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
+        this.status = STATUS_WITHDRAWN;
+        this.withdrawnAt = now;
+    }
+
+    /**
+     * 설정(닉네임·생년월일·성별)을 바꾼다 (#7). 이메일은 바꿀 수 없어 받지 않는다.
+     * 중복·금칙어·만 14세처럼 DB·오늘 날짜가 필요한 규칙은 MemberService 가 먼저 확인한다. 여기서는 값의 모양만 확인한다.
+     */
+    public void changeProfile(String nickname, LocalDate birthDate, String gender) {
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null, "생년월일이 필요합니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    /** 프로필 이미지 주소를 바꾼다 (#7) */
+    public void changeProfileImageUrl(String profileImageUrl) {
+        require(profileImageUrl != null && !profileImageUrl.isBlank(), "프로필 이미지 주소가 필요합니다.");
+        this.profileImageUrl = profileImageUrl;
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);

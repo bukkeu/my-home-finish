@@ -6,7 +6,12 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
@@ -41,8 +46,9 @@ import java.util.stream.Collectors;
 *   담당 : DBA ② (회원·인증)
 *   회원가입, 약관 조회, 이메일·닉네임 중복 확인 (이슈 #5). 이어서 내 정보·설정(#7), 비밀번호 변경·탈퇴(#8)를 맡는다.
 *   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차),
+*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6),
+*   recordAttendance / getAttendance (growth.AttendanceService 전용, #12).
 *   findNicknames (회원 ID 여러 개 -> 닉네임, 문의 게시판 등, #145).
-*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5)
@@ -108,6 +114,24 @@ public class MemberService {
     }
 
     /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 용). 회원 행을 잠가서 같은 사람이 동시에 두 번 불러도 하루 한 번만 기록된다.
+     * 이미 오늘 출석했으면 값을 바꾸지 않고 newlyChecked = false 로 돌려준다.
+     */
+    @Transactional
+    public MemberAttendanceDTO recordAttendance(Long memberId, LocalDate today) {
+        Member member = getMemberForUpdate(memberId);
+        boolean newlyChecked = member.checkAttendance(today);
+        return MemberAttendanceDTO.of(member, newlyChecked, today);
+    }
+
+    /** 오늘 기준 출석 상태를 읽기만 한다 (growth.AttendanceService 용, API 21) */
+    public MemberAttendanceDTO getAttendance(Long memberId, LocalDate today) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+        return MemberAttendanceDTO.of(member, false, today);
+    }
+
+    /**
      * 로그인할 회원을 이메일로 찾고 그 행을 잠근다 (auth.AuthService 용). 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 조회한다 (SP-01).
      * 잠금은 호출한 쪽의 트랜잭션이 끝날 때까지 유지된다. 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶어
      * 같은 계정의 동시 시도가 차례로 처리되게 한다 (auth.LoginAuthenticationProvider 가 그 트랜잭션을 연다).
@@ -150,6 +174,14 @@ public class MemberService {
         getMemberForUpdate(memberId).recordLoginSuccess(now);
     }
 
+    /**
+     * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
+     * 없는 회원이면 false 다.
+     */
+    public boolean isActiveMember(Long memberId) {
+        return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
+    }
+
     /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */
     private String grantedRole(Member member) {
         if (!Member.ROLE_INSTRUCTOR.equals(member.getRole())) {
@@ -164,6 +196,74 @@ public class MemberService {
     private Member getMemberForUpdate(Long memberId) {
         return memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    /** 회원의 프로필 원본 값 (member.MemberProfileService 용). 없는 회원이면 MEMBER_NOT_FOUND */
+    public MemberProfileDTO getProfile(Long memberId) {
+        return MemberProfileDTO.from(getMember(memberId));
+    }
+
+    /** 다른 회원에게 보여 줄 프로필 원본 값. 탈퇴·정지 회원은 없는 회원처럼 MEMBER_NOT_FOUND (DP-03) */
+    public MemberProfileDTO getActiveProfile(Long memberId) {
+        Member member = getMember(memberId);
+        if (!member.isActive()) {
+            throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND);
+        }
+        return MemberProfileDTO.from(member);
+    }
+
+    /**
+     * 설정 수정 (API 14). 값이 없는 항목은 그대로 둔다. 닉네임이 바뀔 때만 형식·금칙어·중복을 확인하고(SP-02),
+     * 생년월일은 가입 때와 같이 과거 날짜·만 14세 이상인지 확인한다. 이메일은 받지 않는다.
+     * 같은 닉네임으로 동시에 바꿔 중복 확인을 둘 다 통과해도 저장 시점의 DB 고유 제약에서 409 로 바꾼다.
+     */
+    @Transactional
+    public MemberUpdateResultDTO updateProfile(Long memberId, MemberUpdateDTO request) {
+        Member member = getMemberForUpdate(memberId);
+
+        String nickname = member.getNickname();
+        if (request.getNickname() != null && !request.getNickname().equals(nickname)) {
+            // 대소문자만 바꾼 경우는 DB 정렬 규칙(대소문자 구분 없음) 때문에 내 행이 중복으로 걸리므로 중복 검사만 건너뛴다
+            validateNickname(request.getNickname(), !request.getNickname().equalsIgnoreCase(nickname));
+            nickname = request.getNickname();
+        }
+
+        LocalDate birthDate = member.getBirthDate();
+        if (request.getBirthDate() != null) {
+            validateBirthDate(request.getBirthDate(), LocalDate.now(clock));
+            birthDate = request.getBirthDate();
+        }
+
+        String gender = request.getGender() != null ? request.getGender() : member.getGender();
+
+        member.changeProfile(nickname, birthDate, gender);
+        flushProfile();
+        return new MemberUpdateResultDTO(member.getMemberId(), member.getNickname());
+    }
+
+    /** 프로필 이미지 주소를 저장한다 (member.MemberProfileService 가 파일을 저장한 뒤 부른다) */
+    @Transactional
+    public ProfileImageDTO changeProfileImageUrl(Long memberId, String profileImageUrl) {
+        Member member = getMemberForUpdate(memberId);
+        member.changeProfileImageUrl(profileImageUrl);
+        return new ProfileImageDTO(member.getProfileImageUrl());
+    }
+
+    private Member getMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    /** 변경을 DB 에 바로 보내 고유 제약(닉네임) 위반을 이 자리에서 409 로 바꾼다 */
+    private void flushProfile() {
+        try {
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            if (UK_MEMBER_NICKNAME.equals(findConstraintName(e))) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
+        }
     }
 
     /**
@@ -266,11 +366,15 @@ public class MemberService {
     }
 
     private void validateNickname(String nickname) {
+        validateNickname(nickname, true);
+    }
+
+    private void validateNickname(String nickname, boolean checkDuplicate) {
         if (!SignupRules.isValidNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_INVALID);
         }
         forbiddenWordService.check(nickname);
-        if (memberRepository.existsByNickname(nickname)) {
+        if (checkDuplicate && memberRepository.existsByNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
         }
     }
