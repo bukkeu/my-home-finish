@@ -87,6 +87,8 @@ public class InquiryService {
         forbiddenWordService.check(request.title());
         forbiddenWordService.check(request.content());
 
+        // 조회 후 저장 사이에 동시 요청이 끼면 한도를 살짝 넘을 수 있다. 영향이 작아 지금은 두고,
+        // 엄격히 막아야 하면 회원 행 비관적 락(MemberService.lockBalance 방식) 또는 요청 직렬화로 보강한다
         LocalDateTime startOfToday = LocalDate.now(clock).atStartOfDay();
         if (inquiryRepository.countByMemberIdAndCreatedAtGreaterThanEqual(memberId, startOfToday) >= DAILY_LIMIT) {
             throw new BusinessException(InquiryErrorCode.INQUIRY_DAILY_LIMIT);

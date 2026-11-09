@@ -1417,9 +1417,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | LRN-09, DP-30, DP-21 |
-| 설명 | 강의 문의(courseId) 또는 사이트 문의(category). 제목 50자, 내용 1,000자, 하루 10개. |
-
-**Request**
+| 설명 | 강의 문의(courseId) 또는 사이트 문의(category) 중 **하나만** 지정(둘 다 있거나 둘 다 없으면 400). 강의 문의는 공개 강의만. 제목 50자, 내용 1,000자, 하루 10개(Asia/Seoul 자정 기준, 삭제한 글도 셈). |
 
 ```json
 { "courseId": 7, "category": null, "title": "부양가족에 부모님도 포함되나요?", "content": "..." }
@@ -1442,9 +1440,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 작성자·강사·관리자 |
 | 관련 | LRN-09, SP-40, DP-22 |
-| 설명 | 답글 포함. 숨김 글은 “관리자에 의해 숨김 처리된 글이에요”로 표시. |
-
-**Request**
+| 설명 | 답글 포함(오래된 순). 숨김 글·답글은 관리자 외에는 “관리자에 의해 숨김 처리된 글이에요”로 표시. 강사 권한은 삭제되지 않은 내 강의의 문의만. 답글 writer.role: 강의 강사 INSTRUCTOR, 문의 작성자 MEMBER, 그 외 ADMIN. |
 
 - Path: inquiryId=3
 
@@ -1508,9 +1504,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 작성자·강사(내 강의)·관리자 |
 | 관련 | TCH-09, LRN-09 |
-| 설명 | 강사·관리자 답글이면 문의 상태를 ANSWERED로 바꾸고 작성자에게 알림. |
-
-**Request**
+| 설명 | 강사·관리자 답글이면 문의 상태를 ANSWERED로 바꾸고 작성자에게 알림(type INQUIRY_REPLY, linkUrl /user/inquiry/{inquiryId}). 작성자 본인의 추가 댓글은 상태를 바꾸지 않음. |
 
 ```json
 { "content": "부모님도 함께 살면 포함돼요." }
