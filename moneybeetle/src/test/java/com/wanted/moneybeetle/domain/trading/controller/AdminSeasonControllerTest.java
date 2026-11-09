@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /* comment.
-*   담당 : PM 이재성 (#40)
+*   담당 : PM (#40)
 *   AdminSeasonController 확인 (Service 는 가짜, DB·로그인 없이)
 *   - 주소·응답 JSON 모양 (API 명세서 114~117), 201 / 204, 에러 응답
 *  */

@@ -7,7 +7,7 @@ import lombok.Getter;
 import java.time.LocalDate;
 
 /* comment.
- *   담당 : SCM (성장·홈·모의 청약)  :  일정
+ *   담당 : SCM (모의 청약)  :  일정
  *   청약 캘린더 목록의 한 줄 (API 63) - 일정, 오늘 기준 상태, 내 신청 여부
  *  */
 @Getter

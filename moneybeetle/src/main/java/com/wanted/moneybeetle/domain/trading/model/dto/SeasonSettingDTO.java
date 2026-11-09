@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   시즌 설정 변경 요청 (API 116) : 이월 비율(%)·이월 상한(없으면 null)·참가 해금 레벨
 *  */
 

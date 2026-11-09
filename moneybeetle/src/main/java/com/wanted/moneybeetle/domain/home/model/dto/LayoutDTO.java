@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.home.model.dto;
 import lombok.Getter;
 
 /* comment.
-*   담당 : DBA ② (공통 레이아웃, 이슈 #49)
+*   담당 : DBA ② (홈)
 *   공통 레이아웃(헤더·햄버거 메뉴)이 쓰는 값. Controller 가 Model 에 "layout" 이름으로 넘긴다.
 *   - 닉네임·레벨·캐시·경험치·연속 출석은 회원 정보에서, 해금 레벨은 system_setting(UNLOCK_LEVEL_TRADING·HOUSING)에서 채운다.
 *   - 채우는 쪽(모든 화면 공통 ControllerAdvice)은 회원·성장 서비스가 올라온 뒤(#4, #10, #11) 만든다.

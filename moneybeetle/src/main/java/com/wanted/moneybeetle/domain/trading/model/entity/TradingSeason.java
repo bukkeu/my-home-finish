@@ -23,7 +23,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   테이블 trading_season
 *   상태 : READY -> RUNNING <-> HOLIDAY -> SETTLING -> ENDED (SP-65, 거꾸로 가지 않음.
 *          일요일 휴장 뒤에는 다시 진행 중으로 돌아온다)

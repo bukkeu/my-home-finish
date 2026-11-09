@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   시즌 생성 결과 (API 115) : 새 시즌 번호와 자동으로 만든 12턴 달력
 *  */
 

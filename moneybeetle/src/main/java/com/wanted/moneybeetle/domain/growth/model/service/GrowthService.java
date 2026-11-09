@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   레벨·칭호 창구 (역할분담 문서 §7 연동 약속)
 *   - getLevel(memberId) : 회원의 현재 레벨 [호출: 서수영 레벨 해금 인터셉터]. 레벨은 DB 값으로 매번 확인한다 (SP-24, NFR-09)
 *   - findLevels()       : 레벨별 필요 경험치·칭호·레벨업 캐시·해금 기능 (API 24)

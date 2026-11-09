@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.service;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   관리자 시즌 관리 (#40, API 114~117)
 *   - 시즌 생성 : 시작일 월요일 확인 -> 시즌 저장 -> 12턴 달력(일요일 제외) 저장. 이전 시즌의 이월·해금 설정 복사
 *   - 설정 변경 : 이월 비율·상한·해금 레벨 (정산 중·종료 시즌은 막음)

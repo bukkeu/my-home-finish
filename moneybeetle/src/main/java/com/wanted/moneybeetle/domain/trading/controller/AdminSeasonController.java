@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.controller;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   관리자 시즌 관리 (#40) : GET/POST /api/v1/admin/trading/seasons, PATCH /seasons/{id}/settings, /status
 *   턴 달력·다음 턴(GET /seasons/{id}/turns, /turns/next-check, POST /turns/next)은 #44 에서 추가
 *   권한 : /api/v1/admin/** 는 SecurityConfig 에서 ADMIN 만

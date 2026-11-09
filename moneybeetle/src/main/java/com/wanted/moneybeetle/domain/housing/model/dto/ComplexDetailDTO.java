@@ -7,7 +7,7 @@ import lombok.Getter;
 import java.time.LocalDate;
 
 /* comment.
- *   담당 : SCM (성장·홈·모의 청약)  : 단지 하나를 자세히
+ *   담당 : SCM (모의 청약)  : 단지 하나를 자세히
  *   공고 상세 (API 64) - 단지 정보, 일정, 오늘 기준 상태, 경쟁률(접수 마감 뒤에만), 내 신청 내역
  *  */
 @Getter

@@ -8,7 +8,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import java.time.LocalDateTime;
 
 /* comment.
- *   담당 : SCM (회원·공통)
+ *   담당 : SCM (공통 기반·보안)
  *   created_at + updated_at 이 모두 있는 테이블용 공통 부모 (DB 설계서 1-1)
  *   created_at 은 CreatedTimeEntity 에서 물려받는다
  *   사용 : public class HousingComplex extends BaseTimeEntity

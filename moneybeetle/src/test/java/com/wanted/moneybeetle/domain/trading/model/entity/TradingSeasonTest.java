@@ -12,7 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /* comment.
-*   담당 : PM 이재성 (#40)
+*   담당 : PM (#40)
 *   TradingSeason 규칙 확인 : 기본 설정, 12턴 거래일(일요일 제외), 상태 순서(SP-65), 설정 잠금
 *  */
 class TradingSeasonTest {

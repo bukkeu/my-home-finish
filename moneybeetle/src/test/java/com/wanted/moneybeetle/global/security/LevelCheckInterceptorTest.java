@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   LevelCheckInterceptor 확인 (스프링 없이 단독 실행)
 *   - @RequireLevel 이 없으면 통과 (청약통장·당첨 결과처럼 레벨 조건이 없는 API)
 *   - 붙어 있으면 레벨 검사 : 지금은 회원 레벨 조회(김예린 연동) 전이라 0 으로 보고 LEVEL_LOCKED

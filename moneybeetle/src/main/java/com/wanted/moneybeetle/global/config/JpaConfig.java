@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.config;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   @EnableJpaRepositories, @EntityScan (domain 하위 dao / entity 패키지)
 *   @EnableJpaAuditing -> BaseTimeEntity 의 created_at / updated_at 자동 기록
  *  MoneyBeetleApplication 이 global.config 패키지에 있어서 기본 스캔 범위가 global.config 로 좁아진다

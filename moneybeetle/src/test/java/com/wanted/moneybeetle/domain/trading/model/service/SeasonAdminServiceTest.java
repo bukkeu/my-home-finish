@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
-*   담당 : PM 이재성 (#40)
+*   담당 : PM (#40)
 *   SeasonAdminService 확인 (DB 없이 Repository 는 가짜(mock))
 *   - 생성 : 월요일 확인, 12턴 달력 저장, 이전 시즌 설정 복사
 *   - 목록 : 참가자 수 포함 / 설정·상태 : 없는 시즌 404, 규칙은 엔티티가 판단

@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   시즌 생성 요청 (API 115) : 이름, 시작일(월요일), 설정을 복사할 이전 시즌
 *   - 시작일이 월요일인지는 입력값만 보고 판단하므로 DTO 가 검사한다
 *  */
