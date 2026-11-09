@@ -197,7 +197,7 @@
 
 **패키지**: `domain/member`, `domain/auth`(config 제외), `domain/growth`, `domain/notification`, `domain/home`, `domain/term`, `domain/operation`, `templates/fragments/layout`·`static/**`
 **테이블(코드 담당 17)**: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule
-**DB 관리**: 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개, 시드의 레벨 정책·보상 규칙·분야·종목·가격
+**DB 관리**: 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개, 시드의 레벨 정책·보상 규칙·경제 용어(모의투자 시드 #72는 이재성, 청약 시드 #74는 서수영이 쓰고 김예린이 컬럼 검토 — §8)
 **요구사항**: USR-01~14, HOM-01~06, GRW-01~08, ADM-01, ADM-05, ADM-29~30, NFR-06, NFR-08~10, NFR-13
 **23개 · 점수 106 (+3) · API 40개**
 
