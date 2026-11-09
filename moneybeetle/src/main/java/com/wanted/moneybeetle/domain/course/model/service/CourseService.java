@@ -248,6 +248,23 @@ public class CourseService {
                 .toList();
     }
 
+    /* 문의(inquiry 도메인): 이 강의의 강사 회원 ID. 강의가 없거나 삭제됐으면 null
+     * 비공개 강의라도 강사는 자기 강의 문의를 봐야 해서 공개 여부는 보지 않는다.
+     * 삭제 여부는 findCourseIdsByInstructor와 같은 기준(deletedAt is null)으로 거른다 */
+    public Long findInstructorId(Long courseId) {
+        return courseRepository.findById(courseId)
+                .filter(course -> course.getDeletedAt() == null)
+                .map(Course::getInstructorId)
+                .orElse(null);
+    }
+
+    /* 문의(inquiry 도메인): 이 강사가 맡은 강의 ID 목록 (문의 목록에서 '내 강의 글' 거르기) */
+    public List<Long> findCourseIdsByInstructor(Long instructorId) {
+        return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
+                .map(Course::getCourseId)
+                .toList();
+    }
+
     /* 이재성: 통합 검색 */
     public List<CourseListDTO> search(String keyword) {
         return List.of(); // TODO 제목 검색 (허가 + 공개만)

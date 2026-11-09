@@ -1417,9 +1417,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | LRN-09, DP-30, DP-21 |
-| 설명 | 강의 문의(courseId) 또는 사이트 문의(category). 제목 50자, 내용 1,000자, 하루 10개. |
-
-**Request**
+| 설명 | 강의 문의(courseId) 또는 사이트 문의(category) 중 **하나만** 지정(둘 다 있거나 둘 다 없으면 400). 강의 문의는 공개 강의만. 제목 50자, 내용 1,000자, 하루 10개(Asia/Seoul 자정 기준, 삭제한 글도 셈). |
 
 ```json
 { "courseId": 7, "category": null, "title": "부양가족에 부모님도 포함되나요?", "content": "..." }
@@ -1442,9 +1440,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 작성자·강사·관리자 |
 | 관련 | LRN-09, SP-40, DP-22 |
-| 설명 | 답글 포함. 숨김 글은 “관리자에 의해 숨김 처리된 글이에요”로 표시. |
-
-**Request**
+| 설명 | 답글 포함(오래된 순). 숨김 글·답글은 관리자 외에는 “관리자에 의해 숨김 처리된 글이에요”로 표시. 강사 권한은 삭제되지 않은 내 강의의 문의만. 답글 writer.role: 강의 강사 INSTRUCTOR, 문의 작성자 MEMBER, 그 외 ADMIN. |
 
 - Path: inquiryId=3
 
@@ -1508,9 +1504,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 작성자·강사(내 강의)·관리자 |
 | 관련 | TCH-09, LRN-09 |
-| 설명 | 강사·관리자 답글이면 문의 상태를 ANSWERED로 바꾸고 작성자에게 알림. |
-
-**Request**
+| 설명 | 강사·관리자 답글이면 문의 상태를 ANSWERED로 바꾸고 작성자에게 알림(type INQUIRY_REPLY, linkUrl /user/inquiry/{inquiryId}). 작성자 본인의 추가 댓글은 상태를 바꾸지 않음. |
 
 ```json
 { "content": "부모님도 함께 살면 포함돼요." }
@@ -1823,7 +1817,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-04, SP-70 |
-| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부, 납입 한도(1회 20,000~500,000, 하루 인정 250,000. SP-70 확정 #76). (Lv.12 전 납입 허용 여부는 팀 확인 필요) |
+| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부(`paidToday`, 오늘 = Asia/Seoul), 납입 기준(1회 20,000~500,000, 하루 인정 250,000. SP-70 확정 #76), 내 캐시. **레벨 조건 없음**(가입과 동시에 통장 개설, #28). |
 
 **Request**
 
@@ -1835,6 +1829,8 @@ Header: Idempotency-Key: 9b2f...
 { "accountId": 1, "balance": 1840000, "recognizedAmount": 1590000, "paidCount": 14, "lastPaidDate": "2026-11-04", "paidToday": false,
   "depositPolicy": { "minAmount": 20000, "maxAmount": 500000, "dailyRecognizedLimit": 250000 }, "cash": 1250000 }
 ```
+
+**Error**: `NOT_FOUND`(통장 없음 : 가입 때 만들어지므로 보통 생기지 않음)
 
 #### 66. 청약통장 납입
 
@@ -1860,7 +1856,10 @@ Header: Idempotency-Key: 31aa...
 { "depositId": 15, "amount": 300000, "recognizedAmount": 250000, "balance": 2140000, "totalRecognizedAmount": 1840000, "paidCount": 15, "cash": 950000 }
 ```
 
-**Error**: `ALREADY_PAID_TODAY`, `DEPOSIT_BELOW_MIN`, `DEPOSIT_ABOVE_MAX`, `NOT_ENOUGH_CASH`
+**Error**: `ALREADY_PAID_TODAY`(409), `DEPOSIT_BELOW_MIN`(400), `DEPOSIT_ABOVE_MAX`(400), `NOT_ENOUGH_CASH`(캐시 차감 RewardService 가 던짐), `NOT_FOUND`(통장 없음)
+
+- 처리 순서: 금액 검사 → 통장 잠금 조회(동시 요청 방지) → 하루 1회 확인 → 납입 내역 저장 → 캐시 차감 → 통장 잔액·인정금액·회차·마지막 납입일 반영. 하나라도 실패하면 모두 취소된다.
+- `Idempotency-Key` 헤더 처리는 #65(IdempotencyFilter)에서 붙인다.
 
 #### 67. 납입 내역
 
@@ -1870,7 +1869,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-05 |
-| 설명 | 납입 기록 최신순. |
+| 설명 | 납입 기록. 기본 20개씩 납입일 최신순(`sort=paidDate,desc`). 목록 응답 형식(1-3)을 따른다. |
 
 **Request**
 
@@ -1879,7 +1878,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ] }
+{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ], "page": 0, "size": 20, "totalElements": 15, "totalPages": 1 }
 ```
 
 #### 68. 가점 계산기
