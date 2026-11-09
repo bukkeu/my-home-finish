@@ -224,6 +224,31 @@ class MarketAdminServiceTest {
     }
 
     @Test
+    void 분야_동시_등록으로_이름_UNIQUE가_막으면_SECTOR_DUPLICATED() {
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenThrow(new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Duplicate entry '핀테크' for key 'sector.uk_sector_name'")));
+
+        assertThatThrownBy(() -> service.createSector(new SectorSaveDTO("핀테크", 15, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.SECTOR_DUPLICATED);
+    }
+
+    @Test
+    void 종목_동시_수정으로_이름_UNIQUE가_막으면_STOCK_DUPLICATED() {
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock(1L, 1L, "한빛반도체")));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        org.mockito.Mockito.doThrow(new DataIntegrityViolationException(
+                "could not execute statement", new RuntimeException("Duplicate entry for key 'stock.uk_stock_name'")))
+                .when(stockRepository).flush();
+
+        assertThatThrownBy(() -> service.changeStock(1L,
+                new StockSaveDTO(1L, "모아모빌리티", 1_000, null, null, null, null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.STOCK_DUPLICATED);
+    }
+
+    @Test
     void 이름_UNIQUE가_아닌_무결성_오류는_그대로_던진다() {
         when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
         when(stockRepository.existsByName("새종목")).thenReturn(false);
