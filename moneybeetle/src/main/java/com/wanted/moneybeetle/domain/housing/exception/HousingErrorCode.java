@@ -10,7 +10,8 @@ import org.springframework.http.HttpStatus;
  *   청약 도메인 에러 코드 (API 명세서 4장)
  *   #28 : ALREADY_PAID_TODAY, DEPOSIT_BELOW_MIN, DEPOSIT_ABOVE_MAX
  *   #29 : INVALID_SCORE_INPUT, NOT_IN_APPLY_PERIOD, ALREADY_APPLIED, RECEIPT_NO_CONFLICT, NOT_ANNOUNCED_YET
- *   #47·#48 에서 추가 : BEFORE_ANNOUNCE_DATE, COMPLEX_HAS_APPLICANTS
+ *   #47 : INVALID_SCHEDULE, INVALID_COMPLEX_INPUT, COMPLEX_HAS_APPLICANTS
+ *   #48 에서 추가 : BEFORE_ANNOUNCE_DATE
  *  */
 @Getter
 @RequiredArgsConstructor
@@ -26,7 +27,12 @@ public enum HousingErrorCode implements ErrorCode {          // ① #2 에서 �
     NOT_IN_APPLY_PERIOD(HttpStatus.CONFLICT, "지금은 신청 기간이 아니에요"),
     ALREADY_APPLIED(HttpStatus.CONFLICT, "신청 완료"),
     RECEIPT_NO_CONFLICT(HttpStatus.CONFLICT, "신청이 몰려 접수하지 못했어요. 다시 신청해 주세요"),
-    NOT_ANNOUNCED_YET(HttpStatus.FORBIDDEN, "아직 발표 전이에요");
+    NOT_ANNOUNCED_YET(HttpStatus.FORBIDDEN, "아직 발표 전이에요"),
+
+    // #47 관리자 공고 관리
+    INVALID_SCHEDULE(HttpStatus.BAD_REQUEST, "일정 순서가 맞지 않아요. 공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 발표일로 정해 주세요"),
+    INVALID_COMPLEX_INPUT(HttpStatus.BAD_REQUEST, "단지 정보를 모두 입력해 주세요. 분양가와 공급 세대 수는 1 이상이에요"),
+    COMPLEX_HAS_APPLICANTS(HttpStatus.CONFLICT, "신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요");
 
     private final HttpStatus status;
     private final String message;
