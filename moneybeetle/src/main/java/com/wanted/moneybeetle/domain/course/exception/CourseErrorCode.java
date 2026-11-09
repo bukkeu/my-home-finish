@@ -23,7 +23,8 @@ public enum CourseErrorCode implements ErrorCode {
     CATEGORY_IN_USE(HttpStatus.CONFLICT, "강의가 연결된 카테고리는 삭제할 수 없어요"),          // ADM-02
     COURSE_NOT_IN_REVIEW(HttpStatus.CONFLICT, "검수 중인 강의만 허가하거나 반려할 수 있어요"),   // API 91·92
     COURSE_NOT_APPROVED(HttpStatus.CONFLICT, "허가된 강의만 공개 여부를 바꿀 수 있어요"),        // API 93
-    REASON_REQUIRED(HttpStatus.BAD_REQUEST, "반려 사유를 입력해 주세요");                      // API 92
+    REASON_REQUIRED(HttpStatus.BAD_REQUEST, "반려 사유를 입력해 주세요"),                      // API 92
+    CATEGORY_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "소주제 아래에는 더 만들 수 없어요");       // API 86 (2단계까지)
 
     private final HttpStatus status;   // ErrorCode.getStatus() 규약 (#2) - @Getter 가 getStatus() 를 만든다
     private final String message;
