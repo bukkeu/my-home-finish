@@ -114,4 +114,17 @@ class SystemSettingServiceTest {
         assertThat(trading.getSettingValue()).isEqualTo("8");
         verify(adminLogService, never()).record(any(), any(), any(), any(), any());
     }
+
+    @Test
+    @DisplayName("공백뿐이거나 null 인 값은 어떤 설정이든 SETTING_VALUE_INVALID 이고 값은 그대로다 (컨트롤러를 거치지 않아도 같다)")
+    void rejectsBlankValue() {
+        for (String blank : new String[] {null, "", "   "}) {
+            assertThatThrownBy(() -> service.updateSetting(1L, "UNLOCK_LEVEL_TRADING", blank))
+                    .isInstanceOfSatisfying(BusinessException.class,
+                            e -> assertThat(e.getErrorCode()).isEqualTo(OperationErrorCode.SETTING_VALUE_INVALID));
+        }
+
+        assertThat(trading.getSettingValue()).isEqualTo("8");
+        verify(adminLogService, never()).record(any(), any(), any(), any(), any());
+    }
 }

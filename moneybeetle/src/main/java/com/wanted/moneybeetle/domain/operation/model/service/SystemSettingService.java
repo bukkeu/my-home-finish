@@ -47,6 +47,10 @@ public class SystemSettingService {
         SystemSetting setting = systemSettingRepository.findBySettingKeyForUpdate(key)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         String newValue = value == null ? "" : value.strip();
+        if (newValue.isEmpty()) {
+            // 컨트롤러(@NotBlank)를 거치지 않고 서비스를 직접 불러도 같은 오류 코드로 막는다
+            throw new BusinessException(OperationErrorCode.SETTING_VALUE_INVALID);
+        }
         if (isInteger(setting.getSettingValue()) && !isInteger(newValue)) {
             throw new BusinessException(OperationErrorCode.SETTING_VALUE_INVALID);
         }
