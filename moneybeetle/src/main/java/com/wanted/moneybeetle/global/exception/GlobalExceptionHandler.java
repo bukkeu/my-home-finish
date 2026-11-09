@@ -108,8 +108,11 @@ public class GlobalExceptionHandler {
         return mv;
     }
 
-    // 상태 번호 → 페이지 이름 (403, 404, 500 세 개만 존재)
+    // 상태 번호 → 페이지 이름 (400, 403, 404, 500 네 개만 존재, EP-04)
     private String errorPage(HttpStatus status) {
+        if (status == HttpStatus.BAD_REQUEST) {
+            return "error/400";              // #114 : 업로드 용량 초과(FILE_TOO_LARGE)·입력 오류가 500 화면으로 보이지 않게
+        }
         if (status == HttpStatus.FORBIDDEN) {
             return "error/403";
         }
