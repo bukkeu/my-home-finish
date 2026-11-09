@@ -528,7 +528,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-08 |
-| 설명 | 닉네임과 생년월일로 이메일 일부를 가려서 알려 준다. |
+| 설명 | 닉네임과 생년월일로 이메일 일부를 가려서 알려 준다. 탈퇴·정지 회원은 알려 주지 않고 `MEMBER_NOT_FOUND`다. |
 
 **Request**
 
@@ -552,7 +552,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 본인 확인 메일을 보낸다. 인증은 10분 유효, 1회용. |
+| 설명 | 본인 확인 메일을 보낸다. 인증은 10분 유효, 1회용이다. 가입 여부를 숨기려고 없는 이메일이어도 같은 202로 답한다. 새로 요청하면 이전 메일의 링크는 쓸 수 없다. 메일의 링크는 `{APP_BASE_URL}/password-reset?token=...`. |
 
 **Request**
 
@@ -572,7 +572,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. |
+| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. |
 
 **Request**
 
@@ -584,7 +584,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 
 - 204 No Content
 
-**Error**: `TOKEN_EXPIRED`, `TOKEN_USED`, `PASSWORD_MISMATCH`
+**Error**: `TOKEN_EXPIRED`, `TOKEN_USED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`
 
 #### 12. 강사 가입 신청
 
@@ -718,7 +718,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 계정을 비활성화(WITHDRAWN)한다. 개인정보는 30일 뒤 파기. |
+| 설명 | 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -730,7 +730,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`
+**Error**: `PASSWORD_WRONG`, `FORBIDDEN`
 
 #### 18. 다른 회원 공개 프로필
 

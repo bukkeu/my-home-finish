@@ -211,6 +211,22 @@ public class Member {
         lockedUntil = null;
         lastLoginAt = now;
     }
+    /** 비밀번호를 바꾼다 (#8). 평문이 아니라 이미 BCrypt 로 만든 해시를 받는다 (DP-02) */
+    public void changePasswordHash(String passwordHash) {
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        this.passwordHash = passwordHash;
+    }
+
+    /**
+     * 탈퇴한다 (#8, USR-14, DP-06). 계정을 비활성화(WITHDRAWN)하고 탈퇴 시각을 남긴다.
+     * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
+     */
+    public void withdraw(LocalDateTime now) {
+        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
+        this.status = STATUS_WITHDRAWN;
+        this.withdrawnAt = now;
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);

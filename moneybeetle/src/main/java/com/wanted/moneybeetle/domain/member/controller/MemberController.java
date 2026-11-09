@@ -1,7 +1,17 @@
 
 package com.wanted.moneybeetle.domain.member.controller;
 
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.PasswordChangeDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.WithdrawDTO;
+import com.wanted.moneybeetle.domain.member.model.service.AccountService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsListDTO;
@@ -32,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService memberService;
+    private final AccountService accountService;
 
     // API 1. 약관 목록 조회
     @GetMapping("/api/v1/agreements")
@@ -62,5 +73,30 @@ public class MemberController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(result));
+    }
+
+    // API 16. 비밀번호 변경
+    @PatchMapping("/api/v1/members/me/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal AuthDetails me,
+            @Valid @RequestBody PasswordChangeDTO request) {
+        accountService.changePassword(me.getMemberId(), request.getCurrentPassword(),
+                request.getNewPassword(), request.getNewPasswordConfirm());
+        return ResponseEntity.noContent().build();
+    }
+
+    // API 17. 회원 탈퇴 (계정 비활성화 후 이 로그인 세션도 끝낸다)
+    @DeleteMapping("/api/v1/members/me")
+    public ResponseEntity<Void> withdraw(
+            @AuthenticationPrincipal AuthDetails me,
+            @Valid @RequestBody WithdrawDTO request,
+            HttpServletRequest httpRequest) {
+        accountService.withdraw(me.getMemberId(), request.getPassword());
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
+        return ResponseEntity.noContent().build();
     }
 }

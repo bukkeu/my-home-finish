@@ -339,7 +339,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `password_reset_token_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 토큰 ID |
 | `member_id` | BIGINT | N | FK → member.member_id | - | 회원 |
-| `token_hash` | VARCHAR(255) | N | UNIQUE | - | 인증 토큰 해시 |
+| `token_hash` | VARCHAR(255) | N | UNIQUE | - | 인증 토큰 원문의 SHA-256 해시(16진수 64자). 원문은 저장하지 않고 메일로만 보낸다 |
 | `expires_at` | DATETIME | N | - | - | 만료 시각 (발급 + 10분) |
 | `used_at` | DATETIME | Y | - | - | 사용 시각. 사용하면 재사용 불가 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
