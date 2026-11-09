@@ -13,6 +13,7 @@ import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
+import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.config.TimeConfig;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.ErrorCode;
@@ -50,6 +51,7 @@ import static org.mockito.Mockito.when;
 *  */
 class AdminHousingResultServiceTest {
 
+    private static final Long ADMIN_ID = 1L;
     private static final LocalDate CLOSED_DAY = LocalDate.of(2026, 11, 11);
     private static final LocalDate ANNOUNCE_DAY = LocalDate.of(2026, 11, 17);
 
@@ -57,6 +59,7 @@ class AdminHousingResultServiceTest {
     private HousingApplicationRepository applicationRepository;
     private MemberService memberService;
     private NotificationService notificationService;
+    private final AdminLogService adminLogService = mock(AdminLogService.class);
     private HousingComplex complex;
 
     @BeforeEach
@@ -77,7 +80,7 @@ class AdminHousingResultServiceTest {
     private AdminHousingService serviceOn(LocalDate today) {
         Clock fixed = Clock.fixed(today.atStartOfDay(TimeConfig.SEOUL).toInstant(), TimeConfig.SEOUL);
         return new AdminHousingService(complexRepository, applicationRepository, fixed,
-                new HousingWinnerPolicy(new Random(1)), memberService, notificationService);
+                new HousingWinnerPolicy(new Random(1)), memberService, notificationService, adminLogService);
     }
 
     private HousingApplication app(long id, long memberId, int totalScore, int paidCount) {
@@ -114,7 +117,7 @@ class AdminHousingResultServiceTest {
         HousingApplication third = app(3, 9, 20, 10);
         when(applicationRepository.findByHousingComplexId(1L)).thenReturn(List.of(third, first, second));
 
-        ComputeResultDTO result = serviceOn(CLOSED_DAY).compute(1L);
+        ComputeResultDTO result = serviceOn(CLOSED_DAY).compute(ADMIN_ID, 1L);
 
         assertThat(result.getApplicants()).isEqualTo(3);
         assertThat(result.getWinners()).isEqualTo(2);
@@ -128,7 +131,7 @@ class AdminHousingResultServiceTest {
 
     @Test
     void 신청_마감일까지는_산정할_수_없다() {
-        assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 10)).compute(1L), HousingErrorCode.APPLY_NOT_CLOSED);
+        assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 10)).compute(ADMIN_ID, 1L), HousingErrorCode.APPLY_NOT_CLOSED);
         assertThat(complex.isComputed()).isFalse();
     }
 
@@ -140,7 +143,7 @@ class AdminHousingResultServiceTest {
                 LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
                 LocalDate.of(2026, 11, 30), LocalDate.of(2026, 12, 7));   // 마감·발표를 미래로
 
-        assertRejected(() -> serviceOn(CLOSED_DAY).updateComplex(1L, reopen), HousingErrorCode.ALREADY_COMPUTED);
+        assertRejected(() -> serviceOn(CLOSED_DAY).updateComplex(ADMIN_ID, 1L, reopen), HousingErrorCode.ALREADY_COMPUTED);
         assertThat(complex.getApplyEndDate()).isEqualTo(LocalDate.of(2026, 11, 10));
     }
 
@@ -151,7 +154,7 @@ class AdminHousingResultServiceTest {
                 "일반공급", LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
                 LocalDate.of(2026, 11, 10), ANNOUNCE_DAY);
 
-        serviceOn(CLOSED_DAY).updateComplex(1L, rename);
+        serviceOn(CLOSED_DAY).updateComplex(ADMIN_ID, 1L, rename);
 
         assertThat(complex.getName()).isEqualTo("비틀 파크 2차");
     }
@@ -160,7 +163,7 @@ class AdminHousingResultServiceTest {
     void 이미_산정한_공고는_다시_산정할_수_없다() {
         complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
 
-        assertRejected(() -> serviceOn(CLOSED_DAY).compute(1L), HousingErrorCode.ALREADY_COMPUTED);
+        assertRejected(() -> serviceOn(CLOSED_DAY).compute(ADMIN_ID, 1L), HousingErrorCode.ALREADY_COMPUTED);
         verify(applicationRepository, never()).findByHousingComplexId(any());
     }
 
@@ -168,7 +171,7 @@ class AdminHousingResultServiceTest {
     void 신청자가_없어도_산정은_완료로_기록한다() {
         when(applicationRepository.findByHousingComplexId(1L)).thenReturn(List.of());
 
-        ComputeResultDTO result = serviceOn(CLOSED_DAY).compute(1L);
+        ComputeResultDTO result = serviceOn(CLOSED_DAY).compute(ADMIN_ID, 1L);
 
         assertThat(result.getWinners()).isZero();
         assertThat(complex.isComputed()).isTrue();
@@ -182,7 +185,7 @@ class AdminHousingResultServiceTest {
         when(applicationRepository.findByHousingComplexId(1L))
                 .thenReturn(List.of(app(1, 7, 60, 10), app(2, 8, 40, 10)));
 
-        AnnounceResultDTO result = serviceOn(ANNOUNCE_DAY).announce(1L);
+        AnnounceResultDTO result = serviceOn(ANNOUNCE_DAY).announce(ADMIN_ID, 1L);
 
         assertThat(complex.isAnnounced()).isTrue();
         assertThat(complex.getAnnouncedAt()).isEqualTo(ANNOUNCE_DAY.atStartOfDay());
@@ -209,7 +212,7 @@ class AdminHousingResultServiceTest {
 
     @Test
     void 산정하지_않았으면_발표할_수_없다() {
-        assertRejected(() -> serviceOn(ANNOUNCE_DAY).announce(1L), HousingErrorCode.NOT_COMPUTED);
+        assertRejected(() -> serviceOn(ANNOUNCE_DAY).announce(ADMIN_ID, 1L), HousingErrorCode.NOT_COMPUTED);
         assertThat(complex.isAnnounced()).isFalse();
     }
 
@@ -217,7 +220,7 @@ class AdminHousingResultServiceTest {
     void 발표일_전에는_발표할_수_없다() {
         complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
 
-        assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 16)).announce(1L), HousingErrorCode.BEFORE_ANNOUNCE_DATE);
+        assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 16)).announce(ADMIN_ID, 1L), HousingErrorCode.BEFORE_ANNOUNCE_DATE);
         verify(notificationService, never()).send(any(), any(), any(), any());
     }
 
@@ -226,7 +229,7 @@ class AdminHousingResultServiceTest {
         complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
         complex.announce(LocalDateTime.of(2026, 11, 17, 9, 0));
 
-        assertRejected(() -> serviceOn(ANNOUNCE_DAY).announce(1L), HousingErrorCode.ALREADY_ANNOUNCED);
+        assertRejected(() -> serviceOn(ANNOUNCE_DAY).announce(ADMIN_ID, 1L), HousingErrorCode.ALREADY_ANNOUNCED);
         verify(notificationService, times(0)).send(any(), any(), any(), any());
     }
 }
