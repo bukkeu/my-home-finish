@@ -117,6 +117,49 @@ class HomeServiceTest {
     }
 
     @Test
+    @DisplayName("이어서 볼 강의의 기록이 첫 쪽 밖에 있어도 다음 쪽까지 넘겨 가며 찾는다")
+    void findsLastWatchedOnLaterPage() {
+        CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");
+        when(courseService.findContinueWatching(MEMBER)).thenReturn(List.of(continuing));
+        // 다른 강의 영상만 20개를 본 첫 쪽, 둘째 쪽에 이어서 볼 강의(7)의 기록이 있다
+        List<WatchHistoryDTO> firstPageItems = new java.util.ArrayList<>();
+        for (int i = 0; i < HomeService.WATCH_SCAN_SIZE; i++) {
+            firstPageItems.add(watch(9, 100 + i, "다른 강의 영상 " + i));
+        }
+        WatchHistoryDTO lastWatch = watch(7, 21, "가점은 어떻게 계산할까");
+        when(courseService.findWatchHistories(eq(MEMBER), eq(PageRequest.of(0, HomeService.WATCH_SCAN_SIZE))))
+                .thenReturn(new PageImpl<>(firstPageItems, PageRequest.of(0, HomeService.WATCH_SCAN_SIZE), 25));
+        when(courseService.findWatchHistories(eq(MEMBER), eq(PageRequest.of(1, HomeService.WATCH_SCAN_SIZE))))
+                .thenReturn(new PageImpl<>(List.of(lastWatch), PageRequest.of(1, HomeService.WATCH_SCAN_SIZE), 25));
+        LessonPlayDTO play = mock(LessonPlayDTO.class);
+        when(play.getPositionSeconds()).thenReturn(312);
+        when(courseService.getLessonPlay(MEMBER, 7L, 21L)).thenReturn(play);
+
+        var home = service.getHome(MEMBER);
+
+        assertThat(home.continueCourse().lessonId()).isEqualTo(21L);
+        assertThat(home.continueCourse().positionSeconds()).isEqualTo(312);
+    }
+
+    @Test
+    @DisplayName("마지막 쪽까지 봐도 그 강의 기록이 없으면 영상·위치는 null 이다 (기록을 한없이 넘기지 않는다)")
+    void stopsAtLastPageWhenNotFound() {
+        CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");
+        when(courseService.findContinueWatching(MEMBER)).thenReturn(List.of(continuing));
+        WatchHistoryDTO other = watch(9, 40, "다른 강의 영상");
+        when(courseService.findWatchHistories(eq(MEMBER), eq(PageRequest.of(0, HomeService.WATCH_SCAN_SIZE))))
+                .thenReturn(new PageImpl<>(List.of(other), PageRequest.of(0, HomeService.WATCH_SCAN_SIZE), 21));
+        when(courseService.findWatchHistories(eq(MEMBER), eq(PageRequest.of(1, HomeService.WATCH_SCAN_SIZE))))
+                .thenReturn(new PageImpl<>(List.of(other), PageRequest.of(1, HomeService.WATCH_SCAN_SIZE), 21));
+
+        var home = service.getHome(MEMBER);
+
+        assertThat(home.continueCourse().courseId()).isEqualTo(7L);
+        assertThat(home.continueCourse().lessonId()).isNull();
+        verify(courseService, never()).findWatchHistories(eq(MEMBER), eq(PageRequest.of(2, HomeService.WATCH_SCAN_SIZE)));
+    }
+
+    @Test
     @DisplayName("그 강의에서 본 영상 기록이 없으면 강의만 담고 영상·위치는 null 이다")
     void continueCourseWithoutWatchedLesson() {
         CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");

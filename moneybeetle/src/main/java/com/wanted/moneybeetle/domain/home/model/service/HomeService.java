@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.home.model.dto.HomeDTO;
 import com.wanted.moneybeetle.domain.term.model.service.TermService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +25,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class HomeService {
 
-    /** 이어서 볼 강의의 마지막 영상을 찾으려고 최근 시청 기록을 훑는 개수 */
+    /** 이어서 볼 강의의 마지막 영상을 찾으려고 한 번에 읽는 시청 기록 개수 */
     static final int WATCH_SCAN_SIZE = 20;
+
+    /** 마지막 영상을 찾을 때 넘겨 볼 최대 쪽 수 (20개씩 50쪽 = 최근 1,000건) */
+    static final int MAX_WATCH_PAGES = 50;
 
     private final TermService termService;
     private final CourseService courseService;
@@ -55,11 +59,7 @@ public class HomeService {
         }
         CourseListDTO course = continuing.get(0);
 
-        WatchHistoryDTO lastWatched = courseService.findWatchHistories(memberId, PageRequest.of(0, WATCH_SCAN_SIZE))
-                .getContent().stream()
-                .filter(history -> course.getCourseId().equals(history.getCourseId()))
-                .findFirst()
-                .orElse(null);
+        WatchHistoryDTO lastWatched = findLastWatched(memberId, course.getCourseId());
         if (lastWatched == null) {
             return new HomeDTO.ContinueCourse(course.getCourseId(), course.getTitle(), null, null, null);
         }
@@ -67,5 +67,25 @@ public class HomeService {
                 .getPositionSeconds();
         return new HomeDTO.ContinueCourse(course.getCourseId(), course.getTitle(),
                 lastWatched.getLessonId(), lastWatched.getLessonTitle(), position);
+    }
+
+    /**
+     * 그 강의에서 가장 최근에 본 영상 기록. 시청 기록은 최근 순이라서 첫 번째로 맞는 것이 가장 최근이다.
+     * 다른 강의 영상을 많이 본 뒤라면 첫 쪽에 없을 수 있으므로, 찾거나 마지막 쪽에 닿을 때까지 쪽을 넘겨 가며 찾는다.
+     * 기록이 아주 많은 회원이 홈을 열 때마다 끝없이 읽지 않도록 최대 MAX_WATCH_PAGES 쪽까지만 본다.
+     */
+    private WatchHistoryDTO findLastWatched(Long memberId, Long courseId) {
+        for (int pageNo = 0; pageNo < MAX_WATCH_PAGES; pageNo++) {
+            Page<WatchHistoryDTO> page = courseService.findWatchHistories(memberId, PageRequest.of(pageNo, WATCH_SCAN_SIZE));
+            for (WatchHistoryDTO history : page.getContent()) {
+                if (courseId.equals(history.getCourseId())) {
+                    return history;
+                }
+            }
+            if (!page.hasNext()) {
+                return null;
+            }
+        }
+        return null;
     }
 }
