@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.News;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
@@ -9,4 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface NewsRepository extends JpaRepository<News, Long> {
 
+    /** 관리자 뉴스 목록 : 시즌 전체, 턴 순서 (#43) */
+    List<News> findByTradingSeasonIdOrderByTurnNoAscNewsIdAsc(Long tradingSeasonId);
+
+    /** 관리자 뉴스 목록 : 한 턴만 (#43) */
+    List<News> findByTradingSeasonIdAndTurnNoOrderByNewsIdAsc(Long tradingSeasonId, int turnNo);
 }

@@ -3232,7 +3232,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-25~26 |
-| 설명 | 턴별 뉴스(관리자 메모 포함). |
+| 설명 | 턴별 뉴스(관리자 메모 포함). `turnNo`를 빼면 시즌 전체를 턴 순서로 (#43) |
 
 **Request**
 
@@ -3240,7 +3240,12 @@ Header: Idempotency-Key: 4d8e...
 
 **Response**
 
-- (뉴스 목록 + adminMemo)
+```json
+{ "items": [ { "newsId": 31, "turnNo": 6, "title": "...", "content": "...", "adminMemo": "다음 턴 상승 유도",
+  "sectors": [ { "id": 1, "name": "반도체" } ], "stocks": [ { "id": 1, "name": "한빛반도체" } ] } ] }
+```
+
+**Error**: `NOT_FOUND`(없는 시즌)
 
 #### 132. 뉴스 등록
 
@@ -3250,7 +3255,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-25~26 |
-| 설명 | 제목, 본문, 관련 분야·종목, 관리자 메모. |
+| 설명 | 제목(100자), 본문(16,000자), 관련 분야·종목(없으면 빈 목록), 관리자 메모(500자). 다음 턴 이후(`turnNo` > 현재 턴)에만 등록할 수 있다 (#43) |
 
 **Request**
 
@@ -3265,6 +3270,8 @@ Header: Idempotency-Key: 4d8e...
 { "newsId": 40 }
 ```
 
+**Error**: `PAST_TURN_LOCKED`(현재 턴 이하), `NOT_FOUND`(없는 시즌·분야·종목)
+
 #### 133. 뉴스 수정
 
 | 항목 | 내용 |
@@ -3273,7 +3280,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-27, SP-60 |
-| 설명 | 지난 턴 뉴스는 오타 수정만(admin_log 기록). |
+| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
 
 **Request**
 
@@ -3283,7 +3290,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_LOCKED`, `NOT_FOUND`
 
 #### 134. 뉴스 삭제
 
@@ -3293,7 +3300,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `DELETE` |
 | 권한 | 관리자 |
 | 관련 | ADM-25 |
-| 설명 | 다음 턴 이후 뉴스만. |
+| 설명 | 다음 턴 이후 뉴스만. 관련 분야·종목도 함께 지운다 (#43) |
 
 **Request**
 
@@ -3303,7 +3310,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_LOCKED`, `NOT_FOUND`
 
 #### 135. 참가자 목록
 
