@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.domain.course.model.dao.CourseRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.CourseReviewRepository;
@@ -10,7 +12,9 @@ import com.wanted.moneybeetle.domain.course.model.dto.AdminCourseListItemDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseReviewResultDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.CourseReview;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
+import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.quiz.model.service.QuizService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -24,16 +28,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// NotificationService import는 빨간 줄이 뜨면 Alt+Enter
-
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
  *   API 89~94 관리자 강의 검수·공개 관리 (ADM-03, ADM-04)
+ *   허가·반려는 course_review(검수 이력)와 admin_log(관리자 작업 기록, DP-43·DH-06)에 함께 남긴다
  *  */
 @Service
 @RequiredArgsConstructor
@@ -45,12 +49,20 @@ public class AdminCourseService {
     private static final String NOTIFICATION_TYPE_REJECTED = "COURSE_REJECTED";  // TODO: Notification.TYPE_COURSE_REJECTED가 생기면 교체
     private static final String NOTIFICATION_TITLE_REJECTED = "강의 검수 결과: 반려됐어요";
 
+    /* admin_log 값 (AdminLogService 주석의 예시와 같은 이름) */
+    private static final String LOG_ACTION_APPROVE = "COURSE_APPROVE";
+    private static final String LOG_ACTION_REJECT = "COURSE_REJECT";
+    private static final String LOG_TARGET_COURSE = "COURSE";
+
     private final CourseRepository courseRepository;
     private final CourseReviewRepository courseReviewRepository;
     private final LearningProgressRepository learningProgressRepository;
     private final LessonRepository lessonRepository;
     private final QuizService quizService;                              // quiz 도메인은 Service로만
+    private final MemberService memberService;                          // 강사 이름(닉네임)
     private final NotificationService notificationService;
+    private final AdminLogService adminLogService;                      // 관리자 작업 기록 (operation 도메인)
+    private final ObjectMapper objectMapper;                            // admin_log detail JSON
     private final Clock clock;                                          // Asia/Seoul 공통 시계
 
     /* API 89 상태별 강의 목록. 모르는 status 값은 필터 없이 전체 */
@@ -79,26 +91,31 @@ public class AdminCourseService {
                 courseReviewRepository.findByCourseIdOrderByCreatedAtDescCourseReviewIdDesc(courseId));
     }
 
-    /* API 91 허가 = 허가 + 공개. course_review 기록 */
+    /* API 91 허가 = 허가 + 공개. course_review·admin_log 기록 */
     @Transactional
     public CourseReviewResultDTO approve(Long adminId, Long courseId) {
         Course course = getCourseOrThrow(courseId);
+        Map<String, Object> before = stateOf(course);
+
         course.approve(LocalDateTime.now(clock));
         courseReviewRepository.save(CourseReview.approved(courseId, adminId));
-        // TODO: AdminLogService가 생기면 admin_log 기록 (DP-43, DBA② 요청함)
+        recordAdminLog(adminId, LOG_ACTION_APPROVE, courseId, before, stateOf(course), null);
         return CourseReviewResultDTO.approved(course);
     }
 
-    /* API 92 반려. 사유 필수, course_review 기록, 강사에게 알림 */
+    /* API 92 반려. 사유 필수, course_review·admin_log 기록, 강사에게 알림 */
     @Transactional
     public CourseReviewResultDTO reject(Long adminId, Long courseId, String reason) {
         if (reason == null || reason.isBlank()) {
             throw new BusinessException(CourseErrorCode.REASON_REQUIRED);
         }
+        String trimmedReason = reason.strip();
         Course course = getCourseOrThrow(courseId);
+        Map<String, Object> before = stateOf(course);
+
         course.reject();
-        courseReviewRepository.save(CourseReview.rejected(courseId, adminId, reason.strip()));
-        // TODO: AdminLogService가 생기면 admin_log 기록 (DP-43, DBA② 요청함)
+        courseReviewRepository.save(CourseReview.rejected(courseId, adminId, trimmedReason));
+        recordAdminLog(adminId, LOG_ACTION_REJECT, courseId, before, stateOf(course), trimmedReason);
         notificationService.send(course.getInstructorId(), NOTIFICATION_TYPE_REJECTED, NOTIFICATION_TITLE_REJECTED,
                 "/instructor/courses/" + courseId);
         return CourseReviewResultDTO.rejected(course);
@@ -120,6 +137,8 @@ public class AdminCourseService {
         course.delete(LocalDateTime.now(clock));
     }
 
+    /* ===== 내부 도우미 ===== */
+
     private Course getCourseOrThrow(Long courseId) {
         return courseRepository.findById(courseId)
                 .filter(course -> !course.isDeleted())
@@ -136,8 +155,37 @@ public class AdminCourseService {
                         LearningProgressRepository.CourseLearnerCount::getLearners));
     }
 
-    /* 강사 이름(닉네임). TODO(#145): MemberService.findNicknames가 dev에 머지되면 호출로 교체 */
+    /* 강사 이름(닉네임). member 도메인 Service로만 조회, 탈퇴 회원은 "탈퇴한 사용자" */
     private Map<Long, String> findNicknames(Collection<Long> memberIds) {
-        return Map.of();
+        return memberService.findNicknames(memberIds);
+    }
+
+    /* admin_log에 남길 강의 상태 (변경 전·후 비교용) */
+    private Map<String, Object> stateOf(Course course) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("status", course.getStatus());
+        state.put("isPublic", course.isPublic());
+        return state;
+    }
+
+    /* 관리자 작업 기록. 같은 트랜잭션이라 허가·반려가 취소되면 기록도 함께 취소된다 (DH-06) */
+    private void recordAdminLog(Long adminId, String action, Long courseId,
+                                Map<String, Object> before, Map<String, Object> after, String reason) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("before", before);
+        detail.put("after", after);
+        if (reason != null) {
+            detail.put("reason", reason);
+        }
+        adminLogService.record(adminId, action, LOG_TARGET_COURSE, courseId, toJson(detail));
+    }
+
+    /* ObjectMapper로 만들어 사유에 따옴표 등이 있어도 올바른 JSON이 된다 */
+    private String toJson(Map<String, Object> detail) {
+        try {
+            return objectMapper.writeValueAsString(detail);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("admin_log detail JSON 변환 실패", e);
+        }
     }
 }

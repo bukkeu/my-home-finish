@@ -18,6 +18,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberProfileService;
+import com.wanted.moneybeetle.domain.member.model.service.MemberSignupService;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
@@ -52,6 +53,7 @@ public class MemberController {
     private final MemberService memberService;
     private final AccountService accountService;
     private final MemberProfileService memberProfileService;
+    private final MemberSignupService memberSignupService;
 
     // API 1. 약관 목록 조회
     @GetMapping("/api/v1/agreements")
@@ -77,7 +79,7 @@ public class MemberController {
     public ResponseEntity<ApiResponse<SignupResultDTO>> signup(
             @Valid @RequestBody SignupDTO request) {
 
-        SignupResultDTO result = memberService.signup(request);
+        SignupResultDTO result = memberSignupService.signup(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

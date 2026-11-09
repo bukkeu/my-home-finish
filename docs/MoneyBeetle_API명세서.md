@@ -1399,9 +1399,8 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-09, SP-40 |
-| 설명 | courseId가 있으면 그 강의 문의, 없으면 사이트 문의. 회원은 내 글만, 강사는 내 강의 글, 관리자는 전체가 보인다. |
+| 설명 | courseId가 있으면 그 강의 문의, 없으면 사이트 문의. 회원은 내 글만, 강사는 내 강의 글, 관리자는 전체가 보인다. 관리자가 아니면 숨긴 글은 목록에서 빠진다(상세는 안내 문구로 표시). |
 
-**Request**
 
 - Query: courseId=7&status=WAITING|ANSWERED&page=0&size=20
 
@@ -2446,8 +2445,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
-
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review·admin_log(action COURSE_APPROVE, 변경 전·후 상태) 기록. |
 
 - Path: courseId=9
 
@@ -2466,7 +2464,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
+|설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, admin_log(action COURSE_REJECT, 변경 전·후 상태·사유) 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
@@ -2754,13 +2752,16 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-07 |
-| 설명 | 전체 문의(숨김·삭제 포함 필터). |
+| 설명 | 전체 문의(숨김·삭제 포함). 필터는 모두 선택: courseId(그 강의 문의만), status(WAITING·ANSWERED), hidden(true·false), deleted(true=삭제된 글만, false=삭제 안 된 글만). 숨긴 글도 원문 제목 그대로. 최신순. |
 
 **Request**
 
-- Query: status=&hidden=&courseId=&page=0&size=20
+- Query: courseId=&status=&hidden=&deleted=&page=0&size=20
 
 **Response**
+```json
+{ "items": [ { "inquiryId": 3, "courseId": 7, "category": null, "title": "...", "status": "WAITING", "writerId": 1, "writerNickname": "민지", "isHidden": true, "isDeleted": false, "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1 }
+```
 
 - (문의 목록 + isHidden, isDeleted)
 
@@ -2772,7 +2773,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-07, DP-22 |
-| 설명 | 숨긴 글은 사용자에게 안내 문구로 보인다. |
+| 설명 | 숨기면 hidden_by에 관리자 ID를 남기고, 사용자 목록(API 47)에서 빠지며 상세(API 49)는 “관리자에 의해 숨김 처리된 글이에요”로 보인다. 해제하면 hidden_by를 지운다. 삭제된 글은 NOT_FOUND. |
 
 **Request**
 
@@ -2783,6 +2784,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+**Error**: `NOT_FOUND`
 
 #### 108. 보상 규칙 조회
 
