@@ -361,7 +361,7 @@ public class MyInfoDTO {
 | 비밀번호 | `BCryptPasswordEncoder` Bean으로 `encode()` 후 저장한다. 같은 비밀번호도 해시가 다른 것이 정상이다. 비교는 직접 하지 않고 Security(`matches`)에 맡긴다 | 학습 |
 | 권한은 서버가 정한다 | 회원가입 폼에서 받은 값으로 `role`(권한)을 정하지 **않는다**. 학습 예제는 폼에서 ADMIN을 고를 수 있었지만 실제 서비스에서는 금지 | 학습 |
 | 로그인 결과 기록 | 성공·실패는 `AuthSuccessHandler`·`AuthFailHandler`에서 처리한다. 실패 시 횟수를 올리고 로그를 남기고, 성공 시 횟수를 0으로 되돌린다 | 학습 |
-| 잠금 규칙은 Entity에 | 실패 횟수와 잠금은 `Member` 같은 **Entity의 메서드**(예: `increaseLoginFailCount()`)가 가진다. 5회 실패 시 잠금(정책 정의서 기준 10분). 변경 감지로 저장하므로 `save()`는 부르지 않는다 | 학습·정책 문서 |
+| 잠금 규칙은 Entity에 | 실패 횟수와 잠금은 `Member` 같은 **Entity의 메서드**(예: `increaseLoginFailCount()`)가 가진다. 5회 실패 시 잠금(정책 정의서 기준 1분, 이후 5회마다 5분). 변경 감지로 저장하므로 `save()`는 부르지 않는다 | 학습·정책 문서 |
 | 잠금 검사 순서 | Security는 **잠금 검사를 비밀번호 검사보다 먼저** 한다. 잠긴 계정은 맞는 비밀번호로도 로그인되지 않고, 이때는 실패 횟수가 늘지 않는다 | 학습 |
 | 없는 아이디 메시지 | Security는 없는 아이디를 기본적으로 `BadCredentialsException`으로 바꾼다. **"아이디 또는 비밀번호가 올바르지 않습니다"처럼 구분하지 않는 메시지**를 쓴다. `UsernameNotFoundException` 분기는 사실상 도달하지 않는다 | 학습 |
 | 메서드 권한 | `@PreAuthorize`를 쓰려면 `SecurityConfig`에 **`@EnableMethodSecurity`가 있어야** 한다. 없으면 경로 규칙이 없는 주소는 로그인만 하면 누구나 호출한다 | 학습 |
@@ -419,7 +419,7 @@ public class MyInfoDTO {
 | open-in-view | Spring Boot 기본값이 켜져 있음 (학습 25일차에서 경고 확인) | 끌지 여부 |
 | 포매터·린터 | 없음 | IntelliJ 설정 공유 또는 Spotless 같은 도구 도입 여부 |
 | 권한(role) 표현 | DB 문서는 `role` 한 값(`MEMBER`/`INSTRUCTOR`/`ADMIN`). 학습 예제는 `ROLE_` 없는 권한 문자열(`hasAnyAuthority`)을 썼고, 공통 레이아웃(#49)도 같은 방식 | 서수영 #4에서 `getAuthorities()`가 `MEMBER`·`INSTRUCTOR`·`ADMIN`을 `ROLE_` 없이 돌려주도록 확정 |
-| 로그인 잠금 | 학습 예제는 잠금 여부 불리언 + 수동 해제, DB 문서는 `failed_login_count`·`locked_until`(5회 실패 시 10분 잠금) | DB 문서 기준으로 할지 |
+| 로그인 잠금 | 학습 예제는 잠금 여부 불리언 + 수동 해제, DB 문서는 `failed_login_count`·`locked_until`(5회 실패 시 1분, 이후 5회마다 5분 잠금) | DB 문서 기준으로 할지 |
 | CSRF | 학습 예제는 꺼 둠. 이 문서는 켜 두기를 제안 | 켤지, 켜면 Thymeleaf 폼·fetch에서 토큰을 어떻게 보낼지 |
 | 업데이트 쿼리 | 변경 감지는 바뀐 컬럼이 아니라 **모든 컬럼**을 UPDATE한다(학습 26일차) | `@DynamicUpdate` 사용 여부 |
 | 수정 요청 DTO | 등록과 수정의 검증 규칙이 다를 수 있다 | DTO를 나눌지, 검증 그룹을 쓸지 |
