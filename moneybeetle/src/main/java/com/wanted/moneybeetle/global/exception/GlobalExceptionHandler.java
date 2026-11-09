@@ -80,7 +80,7 @@ public class GlobalExceptionHandler {
     // 인증·권한 예외는 Spring Security 몫 : 그대로 다시 던지면 필터(ExceptionTranslationFilter)가 받아
     // SecurityErrorHandler 가 401·403 으로 답한다. 이 핸들러가 없으면 아래 Exception 핸들러가 500 으로 잡는다
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
-    public void passToSecurity(Exception e) throws Exception {
+    public void passToSecurity(RuntimeException e) {   // 두 예외 모두 RuntimeException 이라 throws 가 필요 없다
         throw e;
     }
 
