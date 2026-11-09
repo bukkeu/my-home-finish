@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.course.model.dao.ScrapRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.CategoryTreeDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CompletedCourseDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseLabelDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
@@ -229,6 +230,41 @@ public class CourseService {
         getVisibleCourse(courseId);
     }
 
+    /* 퀴즈(quiz 도메인) 오답노트: 보이는 강의(허가+공개+미삭제)의 이름표.
+     * categoryId(하위 소주제 포함)·courseId로 좁힐 수 있고, 둘 다 null이면 보이는 강의 전체 */
+    public List<CourseLabelDTO> findVisibleCourseLabels(Long categoryId, Long courseId) {
+        List<Course> courses = (categoryId == null)
+                ? courseRepository.findByStatusAndIsPublicTrueAndDeletedAtIsNull(Course.STATUS_APPROVED)
+                : courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
+                findCategoryIdsWithChildren(categoryId), Course.STATUS_APPROVED);
+
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+
+        return courses.stream()
+                .filter(course -> courseId == null || course.getCourseId().equals(courseId))
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPath(course.getCategoryId(), categories)))
+                .toList();
+    }
+
+    /* 문의(inquiry 도메인): 이 강의의 강사 회원 ID. 강의가 없거나 삭제됐으면 null
+     * 비공개 강의라도 강사는 자기 강의 문의를 봐야 해서 공개 여부는 보지 않는다.
+     * 삭제 여부는 findCourseIdsByInstructor와 같은 기준(deletedAt is null)으로 거른다 */
+    public Long findInstructorId(Long courseId) {
+        return courseRepository.findById(courseId)
+                .filter(course -> course.getDeletedAt() == null)
+                .map(Course::getInstructorId)
+                .orElse(null);
+    }
+
+    /* 문의(inquiry 도메인): 이 강사가 맡은 강의 ID 목록 (문의 목록에서 '내 강의 글' 거르기) */
+    public List<Long> findCourseIdsByInstructor(Long instructorId) {
+        return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
+                .map(Course::getCourseId)
+                .toList();
+    }
+
     /* 이재성: 통합 검색 */
     public List<CourseListDTO> search(String keyword) {
         return List.of(); // TODO 제목 검색 (허가 + 공개만)
@@ -246,7 +282,7 @@ public class CourseService {
     /* 그 강의에 속한 영상인지 확인한다 */
     private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
         return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
-                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND)); // TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));// TODO 공통 설정 병합 후 BusinessException으로
     }
 
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {

@@ -15,4 +15,9 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     // 목록: 허가 + 공개 + 삭제 안 됨
     Page<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
             List<Long> categoryIds, String status, Pageable pageable);
+
+    List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(String status);
+
+    List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, String status);
+    List<Course> findByInstructorIdAndDeletedAtIsNull(Long instructorId);
 }
