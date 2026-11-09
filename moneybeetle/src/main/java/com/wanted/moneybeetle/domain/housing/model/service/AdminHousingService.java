@@ -12,6 +12,7 @@ import com.wanted.moneybeetle.domain.housing.model.entity.HousingApplication;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
 import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.notification.model.entity.Notification;   // 제목 길이 상수만 쓴다 (저장은 NotificationService)
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -175,10 +176,26 @@ public class AdminHousingService {
         LocalDateTime now = LocalDateTime.now(clock);
         complex.announce(now);
         List<HousingApplication> applications = applicationRepository.findByHousingComplexId(complexId);
-        String title = complex.getName() + " 청약 결과가 발표됐어요";
+        String title = resultTitle(complex.getName());
         applications.forEach(app ->
                 notificationService.send(app.getMemberId(), NOTIFICATION_TYPE, title, NOTIFICATION_LINK));
         return new AnnounceResultDTO(now, applications.size());
+    }
+
+    // 발표 알림 제목 "<단지 이름> 청약 결과가 발표됐어요"
+    //  단지 이름은 100자까지인데 알림 제목도 100자까지라(Notification.TITLE_MAX_LENGTH), 넘치면 알림 저장이 실패해 발표 전체가 롤백된다.
+    //  그래서 알림 제목에서만 이름을 줄이고 "…" 를 붙인다 (단지 이름 자체는 그대로)
+    static String resultTitle(String complexName) {
+        String suffix = " 청약 결과가 발표됐어요";
+        int maxName = Notification.TITLE_MAX_LENGTH - suffix.length();
+        if (complexName.length() <= maxName) {
+            return complexName + suffix;
+        }
+        int cut = maxName - 1;                                      // "…" 한 글자 자리
+        if (Character.isHighSurrogate(complexName.charAt(cut - 1))) {
+            cut--;                                                  // 이모지 같은 두 칸짜리 글자를 반으로 자르지 않는다
+        }
+        return complexName.substring(0, cut) + "…" + suffix;
     }
 
     // 수정·삭제·산정·발표용 : 단지 행을 잠그고 가져온다 (없거나 삭제됐으면 404)

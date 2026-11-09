@@ -11,6 +11,7 @@ import com.wanted.moneybeetle.domain.housing.model.entity.HousingApplication;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
 import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.global.config.TimeConfig;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -188,6 +189,22 @@ class AdminHousingResultServiceTest {
         assertThat(result.getNotified()).isEqualTo(2);
         verify(notificationService).send(eq(7L), eq("HOUSING_RESULT"), anyString(), eq("/user/demo-housing-subscription"));
         verify(notificationService).send(eq(8L), eq("HOUSING_RESULT"), anyString(), eq("/user/demo-housing-subscription"));
+    }
+
+    @Test
+    void 알림_제목은_단지_이름을_넣고_100자를_넘으면_이름만_줄인다() {
+        assertThat(AdminHousingService.resultTitle("비틀 파크")).isEqualTo("비틀 파크 청약 결과가 발표됐어요");
+
+        String longName = "가".repeat(100);                     // 단지 이름 최대 길이 (varchar 100)
+        String title = AdminHousingService.resultTitle(longName);
+        assertThat(title).hasSize(Notification.TITLE_MAX_LENGTH);
+        assertThat(title).endsWith("… 청약 결과가 발표됐어요");
+        assertThat(Notification.create(7L, "HOUSING_RESULT", title, "/user/demo-housing-subscription"))
+                .isNotNull();                                      // 실제 알림 규칙을 통과한다
+
+        String emojiAtCut = "가".repeat(85) + "🏠" + "가".repeat(10);   // 자르는 자리(86번째 칸)에 두 칸짜리 글자의 앞 칸
+        assertThat(AdminHousingService.resultTitle(emojiAtCut)).doesNotContain("\uD83C…")
+                .hasSizeLessThanOrEqualTo(Notification.TITLE_MAX_LENGTH);
     }
 
     @Test
