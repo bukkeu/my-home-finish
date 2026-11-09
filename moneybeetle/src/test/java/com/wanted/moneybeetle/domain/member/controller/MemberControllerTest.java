@@ -11,7 +11,6 @@ import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -119,12 +118,10 @@ class MemberControllerTest {
     }
 
     /**
-     * 지금은 500 이다: GlobalExceptionHandler(global, 서수영 담당)에 @Valid 실패(MethodArgumentNotValidException) 처리가 없어
-     * 일반 예외로 잡혀 INTERNAL_ERROR 가 나간다. API 명세서는 입력 오류를 400 + error.fields 로 정했다.
-     * 담당자가 그 핸들러를 추가하면 @Disabled 를 지워 켠다.
+     * @Valid 실패(MethodArgumentNotValidException)는 GlobalExceptionHandler 가 400 INVALID_INPUT + error.fields 로 답한다 (#142).
+     * 서비스는 부르지 않는다.
      */
     @Test
-    @Disabled("GlobalExceptionHandler 에 @Valid 실패 → 400 처리가 생기면 켠다 (global 담당에게 요청)")
     void 잘못된_가입_요청_본문은_서비스를_부르지_않고_400을_반환한다() throws Exception {
         // 비밀번호 형식 오류 + 약관 ID 누락
         String invalid = """
@@ -142,7 +139,8 @@ class MemberControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalid))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
         verify(memberService, never()).signup(any(SignupDTO.class));
     }
 

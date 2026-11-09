@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.quiz.model.service;
 
 import com.wanted.moneybeetle.domain.course.model.dto.CourseLabelDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.domain.quiz.exception.QuizErrorCode;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizChoiceRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizQuestionRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dao.WrongAnswerNoteRepository;
@@ -14,6 +15,7 @@ import com.wanted.moneybeetle.domain.quiz.model.dto.WrongNoteRetryResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizChoice;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizQuestion;
 import com.wanted.moneybeetle.domain.quiz.model.entity.WrongAnswerNote;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class QuizService {
+
+    private static final int TEST_QUIZ_COUNT = 5;       // 테스트 퀴즈(OX) 문항 수 (TCH-04)
+    private static final int MAIN_QUIZ_MIN = 5;         // 본 퀴즈(4지선다) 최소 (TCH-05)
+    private static final int MAIN_QUIZ_MAX = 15;        // 본 퀴즈 최대
 
     private final CourseService courseService;
     private final QuizQuestionRepository quizQuestionRepository;
@@ -144,6 +150,17 @@ public class QuizService {
                 .map(question -> QuizReviewDTO.of(question,
                         choicesByQuestion.getOrDefault(question.getQuizQuestionId(), List.of())))
                 .toList();
+    }
+
+    /* ===== 강사 검수 요청 (#32, course 도메인 InstructorCourseService에서 호출) ===== */
+
+    /* API 81 검수 요청 조건 (DP-34): 테스트 퀴즈 5문제, 본 퀴즈 5~15문제. 아니면 QUIZ_COUNT_INVALID */
+    public void checkReadyForReview(Long courseId) {
+        long testCount = quizQuestionRepository.countByCourseIdAndQuizType(courseId, QuizQuestion.QUIZ_TYPE_TEST);
+        long mainCount = quizQuestionRepository.countByCourseIdAndQuizType(courseId, QuizQuestion.QUIZ_TYPE_MAIN);
+        if (testCount != TEST_QUIZ_COUNT || mainCount < MAIN_QUIZ_MIN || mainCount > MAIN_QUIZ_MAX) {
+            throw new BusinessException(QuizErrorCode.QUIZ_COUNT_INVALID);
+        }
     }
 
     /* ===== 내부 도우미 ===== */
