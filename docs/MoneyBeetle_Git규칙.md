@@ -93,7 +93,7 @@ git push -u origin feat/be-12-login-api
 | 승인 | **코드 오너(SCM 서수영, 보조 PM 이재성) 중 작성자가 아닌 1명의 승인** 필수(`.github/CODEOWNERS`). 본인 PR은 본인이 병합하지 않음 |
 | 병합 방식 | 작업 브랜치 → `dev`은 Squash and merge, `dev` → `main`은 Create a merge commit |
 | 릴리스 PR 제목 | `dev` → `main` PR도 허용된 타입(`chore` 등)을 쓴다. 예: `chore: dev → main (보상 서비스·공통 레이아웃 반영)`. `release:` 같은 타입은 쓰지 않는다 |
-| PR 대상 | 작업 브랜치는 `dev`으로 (`main`으로 바로 올리지 않음). `hotfix`만 `main` |
+| PR 대상 | 작업 브랜치는 `dev`으로 (`main`으로 바로 올리지 않음). `hotfix`만 `main`. `main`으로 온 PR은 `main-source` 체크가 출발 브랜치를 확인한다(6장) |
 | 리뷰 기한 | 24시간 안에 확인 (어려우면 댓글로 미리 알림) |
 | 병합 조건 | 빌드·테스트 통과 + 승인 + 충돌 없음 |
 | 이슈 연결 | 본문에 `Closes #번호` → 병합 시 이슈 자동 종료 |
@@ -175,6 +175,7 @@ PR을 올리면 CodeRabbit(`.coderabbit.yaml`)이 변경 요약과 줄 단위 �
 - [ ] Required approvals: **1**
 - [ ] Require review from Code Owners: `.github/CODEOWNERS`의 서수영(`tjtndud2`)·이재성(`godgeul-glitch`) 중 한 명이 승인해야 병합된다. 서수영의 PR은 이재성이 승인한다
 - [ ] Do not allow bypassing the above settings: 팀원 모두 저장소 admin이라 이것을 켜야 규칙을 건너뛰지 못한다
+- [ ] `main`만: Require status checks에 `main-source` 추가. `.github/workflows/main-source-check.yml`이 PR의 출발 브랜치가 `dev` 또는 `hotfix/…`인지 확인해, 다른 브랜치에서 `main`으로 온 PR은 병합되지 않는다
 - [ ] Require status checks to pass (CI 구성 후)
 - [ ] 병합 방식은 Squash merge와 Merge commit을 허용 (Settings → General)
 - [ ] Default branch를 `dev`으로 변경
