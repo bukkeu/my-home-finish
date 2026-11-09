@@ -1,6 +1,9 @@
 package com.wanted.moneybeetle.domain.housing.model.service;
 
+import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingApplicationRepository;
+import com.wanted.moneybeetle.domain.housing.model.dao.SubscriptionAccountRepository;
+import com.wanted.moneybeetle.domain.housing.model.dao.SubscriptionDepositRepository;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingComplexRepository;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDetailDTO;
@@ -53,7 +56,10 @@ class HousingServiceTest {
     // 오늘을 지정한 날짜로 고정한 서비스
     private HousingService serviceOn(LocalDate today) {
         Clock fixed = Clock.fixed(today.atStartOfDay(TimeConfig.SEOUL).toInstant(), TimeConfig.SEOUL);
-        return new HousingService(complexRepository, applicationRepository, fixed);
+        // 통장 관련 의존성(#28)은 이 테스트에서 쓰지 않아 가짜만 넣는다
+        return new HousingService(complexRepository, applicationRepository, fixed,
+                mock(SubscriptionAccountRepository.class), mock(SubscriptionDepositRepository.class),
+                mock(RewardService.class));
     }
 
     // 신청 11/3 ~ 11/10, 발표 11/17, 120세대 단지 (엔티티 생성 메서드는 #47 에서 만들므로 테스트에서는 값을 직접 넣는다)
