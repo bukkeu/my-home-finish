@@ -43,6 +43,15 @@ public class Member {
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
+    /**
+     * 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분.
+     * system_setting 에 LOGIN_MAX_FAIL·LOGIN_LOCK_MINUTES 시드 키가 있지만 SystemSettingService 가 아직 비어 있고(#39),
+     * 단일 "분" 값으로는 1분/5분 두 단계를 표현할 수 없어서 이 상수를 쓴다. 설정 연동은 #39 에서 키와 함께 정한다.
+     */
+    public static final int LOGIN_FAIL_LIMIT = 5;
+    public static final long FIRST_LOCK_MINUTES = 1;
+    public static final long REPEAT_LOCK_MINUTES = 5;
+
     public static final String GENDER_MALE = "MALE";
     public static final String GENDER_FEMALE = "FEMALE";
 
@@ -172,6 +181,36 @@ public class Member {
         return this.cash >= amount;
     }
 
+    /**
+     * 로그인 실패를 기록하고 잠글 때가 되면 잠근다 (DP-10).
+     * 연속 5회 실패하면 1분, 그 뒤 잠금이 풀리고 실패를 5회 더 하면(누적 10회) 5분, 이후에도 5회마다 5분 잠근다.
+     * 실패 횟수는 잠금이 풀려도 지우지 않고(그래야 "또 5회"를 셀 수 있다) 로그인에 성공할 때만 0 으로 돌아간다.
+     * 이미 잠겨 있는 동안의 시도는 횟수를 올리지 않는다.
+     */
+    public void recordLoginFailure(LocalDateTime now) {
+        if (isLoginLocked(now)) {
+            return;
+        }
+
+        failedLoginCount++;
+
+        if (failedLoginCount % LOGIN_FAIL_LIMIT == 0) {
+            long minutes = failedLoginCount == LOGIN_FAIL_LIMIT ? FIRST_LOCK_MINUTES : REPEAT_LOCK_MINUTES;
+            lockedUntil = now.plusMinutes(minutes);
+        }
+    }
+
+    /** 현재 로그인 잠금 상태인지 확인한다. */
+    public boolean isLoginLocked(LocalDateTime now) {
+        return lockedUntil != null && now.isBefore(lockedUntil);
+    }
+
+    /** 로그인 성공 시 실패 횟수와 잠금을 초기화하고 마지막 로그인 시간을 기록한다. */
+    public void recordLoginSuccess(LocalDateTime now) {
+        failedLoginCount = 0;
+        lockedUntil = null;
+        lastLoginAt = now;
+    }
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);
