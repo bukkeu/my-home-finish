@@ -9,6 +9,9 @@ package com.wanted.moneybeetle.domain.auth.config;
 *   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글·카카오)
 *  */
 
+import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
+import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +33,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain configure(HttpSecurity http,
-                                         SecurityErrorHandler securityErrorHandler) throws Exception {
+                                         SecurityErrorHandler securityErrorHandler,
+                                         AuthSuccessHandler authSuccessHandler,
+                                         AuthFailHandler authFailHandler,
+                                         AuthLogoutSuccessHandler authLogoutSuccessHandler) throws Exception {
 
         http.authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
@@ -45,16 +51,17 @@ public class SecurityConfig {
                     login.loginProcessingUrl("/api/v1/auth/login");   // 로그인 처리 POST
                     login.usernameParameter("email");
                     login.passwordParameter("password");
-                    // TODO(#6 김예린) 성공·실패 핸들러 연결 : JSON 응답, 5회 실패 10분 잠금(DP-10), 출석 기록
-                    //   login.successHandler(authSuccessHandler);
-                    //   login.failureHandler(authFailHandler);
+                    // 성공·실패 핸들러(#6): JSON 응답, 5회 실패 10분 잠금(DP-10). 요청은 JSON 이 아니라 폼 형식(email, password)이다
+                    login.successHandler(authSuccessHandler);
+                    login.failureHandler(authFailHandler);
                     // 로그인 시 세션 ID 재발급(세션 고정 보호)은 Spring Security 기본값이라 따로 설정하지 않는다
                 })
                 .logout(logout -> {
                     logout.logoutUrl("/api/v1/auth/logout");           // ⑧
                     logout.deleteCookies("JSESSIONID");
                     logout.invalidateHttpSession(true); // ⑨
-                    logout.logoutSuccessUrl("/");
+                    // fetch 요청은 204, 브라우저가 보낸 폼 요청은 "/"로 이동 (API 7)
+                    logout.logoutSuccessHandler(authLogoutSuccessHandler);
                 })
                 // ⑫ 인증·권한 실패 응답 (API 는 401·403 JSON, 화면은 로그인 화면·403 화면)
                 .exceptionHandling(ex -> {

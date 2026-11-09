@@ -8,10 +8,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-/**
- * 담당 : DBA ② (회원·인증)
- * Spring Security 로그인 회원 정보
- */
+/* comment.
+*   담당 : DBA ② (회원·인증)
+*   UserDetails 구현체 - 세션에 담길 로그인 회원 정보 (memberId, email, nickname, role)
+*   - role 은 실제로 부여된 권한이다. 승인되지 않은 강사는 INSTRUCTOR 가 아니라 MEMBER 로 들어온다 (SP-07)
+*   - 권한 이름은 ROLE_ 접두어 없이 MEMBER / INSTRUCTOR / ADMIN 그대로다 (hasAuthority 로 검사)
+*   - 정지·탈퇴·잠금 계정은 AuthService 가 여기까지 오기 전에 예외로 막는다
+*  */
 @Getter
 public class AuthDetails implements UserDetails {
 
@@ -21,16 +24,15 @@ public class AuthDetails implements UserDetails {
     private final String nickname;
     private final String role;
 
-    public AuthDetails(Member member) {
+    /**
+     * @param grantedRole 부여할 권한. 회원 테이블의 role 이 INSTRUCTOR 여도 승인 전이면 MEMBER 를 넘긴다
+     */
+    public AuthDetails(Member member, String grantedRole) {
         this.memberId = member.getMemberId();
         this.email = member.getEmail();
         this.password = member.getPasswordHash();
         this.nickname = member.getNickname();
-        this.role = member.getRole();
-    }
-
-    public Long getMemberId() {
-        return memberId;
+        this.role = grantedRole;
     }
 
     @Override
