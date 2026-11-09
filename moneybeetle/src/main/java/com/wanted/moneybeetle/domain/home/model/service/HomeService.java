@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.home.model.service;
 
+import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
@@ -7,6 +8,7 @@ import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
 import com.wanted.moneybeetle.domain.home.model.dto.HomeDTO;
 import com.wanted.moneybeetle.domain.term.model.service.TermService;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -51,7 +53,7 @@ public class HomeService {
                         new HomeDTO.Unlock(level >= UnlockRules.HOUSING_LEVEL, UnlockRules.HOUSING_LEVEL)));
     }
 
-    /** 가장 최근에 본 진행 중인 강의 하나와 그 강의에서 마지막으로 본 영상·위치. 이어서 볼 강의가 없으면 null */
+    /** 가장 최근에 본 진행 중인 강의 하나와 그 강의에서 마지막으로 본 영상·위치. 이어서 볼 강의가 없거나 그 사이 비공개가 되었으면 null */
     private HomeDTO.ContinueCourse findContinueCourse(Long memberId) {
         List<CourseListDTO> continuing = courseService.findContinueWatching(memberId);
         if (continuing.isEmpty()) {
@@ -63,8 +65,18 @@ public class HomeService {
         if (lastWatched == null) {
             return new HomeDTO.ContinueCourse(course.getCourseId(), course.getTitle(), null, null, null);
         }
-        int position = courseService.getLessonPlay(memberId, course.getCourseId(), lastWatched.getLessonId())
-                .getPositionSeconds();
+        int position;
+        try {
+            position = courseService.getLessonPlay(memberId, course.getCourseId(), lastWatched.getLessonId())
+                    .getPositionSeconds();
+        } catch (BusinessException e) {
+            // 이어서 볼 강의를 찾은 뒤 그 강의가 비공개로 바뀌는 경우: 홈 전체가 실패하지 않고 이어서 볼 강의만 비운다.
+            // 그 밖의 오류는 숨기지 않고 그대로 던진다
+            if (e.getErrorCode() == CourseErrorCode.COURSE_NOT_PUBLIC) {
+                return null;
+            }
+            throw e;
+        }
         return new HomeDTO.ContinueCourse(course.getCourseId(), course.getTitle(),
                 lastWatched.getLessonId(), lastWatched.getLessonTitle(), position);
     }

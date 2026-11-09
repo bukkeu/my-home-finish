@@ -187,6 +187,40 @@ class HomeServiceTest {
     }
 
     @Test
+    @DisplayName("이어서 볼 강의를 찾은 뒤 비공개가 되어 영상 정보가 COURSE_NOT_PUBLIC 이면 홈은 실패하지 않고 이어서 볼 강의만 null 이다")
+    void continueCourseBecamePrivate() {
+        CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");
+        when(courseService.findContinueWatching(MEMBER)).thenReturn(List.of(continuing));
+        WatchHistoryDTO lastWatch = watch(7, 21, "가점은 어떻게 계산할까");
+        when(courseService.findWatchHistories(eq(MEMBER), eq(PageRequest.of(0, HomeService.WATCH_SCAN_SIZE))))
+                .thenReturn(new PageImpl<>(List.of(lastWatch)));
+        when(courseService.getLessonPlay(MEMBER, 7L, 21L))
+                .thenThrow(new com.wanted.moneybeetle.global.exception.BusinessException(
+                        com.wanted.moneybeetle.domain.course.exception.CourseErrorCode.COURSE_NOT_PUBLIC));
+
+        var home = service.getHome(MEMBER);
+
+        assertThat(home.continueCourse()).isNull();
+        assertThat(home.todayTerms()).isNotEmpty();   // 나머지 홈 정보는 그대로 나온다
+        assertThat(home.learning()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("영상 정보를 읽다 COURSE_NOT_PUBLIC 이 아닌 업무 오류가 나면 숨기지 않고 그대로 던진다")
+    void otherBusinessErrorsPropagate() {
+        CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");
+        when(courseService.findContinueWatching(MEMBER)).thenReturn(List.of(continuing));
+        WatchHistoryDTO lastWatch = watch(7, 21, "가점은 어떻게 계산할까");
+        when(courseService.findWatchHistories(eq(MEMBER), eq(PageRequest.of(0, HomeService.WATCH_SCAN_SIZE))))
+                .thenReturn(new PageImpl<>(List.of(lastWatch)));
+        var failure = new com.wanted.moneybeetle.global.exception.BusinessException(
+                com.wanted.moneybeetle.global.exception.CommonErrorCode.NOT_FOUND);
+        when(courseService.getLessonPlay(MEMBER, 7L, 21L)).thenThrow(failure);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.getHome(MEMBER)).isSameAs(failure);
+    }
+
+    @Test
     @DisplayName("그 강의에서 본 영상 기록이 없으면 강의만 담고 영상·위치는 null 이다")
     void continueCourseWithoutWatchedLesson() {
         CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");
