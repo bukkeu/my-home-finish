@@ -114,12 +114,13 @@ public class MemberService {
                 .orElse(false);
     }
 
-    /** 로그인 성공을 기록한다: 실패 횟수·잠금을 지우고 마지막 로그인 시각을 남긴다 (auth.AuthSuccessHandler 용) */
+    /**
+     * 로그인 성공을 기록한다: 실패 횟수·잠금을 지우고 마지막 로그인 시각을 남긴다 (auth.AuthSuccessHandler 용).
+     * 회원 행을 잠그고 읽는다. 같은 계정의 동시 로그인 실패 기록(recordLoginFailure)과 서로 덮어쓰지 않고 차례로 처리된다.
+     */
     @Transactional
     public void recordLoginSuccess(Long memberId, LocalDateTime now) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
-        member.recordLoginSuccess(now);
+        getMemberForUpdate(memberId).recordLoginSuccess(now);
     }
 
     /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */

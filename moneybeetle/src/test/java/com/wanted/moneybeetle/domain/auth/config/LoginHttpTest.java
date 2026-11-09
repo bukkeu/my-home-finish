@@ -104,7 +104,7 @@ class LoginHttpTest {
         ReflectionTestUtils.setField(member, "memberId", 8L);
         when(memberRepository.findByEmail(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(member));
-        when(memberRepository.findById(8L)).thenReturn(Optional.of(member));
+        when(memberRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(member));
     }
 
     private org.springframework.test.web.servlet.ResultActions loginForm(String email, String password, MockHttpSession session)

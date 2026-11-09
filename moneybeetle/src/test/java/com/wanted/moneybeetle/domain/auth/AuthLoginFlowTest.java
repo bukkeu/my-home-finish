@@ -111,7 +111,7 @@ class AuthLoginFlowTest {
         ReflectionTestUtils.setField(member, "status", status);
         when(memberRepository.findByEmail(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(member));
-        when(memberRepository.findById(8L)).thenReturn(Optional.of(member));
+        when(memberRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmail(org.mockito.ArgumentMatchers.argThat(e -> !EMAIL.equals(e))))
                 .thenReturn(Optional.empty());
         when(memberRepository.findByEmailForUpdate(org.mockito.ArgumentMatchers.argThat(e -> !EMAIL.equals(e))))
@@ -156,6 +156,9 @@ class AuthLoginFlowTest {
         assertThat(outcome.json().path("data").path("role").asText()).isEqualTo("MEMBER");
         assertThat(outcome.json().path("data").path("redirectUrl").asText()).isEqualTo("/user/home");
         assertThat(member.getLastLoginAt()).isNotNull();
+        // 마지막 로그인 기록은 회원 행을 잠그는 조회로 한다 (동시 실패 기록과 서로 덮어쓰지 않게)
+        org.mockito.Mockito.verify(memberRepository).findByIdForUpdate(8L);
+        org.mockito.Mockito.verify(memberRepository, org.mockito.Mockito.never()).findById(8L);
         assertThat(outcome.authentication().getAuthorities()).extracting(Object::toString).containsExactly("MEMBER");
     }
 
