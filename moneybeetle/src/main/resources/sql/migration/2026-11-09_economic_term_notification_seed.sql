@@ -19,7 +19,8 @@ INSERT IGNORE INTO economic_term (term, description) VALUES
 ('전세가율', '매매가 대비 전세 보증금의 비율');
 
 -- 오늘(실행한 날)과 내일의 오늘의 경제 용어. 용어 번호를 믿지 않고 이름으로 실제 번호를 찾아 넣는다.
--- 이미 그 날짜·순서나 그 날짜·용어가 있으면 건너뛴다
+-- 날짜 단위로 통째로 넣거나 통째로 건너뛴다: 그 날짜에 일정이 하나라도 이미 있으면(관리자가 지정했거나 자동 선정으로 저장된 날) 그 날짜는 건드리지 않는다.
+-- 그래서 기존 일정과 일부만 겹쳐 5개가 아닌 4개짜리 날이 생기는 일이 없다 (INSERT IGNORE 는 겹치는 행만 건너뛴다).
 INSERT IGNORE INTO term_schedule (show_date, economic_term_id, sort_order, is_auto)
 SELECT CURDATE() + INTERVAL s.day_offset DAY, t.economic_term_id, s.sort_order, 0
 FROM (
@@ -34,7 +35,10 @@ FROM (
     UNION ALL SELECT 1, '분산 투자', 4
     UNION ALL SELECT 1, '인플레이션', 5
 ) s
-JOIN economic_term t ON t.term = s.term;
+JOIN economic_term t ON t.term = s.term
+WHERE NOT EXISTS (
+    SELECT 1 FROM term_schedule x WHERE x.show_date = CURDATE() + INTERVAL s.day_offset DAY
+);
 
 -- 알림 샘플 (시드 회원 8 민지 4건, 강사 5번 1건).
 -- - 번호가 같다고 시드 회원이라고 믿지 않는다: 회원 번호와 시드 이메일이 모두 맞는 회원에게만 넣는다.
