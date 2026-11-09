@@ -43,6 +43,8 @@ public class Member {
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
+    /** 탈퇴한 회원의 학습·문의 기록에 보여 주는 이름 (DP-06) */
+    public static final String WITHDRAWN_NICKNAME = "탈퇴한 사용자";
     /**
      * 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분.
      * system_setting 에 LOGIN_MAX_FAIL·LOGIN_LOCK_MINUTES 시드 키가 있지만 SystemSettingService 가 아직 비어 있고(#39),
@@ -216,6 +218,15 @@ public class Member {
     }
 
     /**
+     * 다른 사람에게 보여 줄 닉네임. 탈퇴한 회원은 실제 닉네임 대신 "탈퇴한 사용자"를 보여 준다 (DP-06).
+     * 정지된 회원은 그대로 보인다.
+     */
+    public String displayNickname() {
+        return STATUS_WITHDRAWN.equals(status) ? WITHDRAWN_NICKNAME : nickname;
+    }
+
+
+    /**
      * 로그인 실패를 기록하고 잠글 때가 되면 잠근다 (DP-10).
      * 연속 5회 실패하면 1분, 그 뒤 잠금이 풀리고 실패를 5회 더 하면(누적 10회) 5분, 이후에도 5회마다 5분 잠근다.
      * 실패 횟수는 잠금이 풀려도 지우지 않고(그래야 "또 5회"를 셀 수 있다) 로그인에 성공할 때만 0 으로 돌아간다.
@@ -245,6 +256,26 @@ public class Member {
         lockedUntil = null;
         lastLoginAt = now;
     }
+    /**
+     * 설정(닉네임·생년월일·성별)을 바꾼다 (#7). 이메일은 바꿀 수 없어 받지 않는다.
+     * 중복·금칙어·만 14세처럼 DB·오늘 날짜가 필요한 규칙은 MemberService 가 먼저 확인한다. 여기서는 값의 모양만 확인한다.
+     */
+    public void changeProfile(String nickname, LocalDate birthDate, String gender) {
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null, "생년월일이 필요합니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    /** 프로필 이미지 주소를 바꾼다 (#7) */
+    public void changeProfileImageUrl(String profileImageUrl) {
+        require(profileImageUrl != null && !profileImageUrl.isBlank(), "프로필 이미지 주소가 필요합니다.");
+        this.profileImageUrl = profileImageUrl;
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);

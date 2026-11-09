@@ -8,6 +8,10 @@ import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
@@ -15,9 +19,11 @@ import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import java.util.Collection;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -34,6 +40,7 @@ import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordServic
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
@@ -41,6 +48,7 @@ import java.util.Set;
 *   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차),
 *   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6),
 *   recordAttendance / getAttendance (growth.AttendanceService 전용, #12).
+*   findNicknames (회원 ID 여러 개 -> 닉네임, 문의 게시판 등, #145).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5)
@@ -182,6 +190,92 @@ public class MemberService {
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
     }
 
+    /** 회원의 프로필 원본 값 (member.MemberProfileService 용). 없는 회원이면 MEMBER_NOT_FOUND */
+    public MemberProfileDTO getProfile(Long memberId) {
+        return MemberProfileDTO.from(getMember(memberId));
+    }
+
+    /** 다른 회원에게 보여 줄 프로필 원본 값. 탈퇴·정지 회원은 없는 회원처럼 MEMBER_NOT_FOUND (DP-03) */
+    public MemberProfileDTO getActiveProfile(Long memberId) {
+        Member member = getMember(memberId);
+        if (!member.isActive()) {
+            throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND);
+        }
+        return MemberProfileDTO.from(member);
+    }
+
+    /**
+     * 설정 수정 (API 14). 값이 없는 항목은 그대로 둔다. 닉네임이 바뀔 때만 형식·금칙어·중복을 확인하고(SP-02),
+     * 생년월일은 가입 때와 같이 과거 날짜·만 14세 이상인지 확인한다. 이메일은 받지 않는다.
+     * 같은 닉네임으로 동시에 바꿔 중복 확인을 둘 다 통과해도 저장 시점의 DB 고유 제약에서 409 로 바꾼다.
+     */
+    @Transactional
+    public MemberUpdateResultDTO updateProfile(Long memberId, MemberUpdateDTO request) {
+        Member member = getMemberForUpdate(memberId);
+
+        String nickname = member.getNickname();
+        if (request.getNickname() != null && !request.getNickname().equals(nickname)) {
+            // 대소문자만 바꾼 경우는 DB 정렬 규칙(대소문자 구분 없음) 때문에 내 행이 중복으로 걸리므로 중복 검사만 건너뛴다
+            validateNickname(request.getNickname(), !request.getNickname().equalsIgnoreCase(nickname));
+            nickname = request.getNickname();
+        }
+
+        LocalDate birthDate = member.getBirthDate();
+        if (request.getBirthDate() != null) {
+            validateBirthDate(request.getBirthDate(), LocalDate.now(clock));
+            birthDate = request.getBirthDate();
+        }
+
+        String gender = request.getGender() != null ? request.getGender() : member.getGender();
+
+        member.changeProfile(nickname, birthDate, gender);
+        flushProfile();
+        return new MemberUpdateResultDTO(member.getMemberId(), member.getNickname());
+    }
+
+    /** 프로필 이미지 주소를 저장한다 (member.MemberProfileService 가 파일을 저장한 뒤 부른다) */
+    @Transactional
+    public ProfileImageDTO changeProfileImageUrl(Long memberId, String profileImageUrl) {
+        Member member = getMemberForUpdate(memberId);
+        member.changeProfileImageUrl(profileImageUrl);
+        return new ProfileImageDTO(member.getProfileImageUrl());
+    }
+
+    private Member getMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    /** 변경을 DB 에 바로 보내 고유 제약(닉네임) 위반을 이 자리에서 409 로 바꾼다 */
+    private void flushProfile() {
+        try {
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            if (UK_MEMBER_NICKNAME.equals(findConstraintName(e))) {
+                throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * 회원 ID 여러 개의 닉네임을 한 번의 조회로 돌려준다 (다른 도메인용, 예: 문의 게시판 작성자 표시 #22).
+     * 목록에서 회원마다 따로 조회해 N+1 이 나지 않게 ID 를 모아서 부른다.
+     * - 없는 ID 는 결과에서 빠진다. null·중복 ID 는 걸러서 조회한다. 빈 목록이면 조회하지 않고 빈 맵이다.
+     * - 탈퇴한 회원은 실제 닉네임 대신 "탈퇴한 사용자"로 돌려준다 (DP-06). 정지된 회원은 그대로다.
+     */
+    public Map<Long, String> findNicknames(Collection<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> ids = memberIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return memberRepository.findAllById(ids).stream()
+                .collect(Collectors.toUnmodifiableMap(Member::getMemberId, Member::displayNickname));
+    }
+
     /** 가입 화면에 보여 줄 약관(필수·선택) 목록 (API 1) */
     public List<TermsDTO> findAgreements() {
         return termsRepository.findAllByOrderByTermsIdAsc().stream().map(TermsDTO::from).toList();
@@ -264,11 +358,15 @@ public class MemberService {
     }
 
     private void validateNickname(String nickname) {
+        validateNickname(nickname, true);
+    }
+
+    private void validateNickname(String nickname, boolean checkDuplicate) {
         if (!SignupRules.isValidNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_INVALID);
         }
         forbiddenWordService.check(nickname);
-        if (memberRepository.existsByNickname(nickname)) {
+        if (checkDuplicate && memberRepository.existsByNickname(nickname)) {
             throw new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED);
         }
     }
