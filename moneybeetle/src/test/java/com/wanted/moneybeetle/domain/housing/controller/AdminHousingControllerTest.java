@@ -130,13 +130,13 @@ class AdminHousingControllerTest {
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        verify(adminHousingService).updateComplex(eq(3L), any());
+        verify(adminHousingService).updateComplex(eq(ADMIN_ID), eq(3L), any());
     }
 
     @Test
     void 신청자가_있는_공고를_삭제하면_409() throws Exception {
         doThrow(new BusinessException(HousingErrorCode.COMPLEX_HAS_APPLICANTS))
-                .when(adminHousingService).deleteComplex(3L);
+                .when(adminHousingService).deleteComplex(ADMIN_ID, 3L);
 
         mockMvc.perform(delete("/api/v1/admin/housing/complexes/3"))
                 .andExpect(status().isConflict())
@@ -148,7 +148,7 @@ class AdminHousingControllerTest {
         mockMvc.perform(delete("/api/v1/admin/housing/complexes/3"))
                 .andExpect(status().isNoContent());
 
-        verify(adminHousingService).deleteComplex(3L);
+        verify(adminHousingService).deleteComplex(ADMIN_ID, 3L);
     }
 
     // ── #48 신청자 목록·산정·발표 (API 146~148) ──
@@ -168,7 +168,7 @@ class AdminHousingControllerTest {
 
     @Test
     void 산정은_신청자_수와_당첨자_수를_돌려준다() throws Exception {
-        when(adminHousingService.compute(1L))
+        when(adminHousingService.compute(ADMIN_ID, 1L))
                 .thenReturn(new ComputeResultDTO(8, 2, LocalDateTime.of(2026, 11, 11, 9, 0)));
 
         mockMvc.perform(post("/api/v1/admin/housing/complexes/1/compute"))
@@ -180,7 +180,7 @@ class AdminHousingControllerTest {
 
     @Test
     void 이미_산정한_공고를_다시_산정하면_409() throws Exception {
-        when(adminHousingService.compute(1L)).thenThrow(new BusinessException(HousingErrorCode.ALREADY_COMPUTED));
+        when(adminHousingService.compute(ADMIN_ID, 1L)).thenThrow(new BusinessException(HousingErrorCode.ALREADY_COMPUTED));
 
         mockMvc.perform(post("/api/v1/admin/housing/complexes/1/compute"))
                 .andExpect(status().isConflict())
@@ -189,7 +189,7 @@ class AdminHousingControllerTest {
 
     @Test
     void 발표는_발표_시각과_알림_보낸_수를_돌려준다() throws Exception {
-        when(adminHousingService.announce(1L))
+        when(adminHousingService.announce(ADMIN_ID, 1L))
                 .thenReturn(new AnnounceResultDTO(LocalDateTime.of(2026, 11, 17, 10, 0), 8));
 
         mockMvc.perform(post("/api/v1/admin/housing/complexes/1/announce"))
@@ -200,7 +200,7 @@ class AdminHousingControllerTest {
 
     @Test
     void 발표일_전에_발표하면_409() throws Exception {
-        when(adminHousingService.announce(1L))
+        when(adminHousingService.announce(ADMIN_ID, 1L))
                 .thenThrow(new BusinessException(HousingErrorCode.BEFORE_ANNOUNCE_DATE));
 
         mockMvc.perform(post("/api/v1/admin/housing/complexes/1/announce"))
