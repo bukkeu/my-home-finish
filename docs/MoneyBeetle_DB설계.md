@@ -17,7 +17,7 @@
   - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
   - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
 - **모의투자 시드**(#72): 분야 15개, 종목 30개(기업정보 포함), 매매 이유 6개, 시즌 1개(시즌 7, 12턴 중 현재 5턴, 이월 100%·상한 없음), 턴 12개, 가격 360행(12턴 전부), 뉴스 25개와 태그. 6~12턴 가격은 미래 턴이라 조회 API(#24)는 현재 턴까지만 보여 준다. 날짜는 고정값이라 현재 턴은 `current_turn`으로만 판단한다. 참가자·보유·거래 내역은 넣지 않는다.
-- **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 7개(모집 중 3, 모집 예정 1, 모집 마감 1, 발표 완료 2. 등록 관리자 1). 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인·단지 이미지는 컬럼이 없어 넣지 않고(#48 이후), 청약 신청·납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
+- **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 8개(모집 중 3, 모집 예정 1, 모집 마감 2, 발표 완료 2. 등록 관리자 1). 8번 `비틀 시범 행복주택`은 #48 산정·발표 시연용(모집 마감, 오늘 발표, 산정 전, 2세대)이고 신청자 4명(시드 회원 2~5, 점수는 SP-71대로 계산한 값)을 함께 넣는다. 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인은 쓰지 않고(#48 가점 순위 방식 확정), 단지 이미지는 컬럼이 없어 넣지 않는다. 납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 청약 신청은 신청 시점 점수를 저장하므로 8번 단지 시연용만 넣는다. 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
 
 ---
 
@@ -340,7 +340,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `password_reset_token_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 토큰 ID |
 | `member_id` | BIGINT | N | FK → member.member_id | - | 회원 |
-| `token_hash` | VARCHAR(255) | N | UNIQUE | - | 인증 토큰 해시 |
+| `token_hash` | VARCHAR(255) | N | UNIQUE | - | 인증 토큰 원문의 SHA-256 해시(16진수 64자). 원문은 저장하지 않고 메일로만 보낸다 |
 | `expires_at` | DATETIME | N | - | - | 만료 시각 (발급 + 10분) |
 | `used_at` | DATETIME | Y | - | - | 사용 시각. 사용하면 재사용 불가 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -411,6 +411,18 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `is_active` | BOOLEAN | N | - | TRUE | 사용 여부 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
+
+**규칙 코드와 기본값**
+
+| code | 의미 | 기본값 | 쓰는 곳 |
+| --- | --- | --- | --- |
+| `ATTENDANCE_STREAK` | 연속 출석 보상. 연속 **5일째부터 매일** 지급 (SP-12) | 캐시 10,000 · 경험치 0 · 사용 중 | `AttendanceService.checkToday` → `RewardService.grant` (원인 ID = 그날의 `attendance_id`) |
+| `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | XP 값 확정(#68) 뒤 시드 | 학습 완료 처리 |
+| `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | XP 값 확정(#68) 뒤 시드 | 퀴즈 제출 처리 |
+
+- `ATTENDANCE_STREAK`만 먼저 시드에 들어 있다(`sample-data.sql`, 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`). 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
+- 마이그레이션은 규칙이 **없을 때만** 넣고 이미 있는 규칙은 바꾸지 않는다(관리자가 값을 고쳤을 수 있다). 다시 실행해도 결과가 같다.
+- 5일째가 되는 기준(연속 일수)은 코드 상수 `AttendanceService.REWARD_START_STREAK`이고, 규칙 표에는 금액만 둔다.
 
 #### 11. `cash_history` 캐시 내역
 
@@ -1011,8 +1023,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `dependent_score` | TINYINT | N | - | - | 부양가족 점수 (만점 35) |
 | `account_score` | TINYINT | N | - | - | 통장 점수 (만점 17) |
 | `total_score` | TINYINT | N | - | - | 총 가점 (만점 84) |
-| `result` | VARCHAR(10) | Y | - | - | WIN 당첨 / LOSE 낙첨. 발표 전 NULL |
-| `result_rank` | INT | Y | - | - | 산정 순위 |
+| `result` | VARCHAR(10) | Y | - | - | WIN 당첨 / LOSE 낙첨. 산정 전 NULL (산정하면 채우고, 회원에게는 발표 뒤에만 보인다, SP-75) |
+| `result_rank` | INT | Y | - | - | 산정 순위 (1부터, 낙첨자 포함). 산정 전 NULL |
 | `applied_at` | DATETIME | N | - | 현재 시각 | 신청 일시 |
 
 ### 운영
@@ -1138,7 +1150,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | 사이트 문의 게시판 | `inquiry.course_id`가 NULL이면 사이트 문의로 처리 (페이지의 문의하기 게시판) | 강의 문의와 사이트 문의를 한 테이블로 둘지 나눌지 |
 | 강사 가입 방식 | `instructor_profile.approval_status` PENDING → 관리자 승인 (페이지의 강사 회원가입 반영) | 직접 가입 신청 허용 여부 |
 | 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 확정, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
-| 청약 결과 | `result` WIN/LOSE (정책 SP-75). 페이지 목업에는 예비(RESERVE) 있음 | 예비 당첨 여부 |
+| ~~청약 결과~~ | **확정 (#48)**: `result` WIN/LOSE만 쓴다. 페이지 목업의 예비(RESERVE)는 두지 않는다 (SP-75) | — |
 | 시즌 참가 캐시 차감 | `season_participant.saved_cash` 기록, 차감 시 `cash_history`에 SEASON_JOIN | 참가 때 캐시 차감 여부 |
 | 이월 상한 | `trading_season.carryover_cap` NULL 허용 | 상한 금액 |
 | 영상 등록 방식 | `lesson.video_url` 문자열 | 파일 업로드면 파일 메타 테이블 추가 |

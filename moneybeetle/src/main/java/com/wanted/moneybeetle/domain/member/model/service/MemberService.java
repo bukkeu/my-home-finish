@@ -6,6 +6,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
@@ -45,8 +46,9 @@ import java.util.stream.Collectors;
 *   담당 : DBA ② (회원·인증)
 *   회원가입, 약관 조회, 이메일·닉네임 중복 확인 (이슈 #5). 이어서 내 정보·설정(#7), 비밀번호 변경·탈퇴(#8)를 맡는다.
 *   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차),
+*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6),
+*   recordAttendance / getAttendance (growth.AttendanceService 전용, #12).
 *   findNicknames (회원 ID 여러 개 -> 닉네임, 문의 게시판 등, #145).
-*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5)
@@ -112,6 +114,24 @@ public class MemberService {
     }
 
     /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 용). 회원 행을 잠가서 같은 사람이 동시에 두 번 불러도 하루 한 번만 기록된다.
+     * 이미 오늘 출석했으면 값을 바꾸지 않고 newlyChecked = false 로 돌려준다.
+     */
+    @Transactional
+    public MemberAttendanceDTO recordAttendance(Long memberId, LocalDate today) {
+        Member member = getMemberForUpdate(memberId);
+        boolean newlyChecked = member.checkAttendance(today);
+        return MemberAttendanceDTO.of(member, newlyChecked, today);
+    }
+
+    /** 오늘 기준 출석 상태를 읽기만 한다 (growth.AttendanceService 용, API 21) */
+    public MemberAttendanceDTO getAttendance(Long memberId, LocalDate today) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+        return MemberAttendanceDTO.of(member, false, today);
+    }
+
+    /**
      * 로그인할 회원을 이메일로 찾고 그 행을 잠근다 (auth.AuthService 용). 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 조회한다 (SP-01).
      * 잠금은 호출한 쪽의 트랜잭션이 끝날 때까지 유지된다. 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶어
      * 같은 계정의 동시 시도가 차례로 처리되게 한다 (auth.LoginAuthenticationProvider 가 그 트랜잭션을 연다).
@@ -152,6 +172,14 @@ public class MemberService {
     @Transactional
     public void recordLoginSuccess(Long memberId, LocalDateTime now) {
         getMemberForUpdate(memberId).recordLoginSuccess(now);
+    }
+
+    /**
+     * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
+     * 없는 회원이면 false 다.
+     */
+    public boolean isActiveMember(Long memberId) {
+        return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
     }
 
     /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */

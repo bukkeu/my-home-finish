@@ -93,6 +93,9 @@ class LoginHttpTest {
         }
     }
 
+    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 출석 자체를 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
     @MockitoBean
     private MemberRepository memberRepository;
     @MockitoBean
@@ -120,6 +123,7 @@ class LoginHttpTest {
         when(memberRepository.findByEmail(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(8L)).thenReturn(Optional.of(member));
     }
 
     private org.springframework.test.web.servlet.ResultActions loginForm(String email, String password, MockHttpSession session)

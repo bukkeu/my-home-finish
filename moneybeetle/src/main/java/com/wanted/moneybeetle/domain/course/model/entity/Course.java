@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
+import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,6 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
@@ -48,5 +51,72 @@ public class Course {
     // 사용자에게 보여도 되는 강의인지는 Entity가 판단 (SP-31)
     public boolean isVisibleToLearner() {
         return STATUS_APPROVED.equals(status) && isPublic && deletedAt == null;
+    }
+
+    public boolean isInReview() {
+        return STATUS_REVIEW.equals(status);
+    }
+
+    public boolean isApproved() {
+        return STATUS_APPROVED.equals(status);
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /* 허가 = 허가 + 공개 (API 91). 검수 중인 강의만 */
+    public void approve(LocalDateTime approvedAt) {
+        requireInReview();
+        this.status = STATUS_APPROVED;
+        this.isPublic = true;
+        this.approvedAt = approvedAt;
+    }
+
+    /* 반려 (API 92). 사유는 course_review에 남긴다. 반려된 강의는 보이지 않게 비공개 */
+    public void reject() {
+        requireInReview();
+        this.status = STATUS_REJECTED;
+        this.isPublic = false;
+    }
+
+    /* 공개·비공개 (API 93). 허가된 강의만 바꿀 수 있다 → 허가 안 된 강의가 공개되는 일을 막는다 */
+    public void changeVisibility(boolean isPublic) {
+        if (!isApproved()) {
+            throw new BusinessException(CourseErrorCode.COURSE_NOT_APPROVED);
+        }
+        this.isPublic = isPublic;
+    }
+
+    /* Soft Delete (API 94). 학습 기록 확인은 서비스가 한다 */
+    public void delete(LocalDateTime deletedAt) {
+        this.isPublic = false;
+        this.deletedAt = deletedAt;
+    }
+
+    /* 이 강의의 강사인지 (본인 강의만 수정·검수 요청, #30·#32) */
+    public boolean isOwnedBy(Long instructorId) {
+        return Objects.equals(this.instructorId, instructorId);
+    }
+
+    /* 검수 요청을 할 수 있는 상태인지 (API 81). 작성 중·반려 상태만 → 반려된 강의를 고쳐 다시 요청할 수 있다
+     * 서비스가 콘텐츠(영상·퀴즈) 검사보다 먼저 불러 상태 오류(409)가 콘텐츠 오류보다 앞서게 한다 */
+    public void checkRequestable() {
+        if (!STATUS_DRAFT.equals(status) && !STATUS_REJECTED.equals(status)) {
+            throw new BusinessException(CourseErrorCode.COURSE_NOT_REQUESTABLE);
+        }
+    }
+
+    /* 검수 요청 (API 81, DP-34). 상태 변경 자체도 같은 검사로 보호한다 */
+    public void requestReview(LocalDateTime submittedAt) {
+        checkRequestable();
+        this.status = STATUS_REVIEW;
+        this.submittedAt = submittedAt;
+    }
+
+    private void requireInReview() {
+        if (!isInReview()) {
+            throw new BusinessException(CourseErrorCode.COURSE_NOT_IN_REVIEW);
+        }
     }
 }
