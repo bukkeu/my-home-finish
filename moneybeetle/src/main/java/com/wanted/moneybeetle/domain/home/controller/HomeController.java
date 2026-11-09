@@ -6,10 +6,12 @@ package com.wanted.moneybeetle.domain.home.controller;
 *   화면 : /user/home, /user/search
 *  */
 
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.home.model.dto.SearchResultDTO;
 import com.wanted.moneybeetle.domain.home.model.service.HomeService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,13 +26,9 @@ public class HomeController {
     /* API 28 통합 검색 : GET /api/v1/search?keyword=청약 */
     @GetMapping("/api/v1/search")
     @ResponseBody
-    public ApiResponse<SearchResultDTO> search(@RequestParam(required = false) String keyword) {
-        return ApiResponse.success(homeService.search(keyword, currentMemberId()));
-    }
-
-    // TODO(김예린 #6) 로그인 회원 번호 : AuthDetails.getMemberId() 가 생기면 바꾼다
-    //  지금은 null → 종목은 검색 결과에 나오지 않는다 (해금 여부를 알 수 없음)
-    private Long currentMemberId() {
-        return null;
+    public ApiResponse<SearchResultDTO> search(@RequestParam(required = false) String keyword,
+            @AuthenticationPrincipal AuthDetails me) {
+        // 로그인 회원 번호는 주소로 받지 않고 세션에서 꺼낸다 (NFR-03). 없으면 종목은 검색 결과에 나오지 않는다
+        return ApiResponse.success(homeService.search(keyword, me == null ? null : me.getMemberId()));
     }
 }

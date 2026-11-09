@@ -28,7 +28,7 @@ public class HomeService {
     private final StockSearchService stockSearchService;
     private final GrowthService growthService;
 
-    /** API 28 통합 검색. memberId 가 없으면(로그인 연결 #6 전) 종목은 찾지 않는다 */
+    /** API 28 통합 검색. memberId 는 세션의 로그인 회원 번호이고, 없으면 종목은 찾지 않는다 */
     public SearchResultDTO search(String keyword, Long memberId) {
         String word = keyword == null ? "" : keyword.trim();
         if (word.isEmpty()) {
