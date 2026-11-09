@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 public enum CourseErrorCode implements ErrorCode {
 
     COURSE_NOT_PUBLIC(HttpStatus.NOT_FOUND, "공개되지 않은 강의예요"),                          // SP-31 (없는 강의도 같은 코드)
+    LESSON_NOT_FOUND(HttpStatus.NOT_FOUND, "영상을 찾을 수 없어요"),                           // API 32
     ALREADY_SCRAPPED(HttpStatus.CONFLICT, "이미 스크랩한 강의예요"),                           // SP-39
     TOO_MANY_LESSONS(HttpStatus.BAD_REQUEST, "영상은 3개까지 등록할 수 있어요"),               // TCH-02
     COURSE_HAS_LEARNERS(HttpStatus.CONFLICT, "학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요?"), // SP-32
