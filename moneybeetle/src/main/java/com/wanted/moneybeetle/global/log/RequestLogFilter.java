@@ -51,10 +51,11 @@ public class RequestLogFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String requestId = resolveRequestId(request.getHeader(HEADER));
-        MDC.put(MDC_REQUEST_ID, requestId);
-        response.setHeader(HEADER, requestId);
         long start = System.nanoTime();
         try {
+            // MDC 를 try 안에서 넣어, 어느 줄에서 예외가 나도 finally 의 정리가 항상 돈다 (스레드가 재사용돼도 값이 남지 않게)
+            MDC.put(MDC_REQUEST_ID, requestId);
+            response.setHeader(HEADER, requestId);
             chain.doFilter(request, response);
         } finally {
             String path = request.getRequestURI();                       // 쿼리 문자열은 포함하지 않는다
