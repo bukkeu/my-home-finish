@@ -14,6 +14,7 @@ package com.wanted.moneybeetle.global.security;
 *     보관하고 예외는 그대로 다시 던진다. 지우면 커밋 뒤 예외에서 같은 키 재시도가 다시 실행되고, 그대로 두면 "처리 중"이
 *     24시간 남아 같은 키가 계속 DUPLICATE_REQUEST 가 되기 때문이다
 *   - 헤더가 없으면 막지 않고 그대로 처리한다 (화면은 항상 헤더를 보낸다)
+*   - 키가 100자를 넘으면 처리하지 않고 400 IDEMPOTENCY_KEY_TOO_LONG (아주 긴 키로 메모리를 쓰는 것 방지)
 *   Spring Security 필터 다음에 실행되므로 로그인 정보(getUserPrincipal)를 쓸 수 있다
 *  */
 
@@ -46,6 +47,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "Idempotency-Key";
     public static final String REPLAYED_HEADER = "Idempotent-Replayed";
+    /** 키 길이 제한 : 아주 긴 키를 계속 보내 메모리를 쓰는 것을 막는다 (UUID 는 36자) */
+    static final int MAX_KEY_LENGTH = 100;
 
     /** 중복 요청 방지를 적용하는 API (메서드, 주소 패턴) */
     private static final List<Target> TARGETS = List.of(
@@ -60,9 +63,10 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
     private final IdempotencyStore store;
 
+    /** 시계는 팀 공통 Clock(TimeConfig, Asia/Seoul)을 주입받는다 (테스트에서 Clock.fixed 로 바꿀 수 있다) */
     @Autowired
-    public IdempotencyFilter(ObjectMapper objectMapper) {
-        this(objectMapper, new InMemoryIdempotencyStore(Clock.systemDefaultZone()));
+    public IdempotencyFilter(ObjectMapper objectMapper, Clock clock) {
+        this(objectMapper, new InMemoryIdempotencyStore(clock));
     }
 
     IdempotencyFilter(ObjectMapper objectMapper, IdempotencyStore store) {
@@ -82,6 +86,10 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         String idempotencyKey = request.getHeader(HEADER);
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             chain.doFilter(request, response);
+            return;
+        }
+        if (idempotencyKey.length() > MAX_KEY_LENGTH) {
+            writeError(response, CommonErrorCode.IDEMPOTENCY_KEY_TOO_LONG);   // 처리하지 않고 400
             return;
         }
 

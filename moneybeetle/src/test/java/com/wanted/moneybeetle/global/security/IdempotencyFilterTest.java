@@ -80,6 +80,30 @@ class IdempotencyFilterTest {
     }
 
     @Test
+    void 키가_100자를_넘으면_처리하지_않고_400() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        String tooLong = "k".repeat(IdempotencyFilter.MAX_KEY_LENGTH + 1);
+
+        MockHttpServletResponse response = send(request("minji", tooLong, BUY_BODY), chain(calls, 201, CREATED_BODY));
+
+        assertThat(calls).hasValue(0);
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getContentAsString(StandardCharsets.UTF_8)).contains("IDEMPOTENCY_KEY_TOO_LONG");
+        assertThat(store.size()).isZero();
+    }
+
+    @Test
+    void 키가_정확히_100자면_처리한다() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        String max = "k".repeat(IdempotencyFilter.MAX_KEY_LENGTH);
+
+        MockHttpServletResponse response = send(request("minji", max, BUY_BODY), chain(calls, 201, CREATED_BODY));
+
+        assertThat(calls).hasValue(1);
+        assertThat(response.getStatus()).isEqualTo(201);
+    }
+
+    @Test
     void 헤더가_없으면_막지_않고_그대로_처리한다() throws Exception {
         AtomicInteger calls = new AtomicInteger();
 
