@@ -42,7 +42,9 @@
   var S = {
     season: null, participation: null, stocks: [], sectors: null, reasons: null,
     stock: null, side: 'BUY', reasonId: null, rankType: 'ASSET', marketTab: 'popular',
-    busy: false, timer: null, locked: false
+    busy: false, timer: null, locked: false,
+    stopped: false,     // 잠금·시즌 없음으로 화면이 바뀌면 true -> 턴·정산 확인을 더 하지 않는다
+    pendingOrder: null  // 결과를 모르는 주문 { sig, key } -> 같은 내용으로 다시 내면 같은 Idempotency-Key 를 쓴다
   };
 
   /* ---------- 작은 도우미 ---------- */
@@ -79,8 +81,9 @@
   /** 화면 전체에 걸리는 오류 (잠금·시즌 없음). 처리했으면 true */
   function fatal(err) {
     if (!err) return false;
-    if (err.code === 'LEVEL_LOCKED') { lock(err.message); return true; }
+    if (err.code === 'LEVEL_LOCKED') { stopTimers(); lock(err.message); return true; }
     if (err.code === 'NO_RUNNING_SEASON') {
+      stopTimers();
       fullState(MSG.NO_RUNNING_SEASON, '진행 중인 시즌이 없어요. 시즌이 시작되면 이곳에서 참가할 수 있어요.');
       return true;
     }
@@ -89,6 +92,13 @@
   /** 각 영역의 오류: 잠금·시즌 없음이면 화면 전체로, 아니면 그 영역에만 문구를 둔다 */
   function sectionError(node) {
     return function (err) { if (!fatal(err)) note(node, errText(err), true); };
+  }
+
+  /** 화면 전체 오류 뒤에는 카운트다운·정산 확인을 멈춘다 (다시 예약하지 않는다) */
+  function stopTimers() {
+    S.stopped = true;
+    clearInterval(S.timer);
+    clearTimeout(S.timer);
   }
 
   function lock(message) {
@@ -163,6 +173,8 @@
   /** 다음 턴까지 남은 시간. 0 이 되면 홈과 보고 있는 종목을 다시 불러온다 (INV-05) */
   function startCountdown(nextTurnAt, status) {
     clearInterval(S.timer);
+    clearTimeout(S.timer);
+    if (S.stopped) return;
     var out = $('trd-next-turn');
     if (status === 'SETTLING') { out.textContent = '정산을 기다리는 중이에요'; scheduleSettlePoll(); return; }
     if (status === 'ENDED') { out.textContent = '시즌이 끝났어요'; return; }
@@ -181,18 +193,21 @@
         var repeated = S.expiredTarget === target;
         S.expiredTarget = target;
         setTimeout(function () {
+          if (S.stopped) return;
           refreshAll(true).then(function (ok) {
             if (!ok) startCountdown(nextTurnAt, status);   // 새로고침이 실패했으면 멈추지 않고 다시 확인한다
           });
         }, repeated ? REFRESH_RETRY_MS : REFRESH_DELAY_MS);
       }
     };
-    tick();
+    // 반복 타이머를 먼저 걸어야 이미 지난 시각으로 시작한 첫 tick 이 그 타이머를 끌 수 있다 (새로고침 중복 예약 방지)
     S.timer = setInterval(tick, 1000);
+    tick();
   }
 
   /** 정산 중에는 1분마다 홈을 다시 불러, 종료(랭킹 공개)가 되면 랭킹도 불러온다. 조회가 실패해도 계속 확인한다 */
   function scheduleSettlePoll() {
+    if (S.stopped) return;
     S.settlePending = true;
     clearTimeout(S.timer);
     S.timer = setTimeout(pollSettle, SETTLE_POLL_MS);
@@ -202,7 +217,7 @@
     refreshAll(true).then(function () {
       var status = S.season && S.season.status;
       if (status === 'ENDED') loadRanking();
-      else if (status === 'SETTLING' && !S.settlePending && !S.locked) scheduleSettlePoll();
+      else if (status === 'SETTLING' && !S.settlePending && !S.stopped) scheduleSettlePoll();
     });
   }
 
@@ -633,23 +648,32 @@
     if (!S.reasonId) { orderError(MSG.REASON_REQUIRED); return; }
     var qty = Math.max(1, parseInt($('trd-qty').value, 10) || 1);
     var side = S.side;
+    var body = { stockId: d.stockId, orderType: side, quantity: qty, turnNo: d.turnNo, reasonId: Number(S.reasonId) };
+    // 새 주문은 새 키, 결과를 모르는 주문을 같은 내용으로 다시 내면 같은 키 (서버가 처음 결과를 돌려준다, DP-37)
+    var sig = JSON.stringify(body);
+    var key = S.pendingOrder && S.pendingOrder.sig === sig ? S.pendingOrder.key : uuid();
+    S.pendingOrder = { sig: sig, key: key };
     S.busy = true;
     updateOrder();
     api('/orders', {
       method: 'POST',
-      headers: { 'Idempotency-Key': uuid() },   // 제출할 때마다 새 키 (DP-37)
-      body: { stockId: d.stockId, orderType: side, quantity: qty, turnNo: d.turnNo, reasonId: Number(S.reasonId) }
+      headers: { 'Idempotency-Key': key },
+      body: body
     }).then(function () {
+      S.pendingOrder = null;
       delete $('trd-o-error').dataset.from;
-      S.reasonId = null;   // 새로고침이 끝날 때까지 제출 버튼을 잠근다 (같은 주문의 중복 체결 방지)
+      S.reasonId = null;
       MB.toast(d.name + ' ' + fmt(qty) + '주를 ' + (side === 'BUY' ? '샀어요' : '팔았어요'));
-      refreshAll(true);
-    }).catch(function (err) {
+      // 새로고침(홈·종목)이 끝날 때까지 S.busy 로 제출 버튼을 잠근다 (같은 주문의 중복 체결 방지)
+      return refreshAll(true);
+    }, function (err) {
+      // 응답을 못 받은 경우(네트워크·형식 없는 오류)만 결과를 모른다 -> 키를 남겨 둔다. 그 밖의 오류는 처리되지 않은 것
+      if (err.code !== 'NETWORK_ERROR' && err.code !== 'ERROR') S.pendingOrder = null;
       if (fatal(err)) return;
       orderError(errText(err));
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
       if (err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
-        refreshAll(true, true);
+        return refreshAll(true, true);
       }
     }).then(function () { S.busy = false; updateOrder(); });
   }
@@ -685,7 +709,7 @@
   }
 
   /* ---------- 다시 불러오기·이벤트 ---------- */
-  /** 홈 정보를 다시 받고 영역을 새로 그린다. keepDetail 이면 보고 있는 종목도 다시 받는다 */
+  /** 홈 정보를 다시 받고 영역을 새로 그린다. keepDetail 이면 보고 있는 종목도 다시 받고, 그것까지 끝나야 끝난다 */
   function refreshAll(keepDetail, skipOrderReset) {
     return loadHome().then(function () {
       loadTrades();
@@ -694,7 +718,7 @@
       if (keepDetail && S.stock && !$('trd-detail').hidden) {
         var errBox = $('trd-o-error');
         var keepText = skipOrderReset ? errBox.textContent : null;
-        loadStock(S.stock.stockId).then(function () { if (keepText) orderError(keepText); });
+        return loadStock(S.stock.stockId).then(function () { if (keepText) orderError(keepText); return true; });
       }
       return true;
     }).catch(function (err) {
