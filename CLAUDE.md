@@ -47,7 +47,7 @@
 - 브랜치 흐름: **작업 브랜치 → `dev` → `main`**. `main`·`dev`에 직접 push하지 않고 PR로만 병합. 작업 브랜치는 `dev`에서 만든다. (예외: `hotfix/…`는 `main`에서 시작해 `main`으로 PR로 먼저 병합하고, 병합한 수정을 `dev`에도 반영한다.)
 - 브랜치 이름: `<타입>/<영역>-<이슈번호>-<짧은-설명>` (예: `feat/be-12-login-api`). 영문 소문자와 하이픈만.
 - 커밋 메시지: `<타입>(<영역>): <한글 요약> (#이슈번호)` — 타입은 영어(`feat` `fix` `docs` `refactor` `style` `test` `chore`), 요약은 한글, 50자 안팎, 마침표 없음.
-- PR: 한 PR = 한 이슈, 대략 400줄 이하. 본문에 `Closes #번호`. 작성자를 뺀 팀원 1명 승인 필수, 본인 PR은 본인이 병합하지 않는다. 작업 브랜치 → `dev`는 Squash and merge, `dev` → `main`은 Create a merge commit.
+- PR: 한 PR = 한 이슈, 대략 400줄 이하. 본문에 `Closes #번호`. 코드 오너(서수영, 보조 이재성, `.github/CODEOWNERS`) 중 작성자가 아닌 1명 승인 필수, 본인 PR은 본인이 병합하지 않는다. 작업 브랜치 → `dev`는 Squash and merge, `dev` → `main`은 Create a merge commit.
 - BE는 PR 전에 `moneybeetle/` 폴더에서 `./gradlew test`(저장소 루트에는 Gradle 래퍼가 없다), FE는 서버를 띄워 화면을 확인한다.
 
 ## PR 리뷰 코멘트 처리 (CodeRabbit·팀원 공통)
