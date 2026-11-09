@@ -13,6 +13,8 @@ import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
+import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import java.time.Clock;
@@ -92,7 +94,8 @@ class AuthLoginFlowTest {
         instructorProfileRepository = mock(InstructorProfileRepository.class);
         givenMember(Member.ROLE_MEMBER, Member.STATUS_ACTIVE);
 
-        AuthService authService = new AuthService(memberRepository, instructorProfileRepository, clock);
+        AuthService authService = new AuthService(
+                new MemberService(memberRepository, mock(TermsRepository.class), instructorProfileRepository), clock);
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(authService);
         provider.setPasswordEncoder(encoder);
         authenticationManager = new ProviderManager(provider);
@@ -315,6 +318,20 @@ class AuthLoginFlowTest {
 
         when(instructorProfileRepository.findByMemberId(8L)).thenReturn(Optional.empty());
         assertThat(login(EMAIL, PASSWORD).json().path("data").path("role").asText()).isEqualTo("MEMBER");
+    }
+
+    @Test
+    @DisplayName("로그인 기록 메서드는 읽기 전용이 아닌 쓰기 트랜잭션이다 (클래스가 읽기 전용이라, 열린 트랜잭션에 참여하는 MemberService 의 저장이 사라지지 않게)")
+    void recordMethodsAreWriteTransactions() throws NoSuchMethodException {
+        var failure = AuthService.class.getMethod("recordLoginFailure", String.class)
+                .getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+        var success = AuthService.class.getMethod("recordLoginSuccess", Long.class)
+                .getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+
+        assertThat(failure).isNotNull();
+        assertThat(failure.readOnly()).isFalse();
+        assertThat(success).isNotNull();
+        assertThat(success.readOnly()).isFalse();
     }
 
     @Test

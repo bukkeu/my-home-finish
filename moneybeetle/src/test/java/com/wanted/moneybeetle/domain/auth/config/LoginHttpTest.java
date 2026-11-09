@@ -16,6 +16,8 @@ import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
+import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import java.time.Clock;
@@ -53,6 +55,7 @@ import org.springframework.web.context.WebApplicationContext;
 *  */
 @SpringBootTest(classes = {LoginHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
         AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
+        MemberService.class,
         LoginHttpTest.ProtectedController.class})
 class LoginHttpTest {
 
@@ -83,6 +86,8 @@ class LoginHttpTest {
     private MemberRepository memberRepository;
     @MockitoBean
     private InstructorProfileRepository instructorProfileRepository;
+    @MockitoBean
+    private TermsRepository termsRepository;
 
     @Autowired
     private WebApplicationContext context;

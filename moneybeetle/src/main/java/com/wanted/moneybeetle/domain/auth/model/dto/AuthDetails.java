@@ -1,6 +1,6 @@
 package com.wanted.moneybeetle.domain.auth.model.dto;
 
-import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import java.util.Collection;
 import java.util.List;
 import lombok.Getter;
@@ -25,14 +25,14 @@ public class AuthDetails implements UserDetails {
     private final String role;
 
     /**
-     * @param grantedRole 부여할 권한. 회원 테이블의 role 이 INSTRUCTOR 여도 승인 전이면 MEMBER 를 넘긴다
+     * 권한은 LoginMemberDTO.grantedRole 이다. 회원 테이블의 role 이 INSTRUCTOR 여도 승인 전이면 MEMBER 다
      */
-    public AuthDetails(Member member, String grantedRole) {
+    public AuthDetails(LoginMemberDTO member) {
         this.memberId = member.getMemberId();
         this.email = member.getEmail();
         this.password = member.getPasswordHash();
         this.nickname = member.getNickname();
-        this.role = grantedRole;
+        this.role = member.getGrantedRole();
     }
 
     @Override

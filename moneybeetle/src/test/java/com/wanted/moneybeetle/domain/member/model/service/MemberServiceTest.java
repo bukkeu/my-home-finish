@@ -37,7 +37,8 @@ class MemberServiceTest {
     void setUp() {
         memberRepository = mock(MemberRepository.class);
         termsRepository = mock(TermsRepository.class);
-        memberService = new MemberService(memberRepository, termsRepository);
+        memberService = new MemberService(memberRepository, termsRepository,
+                org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository.class));
     }
 
     @Test

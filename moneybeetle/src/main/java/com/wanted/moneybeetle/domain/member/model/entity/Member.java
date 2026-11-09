@@ -43,7 +43,11 @@ public class Member {
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
-    /** 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분 */
+    /**
+     * 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분.
+     * system_setting 에 LOGIN_MAX_FAIL·LOGIN_LOCK_MINUTES 시드 키가 있지만 SystemSettingService 가 아직 비어 있고(#39),
+     * 단일 "분" 값으로는 1분/5분 두 단계를 표현할 수 없어서 이 상수를 쓴다. 설정 연동은 #39 에서 키와 함께 정한다.
+     */
     public static final int LOGIN_FAIL_LIMIT = 5;
     public static final long FIRST_LOCK_MINUTES = 1;
     public static final long REPEAT_LOCK_MINUTES = 5;
