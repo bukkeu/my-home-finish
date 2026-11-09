@@ -30,10 +30,11 @@ public class InstructorCourseService {
     private final QuizService quizService;              // quiz 도메인은 Service로만
     private final Clock clock;                          // Asia/Seoul 공통 시계
 
-    /* API 81 검수 요청: 본인 강의, 작성 중·반려 상태, 영상 1개 이상 + 테스트 퀴즈 5 + 퀴즈 5~15 (DP-34) */
+    /* API 81 검수 요청: 본인 강의 → 작성 중·반려 상태 → 영상 1개 이상 + 테스트 퀴즈 5 + 퀴즈 5~15 (DP-34) */
     @Transactional
     public CourseStatusDTO requestReview(Long instructorId, Long courseId) {
         Course course = getMyCourse(instructorId, courseId);
+        course.checkRequestable();                      // 상태 오류(409)를 콘텐츠 오류보다 먼저
         if (lessonRepository.countByCourseId(courseId) < 1) {
             throw new BusinessException(CourseErrorCode.NO_LESSON);
         }

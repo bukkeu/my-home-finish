@@ -99,11 +99,17 @@ public class Course {
         return Objects.equals(this.instructorId, instructorId);
     }
 
-    /* 검수 요청 (API 81, DP-34). 작성 중·반려 상태에서만 → 반려된 강의를 고쳐 다시 요청할 수 있다 */
-    public void requestReview(LocalDateTime submittedAt) {
+    /* 검수 요청을 할 수 있는 상태인지 (API 81). 작성 중·반려 상태만 → 반려된 강의를 고쳐 다시 요청할 수 있다
+     * 서비스가 콘텐츠(영상·퀴즈) 검사보다 먼저 불러 상태 오류(409)가 콘텐츠 오류보다 앞서게 한다 */
+    public void checkRequestable() {
         if (!STATUS_DRAFT.equals(status) && !STATUS_REJECTED.equals(status)) {
             throw new BusinessException(CourseErrorCode.COURSE_NOT_REQUESTABLE);
         }
+    }
+
+    /* 검수 요청 (API 81, DP-34). 상태 변경 자체도 같은 검사로 보호한다 */
+    public void requestReview(LocalDateTime submittedAt) {
+        checkRequestable();
         this.status = STATUS_REVIEW;
         this.submittedAt = submittedAt;
     }
