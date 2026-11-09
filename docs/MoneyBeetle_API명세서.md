@@ -2390,7 +2390,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `NOT_FOUND`
+**Error**: `NOT_FOUND`, `CATEGORY_IN_USE`(삭제 확인 직후 강의가 동시에 연결된 경우. 다시 요청하면 비활성으로 처리)
 
 #### 89. 강의 목록(검수)
 

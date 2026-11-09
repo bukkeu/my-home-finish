@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.course.model.service;
 
+import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.domain.course.model.dao.CategoryRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.CourseRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.AdminCategoryTreeDTO;
@@ -9,6 +10,7 @@ import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,7 +70,9 @@ public class AdminCategoryService {
         getCategoryOrThrow(categoryId).change(request.name().strip(), request.sortOrder(), request.isActive());
     }
 
-    /* API 88 삭제: 연결된 강의·소주제가 있으면 비활성, 없으면 실제 삭제 */
+    /* API 88 삭제: 연결된 강의·소주제가 있으면 비활성, 없으면 실제 삭제
+     * 확인과 삭제 사이에 강의가 연결되면 FK 위반이 난다 → 500 대신 409 CATEGORY_IN_USE로 알리고 트랜잭션은 롤백.
+     * (예외 뒤 같은 세션에서 비활성으로 바꾸면 Hibernate 세션이 깨질 수 있어서, 다시 요청하면 그때 비활성으로 처리된다) */
     @Transactional
     public void delete(Long categoryId) {
         Category category = getCategoryOrThrow(categoryId);
@@ -78,7 +82,12 @@ public class AdminCategoryService {
             category.deactivate();
             return;
         }
-        categoryRepository.delete(category);
+        try {
+            categoryRepository.delete(category);
+            categoryRepository.flush();   // DELETE를 바로 실행해서 FK 위반을 이 메서드 안에서 잡는다
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(CourseErrorCode.CATEGORY_IN_USE);
+        }
     }
 
     private Category getCategoryOrThrow(Long categoryId) {
