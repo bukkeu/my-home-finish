@@ -43,6 +43,8 @@ public class Member {
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
+    /** 탈퇴한 회원의 학습·문의 기록에 보여 주는 이름 (DP-06) */
+    public static final String WITHDRAWN_NICKNAME = "탈퇴한 사용자";
     /**
      * 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분.
      * system_setting 에 LOGIN_MAX_FAIL·LOGIN_LOCK_MINUTES 시드 키가 있지만 SystemSettingService 가 아직 비어 있고(#39),
@@ -180,6 +182,15 @@ public class Member {
     public boolean hasEnoughCash(long amount) {
         return this.cash >= amount;
     }
+
+    /**
+     * 다른 사람에게 보여 줄 닉네임. 탈퇴한 회원은 실제 닉네임 대신 "탈퇴한 사용자"를 보여 준다 (DP-06).
+     * 정지된 회원은 그대로 보인다.
+     */
+    public String displayNickname() {
+        return STATUS_WITHDRAWN.equals(status) ? WITHDRAWN_NICKNAME : nickname;
+    }
+
 
     /**
      * 로그인 실패를 기록하고 잠글 때가 되면 잠근다 (DP-10).
