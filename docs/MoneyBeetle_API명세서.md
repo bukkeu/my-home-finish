@@ -60,6 +60,9 @@
 
 - 아래 상세 명세의 Response는 `data` 안의 내용만 적었습니다.
 - 입력값 오류는 `error.fields`에 `[{ "field": "nickname", "message": "이미 사용 중인 닉네임이에요" }]` 형태로 입력칸별 안내를 담습니다 (EP-01).
+  - 요청 본문 검증(`@Valid`) 실패는 400 `INVALID_INPUT` 이고 `fields`에 칸마다 한 줄씩 담습니다. 여러 칸을 비교하는 검사를 `isXxx()` 메서드에 붙이면 `field`는 그 이름(예: `isPasswordConfirmed()` → `passwordConfirmed`)이고, 클래스에 붙인 검사는 `field`가 `null` 입니다.
+  - 본문 JSON 형식 오류, 필수 파라미터 누락, 파라미터 타입 오류(예: `?page=abc`)도 400 `INVALID_INPUT` 이지만 `fields`는 `null` 입니다.
+  - 입력값 오류가 아닌 모든 실패 응답의 `fields`는 `null` 입니다 (#142).
 - `message`는 화면에 그대로 보여 줄 수 있는 문구입니다. 기술 용어와 상세 원인은 넣지 않습니다 (EP-05).
 
 ### 1-3 페이지네이션
@@ -3646,6 +3649,7 @@ email=admin@moneybeetle.kr&password=...
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
 | 공통 | `IDEMPOTENCY_KEY_TOO_LONG` | 400 | 요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
+| 공통 | `INVALID_INPUT` | 400 | 입력한 값을 다시 확인해 주세요 (입력칸별 안내는 `error.fields`) |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
 | 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
