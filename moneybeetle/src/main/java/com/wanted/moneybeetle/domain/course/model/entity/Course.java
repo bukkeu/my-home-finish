@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
+import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -49,4 +51,51 @@ public class Course {
     public boolean isVisibleToLearner() {
         return STATUS_APPROVED.equals(status) && isPublic && deletedAt == null;
     }
-}
+
+    public boolean isInReview() {
+        return STATUS_REVIEW.equals(status);
+    }
+
+    public boolean isApproved() {
+        return STATUS_APPROVED.equals(status);
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /* 허가 = 허가 + 공개 (API 91). 검수 중인 강의만 */
+    public void approve(LocalDateTime approvedAt) {
+        requireInReview();
+        this.status = STATUS_APPROVED;
+        this.isPublic = true;
+        this.approvedAt = approvedAt;
+    }
+
+    /* 반려 (API 92). 사유는 course_review에 남긴다. 반려된 강의는 보이지 않게 비공개 */
+    public void reject() {
+        requireInReview();
+        this.status = STATUS_REJECTED;
+        this.isPublic = false;
+    }
+
+    /* 공개·비공개 (API 93). 허가된 강의만 바꿀 수 있다 → 허가 안 된 강의가 공개되는 일을 막는다 */
+    public void changeVisibility(boolean isPublic) {
+        if (!isApproved()) {
+            throw new BusinessException(CourseErrorCode.COURSE_NOT_APPROVED);
+        }
+        this.isPublic = isPublic;
+    }
+
+    /* Soft Delete (API 94). 학습 기록 확인은 서비스가 한다 */
+    public void delete(LocalDateTime deletedAt) {
+        this.isPublic = false;
+        this.deletedAt = deletedAt;
+    }
+
+    private void requireInReview() {
+        if (!isInReview()) {
+            throw new BusinessException(CourseErrorCode.COURSE_NOT_IN_REVIEW);
+        }
+    }
+}   // ← 맨

@@ -34,7 +34,7 @@
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
-| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37) |
+| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 거절된 4xx 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 5xx 응답은 처리 여부를 알 수 없어 보관하고 같은 키로 다시 오면 그 응답을 돌려준다(이미 저장된 주문·납입이 다시 실행되지 않게). 5xx를 받은 화면은 자동으로 다시 보내지 않고, 내역(거래 내역·청약통장·퀴즈 결과)을 다시 조회해 처리됐는지 먼저 확인한 뒤 처리되지 않았을 때만 새 키로 시도한다(새 키는 기존 기록이 적용되지 않아 그대로 다시 실행된다). 응답을 만들지 못하고 필터 밖으로 예외·Error가 전파된 경우도 처리 여부를 알 수 없으므로 5xx와 같게 500(`INTERNAL_ERROR`) 결과로 보관한다(같은 키로 다시 와도 재실행되지 않고, "처리 중"으로 남아 `DUPLICATE_REQUEST`가 계속되지도 않는다). 헤더가 없으면 막지 않고 그대로 처리한다. 키는 100자까지이고(UUID 36자), 넘으면 처리하지 않고 400 `IDEMPOTENCY_KEY_TOO_LONG` (`IdempotencyFilter`, #65) |
 
 ### 1-2 응답 형식
 
@@ -412,7 +412,10 @@
 { "memberId": 1, "nickname": "민지" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `REQUIRED_TERMS_NOT_AGREED`, `AGE_UNDER_14`, `FORBIDDEN_WORD`
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`
+
+- `EMAIL_DUPLICATED`·`NICKNAME_DUPLICATED`는 두 요청이 동시에 같은 값으로 가입해 중복 확인을 함께 통과해도 DB 고유 제약(`uk_member_email`, `uk_member_nickname`)에서 걸러져 같은 409로 응답한다.
+- 청약통장 개설은 서수영의 `HousingService.openAccount` 연동 뒤에 붙는다(이슈 #5 남은 작업).
 
 #### 5. 본인인증
 
@@ -446,25 +449,38 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-06, DP-10~11, GRW-01 |
-| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 10분 잠금. |
+| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 1분 잠금(이후 5회 실패마다 5분). 로그인은 Spring Security 가 처리하는 **폼 로그인**이라 요청이 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이다. 데이터를 바꾸는 POST 라서 CSRF 토큰(`_csrf` 폼 값 또는 헤더)도 함께 보낸다. 응답은 JSON 이다. |
 
 **Request**
 
-```json
-{ "email": "minji@gmail.com", "password": "beetle1234" }
 ```
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
+```
+
+- `email`은 대소문자·앞뒤 공백을 구분하지 않는다. `next`는 선택이고, 로그인 뒤 이동할 사이트 안 경로(`/`로 시작)만 받는다.
+- JSON 본문(`{"email": ...}`)은 읽지 않아 `LOGIN_FAILED` 로 응답한다.
 
 **Response**
 
 ```json
 {
   "memberId": 1, "nickname": "민지", "role": "MEMBER",
-  "attendance": { "checkedToday": true, "streak": 5, "rewardCash": 1000 },
-  "redirectUrl": "/user/home"
+  "redirectUrl": "/user/home",
+  "attendance": { "checkedToday": true, "newlyChecked": true, "streak": 5, "rewardCash": 10000 }
 }
 ```
 
-**Error**: `LOGIN_FAILED`, `LOGIN_LOCKED`, `ACCOUNT_SUSPENDED`, `ACCOUNT_WITHDRAWN`
+- `role`은 실제로 부여된 권한이다. 회원 정보상 강사여도 관리자가 승인하기 전에는 `MEMBER` 로 로그인된다(SP-07).
+- `redirectUrl`: `next` → 로그인 전에 가려던 화면 → 역할별 첫 화면(`/user/home`, `/instructor/dashboard`, `/admin/dashboard`) 순이다.
+- `attendance`는 일반 회원(`MEMBER`)이 로그인할 때 오늘 출석을 기록한 결과다. `newlyChecked`는 오늘 처음 기록했는지, `rewardCash`는 이번 출석으로 받은 캐시(연속 5일째부터, 이미 출석했거나 보상 규칙이 꺼져 있으면 0)다. 강사·관리자 로그인이거나 출석 기록이 실패하면 `null` 이고, 출석이 실패해도 로그인은 성공한다.
+
+**Error**: `LOGIN_FAILED`(401), `LOGIN_LOCKED`(423), `ACCOUNT_SUSPENDED`(403), `ACCOUNT_WITHDRAWN`(403)
+
+- 없는 이메일과 틀린 비밀번호는 같은 `LOGIN_FAILED` 로 응답한다. 계정이 있는지 알려 주지 않기 위해서다.
+- 비밀번호가 틀린 경우만 실패 횟수를 올리고, 5번째 실패 응답부터 `LOGIN_LOCKED` 이다. 잠금·정지·탈퇴는 비밀번호보다 먼저 확인한다.
 
 #### 7. 로그아웃
 
@@ -474,15 +490,16 @@
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | USR-06 |
-| 설명 | 세션을 끝낸다. |
+| 설명 | 세션을 끝낸다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
 
 **Request**
 
-- 없음
+- 없음 (`Accept: application/json` 으로 보내는 `fetch` 요청)
 
 **Response**
 
 - 204 No Content
+- 브라우저가 직접 보낸 폼 요청(사이드바 로그아웃 버튼)은 204 대신 첫 화면(`/`)으로 이동한다.
 
 #### 8. 간편 로그인 시작
 
@@ -512,7 +529,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-08 |
-| 설명 | 닉네임과 생년월일로 이메일 일부를 가려서 알려 준다. |
+| 설명 | 닉네임과 생년월일로 이메일 일부를 가려서 알려 준다. 탈퇴·정지 회원은 알려 주지 않고 `MEMBER_NOT_FOUND`다. |
 
 **Request**
 
@@ -536,7 +553,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 본인 확인 메일을 보낸다. 인증은 10분 유효, 1회용. |
+| 설명 | 본인 확인 메일을 보낸다. 인증은 10분 유효, 1회용이다. 가입 여부를 숨기려고 없는 이메일이어도 같은 202로 답한다. 새로 요청하면 이전 메일의 링크는 쓸 수 없다. 메일의 링크는 `{APP_BASE_URL}/password-reset?token=...`. |
 
 **Request**
 
@@ -556,7 +573,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. |
+| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. |
 
 **Request**
 
@@ -568,7 +585,7 @@
 
 - 204 No Content
 
-**Error**: `TOKEN_EXPIRED`, `TOKEN_USED`, `PASSWORD_MISMATCH`
+**Error**: `TOKEN_EXPIRED`, `TOKEN_USED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`
 
 #### 12. 강사 가입 신청
 
@@ -634,7 +651,7 @@
 | Method | `PATCH` |
 | 권한 | 회원 |
 | 관련 | USR-12, SP-02 |
-| 설명 | 닉네임, 생년월일, 성별을 바꾼다. 이메일은 바꿀 수 없다. |
+| 설명 | 닉네임, 생년월일, 성별을 바꾼다. 보내지 않은(null) 항목은 그대로 둔다. 닉네임이 바뀔 때만 형식·금칙어·중복을 확인하고, 생년월일은 과거 날짜·만 14세 이상이어야 한다. 이메일은 바꿀 수 없다. |
 
 **Request**
 
@@ -648,7 +665,7 @@
 { "memberId": 1, "nickname": "민지짱" }
 ```
 
-**Error**: `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`
+**Error**: `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`
 
 #### 15. 프로필 이미지 변경
 
@@ -667,7 +684,7 @@
 **Response**
 
 ```json
-{ "profileImageUrl": "/files/profile/1.png" }
+{ "profileImageUrl": "/uploads/3f2c9a1e-....png" }
 ```
 
 **Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
@@ -702,7 +719,7 @@
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 계정을 비활성화(WITHDRAWN)한다. 개인정보는 30일 뒤 파기. |
+| 설명 | 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -714,7 +731,7 @@
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`
+**Error**: `PASSWORD_WRONG`, `FORBIDDEN`
 
 #### 18. 다른 회원 공개 프로필
 
@@ -724,7 +741,7 @@
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | DP-03, HOM-06 |
-| 설명 | 닉네임, 프로필 이미지, 칭호, 레벨, 랭킹 수상 내역만 보여 준다. |
+| 설명 | 닉네임, 프로필 이미지, 칭호, 레벨, 랭킹 수상 내역만 보여 준다. 이메일·생년월일·성별은 내려주지 않는다. 탈퇴·정지 회원은 `MEMBER_NOT_FOUND`. (`awards`는 모의투자 도메인이 수상 내역 조회를 공개하기 전까지 빈 목록) |
 
 **Request**
 
@@ -808,7 +825,7 @@
 **Response**
 
 ```json
-{ "streak": 3, "daysToReward": 2, "rewardCash": 1000, "checkedToday": true }
+{ "streak": 3, "daysToReward": 2, "rewardCash": 10000, "checkedToday": true }
 ```
 
 #### 22. 캐시 내역
@@ -879,7 +896,7 @@
 **Response**
 
 ```json
-{ "levels": [ { "level": 1, "requiredExp": 0, "title": "텐트", "levelupCash": 0 }, { "level": 8, "requiredExp": 1050, "title": "투룸", "levelupCash": 8000, "unlocks": ["TRADING"] } ] }
+{ "levels": [ { "level": 1, "requiredExp": 0, "title": "고시원", "levelupCash": 0 }, { "level": 8, "requiredExp": 1250, "title": "투룸", "levelupCash": 80000, "unlocks": ["TRADING"] } ] }
 ```
 
 #### 25. 알림 목록
@@ -1280,7 +1297,7 @@ Header: Idempotency-Key: 7c1e...
 {
   "attemptId": 55, "score": 80, "correctCount": 8, "questionCount": 10, "isPassed": true,
   "results": [ { "questionId": 201, "isCorrect": true, "correctChoiceId": 12, "explanation": "..." } ],
-  "rewards": { "firstPass": true, "exp": 120, "cash": 3500, "levelUp": { "from": 7, "to": 8, "title": "투룸", "levelupCash": 8000, "unlocked": ["TRADING"] } }
+  "rewards": { "firstPass": true, "exp": 120, "cash": 3500, "levelUp": { "from": 7, "to": 8, "title": "투룸", "levelupCash": 80000, "unlocked": ["TRADING"] } }
 }
 ```
 
@@ -1314,7 +1331,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-06, SP-36 |
-| 설명 | 카테고리·강의별로 모아 본다. |
+| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. |
 
 **Request**
 
@@ -1325,7 +1342,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 {
   "items": [ { "wrongNoteId": 9, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "categoryName": "부동산 › 청약",
-    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" } ]
+    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" }   ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1
 }
 ```
 
@@ -1337,8 +1355,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-06 |
-| 설명 | 오답노트 문제만 다시 풀고 채점 결과를 본다. 기록·보상 없음. |
-
+| 설명 | 오답노트 문제만 다시 풀고 채점 결과를 본다. 기록·보상 없음. 요청한 문항 중 내 오답노트에 있고 공개된 강의의 문제만 채점한다. |
 **Request**
 
 ```json
@@ -1359,8 +1376,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | SP-36 |
-| 설명 | 오답노트에서 지운다(실제 삭제). |
-
+| 설명 | 오답노트에서 지운다(실제 삭제). 본인 오답만 지워지며, 없거나 남의 ID여도 204(존재 여부를 알리지 않음). |
 **Request**
 
 - Path: wrongNoteId=9
@@ -1402,9 +1418,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | LRN-09, DP-30, DP-21 |
-| 설명 | 강의 문의(courseId) 또는 사이트 문의(category). 제목 50자, 내용 1,000자, 하루 10개. |
-
-**Request**
+| 설명 | 강의 문의(courseId) 또는 사이트 문의(category) 중 **하나만** 지정(둘 다 있거나 둘 다 없으면 400). 강의 문의는 공개 강의만. 제목 50자, 내용 1,000자, 하루 10개(Asia/Seoul 자정 기준, 삭제한 글도 셈). |
 
 ```json
 { "courseId": 7, "category": null, "title": "부양가족에 부모님도 포함되나요?", "content": "..." }
@@ -1427,9 +1441,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 작성자·강사·관리자 |
 | 관련 | LRN-09, SP-40, DP-22 |
-| 설명 | 답글 포함. 숨김 글은 “관리자에 의해 숨김 처리된 글이에요”로 표시. |
-
-**Request**
+| 설명 | 답글 포함(오래된 순). 숨김 글·답글은 관리자 외에는 “관리자에 의해 숨김 처리된 글이에요”로 표시. 강사 권한은 삭제되지 않은 내 강의의 문의만. 답글 writer.role: 강의 강사 INSTRUCTOR, 문의 작성자 MEMBER, 그 외 ADMIN. |
 
 - Path: inquiryId=3
 
@@ -1493,9 +1505,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 작성자·강사(내 강의)·관리자 |
 | 관련 | TCH-09, LRN-09 |
-| 설명 | 강사·관리자 답글이면 문의 상태를 ANSWERED로 바꾸고 작성자에게 알림. |
-
-**Request**
+| 설명 | 강사·관리자 답글이면 문의 상태를 ANSWERED로 바꾸고 작성자에게 알림(type INQUIRY_REPLY, linkUrl /user/inquiry/{inquiryId}). 작성자 본인의 추가 댓글은 상태를 바꾸지 않음. |
 
 ```json
 { "content": "부모님도 함께 살면 포함돼요." }
@@ -1571,7 +1581,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-06 |
-| 설명 | 15개 분야와 소속 종목. |
+| 설명 | 15개 분야와 소속 종목. 사용 중인 분야를 정렬 순서대로, 분야마다 사용 중인 종목을 종목 번호 순으로 보여 준다(#24). |
 
 **Request**
 
@@ -1591,7 +1601,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-06, INV-10 |
-| 설명 | 현재 턴 가격과 등락률. sort=popular(인기) |
+| 설명 | 현재 턴 가격과 등락률. 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료 중 시작일이 가장 최근인 것) 기준이고 정산 중·종료에도 마지막 턴까지 계속 보여 주며(주문만 `SEASON_CLOSED`로 막힌다), 다음 턴 이후 가격은 미리 입력돼 있어도 나오지 않는다. 기본 정렬은 분야 정렬 순서 → 종목 번호, `sort=popular`(인기)는 이번 시즌 거래 수가 많은 순(같으면 종목 번호, 제안). `sectorId`, `keyword`(종목 이름 일부)로 거를 수 있다. 가격이 아직 입력되지 않은 종목은 `price`·`changeRate`가 null, 1턴은 `changeRate`가 null (#24) |
 
 **Request**
 
@@ -1603,6 +1613,8 @@ Header: Idempotency-Key: 7c1e...
 { "turnNo": 5, "stocks": [ { "stockId": 1, "name": "한빛반도체", "sectorName": "반도체", "price": 84500, "changeRate": 2.8 } ] }
 ```
 
+**Error**: `NO_RUNNING_SEASON`
+
 #### 57. 종목 상세
 
 | 항목 | 내용 |
@@ -1611,7 +1623,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-07 |
-| 설명 | 현재 가격, 지난 턴까지 가격 흐름, 기업정보, 내 보유 수량. |
+| 설명 | 현재 가격, 1턴부터 현재 턴까지 가격 흐름, 기업정보, 내 보유 수량. `myHolding`은 로그인 회원이 이 시즌에 참가하지 않았거나 그 종목이 없으면 null. 사용 안 함 종목은 `NOT_FOUND` (#24) |
 
 **Request**
 
@@ -1628,7 +1640,7 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `NOT_FOUND`
+**Error**: `NOT_FOUND`, `NO_RUNNING_SEASON`
 
 #### 58. 가상 뉴스
 
@@ -1638,7 +1650,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-08 |
-| 설명 | 현재 턴까지 공개된 뉴스. stockId로 종목 뉴스 탭. |
+| 설명 | 현재 턴까지 공개된 뉴스, 최근 턴부터. `turnNo`를 주면 그 턴만(현재 턴보다 뒤면 빈 목록), `stockId`를 주면 그 종목이 관련 종목으로 걸린 뉴스만(종목 뉴스 탭). 관리자 메모는 나오지 않는다 (#24) |
 
 **Request**
 
@@ -1649,6 +1661,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 { "items": [ { "newsId": 31, "turnNo": 5, "title": "한빛반도체, 대형 메모리 공급 계약", "content": "...", "sectors": ["반도체"], "stocks": ["한빛반도체"] } ] }
 ```
+
+**Error**: `NO_RUNNING_SEASON`
 
 #### 59. 매매 이유 선택지
 
@@ -1752,7 +1766,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-01~02, NFR-12 |
-| 설명 | 월별 공고일·신청 기간·발표일. |
+| 설명 | 월별 공고일·신청 기간·발표일. 그 달에 일정이 하나라도 걸친 단지(공고일 ≤ 말일, 발표일 ≥ 1일)를 신청 시작일 순으로 준다. `status`는 오늘 기준(API 64 참고), `applied`는 내가 신청한 단지면 `true`. |
 
 **Request**
 
@@ -1790,6 +1804,16 @@ Header: Idempotency-Key: 9b2f...
 }
 ```
 
+- `status`: 오늘(Asia/Seoul) 기준으로 계산한다. 신청 시작일 전 `UPCOMING`, 신청 기간(시작일·마감일 당일 포함) `OPEN`, 마감 뒤 `CLOSED`, 관리자가 발표하면 `ANNOUNCED`.
+- `competitionRate`: 접수 마감 뒤에만 `신청자 수 ÷ 공급 세대`를 소수 둘째 자리까지 준다(예: 250명 ÷ 120세대 → `2.08`). 마감 전에는 `null` (SP-74, SUB-10).
+- `myApplication`: 이 단지에 신청했으면 아래 값, 신청하지 않았으면 `null` (SUB-08).
+
+```json
+"myApplication": { "applicationId": 40, "receiptNo": "MB-261105-0042", "totalScore": 24, "appliedAt": "2026-11-05T10:00:00" }
+```
+
+**Error**: `LEVEL_LOCKED`, `NOT_FOUND` (없거나 삭제된 단지)
+
 #### 65. 내 청약통장
 
 | 항목 | 내용 |
@@ -1798,7 +1822,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-04, SP-70 |
-| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부, 납입 한도(1회 20,000~500,000, 하루 인정 250,000. SP-70 초안). (Lv.12 전 납입 허용 여부는 팀 확인 필요) |
+| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부(`paidToday`, 오늘 = Asia/Seoul), 납입 기준(1회 20,000~500,000, 하루 인정 250,000. SP-70 확정 #76), 내 캐시. **레벨 조건 없음**(가입과 동시에 통장 개설, #28). |
 
 **Request**
 
@@ -1810,6 +1834,8 @@ Header: Idempotency-Key: 9b2f...
 { "accountId": 1, "balance": 1840000, "recognizedAmount": 1590000, "paidCount": 14, "lastPaidDate": "2026-11-04", "paidToday": false,
   "depositPolicy": { "minAmount": 20000, "maxAmount": 500000, "dailyRecognizedLimit": 250000 }, "cash": 1250000 }
 ```
+
+**Error**: `NOT_FOUND`(통장 없음 : 가입 때 만들어지므로 보통 생기지 않음)
 
 #### 66. 청약통장 납입
 
@@ -1835,7 +1861,10 @@ Header: Idempotency-Key: 31aa...
 { "depositId": 15, "amount": 300000, "recognizedAmount": 250000, "balance": 2140000, "totalRecognizedAmount": 1840000, "paidCount": 15, "cash": 950000 }
 ```
 
-**Error**: `ALREADY_PAID_TODAY`, `DEPOSIT_BELOW_MIN`, `DEPOSIT_ABOVE_MAX`, `NOT_ENOUGH_CASH`
+**Error**: `ALREADY_PAID_TODAY`(409), `DEPOSIT_BELOW_MIN`(400), `DEPOSIT_ABOVE_MAX`(400), `NOT_ENOUGH_CASH`(캐시 차감 RewardService 가 던짐), `NOT_FOUND`(통장 없음)
+
+- 처리 순서: 금액 검사 → 통장 잠금 조회(동시 요청 방지) → 하루 1회 확인 → 납입 내역 저장 → 캐시 차감 → 통장 잔액·인정금액·회차·마지막 납입일 반영. 하나라도 실패하면 모두 취소된다.
+- `Idempotency-Key` 헤더 처리는 #65(IdempotencyFilter)에서 붙인다.
 
 #### 67. 납입 내역
 
@@ -1845,7 +1874,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-05 |
-| 설명 | 납입 기록 최신순. |
+| 설명 | 납입 기록. 기본 20개씩 납입일 최신순(`sort=paidDate,desc`). 목록 응답 형식(1-3)을 따른다. |
 
 **Request**
 
@@ -1854,7 +1883,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ] }
+{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ], "page": 0, "size": 20, "totalElements": 15, "totalPages": 1 }
 ```
 
 #### 68. 가점 계산기
@@ -1865,7 +1894,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-06, SP-71 |
-| 설명 | 무주택 기간과 부양가족 수를 넣으면 납입회차를 자동 반영해 계산. 저장하지 않음. |
+| 설명 | 무주택 기간과 부양가족 수를 넣으면 내 청약통장 납입회차를 자동 반영해 계산. 저장하지 않음. 점수표는 실제 청약 가점제(SP-71 확정, #29) |
 
 **Request**
 
@@ -1873,11 +1902,18 @@ Header: Idempotency-Key: 31aa...
 { "homelessYears": 3, "dependents": 1 }
 ```
 
+- `homelessYears`: 무주택 기간(년, 1년 미만은 0), `dependents`: 부양가족 수. 둘 다 0 이상.
+
 **Response**
 
 ```json
 { "homelessScore": 8, "dependentScore": 10, "accountScore": 6, "totalScore": 24, "maxScore": 84, "baseDate": "2026-11-01" }
 ```
+
+- 무주택(32): 1년 미만 2점, 1년마다 +2점, 15년 이상 32점 / 부양가족(35): 0명 5점, 1명마다 +5점, 6명 이상 35점 / 통장(17): 납입 1회 = 1개월로 보고 6회 미만 1점, 6~11회 2점, 12~23회 3점, 이후 12회마다 +1점, 180회 이상 17점. 예시는 납입 48회.
+- `baseDate`: 계산한 날(오늘, Asia/Seoul). 화면에 기준일로 표시한다.
+
+**Error**: `LEVEL_LOCKED`, `INVALID_SCORE_INPUT`(400, 무주택 기간 0~50년·부양가족 0~20명 밖), `NOT_FOUND`(청약통장 없음)
 
 #### 69. 청약 신청
 
@@ -1887,7 +1923,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-07~08, SP-72~73 |
-| 설명 | 신청 기간 안에서만, 같은 단지 1회. 신청 후 취소·수정 불가. 신청 시점 가점을 저장. |
+| 설명 | 신청 기간(신청 시작일·마감일 당일 포함) 안에서만, 같은 단지 1회. 신청 후 취소·수정 불가. 신청 시점의 입력값·납입회차·항목별 점수를 저장(이후 납입해도 신청 점수는 그대로). 접수번호는 `MB-신청일(yyMMdd)-그날 순번 4자리`. |
 
 **Request**
 
@@ -1902,7 +1938,7 @@ Header: Idempotency-Key: 31aa...
 { "applicationId": 40, "receiptNo": "MB-261105-0042", "totalScore": 24 }
 ```
 
-**Error**: `LEVEL_LOCKED`, `NOT_IN_APPLY_PERIOD`, `ALREADY_APPLIED`
+**Error**: `LEVEL_LOCKED`, `NOT_IN_APPLY_PERIOD`(409), `ALREADY_APPLIED`(409, 같은 단지에 동시에 두 번 신청해 회원+단지 유니크 키에 걸린 경우 포함), `RECEIPT_NO_CONFLICT`(409, 다른 회원과 같은 순간에 신청해 접수번호가 겹침. 저장되지 않았으니 다시 신청), `INVALID_SCORE_INPUT`(400), `NOT_FOUND`(없거나 삭제된 단지, 청약통장 없음)
 
 #### 70. 내 신청 내역
 
@@ -1912,7 +1948,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 Lv.12 |
 | 관련 | SUB-09, SUB-11 |
-| 설명 | 신청 단지, 상태, 발표 후 결과. |
+| 설명 | 신청 단지, 접수번호, 가점, 발표일, 발표 후 결과. 기본 20개씩 신청 최신순(`sort=appliedAt,desc`). 목록 응답 형식(1-3). `result`는 관리자가 발표하기 전에는 저장돼 있어도 `null`(SP-75). |
 
 **Request**
 
@@ -1921,8 +1957,10 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "applicationId": 40, "complexName": "그린숲 행복주택", "receiptNo": "MB-261105-0042", "totalScore": 24, "announceDate": "2026-11-17", "result": null } ] }
+{ "items": [ { "applicationId": 40, "complexName": "그린숲 행복주택", "receiptNo": "MB-261105-0042", "totalScore": 24, "announceDate": "2026-11-17", "result": null } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
+
+**Error**: `LEVEL_LOCKED`
 
 #### 71. 당첨 결과
 
@@ -1932,7 +1970,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 (본인) |
 | 관련 | SUB-11 |
-| 설명 | 발표일 이후에만. |
+| 설명 | 관리자가 발표한 뒤에만(단지 `status = ANNOUNCED`이고 산정 결과가 있을 때). 본인 신청만 볼 수 있다. 레벨 조건 없음. |
 
 **Request**
 
@@ -1944,7 +1982,9 @@ Header: Idempotency-Key: 31aa...
 { "result": "LOSE", "totalScore": 24, "message": "이번에는 낙첨이에요. 내 가점은 24점이었어요" }
 ```
 
-**Error**: `NOT_ANNOUNCED_YET`
+- 당첨이면 `"result": "WIN"`, `"message": "축하해요! 당첨이에요. 내 가점은 N점이었어요"`.
+
+**Error**: `NOT_ANNOUNCED_YET`(403, 발표 전 또는 산정 전), `NOT_FOUND`(없는 신청이거나 남의 신청)
 
 ### 강사
 
@@ -2229,12 +2269,15 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | ADM-01, DP-10 |
-| 설명 | ADMIN 권한 계정만 성공. 5회 실패 시 잠금. |
+| 설명 | ADMIN 권한 계정만 성공. 일반 로그인(API 6)과 같은 **폼 로그인**이라 요청은 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이고 CSRF 토큰도 함께 보낸다. 5회 연속 실패 시 잠금은 일반 로그인과 같은 규칙(1분, 이후 5회마다 5분)이고 잠금 횟수도 함께 센다. 일반 회원·강사 계정은 비밀번호가 맞아도 `FORBIDDEN`(403)이고 로그인 성공으로 기록되지 않는다. |
 
 **Request**
 
-```json
-{ "email": "admin@moneybeetle.kr", "password": "..." }
+```
+POST /api/v1/admin/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+email=admin@moneybeetle.kr&password=...
 ```
 
 **Response**
@@ -2354,9 +2397,8 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-03~04 |
-| 설명 | 상태별 강의 목록. |
+| 설명 | 상태별 강의 목록(삭제된 강의 제외). status=DRAFT·REVIEW·APPROVED·REJECTED, 없거나 모르는 값이면 전체. 검수 요청 최신순. 항목: courseId, title, instructorName, status, isPublic, submittedAt, learners(학습 시작 회원 수). 페이지 응답(PageResponse). |
 
-**Request**
 
 - Query: status=REVIEW&page=0&size=20
 
@@ -2374,9 +2416,8 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-03 |
-| 설명 | 영상·요약글·퀴즈(정답 포함)와 검수 이력. |
+| 설명 | 강의 편집 정보 + lessons[](영상·요약글, 순서대로) + quizzes[](테스트·본 퀴즈 전체, 보기별 isCorrect·해설 포함) + reviews[](검수 이력 최신순: result, reason, adminId, createdAt). 삭제된 강의는 NOT_FOUND. |
 
-**Request**
 
 - Path: courseId=9
 
@@ -2392,13 +2433,13 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 허가 + 공개. course_review·admin_log 기록. |
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
 
-**Request**
 
 - Path: courseId=9
 
 **Response**
+#### **Error**: `COURSE_NOT_IN_REVIEW`, `NOT_FOUND`
 
 ```json
 { "status": "APPROVED", "isPublic": true }
@@ -2412,8 +2453,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-| 설명 | 사유 필수. 강사에게 알림. |
-
+| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
@@ -2426,7 +2466,7 @@ Header: Idempotency-Key: 4d8e...
 { "status": "REJECTED" }
 ```
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `COURSE_NOT_IN_REVIEW`, `NOT_FOUND`
 
 #### 93. 공개·비공개
 
@@ -2436,9 +2476,8 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-04 |
-| 설명 | 허가된 강의를 비공개로 바꾸거나 다시 공개. |
+| 설명 | 허가(APPROVED)된 강의만 비공개로 바꾸거나 다시 공개. 허가 안 된 강의는 공개할 수 없음. |
 
-**Request**
 
 ```json
 { "isPublic": false }
@@ -2447,6 +2486,7 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 - 204 No Content
+**Error**: `COURSE_NOT_APPROVED`, `NOT_FOUND`
 
 #### 94. 강의 삭제
 
@@ -2886,7 +2926,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-09, ADM-12, SP-50 |
-| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력을 자동 생성. copyFromSeasonId를 주면 이전 시즌의 분야·종목을 그대로 가져온다. |
+| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력(일요일 제외)을 자동 생성. 기본 설정은 이월 100%·상한 없음·해금 Lv.8(SP-63). copyFromSeasonId를 주면 그 시즌의 이월 비율·상한·해금 레벨을 그대로 가져온다(분야·종목은 시즌과 상관없이 공통이라 복사할 것이 없다). 없는 시즌이면 `NOT_FOUND`. 만든 관리자(`created_by`)는 로그인한 관리자 번호이고, 로그인 정보가 없으면 401 `UNAUTHORIZED` (#40) |
 
 **Request**
 
@@ -2901,7 +2941,7 @@ Header: Idempotency-Key: 4d8e...
 { "seasonId": 8, "turns": [ { "turnNo": 1, "tradeDate": "2026-11-16" } ] }
 ```
 
-**Error**: `START_DATE_NOT_MONDAY`
+**Error**: `START_DATE_NOT_MONDAY`, `NOT_FOUND`
 
 #### 116. 시즌 설정
 
@@ -2911,7 +2951,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-11 |
-| 설명 | 이월 비율·상한, 참가 해금 레벨. |
+| 설명 | 이월 비율(0~100%, 소수 둘째 자리까지)·상한(없으면 null), 참가 해금 레벨(1~20). 정산 중·종료된 시즌은 바꿀 수 없다. |
 
 **Request**
 
@@ -2923,6 +2963,8 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
+**Error**: `SEASON_CLOSED`, `NOT_FOUND`
+
 #### 117. 시즌 상태 변경
 
 | 항목 | 내용 |
@@ -2931,7 +2973,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-10, SP-65 |
-| 설명 | READY → RUNNING → HOLIDAY → SETTLING → ENDED 순서로만. |
+| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING → ENDED 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. 그 밖의 변경과 거꾸로 가는 변경은 거절. |
 
 **Request**
 
@@ -3443,7 +3485,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-36 |
-| 설명 | 단지와 일정, 신청자 수. |
+| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수. 신청 시작일 최신순. |
 
 **Request**
 
@@ -3451,7 +3493,12 @@ Header: Idempotency-Key: 4d8e...
 
 **Response**
 
-- (단지 목록 + applicants)
+```json
+{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3 } ] }
+```
+
+- `status`: `UPCOMING`(접수 전) · `OPEN`(접수 중) · `CLOSED`(마감, 발표 전) · `ANNOUNCED`(발표)
+- `applicants`가 1 이상이면 일정·공급 세대 수 수정(144)과 삭제(145)가 막힌다
 
 #### 143. 공고 등록
 
@@ -3476,6 +3523,12 @@ Header: Idempotency-Key: 4d8e...
 { "complexId": 1 }
 ```
 
+- 글자 칸은 비울 수 없고 `salePrice`·`supplyUnits`는 1 이상, 날짜 4개는 필수
+- 일정 순서: `noticeDate` ≤ `applyStartDate` ≤ `applyEndDate` ≤ `announceDate`
+- 등록한 관리자 번호(`created_by`)는 로그인 세션에서 정한다
+
+**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400)
+
 #### 144. 공고 수정
 
 | 항목 | 내용 |
@@ -3484,17 +3537,17 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-36, SP-76 |
-| 설명 | 신청자가 있으면 일정·공급 세대 수 수정 불가. |
+| 설명 | 신청자가 있으면 일정·공급 세대 수 수정 불가. 이름·위치·면적·분양가·공급 유형은 신청자가 있어도 수정 가능. |
 
 **Request**
 
-- (공고 등록과 같음)
+- (공고 등록과 같음, 입력 규칙도 같음)
 
 **Response**
 
 - 204 No Content
 
-**Error**: `COMPLEX_HAS_APPLICANTS`
+**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400), `NOT_FOUND`(404, 없거나 삭제된 단지), `COMPLEX_HAS_APPLICANTS`(409)
 
 #### 145. 공고 삭제
 
@@ -3514,7 +3567,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
-**Error**: `COMPLEX_HAS_APPLICANTS`
+**Error**: `NOT_FOUND`(404), `COMPLEX_HAS_APPLICANTS`(409)
 
 #### 146. 신청자 목록
 
@@ -3593,12 +3646,13 @@ Header: Idempotency-Key: 4d8e...
 | 공통 | `FORBIDDEN` | 403 | 이 페이지를 볼 수 있는 권한이 없어요 |
 | 공통 | `LEVEL_LOCKED` | 403 | Lv.8부터 열려요. 지금은 Lv.5예요 |
 | 공통 | `NOT_FOUND` | 404 | 찾을 수 없는 페이지예요 |
-| 공통 | `DUPLICATE_REQUEST` | 409 | (기존 처리 결과를 그대로 반환) |
+| 공통 | `DUPLICATE_REQUEST` | 409 | 이미 처리된 요청이에요 (같은 `Idempotency-Key`의 처음 요청이 아직 처리 중일 때. 처리가 끝났으면 이 에러 대신 처음 결과를 그대로 반환) |
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
+| 공통 | `IDEMPOTENCY_KEY_TOO_LONG` | 400 | 요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
-| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 10분 뒤에 다시 시도해 주세요 |
+| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `ACCOUNT_SUSPENDED` | 403 | 이용이 제한된 계정이에요 |
 | 회원 | `ACCOUNT_WITHDRAWN` | 403 | 탈퇴한 계정이에요 |
 | 회원 | `EMAIL_DUPLICATED` | 409 | 이미 가입된 이메일이에요 |
@@ -3622,12 +3676,19 @@ Header: Idempotency-Key: 4d8e...
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
+| 강사·관리자 | `START_DATE_NOT_MONDAY` | 400 | 시즌 시작일은 월요일이어야 해요 |
+| 강사·관리자 | `INVALID_STATUS_TRANSITION` | 409 | 지금 상태에서는 그 상태로 바꿀 수 없어요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
+| 모의 청약 | `RECEIPT_NO_CONFLICT` | 409 | 신청이 몰려 접수하지 못했어요. 다시 신청해 주세요 |
 | 모의 청약 | `ALREADY_PAID_TODAY` | 409 | 오늘은 이미 납입했어요 |
 | 모의 청약 | `DEPOSIT_BELOW_MIN` | 400 | 최소 20,000 캐시부터 납입할 수 있어요 |
 | 모의 청약 | `DEPOSIT_ABOVE_MAX` | 400 | 한 번에 최대 500,000 캐시까지 납입할 수 있어요 |
 | 모의 청약 | `NOT_ANNOUNCED_YET` | 403 | 발표는 ○월 ○일이에요 |
+| 모의 청약 | `INVALID_SCORE_INPUT` | 400 | 무주택 기간은 0~50년, 부양가족 수는 0~20명으로 입력해 주세요 |
+| 모의 청약 | `INVALID_COMPLEX_INPUT` | 400 | 단지 정보를 모두 입력해 주세요. 분양가와 공급 세대 수는 1 이상이에요 |
+| 모의 청약 | `INVALID_SCHEDULE` | 400 | 일정 순서가 맞지 않아요. 공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 발표일로 정해 주세요 |
+| 모의 청약 | `COMPLEX_HAS_APPLICANTS` | 409 | 신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |

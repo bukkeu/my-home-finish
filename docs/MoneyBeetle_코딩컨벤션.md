@@ -104,10 +104,14 @@ com.wanted.moneybeetle
 │  ├─ security            레벨 해금 확인, 중복 요청 방지
 │  └─ file                파일 업로드
 └─ domain
-   ├─ auth · member · inquiry · operation   (SCM)
-   ├─ course · quiz · trading               (DBA)
-   └─ growth · home · term · notification · housing   (PM)
+   ├─ auth (config 제외) · member (AdminMemberController 제외) (DBA ②)
+   ├─ course · quiz · inquiry (DBA ①)
+   ├─ growth · notification · home API(#13) · term · operation (DBA ②)
+   ├─ home 검색 API(#15) · trading (PM)
+   └─ housing (SCM)
 ```
+
+`global/**`와 `auth/config/SecurityConfig`는 SCM, `global/security/IdempotencyFilter`는 이슈 #65 담당자인 PM이 맡습니다. `member` 경로의 `AdminMemberController`는 이슈 #37 담당자인 DBA ①이 맡습니다. `HomeController`는 홈 API(#13, DBA ②)와 검색 API(#15, PM)를 기능별로 구분합니다. 파일 경로만으로 담당자를 단정하지 말고 `docs/MoneyBeetle_역할분담.md`의 이슈별 배정과 GitHub 이슈 담당자를 함께 확인합니다.
 
 **도메인 안은 모두 같은 모양입니다.**
 
@@ -254,7 +258,7 @@ public class MyInfoDTO {
 | 화면 요청 | `ModelAndView`(또는 `Model`)에 DTO를 담고 View 이름을 지정한다. Model 이름은 템플릿의 `th:each` 등과 **이름을 맞춘다** (예: `menuList`) | 학습 |
 | 데이터 요청 | `@ResponseBody`로 JSON을 반환한다. 팀 공통 형식은 `ApiResponse` | 학습·골격 |
 | 요청 값 받기 | 단일 값은 `@RequestParam`, 폼 전체는 DTO를 `@ModelAttribute`(생략 가능, 이름은 클래스명 첫 글자 소문자)로, URL 일부는 `@PathVariable`로 받는다. HTML `input`의 `name`과 DTO 필드 이름이 다르면 그 값은 **조용히 무시된다**(400이 나지 않는다). 예를 들어 `int price`에 `@Min(0)`을 붙이고 폼에서 `prcie`를 보내면 `price`는 0으로 남아 검증을 통과한다. 필수 숫자 값은 `Integer`에 `@NotNull`을 함께 달아서 빠졌을 때 걸리게 한다. 메서드 제한이 없는 `@RequestMapping` 대신 `@GetMapping`·`@PostMapping`을 쓴다. `@RequestParam`에 직접 건 `@Min` 위반은 `HandlerMethodValidationException`이 처리한다 | 학습 (08 chap01·02, 09 module07) |
-| View 이름 | 앞에 `/`를 붙이지 않는다 (`return "member/signup"`). jar로 배포하면 템플릿을 못 찾을 수 있다. Model에 키 없이 객체를 넣으면 클래스명 첫 글자 소문자가 키가 된다 | 학습 (08 chap07) |
+| View 이름 | 앞에 `/`를 붙이지 않는다 (`return "member/signup"`). jar로 묶어 실행하면 템플릿을 못 찾을 수 있다. Model에 키 없이 객체를 넣으면 클래스명 첫 글자 소문자가 키가 된다 | 학습 (08 chap07) |
 | 등록·수정·삭제 후 | 화면으로 바로 응답하지 않고 **redirect** 한다 (PRG 패턴: 새로고침 시 POST가 반복되는 것을 막음). 예: 등록 후 상세 조회로 302. `return "redirect:/경로"`로 하고, redirect 뒤 화면에 넘길 값(결과 메시지 등)은 Model이 아니라 `RedirectAttributes.addFlashAttribute()`에 담는다 (Model 값은 두 번째 요청에서 사라진다) | 학습 (08 chap03) |
 | `@Valid`를 붙여야 검증된다 | DTO에 `@NotBlank` 등을 선언만 해서는 실행되지 않는다. **Controller 파라미터에 `@Valid`가 있어야** 검사한다. 검증은 Service에 들어가기 전에 끝난다 | 학습 |
 | 수정·삭제 입력도 검증 | 등록뿐 아니라 **수정 요청에도 검증**을 단다. 검증이 비어 있으면 빈 값·중복 값·너무 긴 값이 그대로 저장되거나 빈 200 응답이 나간다 | 학습 |
@@ -357,7 +361,7 @@ public class MyInfoDTO {
 | 비밀번호 | `BCryptPasswordEncoder` Bean으로 `encode()` 후 저장한다. 같은 비밀번호도 해시가 다른 것이 정상이다. 비교는 직접 하지 않고 Security(`matches`)에 맡긴다 | 학습 |
 | 권한은 서버가 정한다 | 회원가입 폼에서 받은 값으로 `role`(권한)을 정하지 **않는다**. 학습 예제는 폼에서 ADMIN을 고를 수 있었지만 실제 서비스에서는 금지 | 학습 |
 | 로그인 결과 기록 | 성공·실패는 `AuthSuccessHandler`·`AuthFailHandler`에서 처리한다. 실패 시 횟수를 올리고 로그를 남기고, 성공 시 횟수를 0으로 되돌린다 | 학습 |
-| 잠금 규칙은 Entity에 | 실패 횟수와 잠금은 `Member` 같은 **Entity의 메서드**(예: `increaseLoginFailCount()`)가 가진다. 5회 실패 시 잠금(정책 정의서 기준 10분). 변경 감지로 저장하므로 `save()`는 부르지 않는다 | 학습·정책 문서 |
+| 잠금 규칙은 Entity에 | 실패 횟수와 잠금은 `Member` 같은 **Entity의 메서드**(예: `increaseLoginFailCount()`)가 가진다. 5회 실패 시 잠금(정책 정의서 기준 1분, 이후 5회마다 5분). 변경 감지로 저장하므로 `save()`는 부르지 않는다 | 학습·정책 문서 |
 | 잠금 검사 순서 | Security는 **잠금 검사를 비밀번호 검사보다 먼저** 한다. 잠긴 계정은 맞는 비밀번호로도 로그인되지 않고, 이때는 실패 횟수가 늘지 않는다 | 학습 |
 | 없는 아이디 메시지 | Security는 없는 아이디를 기본적으로 `BadCredentialsException`으로 바꾼다. **"아이디 또는 비밀번호가 올바르지 않습니다"처럼 구분하지 않는 메시지**를 쓴다. `UsernameNotFoundException` 분기는 사실상 도달하지 않는다 | 학습 |
 | 메서드 권한 | `@PreAuthorize`를 쓰려면 `SecurityConfig`에 **`@EnableMethodSecurity`가 있어야** 한다. 없으면 경로 규칙이 없는 주소는 로그인만 하면 누구나 호출한다 | 학습 |
@@ -399,7 +403,7 @@ public class MyInfoDTO {
 2. 다른 도메인의 테이블(Repository)을 직접 쓰지 않는다. 그 도메인의 Service 메서드를 부른다.
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
 4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. `schema.sql`을 다시 실행하면 데이터가 지워지므로, 이미 만든 DB에 변경만 적용해야 할 때에 한해 DBA가 `sql/migration/<날짜>_<설명>.sql`(ALTER 등)을 추가하고 같은 변경을 `schema.sql`에도 반영한다.
-5. 마이페이지·관리자 대시보드는 틀(SCM)과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
+5. 마이페이지 틀은 PM(#54), 관리자 대시보드 틀은 DBA ②(#61)가 맡고, 탭 내용(`templates/fragments/...`)은 `docs/MoneyBeetle_역할분담.md` §6의 해당 이슈 담당자가 맡는다.
 
 **아직 구현이 없는 도메인과 협업할 때** (학습 25·26일차): 필요한 쪽이 **인터페이스**를 먼저 정의하고, 상대 팀의 실제 구현이 나올 때까지 `Fake` 구현으로 대신한다. 실제 구현이 생기면 Fake만 지우면 되고 사용하는 쪽 코드는 바뀌지 않는다.
 
@@ -415,7 +419,7 @@ public class MyInfoDTO {
 | open-in-view | Spring Boot 기본값이 켜져 있음 (학습 25일차에서 경고 확인) | 끌지 여부 |
 | 포매터·린터 | 없음 | IntelliJ 설정 공유 또는 Spotless 같은 도구 도입 여부 |
 | 권한(role) 표현 | DB 문서는 `role` 한 값(`MEMBER`/`INSTRUCTOR`/`ADMIN`). 학습 예제는 `ROLE_` 없는 권한 문자열(`hasAnyAuthority`)을 썼고, 공통 레이아웃(#49)도 같은 방식 | 서수영 #4에서 `getAuthorities()`가 `MEMBER`·`INSTRUCTOR`·`ADMIN`을 `ROLE_` 없이 돌려주도록 확정 |
-| 로그인 잠금 | 학습 예제는 잠금 여부 불리언 + 수동 해제, DB 문서는 `failed_login_count`·`locked_until`(5회 실패 시 10분 잠금) | DB 문서 기준으로 할지 |
+| 로그인 잠금 | 학습 예제는 잠금 여부 불리언 + 수동 해제, DB 문서는 `failed_login_count`·`locked_until`(5회 실패 시 1분, 이후 5회마다 5분 잠금) | DB 문서 기준으로 할지 |
 | CSRF | 학습 예제는 꺼 둠. 이 문서는 켜 두기를 제안 | 켤지, 켜면 Thymeleaf 폼·fetch에서 토큰을 어떻게 보낼지 |
 | 업데이트 쿼리 | 변경 감지는 바뀐 컬럼이 아니라 **모든 컬럼**을 UPDATE한다(학습 26일차) | `@DynamicUpdate` 사용 여부 |
 | 수정 요청 DTO | 등록과 수정의 검증 규칙이 다를 수 있다 | DTO를 나눌지, 검증 그룹을 쓸지 |

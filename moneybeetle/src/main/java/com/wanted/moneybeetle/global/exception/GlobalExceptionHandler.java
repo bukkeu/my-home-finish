@@ -11,6 +11,10 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+/* comment.
+*   담당 : SCM (공통 기반·보안)
+*   업무 예외·없는 주소·업로드 용량 초과·예상하지 못한 예외를 API는 ApiResponse, 화면은 오류 페이지로 바꾼다
+*  */
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {

@@ -1,13 +1,15 @@
 # 환경변수 (.env) 정의
 
-> 💡 **API Key 유출 사고를 막고, 팀원 간 실행 환경을 맞추기 위한 문서입니다.** 로컬 및 배포 환경에서 필요한 환경변수(.env)의 목록, 쓰이는 곳, 로컬 개발 기본값을 정의합니다.
+> 💡 **API Key 유출 사고를 막고, 팀원 간 실행 환경을 맞추기 위한 문서입니다.** 로컬 환경(개발·발표)에서 필요한 환경변수(.env)의 목록, 쓰이는 곳, 로컬 개발 기본값을 정의합니다.
+>
+> 📌 **팀 결정 (2026-11-08)**: 이 프로젝트는 **배포하지 않고 로컬에서 발표**합니다. 그래서 서버·운영(prod)용 환경변수와 GitHub Secrets는 쓰지 않습니다. CI(GitHub Actions)는 DB 없이 빌드·테스트만 합니다.
 
 **읽는 법**
 
 - 기준: 팀 프로젝트 `moneybeetle/`(`build.gradle`, `application.yaml`의 주석), 시스템 설계서의 "환경설정" 절, 정책 정의서.
-- **상태** 칸: **필수** = 지금 서버를 띄우는 데 필요, **기능 구현 시** = 해당 기능을 만들 때 추가, **배포 시** = 서버 배포 때만 필요 (기능은 시스템 설계서의 가정 구성 기준).
+- **상태** 칸: **필수** = 지금 서버를 띄우는 데 필요, **기능 구현 시** = 해당 기능을 만들 때 추가.
 - **비밀** 칸: ✅ = 유출되면 안 되는 값(비밀번호·키·토큰). 절대 저장소에 올리지 않습니다.
-- 로컬 기본값은 **내 컴퓨터에서만 쓰는 값**입니다. 운영(prod)에 같은 값을 쓰지 않습니다.
+- 로컬 기본값은 **내 컴퓨터에서만 쓰는 값**입니다. 각자 정하고 다른 사람과 공유하지 않습니다.
 
 ---
 
@@ -20,7 +22,7 @@
 | 3 | 비밀 값은 메신저·메일에 **평문으로 공유하지 않는다.** 필요하면 비밀번호 관리 도구나 1:1 전달을 쓴다. |
 | 4 | 키가 한 번이라도 GitHub에 올라갔다면 **파일을 지우는 것으로 끝나지 않는다.** 그 키를 즉시 폐기하고 새로 발급받는다 (Git 이력에 남기 때문). |
 | 5 | 환경변수 값은 **로그에 출력하지 않는다** (비밀번호·세션 ID·토큰은 로그에서 가린다, EP-05·DP-02). |
-| 6 | 환경(local / dev / prod)마다 **값을 다르게** 쓴다. 특히 prod DB·키를 로컬에서 쓰지 않는다. |
+| 6 | 비밀 값은 **각자 자기 컴퓨터에서 정한다.** 다른 팀원의 DB 비밀번호·키를 그대로 가져다 쓰지 않는다. |
 | 7 | 키 이름은 `UPPER_SNAKE_CASE`로 쓴다 (예: `DB_PASSWORD`). |
 | 8 | 새 환경변수를 추가하면 **이 문서와 `.env.example`을 같은 PR에서 함께 고친다.** |
 
@@ -34,7 +36,7 @@
 
 | 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 상태 |
 | --- | --- | --- | --- | --- |
-| `SPRING_PROFILES_ACTIVE` | 실행 프로필 선택 (`application-{local,dev,prod}.yaml`) | | `local` | 필수 |
+| `SPRING_PROFILES_ACTIVE` | 실행 프로필 선택. 설정 파일을 환경별로 나누지 않아(로컬 하나) 지금은 쓰지 않음 | | `local` | 선택 |
 | `DB_URL` | `spring.datasource.url` — MySQL 접속 주소 | | `jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&characterEncoding=UTF-8` | 필수 |
 | `DB_USERNAME` | `spring.datasource.username` — 로컬 MySQL에 각자 만든 계정 (`create_database.sql` 맨 아래 주석 참고) | | `moneybeetle` | 필수 |
 | `DB_PASSWORD` | `spring.datasource.password` | ✅ | 각자 정함 (아래 참고) | 필수 |
@@ -51,50 +53,35 @@
 | `MAIL_USERNAME` | 메일 계정 | | 비워 둠 | 〃 |
 | `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호) | ✅ | 비워 둠 | 〃 |
 | `MAIL_FROM` | 발신자 주소 | | `no-reply@moneybeetle.local` | 〃 |
+| `APP_BASE_URL` | 재설정 메일 속 링크의 서버 주소 (`{APP_BASE_URL}/password-reset?token=...`) | | `http://localhost:8080` | 〃 |
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
 | `GOOGLE_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `KAKAO_CLIENT_ID` | 카카오 간편 로그인 | | 개인 테스트 앱의 값 | 〃 |
 | `KAKAO_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
-| `FILE_STORAGE_TYPE` | 파일 저장 방식 선택 (`FileStorageService`): `local` 또는 `s3` | | `local` | DP-32 |
-| `FILE_UPLOAD_DIR` | `FILE_STORAGE_TYPE=local`일 때 저장 폴더 (프로필·썸네일, `WebConfig`가 정적 경로로 연결) | | `./uploads` | DP-32 |
+| `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
+| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결) | | `./uploads` | DP-32·33 |
 
 - 간편 로그인은 요구사항 우선순위가 **하**입니다. 구현 전에는 `GOOGLE_*`, `KAKAO_*`를 비워 둬도 됩니다. 단, 값이 비어 있는 채로 로그인 등록 설정을 켜면 서버가 뜨지 않을 수 있으므로, 구현할 때 "키가 없으면 해당 로그인을 끄는" 처리를 함께 넣습니다.
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
-- `REMEMBER_ME_KEY`는 로컬과 운영 값이 **달라야** 합니다.
+- `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다.
 
-### 2-3 배포 시 (서버·CI)
+### 2-3 배포용 값 (쓰지 않음)
 
-| 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 둘 곳 |
-| --- | --- | --- | --- | --- |
-| `STORAGE_ENDPOINT` | S3 호환 오브젝트 스토리지 주소 (`FILE_STORAGE_TYPE=s3`) | | 쓰지 않음 | 서버 `.env` |
-| `STORAGE_BUCKET` | 버킷 이름 (비공개 버킷) | | 쓰지 않음 | 서버 `.env` |
-| `STORAGE_ACCESS_KEY` | 스토리지 접근 키 | ✅ | 쓰지 않음 | 서버 `.env` |
-| `STORAGE_SECRET_KEY` | 〃 | ✅ | 쓰지 않음 | 서버 `.env` |
-| `ADMIN_INITIAL_EMAIL` | 운영 서버의 **최초 관리자 계정** 이메일 (배포 때 한 번만 생성) | | `admin@moneybeetle.local` | 서버 `.env` |
-| `ADMIN_INITIAL_PASSWORD` | 최초 관리자 비밀번호 | ✅ | 로컬 전용 값 | 서버 `.env` |
-| `MYSQL_ROOT_PASSWORD` | Docker Compose의 MySQL 컨테이너 root 비밀번호 | ✅ | 각자 정함 | 서버 `.env`, 로컬 `.env` |
-| `MYSQL_DATABASE` | Docker Compose MySQL이 만들 DB 이름 | | `money_beetle` | 〃 |
-| `DEPLOY_HOST` | 배포할 서버 주소 | | 쓰지 않음 | GitHub Secrets |
-| `DEPLOY_USER` | 배포용 서버 계정 | | 쓰지 않음 | GitHub Secrets |
-| `DEPLOY_SSH_KEY` | 배포용 SSH 개인 키 | ✅ | 쓰지 않음 | GitHub Secrets |
-
-- GitHub Actions가 이미지를 GHCR에 올릴 때 쓰는 `GITHUB_TOKEN`은 GitHub이 자동으로 제공하므로 따로 만들지 않습니다.
-- **관리자 계정 주의**: `resources/sql/sample-data.sql`에 관리자 계정을 넣는 설계라면, 그 파일에 비밀번호(해시 포함)가 들어갑니다. 로컬 개발용 계정만 seed에 두고, **운영 관리자는 `ADMIN_INITIAL_*`로 배포 때 만듭니다.**
+배포하지 않으므로(팀 결정 2026-11-08) 오브젝트 스토리지(`STORAGE_*`), 운영 최초 관리자(`ADMIN_INITIAL_*`), Docker Compose MySQL(`MYSQL_*`), 배포 서버 접속(`DEPLOY_*`) 값은 **만들지 않습니다.** 관리자 계정은 `sample-data.sql`의 로컬 개발용 계정을 그대로 씁니다.
 
 ---
 
 ## 3. 환경별 값 구분
 
-| 항목 | local (각자 노트북) | dev (선택) | prod (운영) |
-| --- | --- | --- | --- |
-| `SPRING_PROFILES_ACTIVE` | `local` | `dev` | `prod` |
-| DB | 내 컴퓨터의 MySQL (또는 Docker Compose 컨테이너) | 개발용 DB | 운영 DB (매일 백업) |
-| 파일 저장 | `local` (`./uploads`) | 개발용 버킷 | 운영 버킷 (`s3`) |
-| 메일 | 로컬 메일 확인 도구 | 테스트 메일 계정 | 실제 발송 계정 |
-| 간편 로그인 키 | 개인 테스트 앱 | 개발용 앱 | 운영 앱 (콜백 주소가 다름) |
-| 값을 두는 곳 | 내 `.env` | 서버 `.env` + GitHub Secrets | 서버 `.env` + GitHub Secrets |
-| 관리자 계정 | seed의 개발용 계정 | seed의 개발용 계정 | `ADMIN_INITIAL_*`로 최초 1회 |
+| 항목 | local (각자 노트북 · 발표 노트북) | CI (GitHub Actions) |
+| --- | --- | --- |
+| DB | 내 컴퓨터의 MySQL 8 (`money_beetle`) | 없음 (DB 없이 테스트) |
+| 파일 저장 | 로컬 폴더 `./uploads` | 없음 |
+| 메일 | 로컬 메일 확인 도구 | 없음 |
+| 간편 로그인 키 | 개인 테스트 앱 | 없음 |
+| 값을 두는 곳 | 내 `moneybeetle/.env` 또는 IntelliJ 환경변수 | 없음 (Secrets 불필요) |
+| 관리자 계정 | `sample-data.sql`의 개발용 계정 | 없음 |
 
 ---
 
@@ -170,10 +157,10 @@ spring:
 1. **IntelliJ 실행 설정**: Run/Debug Configurations → Environment variables에 `DB_PASSWORD=...` 형식으로 입력합니다. 파일이 프로젝트 밖(IDE 설정)에 있어서 실수로 올릴 위험이 가장 적습니다.
 2. **`.env` 파일**: `moneybeetle/` 폴더에 `.env.example`을 복사해 `.env`로 만들고 값을 채웁니다. Spring Boot가 `.env`를 읽도록 `application.yaml`에 `spring.config.import: optional:file:.env[.properties]`를 추가합니다. (`.gitignore`에 `.env`가 있는지 **먼저** 확인합니다.)
 
-### 5-4 서버(배포)에서
+### 5-4 발표 노트북에서
 
-- 서버의 `.env` 파일에 값을 두고 Docker Compose가 읽게 합니다. 서버 `.env`의 권한은 소유자만 읽을 수 있게 합니다.
-- GitHub Actions에서 쓰는 값은 저장소 Settings → Secrets and variables → Actions에 등록합니다.
+- 배포 서버는 없습니다(팀 결정 2026-11-08). 발표 노트북도 개발할 때와 같은 방법(5-3)으로 `.env`를 만들어 실행합니다.
+- CI(GitHub Actions)는 DB 없이 테스트하므로 GitHub Secrets에 값을 등록하지 않습니다.
 
 ---
 
@@ -182,7 +169,7 @@ spring:
 - [x] 루트 `.gitignore`에 `.env`, `.env.*`(`.env.example` 제외)가 있다 (#67).
 - [ ] MySQL 8을 설치하고 `resources/sql/create_database.sql` → `schema.sql` → `sample-data.sql` 순서로 실행한다 (시드는 로컬 개발용).
 - [ ] `.env.example`을 복사해 `.env`(또는 IntelliJ 환경변수)를 만들고 `DB_PASSWORD`를 채운다.
-- [ ] `SPRING_PROFILES_ACTIVE=local`로 서버를 띄워 로그인 화면이 열리는지 확인한다.
+- [ ] 서버를 띄워(`./gradlew bootRun` 또는 IntelliJ) DB 오류 없이 시작되는지 확인한다.
 - [ ] `git status`에 `.env`가 보이지 않는지 확인한다.
 - [ ] 푸시 전에 `git diff`로 키·비밀번호가 섞이지 않았는지 확인한다.
 
@@ -190,9 +177,9 @@ spring:
 
 ## 7. 키가 유출되었을 때
 
-1. **즉시 그 키를 폐기하고 새로 발급**한다 (DB 비밀번호 변경, OAuth 클라이언트 시크릿 재발급, 스토리지 키 교체).
+1. **즉시 그 키를 폐기하고 새로 발급**한다 (DB 비밀번호 변경, OAuth 클라이언트 시크릿 재발급).
 2. 담당자(SCM)와 팀에 알린다.
-3. 새 키를 서버 `.env`·GitHub Secrets·각자의 `.env`에 반영한다.
+3. 새 키를 각자의 `.env`(또는 IntelliJ 환경변수)에 반영한다.
 4. Git에서 지우는 것(이력 정리)은 **그다음** 일이다. 이미 공개된 키는 지워도 유효하므로 1번이 먼저다.
 5. 원인(어디에 적었는지)을 확인하고 위 규칙 1~5를 다시 점검한다.
 
@@ -205,7 +192,7 @@ spring:
 | `.gitignore` | ✅ 루트 `.gitignore`에 `.env`, `.env.*`, `!.env.example` 추가 (#67) | 없음 |
 | 메일 발송 방식 | 정책(10분 유효 1회용 토큰)은 있으나 SMTP 서비스 미정 | 사용할 메일 서비스(예: Gmail SMTP 앱 비밀번호) |
 | 간편 로그인 | 우선순위 하. 구글·카카오 앱 등록 필요 | 구현 시점, 개인 테스트 앱을 쓸지 팀 공용 앱을 쓸지 |
-| 파일 저장 | 로컬 폴더와 S3 호환 스토리지 (시스템 설계서의 가정) | 운영에서 쓸 스토리지 서비스, 영상 파일 업로드 허용 여부 |
-| 관리자 계정 | `sample-data.sql`에 관리자 계정 포함됨(로컬 개발용) | 운영 계정을 환경변수로 만들지, seed에서 제외할지 |
+| 파일 저장 | ✅ 로컬 폴더 `./uploads`로 확정 (배포하지 않음, 팀 결정 2026-11-08). 영상 업로드 500MB·mp4 확정 (DP-33) | 없음 |
+| 관리자 계정 | ✅ `sample-data.sql`의 로컬 개발용 계정을 그대로 씀 (배포하지 않음) | 없음 |
 | 환경변수 키 이름 | 이 문서의 이름은 제안 | 팀 합의 후 확정 (Spring 기본 이름 `SPRING_DATASOURCE_URL` 등을 쓸 수도 있음) |
 | 비밀 값 전달 방법 | 미정 | 팀원 간 공유 방법 (비밀번호 관리 도구 등) |

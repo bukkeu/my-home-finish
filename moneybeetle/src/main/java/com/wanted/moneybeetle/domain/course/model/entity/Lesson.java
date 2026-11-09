@@ -5,6 +5,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,4 +31,10 @@ public class Lesson {
     private String videoUrl;
     private int durationSeconds;    // 재생 시간(초)
     private String summary;         // 요약글 (2,000자 이내)
+
+    /* 재생 위치·본 시간이 0초보다 작거나 영상 길이를 넘지 않게 맞춘다 */
+    public int clampSeconds(int seconds) {
+        int notNegative = Math.max(seconds, 0);
+        return durationSeconds > 0 ? Math.min(notNegative, durationSeconds) : notNegative;
+    }
 }

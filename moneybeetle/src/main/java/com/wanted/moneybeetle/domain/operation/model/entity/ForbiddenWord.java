@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : DBA ② (관리자 운영)
 *   테이블 forbidden_word (금칙어. 지금은 DB에 직접 넣어 쓴다, DP-23)
 *   - 이 이슈(#64)는 검사만 한다. 등록·삭제 화면이 필요해지면 그때 생성·삭제 메서드를 더한다
 *  */

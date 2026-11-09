@@ -14,7 +14,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   테이블 reward_rule (활동별 캐시·경험치 보상 규칙)
 *   값(캐시·경험치 양)은 이슈 #68·#76 에서 확정하며, 시드(sample-data.sql)와 관리자 화면(#39)에서 바뀐다.
 *  */

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   경험치 내역 한 줄 (API 23 items)
 *   title(강의 제목)은 course 도메인 연동 때 붙인다. 지금은 원인 종류별 기본 문구다.
 *  */

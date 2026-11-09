@@ -12,10 +12,12 @@
 - 기준 문서: 요구사항 명세서, 정책 정의서, 머니비틀 페이지 구현(Claude Design). 표의 ID는 요구사항·정책 번호입니다.
 - DBMS는 **MySQL 8.0 (InnoDB, utf8mb4)** 기준입니다. 시간은 모두 서버의 한국 시간(KST)으로 저장합니다(DP-42).
 - **(초안)** 표시는 정책 정의서 5장의 미확정 값입니다. 값이 바뀌어도 테이블 구조는 그대로 쓰도록 설정 테이블로 뺐습니다.
-- **SQL 파일**은 `moneybeetle/src/main/resources/sql/`에 있고 이 순서로 실행합니다: `create_database.sql`(DB 생성, 접속 계정 안내) → `schema.sql`(테이블 47개, 실행하면 기존 테이블을 지우고 다시 만들기 때문에 **새 DB를 만들 때만** 실행) → `sample-data.sql`(로컬 개발용 시드, 운영 DB에는 넣지 않음). 시드는 구역별로 담당 DBA가 관리합니다. **이미 만든 DB의 구조나 데이터를 바꿀 때는 모두** `schema.sql`을 다시 실행하지 않고 `sql/migration/`의 마이그레이션 파일을 씁니다. 변경은 이렇게 나눠 반영합니다.
+- **SQL 파일**은 `moneybeetle/src/main/resources/sql/`에 있고 이 순서로 실행합니다: `create_database.sql`(DB 생성, 접속 계정 안내) → `schema.sql`(테이블 47개, 실행하면 기존 테이블을 지우고 다시 만들기 때문에 **새 DB를 만들 때만** 실행) → `sample-data.sql`(로컬 개발용 시드, 운영 DB에는 넣지 않음). 시드는 파일 안에 구역 주석(`-- [이름] 구역`)을 나눠 각 담당자가 자기 구역에만 작성하고, 그 테이블의 담당 DBA가 컬럼을 검토합니다(회원·강의·퀴즈 신아림 #73, 성장·알림·경제 용어 김예린 #75, 모의투자 이재성 #72, 청약 단지·공고 서수영 #74 — `docs/MoneyBeetle_역할분담.md` §8). **이미 만든 DB의 구조나 데이터를 바꿀 때는 모두** `schema.sql`을 다시 실행하지 않고 `sql/migration/`의 마이그레이션 파일을 씁니다. 변경은 이렇게 나눠 반영합니다.
   - **구조 변경**(컬럼·제약·기본값): `sql/migration/`에 `ALTER` 파일을 추가하고(기존 DB용), 새 DB용으로 `schema.sql`에도 같은 변경을 반영합니다. 둘 다 DBA가 같은 PR에서 고칩니다.
   - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
   - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
+- **모의투자 시드**(#72): 분야 15개, 종목 30개(기업정보 포함), 매매 이유 6개, 시즌 1개(시즌 7, 12턴 중 현재 5턴, 이월 100%·상한 없음), 턴 12개, 가격 360행(12턴 전부), 뉴스 25개와 태그. 6~12턴 가격은 미래 턴이라 조회 API(#24)는 현재 턴까지만 보여 준다. 날짜는 고정값이라 현재 턴은 `current_turn`으로만 판단한다. 참가자·보유·거래 내역은 넣지 않는다.
+- **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 7개(모집 중 3, 모집 예정 1, 모집 마감 1, 발표 완료 2. 등록 관리자 1). 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인·단지 이미지는 컬럼이 없어 넣지 않고(#48 이후), 청약 신청·납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
 
 ---
 
@@ -259,8 +261,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `cash` | BIGINT | N | CHECK >= 0 | 0 | 보유 캐시. 0 미만 불가 |
 | `attendance_streak` | INT | N | - | 0 | 현재 연속 출석 일수 |
 | `last_attended_date` | DATE | Y | - | - | 마지막 출석일 (KST) |
-| `failed_login_count` | TINYINT | N | - | 0 | 연속 로그인 실패 횟수 |
-| `locked_until` | DATETIME | Y | - | - | 로그인 잠금 해제 시각 (5회 실패 시 +10분) |
+| `failed_login_count` | INT | N | - | 0 | 연속 로그인 실패 횟수 (로그인에 성공할 때만 0 으로 초기화, 5회마다 잠금) |
+| `locked_until` | DATETIME | Y | - | - | 로그인 잠금 해제 시각 (5회 실패 시 +1분, 이후 5회마다 +5분) |
 | `last_login_at` | DATETIME | Y | - | - | 마지막 로그인 |
 | `withdrawn_at` | DATETIME | Y | - | - | 탈퇴 일시 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -338,7 +340,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `password_reset_token_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 토큰 ID |
 | `member_id` | BIGINT | N | FK → member.member_id | - | 회원 |
-| `token_hash` | VARCHAR(255) | N | UNIQUE | - | 인증 토큰 해시 |
+| `token_hash` | VARCHAR(255) | N | UNIQUE | - | 인증 토큰 원문의 SHA-256 해시(16진수 64자). 원문은 저장하지 않고 메일로만 보낸다 |
 | `expires_at` | DATETIME | N | - | - | 만료 시각 (발급 + 10분) |
 | `used_at` | DATETIME | Y | - | - | 사용 시각. 사용하면 재사용 불가 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -386,8 +388,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `level_policy_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 레벨 정책 ID |
 | `level` | TINYINT | N | UNIQUE | - | 레벨 1~20 |
-| `required_exp` | INT | N | - | - | 이 레벨이 되기 위한 누적 경험치 (150 XP 간격, 초안) |
-| `title` | VARCHAR(20) | N | - | - | 칭호: 텐트 / 원룸 / 투룸 / 아파트 / 내 집 |
+| `required_exp` | INT | N | - | - | 이 레벨이 되기 위한 누적 경험치 (구간별 150·200·300·400·600 XP씩, Lv.8 = 1,250, Lv.12 = 2,450, 확정 #11) |
+| `title` | VARCHAR(20) | N | - | - | 칭호: 고시원 / 원룸 / 투룸 / 아파트 / 내 집 (확정 #11) |
 | `levelup_cash` | INT | N | - | 0 | 레벨업 캐시 (새 레벨 × 10,000, 확정 #76) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
@@ -409,6 +411,18 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `is_active` | BOOLEAN | N | - | TRUE | 사용 여부 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
+
+**규칙 코드와 기본값**
+
+| code | 의미 | 기본값 | 쓰는 곳 |
+| --- | --- | --- | --- |
+| `ATTENDANCE_STREAK` | 연속 출석 보상. 연속 **5일째부터 매일** 지급 (SP-12) | 캐시 10,000 · 경험치 0 · 사용 중 | `AttendanceService.checkToday` → `RewardService.grant` (원인 ID = 그날의 `attendance_id`) |
+| `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | XP 값 확정(#68) 뒤 시드 | 학습 완료 처리 |
+| `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | XP 값 확정(#68) 뒤 시드 | 퀴즈 제출 처리 |
+
+- `ATTENDANCE_STREAK`만 먼저 시드에 들어 있다(`sample-data.sql`, 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`). 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
+- 마이그레이션은 규칙이 **없을 때만** 넣고 이미 있는 규칙은 바꾸지 않는다(관리자가 값을 고쳤을 수 있다). 다시 실행해도 결과가 같다.
+- 5일째가 되는 기준(연속 일수)은 코드 상수 `AttendanceService.REWARD_START_STREAK`이고, 규칙 표에는 금액만 둔다.
 
 #### 11. `cash_history` 캐시 내역
 
@@ -939,7 +953,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `subscription_account_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 통장 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE | - | 회원 (1:1) |
 | `balance` | BIGINT | N | - | 0 | 통장 잔액 (납입액 전액) |
-| `recognized_amount` | BIGINT | N | - | 0 | 누적 인정금액 (납입 1회당 최대 250,000, SP-70 초안) |
+| `recognized_amount` | BIGINT | N | - | 0 | 누적 인정금액 (각 납입의 `subscription_deposit.recognized_amount` 합, 하루 인정 한도 250,000, SP-70 확정 #76) |
 | `paid_count` | INT | N | - | 0 | 납입회차 |
 | `last_paid_date` | DATE | Y | - | - | 마지막 납입일 (KST) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -956,10 +970,12 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `subscription_deposit_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 납입 ID |
 | `subscription_account_id` | BIGINT | N | FK → subscription_account.subscription_account_id, UNIQUE(subscription_account_id, paid_date) | - | 통장 |
 | `paid_date` | DATE | N | UNIQUE(subscription_account_id, paid_date) | - | 납입일 (KST) |
-| `amount` | INT | N | - | - | 납입 캐시 (1회 20,000~500,000, SP-70 초안) |
-| `recognized_amount` | INT | N | - | - | 이번 납입의 인정금액 = min(amount, 250,000) |
+| `amount` | INT | N | - | - | 납입 캐시 (1회 20,000~500,000, SP-70 확정 #76) |
+| `recognized_amount` | INT | N | - | - | 이번 납입의 인정금액 = min(amount, 250,000) (SP-70 확정 #76) |
 | `paid_count_after` | INT | N | - | - | 납입 후 회차 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
+
+**이미 DB를 만든 경우**: `sql/migration/2026-11-09_subscription_recognized_amount.sql`을 실행한다. 두 테이블에 `recognized_amount`를 추가하고, 기존 납입 내역은 `min(amount, 250000)`으로 채우며, `subscription_account.recognized_amount`는 그 합으로 맞춘다(여러 번 실행해도 결과가 같다). 새로 만드는 DB는 `schema.sql`에 이미 반영되어 있다.
 
 #### 43. `housing_complex` 청약 단지·공고
 
@@ -1133,7 +1149,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- |
 | 사이트 문의 게시판 | `inquiry.course_id`가 NULL이면 사이트 문의로 처리 (페이지의 문의하기 게시판) | 강의 문의와 사이트 문의를 한 테이블로 둘지 나눌지 |
 | 강사 가입 방식 | `instructor_profile.approval_status` PENDING → 관리자 승인 (페이지의 강사 회원가입 반영) | 직접 가입 신청 허용 여부 |
-| 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 초안, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
+| 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 확정, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
 | 청약 결과 | `result` WIN/LOSE (정책 SP-75). 페이지 목업에는 예비(RESERVE) 있음 | 예비 당첨 여부 |
 | 시즌 참가 캐시 차감 | `season_participant.saved_cash` 기록, 차감 시 `cash_history`에 SEASON_JOIN | 참가 때 캐시 차감 여부 |
 | 이월 상한 | `trading_season.carryover_cap` NULL 허용 | 상한 금액 |

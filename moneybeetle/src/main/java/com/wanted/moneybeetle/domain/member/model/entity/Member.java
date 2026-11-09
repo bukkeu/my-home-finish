@@ -20,7 +20,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 *   테이블 member - 회원(학습자·강사·관리자 role 구분)
 *   - 이메일은 소문자로 저장한다 (SP-01 대소문자 구분 없음)
 *   - 레벨·경험치·캐시 값 변경은 growth.RewardService 가 MemberService 메서드를 통해서만 한다 (직접 수정 금지).
-*     변경 메서드는 addReward(캐시·경험치 받기)와 spendCash(캐시 쓰기)다 (#10 2차). 레벨 재계산은 #11 에서 붙인다.
+*     변경 메서드는 addReward(캐시·경험치 받기, 레벨업 캐시도 이 경로), levelUp(레벨만 올리기, #11), spendCash(캐시 쓰기)다.
+*     새 레벨을 얼마로 할지(레벨 정책표 계산)는 growth 가 정하고, 여기서는 규칙만 확인한다.
 *   - 가입에 필요한 부분(#5): 생성(signup)과 상태·권한 상수.
 *  */
 @Entity
@@ -38,6 +39,20 @@ public class Member {
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_SUSPENDED = "SUSPENDED";
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
+
+    /** 최대 레벨 (SP-20) */
+    public static final int MAX_LEVEL = 20;
+
+    /** 탈퇴한 회원의 학습·문의 기록에 보여 주는 이름 (DP-06) */
+    public static final String WITHDRAWN_NICKNAME = "탈퇴한 사용자";
+    /**
+     * 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분.
+     * system_setting 에 LOGIN_MAX_FAIL·LOGIN_LOCK_MINUTES 시드 키가 있지만 SystemSettingService 가 아직 비어 있고(#39),
+     * 단일 "분" 값으로는 1분/5분 두 단계를 표현할 수 없어서 이 상수를 쓴다. 설정 연동은 #39 에서 키와 함께 정한다.
+     */
+    public static final int LOGIN_FAIL_LIMIT = 5;
+    public static final long FIRST_LOCK_MINUTES = 1;
+    public static final long REPEAT_LOCK_MINUTES = 5;
 
     public static final String GENDER_MALE = "MALE";
     public static final String GENDER_FEMALE = "FEMALE";
@@ -138,12 +153,57 @@ public class Member {
 
     /**
      * 활동 보상으로 캐시·경험치를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
-     * 레벨은 여기서 바꾸지 않는다 - 레벨 재계산과 레벨업 캐시는 #11 에서 붙인다.
+     * 레벨은 여기서 바꾸지 않는다 - 경험치로 레벨이 오르면 growth 가 {@link #levelUp} 을 이어서 부른다.
      */
     public void addReward(long cashAmount, int expAmount) {
         require(cashAmount >= 0 && expAmount >= 0, "보상 값은 0 이상이어야 합니다.");
         this.cash += cashAmount;
         this.exp += expAmount;
+    }
+
+    /**
+     * 레벨을 올린다 (growth.RewardService 가 MemberService 를 통해 부른다). 레벨만 바꾼다.
+     * 레벨업 캐시는 {@link #addReward} 경로로 따로 받는다 (캐시 변경 경로를 하나로 둔다).
+     * 레벨은 내려가지 않고(SP-20) 최대 Lv.20 이다. 새 레벨이 지금보다 높아야 한다.
+     */
+    public void levelUp(int newLevel) {
+        require(newLevel > this.level, "새 레벨은 현재 레벨보다 높아야 합니다.");
+        require(newLevel <= MAX_LEVEL, "레벨은 " + MAX_LEVEL + " 이하여야 합니다.");
+        this.level = newLevel;
+    }
+
+    /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 가 MemberService 를 통해 부른다). 하루에 한 번만 기록된다 (SP-10).
+     * 어제도 출석했으면 연속 일수가 1 늘고, 하루라도 빠졌거나 처음이면 1 부터 다시 센다 (SP-11).
+     *
+     * @param today 서울(KST) 오늘 날짜. 테스트하기 쉽게 밖에서 받는다
+     * @return 오늘 처음 기록했으면 true, 이미 오늘 출석했으면 false (값은 바뀌지 않는다)
+     */
+    public boolean checkAttendance(LocalDate today) {
+        require(today != null, "오늘 날짜가 필요합니다.");
+        if (lastAttendedDate != null && !today.isAfter(lastAttendedDate)) {
+            return false;   // 오늘(또는 기기 시간이 어긋난 미래 날짜) 이미 기록됨
+        }
+        boolean consecutive = lastAttendedDate != null && lastAttendedDate.plusDays(1).equals(today);
+        this.attendanceStreak = consecutive ? attendanceStreak + 1 : 1;
+        this.lastAttendedDate = today;
+        return true;
+    }
+
+    /**
+     * 오늘 기준으로 이어지고 있는 연속 출석 일수. 어제나 오늘 출석했으면 저장된 값이고, 그보다 오래됐으면 이미 끊겨서 0 이다.
+     * (저장된 값은 다음 출석 때 1 로 다시 시작하므로, 화면에는 이 값을 보여 준다)
+     */
+    public int currentStreak(LocalDate today) {
+        if (lastAttendedDate == null || lastAttendedDate.plusDays(1).isBefore(today)) {
+            return 0;
+        }
+        return attendanceStreak;
+    }
+
+    /** 오늘 이미 출석했는가 */
+    public boolean hasAttended(LocalDate today) {
+        return lastAttendedDate != null && lastAttendedDate.equals(today);
     }
 
     /** 캐시를 쓴다. 잔액은 0 미만이 될 수 없다 (SP-15) */
@@ -155,6 +215,81 @@ public class Member {
 
     public boolean hasEnoughCash(long amount) {
         return this.cash >= amount;
+    }
+
+    /**
+     * 다른 사람에게 보여 줄 닉네임. 탈퇴한 회원은 실제 닉네임 대신 "탈퇴한 사용자"를 보여 준다 (DP-06).
+     * 정지된 회원은 그대로 보인다.
+     */
+    public String displayNickname() {
+        return STATUS_WITHDRAWN.equals(status) ? WITHDRAWN_NICKNAME : nickname;
+    }
+
+
+    /**
+     * 로그인 실패를 기록하고 잠글 때가 되면 잠근다 (DP-10).
+     * 연속 5회 실패하면 1분, 그 뒤 잠금이 풀리고 실패를 5회 더 하면(누적 10회) 5분, 이후에도 5회마다 5분 잠근다.
+     * 실패 횟수는 잠금이 풀려도 지우지 않고(그래야 "또 5회"를 셀 수 있다) 로그인에 성공할 때만 0 으로 돌아간다.
+     * 이미 잠겨 있는 동안의 시도는 횟수를 올리지 않는다.
+     */
+    public void recordLoginFailure(LocalDateTime now) {
+        if (isLoginLocked(now)) {
+            return;
+        }
+
+        failedLoginCount++;
+
+        if (failedLoginCount % LOGIN_FAIL_LIMIT == 0) {
+            long minutes = failedLoginCount == LOGIN_FAIL_LIMIT ? FIRST_LOCK_MINUTES : REPEAT_LOCK_MINUTES;
+            lockedUntil = now.plusMinutes(minutes);
+        }
+    }
+
+    /** 현재 로그인 잠금 상태인지 확인한다. */
+    public boolean isLoginLocked(LocalDateTime now) {
+        return lockedUntil != null && now.isBefore(lockedUntil);
+    }
+
+    /** 로그인 성공 시 실패 횟수와 잠금을 초기화하고 마지막 로그인 시간을 기록한다. */
+    public void recordLoginSuccess(LocalDateTime now) {
+        failedLoginCount = 0;
+        lockedUntil = null;
+        lastLoginAt = now;
+    }
+    /** 비밀번호를 바꾼다 (#8). 평문이 아니라 이미 BCrypt 로 만든 해시를 받는다 (DP-02) */
+    public void changePasswordHash(String passwordHash) {
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        this.passwordHash = passwordHash;
+    }
+
+    /**
+     * 탈퇴한다 (#8, USR-14, DP-06). 계정을 비활성화(WITHDRAWN)하고 탈퇴 시각을 남긴다.
+     * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
+     */
+    public void withdraw(LocalDateTime now) {
+        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
+        this.status = STATUS_WITHDRAWN;
+        this.withdrawnAt = now;
+    }
+
+    /**
+     * 설정(닉네임·생년월일·성별)을 바꾼다 (#7). 이메일은 바꿀 수 없어 받지 않는다.
+     * 중복·금칙어·만 14세처럼 DB·오늘 날짜가 필요한 규칙은 MemberService 가 먼저 확인한다. 여기서는 값의 모양만 확인한다.
+     */
+    public void changeProfile(String nickname, LocalDate birthDate, String gender) {
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null, "생년월일이 필요합니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    /** 프로필 이미지 주소를 바꾼다 (#7) */
+    public void changeProfileImageUrl(String profileImageUrl) {
+        require(profileImageUrl != null && !profileImageUrl.isBlank(), "프로필 이미지 주소가 필요합니다.");
+        this.profileImageUrl = profileImageUrl;
     }
 
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */

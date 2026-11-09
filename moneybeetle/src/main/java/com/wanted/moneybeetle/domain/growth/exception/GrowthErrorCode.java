@@ -5,7 +5,7 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   성장 도메인 에러 코드 (각 도메인이 자기 패키지에 ErrorCode 구현 enum 을 둔다)
 *   #2 에서 global.exception.ErrorCode 가 getCode / getStatus(HttpStatus) / getMessage 로 정해져
 *   상태 필드를 int httpStatus -> HttpStatus status 로 맞췄다 (Lombok @Getter 가 getStatus() 를 만든다)
@@ -21,7 +21,9 @@ public enum GrowthErrorCode implements ErrorCode {
     REWARD_NOT_SUPPORTED("REWARD_NOT_SUPPORTED", HttpStatus.INTERNAL_SERVER_ERROR, "지원하지 않는 보상 설정입니다."),
     /** 같은 원인(시즌 참가, 청약통장 납입 등)으로 이미 캐시를 썼다 (이중 차감 방지) */
     ALREADY_USED("ALREADY_USED", HttpStatus.CONFLICT, "이미 처리된 요청입니다."),
-    INVALID_HISTORY_TYPE("INVALID_HISTORY_TYPE", HttpStatus.BAD_REQUEST, "내역 종류는 EARN 또는 USE 만 쓸 수 있습니다.");
+    INVALID_HISTORY_TYPE("INVALID_HISTORY_TYPE", HttpStatus.BAD_REQUEST, "내역 종류는 EARN 또는 USE 만 쓸 수 있습니다."),
+    /** level_policy 가 비어 있거나 1레벨부터 빠짐없이 이어지지 않는다 (시드·설정 오류) */
+    LEVEL_POLICY_INVALID("LEVEL_POLICY_INVALID", HttpStatus.INTERNAL_SERVER_ERROR, "레벨 정책 설정이 올바르지 않습니다.");
 
     private final String code;
     private final HttpStatus status;
