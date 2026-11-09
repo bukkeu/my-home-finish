@@ -189,7 +189,7 @@
 | #132 | 로그인 병합 후 강의·스크랩 API에 로그인 회원 ID 연결 (후속) | — | — | #17·#18 리뷰 지적. `CourseController.currentMemberId()`·`currentMemberIdOrNull()`을 `@AuthenticationPrincipal` 기반으로 교체. 선행 #4·#6 |
 
 **다른 사람에게 줘야 하는 것**: `CourseService.hasLearningHistory(memberId)`(김예린 홈·로그인 분기), `CourseService.findContinueWatching / findLearningSummary(memberId)`(김예린 홈·Drawer), `CourseService.search(q)`·`InquiryService.search(q)`(이재성 검색)
-**신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.write`, 서수영 `FileStorageService.save`
+**신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.record`, 서수영 `FileStorageService.save`
 
 ---
 
@@ -229,7 +229,7 @@
 | #119 | 사이드바 로그아웃 폼 주소 수정 (후속, 닫힘) | — | — | `fragments/layout/sidebar.html` 로그아웃 폼을 `/api/v1/auth/logout`(API 7)으로 수정 |
 | #123 | 알림 패널 버튼 포커스 표시·읽음 요청 keepalive (후속, 닫힘) | — | — | 릴리스 PR #106 리뷰 FE 지적. `common.css` `:focus-visible`, `notify.js` `keepalive` (PR #124) |
 
-**다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
+**다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.record(adminId, action, targetType, targetId, detailJson)`
 **김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.openAccount`·`getDashboardSummary`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
 
 ---
@@ -282,7 +282,7 @@
 | 김예린 | `NotificationService.send(memberId, type, title, link)` | 신아림, 이재성, 서수영 | 검수 결과, 턴 진행·랭킹 공개, 청약 결과 |
 | 김예린 | `AttendanceService.checkToday(memberId)` | 김예린 | 로그인 성공 |
 | 김예린 | `ForbiddenWordService.check(text)` | 신아림, 김예린 | 문의·닉네임·강의 글 |
-| 김예린 | `AdminLogService.write(adminId, action, targetId, before, after, reason)` | 전원 | 관리자 중요 작업 |
+| 김예린 | `AdminLogService.record(adminId, action, targetType, targetId, detailJson)` | 전원 | 관리자 중요 작업 |
 | 김예린 | `InstructorService.apply(memberId, ...)` / `approve(applicationId)` | 신아림 | 강사 가입 신청(#30), 관리자 강사 승인(#37). `instructor_profile`은 김예린 `member` 도메인 소유 |
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
