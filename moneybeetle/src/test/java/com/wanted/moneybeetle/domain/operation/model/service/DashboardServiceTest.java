@@ -116,4 +116,13 @@ class DashboardServiceTest {
         when(seasonAdminService.findSeasons()).thenReturn(List.of(season(7, "SETTLING", 12, 10, 1)));
         assertThat(service.getDashboard(ADMIN).season().seasonId()).isEqualTo(7L);
     }
+
+    @Test
+    @DisplayName("대시보드는 읽기 전용 트랜잭션 하나로 묶여 여러 도메인의 숫자가 같은 시점의 값이다")
+    void isOneReadOnlyTransaction() {
+        var tx = DashboardService.class.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+
+        org.assertj.core.api.Assertions.assertThat(tx).as("클래스에 @Transactional 이 있어야 한다").isNotNull();
+        org.assertj.core.api.Assertions.assertThat(tx.readOnly()).isTrue();
+    }
 }
