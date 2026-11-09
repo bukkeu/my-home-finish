@@ -80,6 +80,9 @@ class HousingSecurityFlowTest {
     private AuthService authService;
     @MockitoBean
     private LoginAuthenticationProvider loginAuthenticationProvider;
+    /** SecurityConfig 의 ActiveMemberFilter(#8)가 요청마다 계정 상태를 확인한다. 이 테스트의 회원은 정상 계정이다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberService memberService;
 
     @Autowired
     private WebApplicationContext context;
@@ -87,6 +90,7 @@ class HousingSecurityFlowTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.when(memberService.isActiveMember(org.mockito.ArgumentMatchers.anyLong())).thenReturn(true);
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
