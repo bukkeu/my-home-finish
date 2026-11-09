@@ -4,6 +4,8 @@ import com.wanted.moneybeetle.domain.housing.model.entity.HousingApplication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -37,4 +39,10 @@ public interface HousingApplicationRepository extends JpaRepository<HousingAppli
 
     // #29 내 신청 내역 (API 70)
     Page<HousingApplication> findByMemberId(Long memberId, Pageable pageable);
+
+    // #47 관리자 단지 목록 : 여러 단지의 신청자 수를 한 번에 센다 (단지마다 count 를 부르면 N+1)
+    //  결과 한 줄 = [단지 ID, 신청자 수]
+    @Query("SELECT a.housingComplexId, COUNT(a) FROM HousingApplication a "
+            + "WHERE a.housingComplexId IN :complexIds GROUP BY a.housingComplexId")
+    List<Object[]> countGroupByHousingComplexIdIn(@Param("complexIds") List<Long> complexIds);
 }
