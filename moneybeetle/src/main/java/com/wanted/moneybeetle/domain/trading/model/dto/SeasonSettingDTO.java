@@ -7,6 +7,7 @@ package com.wanted.moneybeetle.domain.trading.model.dto;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -24,6 +25,7 @@ public class SeasonSettingDTO {
     @NotNull
     @DecimalMin("0.00")
     @DecimalMax("100.00")
+    @Digits(integer = 3, fraction = 2)   // DB decimal(5,2) : 소수 셋째 자리부터는 반올림되지 않게 거절
     private BigDecimal carryoverRate;
 
     @PositiveOrZero
