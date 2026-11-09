@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.LevelTable;
 import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
@@ -29,9 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class MemberProfileService {
-
-    /** 연속 출석 캐시가 시작되는 연속 일수 (SP-12) */
-    static final int STREAK_REWARD_DAYS = 5;
 
     private final MemberService memberService;
     private final GrowthService growthService;
@@ -90,8 +88,8 @@ public class MemberProfileService {
         return memberService.changeProfileImageUrl(memberId, url);
     }
 
-    /** 연속 출석 캐시(연속 5일째부터)까지 남은 일수. 이미 5일 이상이면 0 */
+    /** 연속 출석 캐시(growth.AttendanceService.REWARD_START_STREAK 일째부터)까지 남은 일수. 이미 그 일수 이상이면 0 */
     static int daysToReward(int streak) {
-        return Math.max(0, STREAK_REWARD_DAYS - streak);
+        return Math.max(0, AttendanceService.REWARD_START_STREAK - streak);
     }
 }

@@ -157,8 +157,10 @@ class MemberProfileServiceTest {
     @Test
     @DisplayName("연속 출석 5일째부터 매일 지급이므로 남은 일수는 5 - 연속 일수, 0 미만은 없다")
     void daysToReward() {
-        assertThat(MemberProfileService.daysToReward(0)).isEqualTo(5);
-        assertThat(MemberProfileService.daysToReward(4)).isEqualTo(1);
+        int start = com.wanted.moneybeetle.domain.growth.model.service.AttendanceService.REWARD_START_STREAK;   // 출석 서비스의 기준 일수를 따른다
+        assertThat(MemberProfileService.daysToReward(0)).isEqualTo(start);
+        assertThat(MemberProfileService.daysToReward(start - 1)).isEqualTo(1);
+        assertThat(MemberProfileService.daysToReward(start)).isZero();
         assertThat(MemberProfileService.daysToReward(5)).isZero();
     }
 }
