@@ -1,6 +1,6 @@
 -- 이슈 #75: 경제 용어·날짜별 오늘의 용어·알림 샘플 시드 (이미 시드를 넣어 둔 DB용)
 -- 새로 만드는 DB 는 sample-data.sql 에 같은 값이 들어 있으므로 이 파일을 실행하지 않는다.
--- 여러 번 실행해도 안전하다: 용어·일정은 이미 있으면 건너뛰고(INSERT IGNORE), 알림은 알림이 하나도 없을 때만 넣는다.
+-- 여러 번 실행해도 안전하다: 용어·일정은 이미 있으면 건너뛰고(INSERT IGNORE), 알림은 샘플 행마다 같은 알림이 있는지 보고 없는 것만 넣는다.
 
 INSERT IGNORE INTO economic_term (economic_term_id, term, description) VALUES
 (1, '복리', '원금에 붙은 이자에도 다시 이자가 붙는 방식'),
@@ -22,7 +22,7 @@ INSERT IGNORE INTO term_schedule (show_date, economic_term_id, sort_order, is_au
 (CURDATE() + INTERVAL 1 DAY, 6, 1, 0), (CURDATE() + INTERVAL 1 DAY, 7, 2, 0), (CURDATE() + INTERVAL 1 DAY, 8, 3, 0),
 (CURDATE() + INTERVAL 1 DAY, 9, 4, 0), (CURDATE() + INTERVAL 1 DAY, 10, 5, 0);
 
--- 알림 샘플 (시드 회원 8 민지 4건, 강사 5번 1건). 알림이 하나라도 있으면 넣지 않는다
+-- 알림 샘플 (시드 회원 8 민지 4건, 강사 5번 1건). 샘플마다 같은 회원·종류·제목·이동 주소의 알림이 이미 있으면 그 행만 건너뛴다
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at)
 SELECT v.member_id, v.type, v.title, v.link_url, v.is_read, v.created_at
 FROM (
@@ -32,4 +32,7 @@ FROM (
     UNION ALL SELECT 8, 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, NOW() - INTERVAL 2 DAY
     UNION ALL SELECT 5, 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, NOW() - INTERVAL 1 HOUR
 ) v
-WHERE NOT EXISTS (SELECT 1 FROM notification);
+WHERE NOT EXISTS (
+    SELECT 1 FROM notification n
+    WHERE n.member_id = v.member_id AND n.type = v.type AND n.title = v.title AND n.link_url = v.link_url
+);
