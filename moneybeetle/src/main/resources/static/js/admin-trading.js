@@ -168,10 +168,13 @@
   }
 
   function loadSeasons(wantedId) {
+    var before = currentSeasonId();   // 목록을 요청할 때 고른 시즌
     return api('/seasons').then(function (data) {
       state.seasonsError = false;
       state.seasons = items(data);
-      state.season = pickSeason(state.seasons, wantedId);
+      // 목록을 받는 동안 관리자가 다른 시즌을 골랐으면 그 선택을 우선한다 (응답이 이전 시즌으로 되돌리지 않게)
+      var changed = String(currentSeasonId()) !== String(before);
+      state.season = pickSeason(state.seasons, changed ? currentSeasonId() : wantedId);
       renderSeasonSelect();
     }, function (err) {
       state.seasonsError = true;
