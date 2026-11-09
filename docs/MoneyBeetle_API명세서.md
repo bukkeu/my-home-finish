@@ -468,13 +468,14 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "memberId": 1, "nickname": "민지", "role": "MEMBER",
-  "redirectUrl": "/user/home"
+  "redirectUrl": "/user/home",
+  "attendance": { "checkedToday": true, "newlyChecked": true, "streak": 5, "rewardCash": 10000 }
 }
 ```
 
 - `role`은 실제로 부여된 권한이다. 회원 정보상 강사여도 관리자가 승인하기 전에는 `MEMBER` 로 로그인된다(SP-07).
 - `redirectUrl`: `next` → 로그인 전에 가려던 화면 → 역할별 첫 화면(`/user/home`, `/instructor/dashboard`, `/admin/dashboard`) 순이다.
-- `attendance`(`checkedToday`, `streak`, `rewardCash`)는 출석 서비스(#12)가 연결되면 응답에 더한다.
+- `attendance`는 일반 회원(`MEMBER`)이 로그인할 때 오늘 출석을 기록한 결과다. `newlyChecked`는 오늘 처음 기록했는지, `rewardCash`는 이번 출석으로 받은 캐시(연속 5일째부터, 이미 출석했거나 보상 규칙이 꺼져 있으면 0)다. 강사·관리자 로그인이거나 출석 기록이 실패하면 `null` 이고, 출석이 실패해도 로그인은 성공한다.
 
 **Error**: `LOGIN_FAILED`(401), `LOGIN_LOCKED`(423), `ACCOUNT_SUSPENDED`(403), `ACCOUNT_WITHDRAWN`(403)
 
@@ -824,7 +825,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 **Response**
 
 ```json
-{ "streak": 3, "daysToReward": 2, "rewardCash": 1000, "checkedToday": true }
+{ "streak": 3, "daysToReward": 2, "rewardCash": 10000, "checkedToday": true }
 ```
 
 #### 22. 캐시 내역
@@ -2392,9 +2393,8 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-03~04 |
-| 설명 | 상태별 강의 목록. |
+| 설명 | 상태별 강의 목록(삭제된 강의 제외). status=DRAFT·REVIEW·APPROVED·REJECTED, 없거나 모르는 값이면 전체. 검수 요청 최신순. 항목: courseId, title, instructorName, status, isPublic, submittedAt, learners(학습 시작 회원 수). 페이지 응답(PageResponse). |
 
-**Request**
 
 - Query: status=REVIEW&page=0&size=20
 
@@ -2412,9 +2412,8 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-03 |
-| 설명 | 영상·요약글·퀴즈(정답 포함)와 검수 이력. |
+| 설명 | 강의 편집 정보 + lessons[](영상·요약글, 순서대로) + quizzes[](테스트·본 퀴즈 전체, 보기별 isCorrect·해설 포함) + reviews[](검수 이력 최신순: result, reason, adminId, createdAt). 삭제된 강의는 NOT_FOUND. |
 
-**Request**
 
 - Path: courseId=9
 
@@ -2430,13 +2429,13 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 허가 + 공개. course_review·admin_log 기록. |
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
 
-**Request**
 
 - Path: courseId=9
 
 **Response**
+#### **Error**: `COURSE_NOT_IN_REVIEW`, `NOT_FOUND`
 
 ```json
 { "status": "APPROVED", "isPublic": true }
@@ -2450,8 +2449,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-| 설명 | 사유 필수. 강사에게 알림. |
-
+| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
@@ -2464,7 +2462,7 @@ email=admin@moneybeetle.kr&password=...
 { "status": "REJECTED" }
 ```
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `COURSE_NOT_IN_REVIEW`, `NOT_FOUND`
 
 #### 93. 공개·비공개
 
@@ -2474,9 +2472,8 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-04 |
-| 설명 | 허가된 강의를 비공개로 바꾸거나 다시 공개. |
+| 설명 | 허가(APPROVED)된 강의만 비공개로 바꾸거나 다시 공개. 허가 안 된 강의는 공개할 수 없음. |
 
-**Request**
 
 ```json
 { "isPublic": false }
@@ -2485,6 +2482,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+**Error**: `COURSE_NOT_APPROVED`, `NOT_FOUND`
 
 #### 94. 강의 삭제
 
@@ -2924,7 +2922,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-09, ADM-12, SP-50 |
-| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력을 자동 생성. copyFromSeasonId를 주면 이전 시즌의 분야·종목을 그대로 가져온다. |
+| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력(일요일 제외)을 자동 생성. 기본 설정은 이월 100%·상한 없음·해금 Lv.8(SP-63). copyFromSeasonId를 주면 그 시즌의 이월 비율·상한·해금 레벨을 그대로 가져온다(분야·종목은 시즌과 상관없이 공통이라 복사할 것이 없다). 없는 시즌이면 `NOT_FOUND`. 만든 관리자(`created_by`)는 로그인한 관리자 번호이고, 로그인 정보가 없으면 401 `UNAUTHORIZED` (#40) |
 
 **Request**
 
@@ -2939,7 +2937,7 @@ email=admin@moneybeetle.kr&password=...
 { "seasonId": 8, "turns": [ { "turnNo": 1, "tradeDate": "2026-11-16" } ] }
 ```
 
-**Error**: `START_DATE_NOT_MONDAY`
+**Error**: `START_DATE_NOT_MONDAY`, `NOT_FOUND`
 
 #### 116. 시즌 설정
 
@@ -2949,7 +2947,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-11 |
-| 설명 | 이월 비율·상한, 참가 해금 레벨. |
+| 설명 | 이월 비율(0~100%, 소수 둘째 자리까지)·상한(없으면 null), 참가 해금 레벨(1~20). 정산 중·종료된 시즌은 바꿀 수 없다. |
 
 **Request**
 
@@ -2961,6 +2959,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `SEASON_CLOSED`, `NOT_FOUND`
+
 #### 117. 시즌 상태 변경
 
 | 항목 | 내용 |
@@ -2969,7 +2969,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-10, SP-65 |
-| 설명 | READY → RUNNING → HOLIDAY → SETTLING → ENDED 순서로만. |
+| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING → ENDED 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. 그 밖의 변경과 거꾸로 가는 변경은 거절. |
 
 **Request**
 
@@ -3681,6 +3681,8 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
+| 강사·관리자 | `START_DATE_NOT_MONDAY` | 400 | 시즌 시작일은 월요일이어야 해요 |
+| 강사·관리자 | `INVALID_STATUS_TRANSITION` | 409 | 지금 상태에서는 그 상태로 바꿀 수 없어요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
 | 모의 청약 | `RECEIPT_NO_CONFLICT` | 409 | 신청이 몰려 접수하지 못했어요. 다시 신청해 주세요 |
