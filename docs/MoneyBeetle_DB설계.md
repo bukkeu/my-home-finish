@@ -1039,8 +1039,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `admin_log_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 기록 ID |
 | `admin_id` | BIGINT | N | FK → member.member_id | - | 작업한 관리자 |
-| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등 |
-| `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE …) |
+| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE |
+| `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE, HOUSING_COMPLEX …) |
 | `target_id` | BIGINT | Y | - | - | 대상 ID |
 | `detail` | JSON | Y | - | - | 변경 전·후 값 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -1085,7 +1085,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | DH-03 | 지난 데이터 불변 | 지난 턴 가격, 체결된 거래, 신청한 청약은 바꾸지 않는다. 지난 턴 뉴스는 오타 수정만 허용하고 `admin_log`에 남긴다 (DP-41, SP-73) |
 | DH-04 | 본인 소유 가벼운 데이터는 Hard Delete | 다른 데이터가 참조하지 않고 사용자가 직접 지우는 것(스크랩 해제, 오답노트 삭제, 읽은 알림 정리)은 실제로 지운다 |
 | DH-05 | 개인정보는 기간 후 파기 | 탈퇴 회원의 개인정보는 기간이 지나면 값을 지운다(NULL). 행 자체는 학습·거래 기록 보존을 위해 남긴다 (DP-06) |
-| DH-06 | 중요 변경은 기록 | 턴 진행, 정산, 랭킹 공개, 캐시 수동 지급·회수, 강의 허가·반려, 계정 정지, 강사 권한 변경은 `admin_log`에 누가·언제·무엇을 남긴다 (DP-43) |
+| DH-06 | 중요 변경은 기록 | 턴 진행, 정산, 랭킹 공개, 캐시 수동 지급·회수, 강의 허가·반려, 계정 정지, 강사 권한 변경, 청약 공고 등록·수정·삭제·당첨 산정·결과 발표는 `admin_log`에 누가·언제·무엇을 남긴다 (DP-43) |
 
 ### 3-2 테이블별 삭제 방식
 

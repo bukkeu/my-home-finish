@@ -56,15 +56,16 @@ public class AdminHousingController {
     @PutMapping("/complexes/{complexId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void updateComplex(@PathVariable Long complexId,
-                              @RequestBody ComplexRequestDTO request) {
-        adminHousingService.updateComplex(complexId, request);
+                              @RequestBody ComplexRequestDTO request,
+                              @AuthenticationPrincipal AuthDetails auth) {
+        adminHousingService.updateComplex(auth.getMemberId(), complexId, request);
     }
 
     // API 145 공고 삭제(Soft Delete) → 204
     @DeleteMapping("/complexes/{complexId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteComplex(@PathVariable Long complexId) {
-        adminHousingService.deleteComplex(complexId);
+    public void deleteComplex(@PathVariable Long complexId, @AuthenticationPrincipal AuthDetails auth) {
+        adminHousingService.deleteComplex(auth.getMemberId(), complexId);
     }
 
     // API 146 신청자 목록 → { "items": [...] } (산정 전 가점순, 산정 뒤 순위순)
@@ -75,13 +76,15 @@ public class AdminHousingController {
 
     // API 147 당첨자 산정 → { applicants, winners, computedAt }
     @PostMapping("/complexes/{complexId}/compute")
-    public ApiResponse<ComputeResultDTO> compute(@PathVariable Long complexId) {
-        return ApiResponse.success(adminHousingService.compute(complexId));
+    public ApiResponse<ComputeResultDTO> compute(@PathVariable Long complexId,
+                                                 @AuthenticationPrincipal AuthDetails auth) {
+        return ApiResponse.success(adminHousingService.compute(auth.getMemberId(), complexId));
     }
 
     // API 148 결과 발표 → { announcedAt, notified }
     @PostMapping("/complexes/{complexId}/announce")
-    public ApiResponse<AnnounceResultDTO> announce(@PathVariable Long complexId) {
-        return ApiResponse.success(adminHousingService.announce(complexId));
+    public ApiResponse<AnnounceResultDTO> announce(@PathVariable Long complexId,
+                                                   @AuthenticationPrincipal AuthDetails auth) {
+        return ApiResponse.success(adminHousingService.announce(auth.getMemberId(), complexId));
     }
 }
