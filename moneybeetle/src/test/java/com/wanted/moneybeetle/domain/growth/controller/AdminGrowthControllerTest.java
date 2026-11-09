@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,18 +38,20 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class AdminGrowthControllerTest {
 
     private RewardRuleService service;
+    private com.wanted.moneybeetle.domain.growth.model.service.CashAdjustService cashAdjustService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         service = mock(RewardRuleService.class);
+        cashAdjustService = mock(com.wanted.moneybeetle.domain.growth.model.service.CashAdjustService.class);
         Member admin = Member.signup("admin@gmail.com", "hash", "관리자", LocalDate.of(1999, 4, 12), null,
                 LocalDate.of(2026, 11, 9));
         ReflectionTestUtils.setField(admin, "memberId", 1L);
         AuthDetails principal = new AuthDetails(LoginMemberDTO.from(admin, Member.ROLE_ADMIN));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
-        mockMvc = MockMvcBuilders.standaloneSetup(new AdminGrowthController(service, mock(com.wanted.moneybeetle.domain.growth.model.service.CashAdjustService.class)))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AdminGrowthController(service, cashAdjustService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
@@ -81,5 +84,18 @@ class AdminGrowthControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(service).updateRule(eq(1L), eq(1L), any(RewardRuleUpdateDTO.class));
+    }
+
+    @Test
+    @DisplayName("캐시 지급: 로그인한 관리자 번호로 서비스를 부르고 201 과 cashHistoryId·balanceAfter 를 돌려준다 (API 110)")
+    void adjustsCash() throws Exception {
+        when(cashAdjustService.adjust(eq(1L), eq(8L), any(com.wanted.moneybeetle.domain.growth.model.dto.CashAdjustDTO.class)))
+                .thenReturn(new com.wanted.moneybeetle.domain.growth.model.dto.CashAdjustResultDTO(130L, 14_400L));
+
+        mockMvc.perform(post("/api/v1/admin/members/8/cash-adjustments").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"GIVE\",\"amount\":2000,\"reason\":\"출석 누락 보정\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.cashHistoryId").value(130))
+                .andExpect(jsonPath("$.data.balanceAfter").value(14400));
     }
 }
