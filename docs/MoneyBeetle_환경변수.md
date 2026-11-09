@@ -53,6 +53,7 @@
 | `MAIL_USERNAME` | 메일 계정 | | 비워 둠 | 〃 |
 | `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호) | ✅ | 비워 둠 | 〃 |
 | `MAIL_FROM` | 발신자 주소 | | `no-reply@moneybeetle.local` | 〃 |
+| `APP_BASE_URL` | 재설정 메일 속 링크의 서버 주소 (`{APP_BASE_URL}/password-reset?token=...`) | | `http://localhost:8080` | 〃 |
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
 | `GOOGLE_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `KAKAO_CLIENT_ID` | 카카오 간편 로그인 | | 개인 테스트 앱의 값 | 〃 |

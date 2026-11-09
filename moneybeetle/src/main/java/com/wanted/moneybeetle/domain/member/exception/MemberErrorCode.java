@@ -29,7 +29,12 @@ public enum MemberErrorCode implements ErrorCode {
     LOGIN_FAILED("LOGIN_FAILED", HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호를 확인해 주세요."),
     LOGIN_LOCKED("LOGIN_LOCKED", HttpStatus.LOCKED, "로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요."),
     ACCOUNT_SUSPENDED("ACCOUNT_SUSPENDED", HttpStatus.FORBIDDEN, "이용이 제한된 계정이에요."),
-    ACCOUNT_WITHDRAWN("ACCOUNT_WITHDRAWN", HttpStatus.FORBIDDEN, "탈퇴한 계정이에요.");
+    ACCOUNT_WITHDRAWN("ACCOUNT_WITHDRAWN", HttpStatus.FORBIDDEN, "탈퇴한 계정이에요."),
+
+    // 비밀번호 재설정·변경, 탈퇴 (API 11, 16, 17)
+    PASSWORD_WRONG("PASSWORD_WRONG", HttpStatus.BAD_REQUEST, "현재 비밀번호가 맞지 않아요."),
+    TOKEN_EXPIRED("TOKEN_EXPIRED", HttpStatus.BAD_REQUEST, "인증이 만료되었거나 올바르지 않아요. 다시 요청해 주세요."),
+    TOKEN_USED("TOKEN_USED", HttpStatus.BAD_REQUEST, "이미 사용한 인증이에요. 다시 요청해 주세요.");
 
     private final String code;
     private final HttpStatus status;

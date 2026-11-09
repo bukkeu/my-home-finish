@@ -154,6 +154,14 @@ public class MemberService {
         getMemberForUpdate(memberId).recordLoginSuccess(now);
     }
 
+    /**
+     * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
+     * 없는 회원이면 false 다.
+     */
+    public boolean isActiveMember(Long memberId) {
+        return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
+    }
+
     /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */
     private String grantedRole(Member member) {
         if (!Member.ROLE_INSTRUCTOR.equals(member.getRole())) {
