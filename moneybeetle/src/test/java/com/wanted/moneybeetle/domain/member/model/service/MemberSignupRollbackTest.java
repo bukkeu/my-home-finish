@@ -25,6 +25,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -134,7 +135,11 @@ class MemberSignupRollbackTest {
     void accountFailureRollsBackMember() {
         jdbcTemplate.execute("drop table subscription_account");   // 통장을 저장할 수 없게 만든다
 
-        assertThatThrownBy(() -> signupService.signup(request)).isInstanceOf(RuntimeException.class);
+        // 아무 예외나 받지 않는다: 나이·약관 검증 같은 가입 규칙(BusinessException)에서 먼저 실패해도 통과하는 일이 없도록,
+        // 청약통장 테이블이 없어서 생긴 DB 오류인지 확인한다. 같은 요청이 savesMemberAndAccount 에서는 가입에 성공한다.
+        assertThatThrownBy(() -> signupService.signup(request))
+                .isInstanceOf(DataAccessException.class)
+                .hasStackTraceContaining("SUBSCRIPTION_ACCOUNT");
 
         assertThat(memberRepository.existsByEmail("minji@gmail.com")).isFalse();
         assertThat(memberRepository.existsByNickname("민지")).isFalse();
