@@ -412,7 +412,10 @@
 { "memberId": 1, "nickname": "민지" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `REQUIRED_TERMS_NOT_AGREED`, `AGE_UNDER_14`, `FORBIDDEN_WORD`
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`
+
+- `EMAIL_DUPLICATED`·`NICKNAME_DUPLICATED`는 두 요청이 동시에 같은 값으로 가입해 중복 확인을 함께 통과해도 DB 고유 제약(`uk_member_email`, `uk_member_nickname`)에서 걸러져 같은 409로 응답한다.
+- 청약통장 개설은 서수영의 `HousingService.openAccount` 연동 뒤에 붙는다(이슈 #5 남은 작업).
 
 #### 5. 본인인증
 
@@ -1314,7 +1317,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-06, SP-36 |
-| 설명 | 카테고리·강의별로 모아 본다. |
+| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. |
 
 **Request**
 
@@ -1325,7 +1328,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 {
   "items": [ { "wrongNoteId": 9, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "categoryName": "부동산 › 청약",
-    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" } ]
+    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" }   ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1
 }
 ```
 
@@ -1337,8 +1341,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-06 |
-| 설명 | 오답노트 문제만 다시 풀고 채점 결과를 본다. 기록·보상 없음. |
-
+| 설명 | 오답노트 문제만 다시 풀고 채점 결과를 본다. 기록·보상 없음. 요청한 문항 중 내 오답노트에 있고 공개된 강의의 문제만 채점한다. |
 **Request**
 
 ```json
@@ -1359,8 +1362,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | SP-36 |
-| 설명 | 오답노트에서 지운다(실제 삭제). |
-
+| 설명 | 오답노트에서 지운다(실제 삭제). 본인 오답만 지워지며, 없거나 남의 ID여도 204(존재 여부를 알리지 않음). |
 **Request**
 
 - Path: wrongNoteId=9
