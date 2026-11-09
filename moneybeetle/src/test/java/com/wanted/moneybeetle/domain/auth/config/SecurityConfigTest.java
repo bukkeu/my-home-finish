@@ -61,6 +61,9 @@ class SecurityConfigTest {
     /** 로그인 핸들러(#6)가 필요로 하는 서비스. 이 테스트는 URL 권한만 보므로 가짜로 둔다 */
     @MockitoBean
     private AuthService authService;
+    /** 로그인해 둔 세션의 계정 상태 확인(ActiveMemberFilter)이 쓴다. 이 테스트의 가짜 사용자는 AuthDetails 가 아니라 호출되지 않는다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberService memberService;
     @MockitoBean
     private com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider loginAuthenticationProvider;
 
