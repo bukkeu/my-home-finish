@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.SeasonParticipant;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
@@ -9,4 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface SeasonParticipantRepository extends JpaRepository<SeasonParticipant, Long> {
 
+    /** 회원의 그 시즌 참가 기록 (#24 내 보유) */
+    Optional<SeasonParticipant> findByTradingSeasonIdAndMemberId(Long tradingSeasonId, Long memberId);
 }

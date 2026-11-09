@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
@@ -9,4 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface StockRepository extends JpaRepository<Stock, Long> {
 
+    /** 사용 중인 종목 (#24) */
+    List<Stock> findByIsActiveTrueOrderByStockIdAsc();
 }
