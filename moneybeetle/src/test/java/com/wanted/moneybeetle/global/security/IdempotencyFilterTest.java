@@ -179,6 +179,21 @@ class IdempotencyFilterTest {
     }
 
     @Test
+    void 처리_중_Error가_나도_기록을_지운다() throws Exception {
+        FilterChain broken = (req, res) -> {
+            throw new StackOverflowError("처리 실패");
+        };
+
+        try {
+            send(request("minji", "k-1", BUY_BODY), broken);
+        } catch (StackOverflowError expected) {
+            // Error 도 그대로 위로 전달된다
+        }
+
+        assertThat(store.find("minji POST " + ORDER_PATH + " k-1")).isEmpty();
+    }
+
+    @Test
     void 회원이_다르면_같은_키라도_따로_처리한다() throws Exception {
         AtomicInteger calls = new AtomicInteger();
 

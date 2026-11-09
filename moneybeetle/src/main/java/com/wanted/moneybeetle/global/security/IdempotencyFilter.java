@@ -92,13 +92,17 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         }
 
         ContentCachingResponseWrapper cachedResponse = new ContentCachingResponseWrapper(response);
+        boolean handled = false;
         try {
             chain.doFilter(cachedRequest, cachedResponse);
-        } catch (IOException | ServletException | RuntimeException e) {
+            handled = true;
+        } finally {
             // 보통 예외는 GlobalExceptionHandler 가 500 응답으로 바꿔서 여기까지 오지 않는다.
-            // 여기 오는 것은 응답을 만들지 못한 경우라 돌려줄 결과가 없으므로 기록을 지운다
-            store.remove(storeKey);
-            throw e;
+            // 여기 오는 것은 응답을 만들지 못한 경우(Error 포함)라 돌려줄 결과가 없으므로 기록을 지운다.
+            // 지우지 않으면 "처리 중" 기록이 24시간 남아 같은 키가 계속 DUPLICATE_REQUEST 가 된다
+            if (!handled) {
+                store.remove(storeKey);
+            }
         }
 
         int status = cachedResponse.getStatus();
