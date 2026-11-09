@@ -19,4 +19,5 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(String status);
 
     List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, String status);
+    List<Course> findByInstructorIdAndDeletedAtIsNull(Long instructorId);
 }
