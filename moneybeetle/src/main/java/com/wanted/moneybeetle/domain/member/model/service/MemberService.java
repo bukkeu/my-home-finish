@@ -120,8 +120,8 @@ public class MemberService {
     }
 
     /**
-     * 비밀번호가 틀렸을 때 로그인 실패를 기록한다 (auth.AuthFailHandler 가 AuthService 를 거쳐 부른다). 이번 실패로 잠겼으면 true.
-     * 회원 행을 잠그고 읽어서 같은 계정의 동시 실패가 서로의 횟수를 덮어쓰지 않게 한다 (DP-10). 없는 이메일이면 false.
++     * 비밀번호가 틀렸을 때 로그인 실패를 기록한다 (auth.LoginAuthenticationProvider 가 AuthService 를 거쳐 부른다). 이번 실패로 잠겼으면 true.
+      * 회원 행을 잠그고 읽어서 같은 계정의 동시 실패가 서로의 횟수를 덮어쓰지 않게 한다 (DP-10). 없는 이메일이면 false.
      */
     @Transactional
     public boolean recordLoginFailure(String email, LocalDateTime now) {
