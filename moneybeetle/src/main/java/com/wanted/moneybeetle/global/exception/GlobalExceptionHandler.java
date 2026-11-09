@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -47,9 +46,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Object handleInvalidBody(MethodArgumentNotValidException e, HttpServletRequest request) {
         List<FieldMessage> fields = new ArrayList<>();
-        for (FieldError error : e.getBindingResult().getFieldErrors()) {
-            fields.add(new FieldMessage(error.getField(), error.getDefaultMessage()));
-        }
+        e.getBindingResult().getFieldErrors()
+                .forEach(error -> fields.add(new FieldMessage(error.getField(), error.getDefaultMessage())));
         // 특정 칸이 아닌 오류 (예: 클래스에 붙인 "비밀번호 확인 일치" 검사) → field 없이 문구만
         e.getBindingResult().getGlobalErrors()
                 .forEach(error -> fields.add(new FieldMessage(null, error.getDefaultMessage())));
@@ -79,13 +77,16 @@ public class GlobalExceptionHandler {
         return makeResponse(CommonErrorCode.FILE_TOO_LARGE, null, request);
     }
 
+    // 인증·권한 예외는 Spring Security 몫 : 그대로 다시 던지면 필터(ExceptionTranslationFilter)가 받아
+    // SecurityErrorHandler 가 401·403 으로 답한다. 이 핸들러가 없으면 아래 Exception 핸들러가 500 으로 잡는다
+    @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
+    public void passToSecurity(Exception e) throws Exception {
+        throw e;
+    }
+
     // 예상하지 못한 모든 예외
     @ExceptionHandler(Exception.class)
-    public Object handleException(Exception e, HttpServletRequest request) throws Exception {
-        // 인증·권한 예외는 Spring Security 몫 : 그대로 다시 던지면 필터(ExceptionTranslationFilter)가 받아 401·403 으로 답한다
-        if (e instanceof AuthenticationException || e instanceof AccessDeniedException) {
-            throw e;
-        }
+    public Object handleException(Exception e, HttpServletRequest request) {
         log.error("예상하지 못한 오류 ({})", request.getRequestURI(), e);
         return makeResponse(CommonErrorCode.INTERNAL_ERROR, null, request);
     }
