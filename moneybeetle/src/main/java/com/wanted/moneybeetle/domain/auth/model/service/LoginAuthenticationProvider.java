@@ -1,7 +1,11 @@
 package com.wanted.moneybeetle.domain.auth.model.service;
 
+import com.wanted.moneybeetle.domain.auth.exception.AdminOnlyException;
+import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
+import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -23,6 +27,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 *   - 실제 확인은 DaoAuthenticationProvider(+ AuthService 의 UserDetailsService)가 하고, 여기서는 그 앞뒤를 트랜잭션으로 감싸 기록한다
 *   - 인증에 실패해도 실패 기록은 저장(커밋)돼야 한다. 예외를 트랜잭션 안에서 던지면 롤백되므로, 결과를 값으로 돌려받아
 *     트랜잭션을 끝낸 뒤에 던진다
+*   - 관리자 로그인 주소(AdminLoginDetails 표시)로 온 시도는 비밀번호가 맞아도 ADMIN 권한이 아니면 AdminOnlyException(403 FORBIDDEN)으로 막는다 (#33)
 *   - 이번 실패로 계정이 잠기면(5회째 등) 비밀번호 오류 대신 LockedException(LOGIN_LOCKED)으로 알린다
 *  */
 @Component
@@ -58,6 +63,10 @@ public class LoginAuthenticationProvider implements AuthenticationProvider {
     private Attempt attempt(Authentication authentication) {
         try {
             Authentication result = delegate.authenticate(authentication);
+            if (authentication.getDetails() instanceof AdminLoginDetails && !isAdmin(result)) {
+                // 관리자 로그인 주소(API 83)에는 ADMIN 권한 계정만 들어온다. 로그인 성공으로 기록하지 않고 막는다
+                return new Attempt(null, new AdminOnlyException(CommonErrorCode.FORBIDDEN.getCode()));
+            }
             authService.recordLoginSuccess(((AuthDetails) result.getPrincipal()).getMemberId());
             return new Attempt(result, null);
         } catch (BadCredentialsException e) {
@@ -71,6 +80,10 @@ public class LoginAuthenticationProvider implements AuthenticationProvider {
             // 정지·탈퇴·잠금(InternalAuthenticationServiceException 으로 감싸진 것 포함) 등. 기록할 것이 없다
             return new Attempt(null, e);
         }
+    }
+
+    private static boolean isAdmin(Authentication result) {
+        return Member.ROLE_ADMIN.equals(((AuthDetails) result.getPrincipal()).getRole());
     }
 
     private record Attempt(Authentication result, AuthenticationException failure) {

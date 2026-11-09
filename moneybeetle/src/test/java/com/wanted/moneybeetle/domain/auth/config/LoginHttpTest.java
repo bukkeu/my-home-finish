@@ -54,7 +54,8 @@ import org.springframework.web.context.WebApplicationContext;
 *   회원 저장소만 가짜로 둔다 (DB 없이 돈다). 로그인 요청이 폼 형식(email, password)이라는 것과 CSRF 토큰이 필요하다는 것도 여기서 고정한다.
 *  */
 @SpringBootTest(classes = {LoginHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
-        AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
+        AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
+        com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler.class, AuthService.class,
         com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider.class,
         MemberService.class,
         LoginHttpTest.ProtectedController.class})

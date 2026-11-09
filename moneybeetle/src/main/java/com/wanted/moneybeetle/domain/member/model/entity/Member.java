@@ -238,6 +238,26 @@ public class Member {
         this.withdrawnAt = now;
     }
 
+    /**
+     * 설정(닉네임·생년월일·성별)을 바꾼다 (#7). 이메일은 바꿀 수 없어 받지 않는다.
+     * 중복·금칙어·만 14세처럼 DB·오늘 날짜가 필요한 규칙은 MemberService 가 먼저 확인한다. 여기서는 값의 모양만 확인한다.
+     */
+    public void changeProfile(String nickname, LocalDate birthDate, String gender) {
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null, "생년월일이 필요합니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    /** 프로필 이미지 주소를 바꾼다 (#7) */
+    public void changeProfileImageUrl(String profileImageUrl) {
+        require(profileImageUrl != null && !profileImageUrl.isBlank(), "프로필 이미지 주소가 필요합니다.");
+        this.profileImageUrl = profileImageUrl;
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);

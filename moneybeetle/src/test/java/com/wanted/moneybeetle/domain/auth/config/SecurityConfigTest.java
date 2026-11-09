@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *  */
 @SpringBootTest(classes = {SecurityConfigTest.TestApp.class, SecurityConfig.class,
         SecurityErrorHandler.class, AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
+        com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler.class,
         SecurityConfigTest.DummyController.class})
 class SecurityConfigTest {
 

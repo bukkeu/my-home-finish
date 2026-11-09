@@ -51,7 +51,8 @@ class MemberAccountControllerTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(mock(MemberService.class), accountService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(mock(MemberService.class), accountService,
+                mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
