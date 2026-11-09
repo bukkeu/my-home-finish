@@ -58,6 +58,10 @@
   function dateTime(iso) { return iso ? String(iso).replace(/^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2}).*$/, '$1.$2 $3') : '-'; }
   function api(path, opts) { return MB.api(BASE + path, opts); }
   function seasonPath(suffix) { return '/seasons/' + state.season.seasonId + suffix; }
+  // 시즌별 요청의 순번. 시즌을 A -> B -> A 로 바꿔도 먼저 보낸 요청의 늦은 응답이 지금 화면을 덮어쓰지 않게 한다
+  var req = { turn: 0, prices: 0, news: 0, people: 0, stats: 0, rank: 0 };
+  function begin(key) { return { token: ++req[key], seasonId: state.season ? state.season.seasonId : null }; }
+  function stale(key, t) { return t.token !== req[key] || !state.season || state.season.seasonId !== t.seasonId; }
   function errText(err) {
     if (err && err.fields && err.fields.length) return err.fields[0].message || err.message;
     return (err && err.message) || '요청을 처리하지 못했어요.';
@@ -265,7 +269,12 @@
     if (!/^\d+$/.test(level) || Number(level) < 1 || Number(level) > 20) return formError(f, '참여 해금 레벨은 1~20 사이로 입력해 주세요');
     formError(f, '');
     var body = { carryoverRate: Number(rate), carryoverCap: cap === '' ? null : Number(cap), unlockLevel: Number(level) };
+    var target = state.season;   // 요청을 보낸 시즌 (저장하는 사이 다른 시즌으로 바꿔도 이 시즌에 반영한다)
     busy(f.querySelector('[type=submit]'), api(seasonPath('/settings'), { method: 'PATCH', body: body })).then(function () {
+      // 목록 응답에 설정값이 없어서, 탭을 이동했다 돌아오면 폼이 비지 않게 저장한 값을 시즌에 담아 둔다
+      target.carryoverRate = body.carryoverRate;
+      target.carryoverCap = body.carryoverCap;
+      target.unlockLevel = body.unlockLevel;
       MB.toast('시즌 설정을 저장했어요');
     }, function (err) { formError(f, errText(err)); });
   });
@@ -299,7 +308,7 @@
   var nextBtn = $('at-next-btn');
 
   function loadTurn() {
-    var s = state.season;
+    var s = state.season, t = begin('turn');
     nextBtn.disabled = true;
     if (!s) {
       $('at-next-title').textContent = '다음 턴 진행';
@@ -311,8 +320,10 @@
     }
     emptyBox($('at-checks'), '점검 중…');
     $('at-next-block').textContent = '';
-    api(seasonPath('/turns/next-check')).then(renderCheck, function (err) { renderCheck(null, err); });
-    api(seasonPath('/turns')).then(renderTurns, function (err) { renderTurns(null, err); });
+    api(seasonPath('/turns/next-check')).then(function (d) { if (!stale('turn', t)) renderCheck(d); },
+      function (err) { if (!stale('turn', t)) renderCheck(null, err); });
+    api(seasonPath('/turns')).then(function (d) { if (!stale('turn', t)) renderTurns(d); },
+      function (err) { if (!stale('turn', t)) renderTurns(null, err); });
   }
 
   function renderCheck(check, err) {
@@ -501,13 +512,18 @@
   var priceRows = $('at-price-rows');
 
   function loadPrices() {
+    var t = begin('prices');
     if (!state.season) { fill($('at-price-head'), []); return emptyRow(priceRows, 1, noSeasonText()); }
     emptyRow(priceRows, 1, '불러오는 중…');
     api(seasonPath('/prices')).then(function (data) {
+      if (stale('prices', t)) return;
       state.prices = { currentTurn: data && data.currentTurn != null ? data.currentTurn : state.season.currentTurn, rows: (data && data.rows) || [] };
       state.edits = {};
       renderPrices();
-    }, function (err) { state.prices = null; fill($('at-price-head'), []); emptyRow(priceRows, 1, errText(err), true); updatePriceStatus(); });
+    }, function (err) {
+      if (stale('prices', t)) return;
+      state.prices = null; fill($('at-price-head'), []); emptyRow(priceRows, 1, errText(err), true); updatePriceStatus();
+    });
   }
 
   function editKey(stockId, turn) { return stockId + ':' + turn; }
@@ -681,12 +697,17 @@
   var newsForm = $('at-news-form');
 
   function loadNews() {
+    var t = begin('news');
     if (!state.season) { fill($('at-news-turns'), []); return emptyBox($('at-news-list'), noSeasonText()); }
     emptyBox($('at-news-list'), '불러오는 중…');
     Promise.all([loadMarket(false), api(seasonPath('/news'))]).then(function (r) {
+      if (stale('news', t)) return;
       state.news = items(r[1]);
       renderNews();
-    }, function (err) { fill($('at-news-turns'), []); emptyBox($('at-news-list'), errText(err), true); });
+    }, function (err) {
+      if (stale('news', t)) return;
+      fill($('at-news-turns'), []); emptyBox($('at-news-list'), errText(err), true);
+    });
   }
 
   function renderNews() {
@@ -802,10 +823,11 @@
    * 참가자 (API 135~136)
    * ===================================================================== */
   function loadPeople() {
-    var rows = $('at-people-rows');
+    var rows = $('at-people-rows'), t = begin('people');
     if (!state.season) return emptyRow(rows, 5, noSeasonText());
     emptyRow(rows, 5, '불러오는 중…');
     api(seasonPath('/participants?sort=netAsset&page=0&size=50')).then(function (data) {
+      if (stale('people', t)) return;
       var list = items(data);
       if (!list.length) return emptyRow(rows, 5, '아직 참가자가 없어요');
       fill(rows, list.map(function (p) {
@@ -816,7 +838,7 @@
           el('td', { class: tone(p.returnRate), text: pct(p.returnRate) })
         ]);
       }));
-    }, function (err) { emptyRow(rows, 5, errText(err), true); });
+    }, function (err) { if (!stale('people', t)) emptyRow(rows, 5, errText(err), true); });
   }
 
   function selectPerson(p, tr) {
@@ -853,10 +875,11 @@
     $('at-settle-hint').textContent = !s ? noSeasonText() : s.status === 'SETTLING' || s.status === 'ENDED'
       ? '랭킹 공개는 정산을 마친 뒤에만 할 수 있어요' : '시즌 상태가 ‘정산’일 때 실행할 수 있어요 · 현재 ' + statusLabel(s.status);
     loadRankPreview();
-    var stats = $('at-stats');
+    var stats = $('at-stats'), t = begin('stats');
     if (!s) return emptyBox(stats, noSeasonText());
     emptyBox(stats, '불러오는 중…');
     api(seasonPath('/statistics')).then(function (d) {
+      if (stale('stats', t)) return;
       d = d || {};
       var tops = d.topStocks || [], reasons = d.reasonRatios || [];
       fill(stats, [
@@ -869,21 +892,22 @@
         el('h4', { class: 'at-sub', text: '매매 이유 비율' }),
         el('div', { class: 'at-list' }, reasons.map(function (r) { return el('div', { class: 'at-li' }, [el('span', { text: r.reason }), el('small', { text: Number(r.ratio || 0).toFixed(1) + '%' })]); }))
       ]);
-    }, function (err) { emptyBox(stats, errText(err), true); });
+    }, function (err) { if (!stale('stats', t)) emptyBox(stats, errText(err), true); });
   }
 
   function loadRankPreview() {
-    var rows = $('at-rank-rows');
+    var rows = $('at-rank-rows'), t = begin('rank');
     if (!state.season) return emptyRow(rows, 4, noSeasonText());
     emptyRow(rows, 4, '불러오는 중…');
     api(seasonPath('/rankings/preview?type=' + state.rankType)).then(function (d) {
+      if (stale('rank', t)) return;
       var list = items(d);
       if (!list.length) return emptyRow(rows, 4, '아직 랭킹에 오른 참가자가 없어요');
       fill(rows, list.map(function (r) {
         return el('tr', {}, [el('td', {}, [el('strong', { text: String(r.rank) })]), el('td', { text: r.nickname }),
           el('td', { text: fmt(r.netAsset) }), el('td', { class: tone(r.returnRate), text: pct(r.returnRate) })]);
       }));
-    }, function (err) { emptyRow(rows, 4, errText(err), true); });
+    }, function (err) { if (!stale('rank', t)) emptyRow(rows, 4, errText(err), true); });
   }
   root.querySelectorAll('[data-at-rank]').forEach(function (b) {
     b.addEventListener('click', function () {

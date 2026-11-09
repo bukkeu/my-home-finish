@@ -6,6 +6,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.wanted.moneybeetle.domain.auth.config.SecurityConfig;
+import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
+import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,10 +31,11 @@ import org.springframework.web.context.WebApplicationContext;
 /* comment.
 *   담당 : PM (모의투자)
 *   관리자 모의투자 운영 화면(#62)이 그려지는지 확인한다. DB 없이 Security + Thymeleaf 만 띄운다
-*   (LayoutFragmentRenderTest·SecurityConfigTest 와 같은 방식).
+*   (LayoutFragmentRenderTest·SecurityConfigTest 와 같은 방식: SecurityConfig 가 쓰는 로그인 처리 클래스도 같이 올린다).
 *  */
 @SpringBootTest(classes = {AdminTradingPageRenderTest.TestApp.class, SecurityConfig.class,
-        SecurityErrorHandler.class, AdminTradingPageController.class})
+        SecurityErrorHandler.class, AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
+        AdminTradingPageController.class})
 class AdminTradingPageRenderTest {
 
     @Configuration
@@ -65,6 +69,7 @@ class AdminTradingPageRenderTest {
                 "id=\"at-panel-prices\"", "id=\"at-panel-news\"", "id=\"at-panel-people\"", "id=\"at-panel-ranking\"");
         assertThat(html).contains("id=\"at-next-btn\"", "되돌릴 수 없어요");
         assertThat(html).contains("/js/admin-trading.js", "/css/admin-trading.css", "/js/common.js");
+        assertThat(html).contains("가상 실습이며 실제 금융 거래가 아니에요");   // 모의투자 화면 공통 안내 (NFR-12)
         assertThat(html).contains("mb-admin-side", "data-mb-pinned");   // 관리자 고정 사이드바
     }
 
