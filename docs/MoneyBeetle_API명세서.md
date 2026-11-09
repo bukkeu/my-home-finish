@@ -1581,7 +1581,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-06 |
-| 설명 | 15개 분야와 소속 종목. |
+| 설명 | 15개 분야와 소속 종목. 사용 중인 분야를 정렬 순서대로, 분야마다 사용 중인 종목을 종목 번호 순으로 보여 준다(#24). |
 
 **Request**
 
@@ -1601,7 +1601,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-06, INV-10 |
-| 설명 | 현재 턴 가격과 등락률. sort=popular(인기) |
+| 설명 | 현재 턴 가격과 등락률. 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료 중 시작일이 가장 최근인 것) 기준이고 정산 중·종료에도 마지막 턴까지 계속 보여 주며(주문만 `SEASON_CLOSED`로 막힌다), 다음 턴 이후 가격은 미리 입력돼 있어도 나오지 않는다. 기본 정렬은 분야 정렬 순서 → 종목 번호, `sort=popular`(인기)는 이번 시즌 거래 수가 많은 순(같으면 종목 번호, 제안). `sectorId`, `keyword`(종목 이름 일부)로 거를 수 있다. 가격이 아직 입력되지 않은 종목은 `price`·`changeRate`가 null, 1턴은 `changeRate`가 null (#24) |
 
 **Request**
 
@@ -1613,6 +1613,8 @@ Header: Idempotency-Key: 7c1e...
 { "turnNo": 5, "stocks": [ { "stockId": 1, "name": "한빛반도체", "sectorName": "반도체", "price": 84500, "changeRate": 2.8 } ] }
 ```
 
+**Error**: `NO_RUNNING_SEASON`
+
 #### 57. 종목 상세
 
 | 항목 | 내용 |
@@ -1621,7 +1623,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-07 |
-| 설명 | 현재 가격, 지난 턴까지 가격 흐름, 기업정보, 내 보유 수량. |
+| 설명 | 현재 가격, 1턴부터 현재 턴까지 가격 흐름, 기업정보, 내 보유 수량. `myHolding`은 로그인 회원이 이 시즌에 참가하지 않았거나 그 종목이 없으면 null. 사용 안 함 종목은 `NOT_FOUND` (#24) |
 
 **Request**
 
@@ -1638,7 +1640,7 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `NOT_FOUND`
+**Error**: `NOT_FOUND`, `NO_RUNNING_SEASON`
 
 #### 58. 가상 뉴스
 
@@ -1648,7 +1650,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-08 |
-| 설명 | 현재 턴까지 공개된 뉴스. stockId로 종목 뉴스 탭. |
+| 설명 | 현재 턴까지 공개된 뉴스, 최근 턴부터. `turnNo`를 주면 그 턴만(현재 턴보다 뒤면 빈 목록), `stockId`를 주면 그 종목이 관련 종목으로 걸린 뉴스만(종목 뉴스 탭). 관리자 메모는 나오지 않는다 (#24) |
 
 **Request**
 
@@ -1659,6 +1661,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 { "items": [ { "newsId": 31, "turnNo": 5, "title": "한빛반도체, 대형 메모리 공급 계약", "content": "...", "sectors": ["반도체"], "stocks": ["한빛반도체"] } ] }
 ```
+
+**Error**: `NO_RUNNING_SEASON`
 
 #### 59. 매매 이유 선택지
 
