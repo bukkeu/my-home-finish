@@ -4,7 +4,7 @@ import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
 import java.util.List;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   레벨 정책표(level_policy)로 계산하는 규칙 (DB 없이 값만으로 판단한다)
 *   - 누적 경험치 -> 레벨 (levelFor), 레벨 -> 칭호·레벨업 캐시, 여러 레벨이 한 번에 오를 때의 레벨업 캐시 합 (SP-23)
 *   - 표가 올바른지(1레벨부터 빠짐없이, 필요 경험치가 계속 늘어남)를 만들 때 한 번 확인한다

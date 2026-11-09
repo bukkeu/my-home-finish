@@ -5,7 +5,7 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   성장 도메인 에러 코드 (각 도메인이 자기 패키지에 ErrorCode 구현 enum 을 둔다)
 *   #2 에서 global.exception.ErrorCode 가 getCode / getStatus(HttpStatus) / getMessage 로 정해져
 *   상태 필드를 int httpStatus -> HttpStatus status 로 맞췄다 (Lombok @Getter 가 getStatus() 를 만든다)

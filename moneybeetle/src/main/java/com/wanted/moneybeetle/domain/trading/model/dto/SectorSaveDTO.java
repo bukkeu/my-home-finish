@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   분야 등록(API 122)·수정(API 123) 요청
 *   - 등록 : name, sortOrder / 수정 : name, isActive (sortOrder 를 주면 순서도 바꾼다)
 *  */

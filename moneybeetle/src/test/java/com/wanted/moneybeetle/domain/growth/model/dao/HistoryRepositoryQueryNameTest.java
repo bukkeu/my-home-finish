@@ -14,7 +14,7 @@ import org.springframework.data.repository.query.parser.Part;
 import org.springframework.data.repository.query.parser.PartTree;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   이력 Repository 의 잠금 조회(findWithLockBy...)가 DB 없이도 잘못 만들어지지 않았는지 확인한다.
 *   - 메서드 이름이 엔티티 필드(memberId, sourceType, sourceId)로 해석되는가
 *   - 비관적 락(PESSIMISTIC_WRITE)이 붙어 있는가 (붙어 있지 않으면 일반 조회와 같아져 스냅샷을 볼 수 있다)

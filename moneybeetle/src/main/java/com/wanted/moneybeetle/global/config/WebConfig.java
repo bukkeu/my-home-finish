@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.config;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   WebMvcConfigurer
 *   - LevelCheckInterceptor 등록 : /api/v1/trading/**, /api/v1/housing/** 중
 *   @RequireLevel 이 붙은 API 만 레벨 검사

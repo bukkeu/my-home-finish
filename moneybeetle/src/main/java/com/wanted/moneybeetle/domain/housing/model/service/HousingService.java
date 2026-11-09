@@ -21,7 +21,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /* comment.
- *   담당 : SCM (성장·홈·모의 청약)
+ *   담당 : SCM (모의 청약)
  *   청약통장 납입(캐시 차감은 RewardService), 가점 계산, 신청(기간·중복 확인), 결과 조회
  *   #27 : 청약 캘린더(API 63), 공고 상세(API 64)
  *  */

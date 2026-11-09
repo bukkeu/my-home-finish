@@ -4,7 +4,7 @@ import java.util.List;
 import lombok.Getter;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   RewardService.grant 의 결과 (다른 도메인이 응답에 그대로 싣는다)
 *   - 이미 받은 활동이면 alreadyGranted = true, 지급량은 0 (예외를 던지지 않는다)
 *   - 경험치로 레벨이 올랐으면 levelFrom -> levelTo 가 달라지고, 레벨업 캐시(levelUpCash)와

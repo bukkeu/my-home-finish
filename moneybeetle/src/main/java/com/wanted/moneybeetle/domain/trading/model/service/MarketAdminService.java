@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.service;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   관리자 시장 관리
 *   - #41 분야·종목·기업정보 (API 121~126) : 이름 중복 금지(DB UNIQUE 도 함께), 없는 분야·종목은 404
 *     같은 이름이 동시에 들어와 중복 확인을 둘 다 통과하면 DB UNIQUE 가 막는다 -> 바로 flush 해서 409 로 바꾼다

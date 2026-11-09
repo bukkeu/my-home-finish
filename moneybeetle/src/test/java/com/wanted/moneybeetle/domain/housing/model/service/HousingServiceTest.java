@@ -32,7 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /* comment.
-*   담당 : SCM (성장·홈·모의 청약)
+*   담당 : SCM (모의 청약)
 *   HousingService #27 확인 (DB 없이 Repository 는 가짜(mock), 오늘 날짜는 고정 시계)
 *   - 캘린더 : 그 달 첫날·말일로 조회, 오늘 기준 상태, 내가 신청한 단지만 applied = true
 *   - 상세   : 없는 단지 404, 경쟁률은 마감 뒤에만, 내 신청 내역

@@ -10,7 +10,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /* comment.
- *   담당 : SCM (회원·공통) : 강의내용 X
+ *   담당 : SCM (공통 기반·보안)
  *   created_at 만 있는 기록성 테이블용 공통 부모 (DB 설계서 1-1)
  *   사용 : public class SubscriptionDeposit extends CreatedTimeEntity
  *  */

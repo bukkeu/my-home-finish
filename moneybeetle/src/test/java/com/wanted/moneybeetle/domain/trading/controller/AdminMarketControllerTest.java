@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /* comment.
-*   담당 : PM 이재성 (#41)
+*   담당 : PM (#41)
 *   AdminMarketController 확인 (Service 는 가짜, DB·로그인 없이)
 *   - 주소·응답 JSON 모양 (API 명세서 121~126), 201 / 204, 요청 JSON 이 DTO 에 들어가는지, 에러 응답
 *  */

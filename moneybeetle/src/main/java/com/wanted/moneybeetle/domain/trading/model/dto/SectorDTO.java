@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
-*   담당 : PM 이재성 (모의투자)
+*   담당 : PM (모의투자)
 *   관리자 분야 목록의 한 줄 (API 121)
 *  */
 

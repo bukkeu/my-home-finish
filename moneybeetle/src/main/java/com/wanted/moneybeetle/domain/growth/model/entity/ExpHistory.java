@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   테이블 exp_history (원장, INSERT 만 한다. 수정·삭제 메서드는 두지 않는다)
 *   - 같은 (회원, 원인 종류, 원인 강의 ID)는 한 번만 기록된다 (DB UNIQUE uk_exp_history_1) -> 같은 강의 최초 1회만 (SP-22)
 *  */
