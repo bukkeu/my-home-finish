@@ -146,10 +146,12 @@ class TradingServiceTest {
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 12)).thenReturn(List.of(
                 StockPrice.create(SEASON_ID, 1L, 12, 96_950, new BigDecimal("4.98"))));
         when(newsRepository.findByTradingSeasonIdAndTurnNoLessThanEqualOrderByTurnNoDescNewsIdDesc(SEASON_ID, 12))
-                .thenReturn(List.of());
+                .thenReturn(List.of(news(9L, 12, "정산 중 뉴스")));
 
-        assertThat(service.findStocks(null, null, null).getTurnNo()).isEqualTo(12);
-        assertThat(service.findNews(null, null)).isEmpty();
+        StockListDTO stocks = service.findStocks(null, null, null);
+        assertThat(stocks.getTurnNo()).isEqualTo(12);
+        assertThat(stocks.getStocks()).extracting(StockDTO::getPrice).contains(96_950);
+        assertThat(service.findNews(null, null)).extracting(NewsDTO::getTitle).containsExactly("정산 중 뉴스");
         verify(priceRepository).findByTradingSeasonIdAndTurnNo(SEASON_ID, 12);
     }
 
