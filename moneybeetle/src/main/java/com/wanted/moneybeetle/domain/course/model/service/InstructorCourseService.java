@@ -133,6 +133,7 @@ public class InstructorCourseService {
     @Transactional
     public ThumbnailDTO changeThumbnail(Long instructorId, Long courseId, MultipartFile file) {
         Course course = getMyCourse(instructorId, courseId);
+        course.checkEditable();                         // 검수 중이면 파일을 저장하기 전에 막는다 (고아 파일 방지)
         try {
             String thumbnailUrl = fileStorageService.saveImage(file);
             course.changeThumbnail(thumbnailUrl);

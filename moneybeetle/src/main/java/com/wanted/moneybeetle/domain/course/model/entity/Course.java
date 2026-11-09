@@ -138,7 +138,7 @@ public class Course {
      * 허가된 강의를 고치면 다시 검수(REVIEW) → 허가 전까지 사용자에게 보이지 않는다(isVisibleToLearner) */
     public void change(Long categoryId, String title, String description, LocalDate infoBaseDate, String infoSource,
                        LocalDateTime now) {
-        requireEditable();
+        checkEditable();
         this.categoryId = categoryId;
         this.title = title;
         this.description = description;
@@ -152,11 +152,13 @@ public class Course {
 
     /* 썸네일 주소 바꾸기 (API 77). 검수 중에는 못 바꾼다 */
     public void changeThumbnail(String thumbnailUrl) {
-        requireEditable();
+        checkEditable();
         this.thumbnailUrl = thumbnailUrl;
     }
 
-    private void requireEditable() {
+    /* 수정할 수 있는 상태인지 (API 75·77). 검수 중이면 COURSE_IN_REVIEW
+     * 서비스가 파일 저장처럼 되돌리기 어려운 작업 전에 먼저 부른다 */
+    public void checkEditable() {
         if (isInReview()) {
             throw new BusinessException(CourseErrorCode.COURSE_IN_REVIEW);
         }
