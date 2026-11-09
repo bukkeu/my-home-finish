@@ -2312,13 +2312,17 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | 카테고리·소주제 트리(비활성 포함). |
+| 설명 | 카테고리 → 소주제 트리(비활성 포함). 단계 → 순서 → ID 순. 항목마다 isActive, courseCount(삭제되지 않은 강의 수). 소주제의 children은 빈 목록. |
 
-**Request**
+
 
 - 없음
 
 **Response**
+```json
+[ { "categoryId": 2, "name": "부동산", "depth": 1, "sortOrder": 1, "isActive": true, "courseCount": 0,
+    "children": [ { "categoryId": 22, "name": "전·월세", "depth": 2, "sortOrder": 2, "isActive": true, "courseCount": 3, "children": [] } ] } ]
+```
 
 - (카테고리 트리 + isActive, courseCount)
 
@@ -2330,7 +2334,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | parentId가 있으면 소주제. |
+| 설명 | parentId가 있으면 소주제(depth 2), 없으면 카테고리(depth 1). 2단계까지만(소주제 아래에는 등록 불가). 이름 30자, 순서 0 이상. |
 
 **Request**
 
@@ -2343,7 +2347,9 @@ email=admin@moneybeetle.kr&password=...
 ```json
 201 Created
 { "categoryId": 22 }
+**Error**: `CATEGORY_DEPTH_EXCEEDED`, `NOT_FOUND`(없는 parentId)
 ```
+
 
 #### 87. 카테고리 수정
 
@@ -2364,6 +2370,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+**Error**: `NOT_FOUND`
 
 #### 88. 카테고리 삭제
 
@@ -2373,7 +2380,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `DELETE` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | 강의가 연결돼 있으면 비활성으로 바꾼다. |
+| 설명 | 강의(삭제된 강의 포함)나 소주제가 연결돼 있으면 삭제하지 않고 비활성(is_active=FALSE)으로 바꾼다. 연결이 없으면 실제 삭제. 두 경우 모두 204. |
 
 **Request**
 
@@ -2383,7 +2390,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `CATEGORY_IN_USE`
+**Error**: `NOT_FOUND`
 
 #### 89. 강의 목록(검수)
 
