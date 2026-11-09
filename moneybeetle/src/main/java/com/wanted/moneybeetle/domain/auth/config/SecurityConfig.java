@@ -13,6 +13,7 @@ import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import org.springframework.core.annotation.Order;
@@ -24,6 +25,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 
 @Configuration                                 // ① 설정 클래스
 @EnableWebSecurity                             // ② Security 설정을 켜는 어노테이션
@@ -69,14 +71,15 @@ public class SecurityConfig {
                                          SecurityErrorHandler securityErrorHandler,
                                          AuthSuccessHandler authSuccessHandler,
                                          AuthFailHandler authFailHandler,
-                                         AuthLogoutSuccessHandler authLogoutSuccessHandler) throws Exception {
+                                         AuthLogoutSuccessHandler authLogoutSuccessHandler,
+                                         MemberService memberService) throws Exception {
 
         // 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶는 인증 제공자 LoginAuthenticationProvider 는
         // 빈으로 등록돼 있어 Spring Security 가 인증 관리자에 자동으로 넣는다. 여기서 http.authenticationProvider 로 한 번 더 넣으면
         // 같은 제공자가 위·아래 두 인증 관리자에 모두 들어가 로그인 한 번에 실패가 두 번 기록된다 (LoginHttpTest 가 이를 확인한다)
 
         http.authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
+                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
                     auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
                     // ⑥ 승인된 강사만 INSTRUCTOR 권한을 받도록 하는 것은 로그인(AuthService, 김예린 #6)에서 확인
@@ -100,6 +103,8 @@ public class SecurityConfig {
                     // fetch 요청은 204, 브라우저가 보낸 폼 요청은 "/"로 이동 (API 7)
                     logout.logoutSuccessHandler(authLogoutSuccessHandler);
                 })
+                // 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막는다 (다른 기기에서 탈퇴해도 이 세션의 다음 요청이 거부된다, SP-06)
+                .addFilterBefore(new ActiveMemberFilter(memberService, securityErrorHandler), AuthorizationFilter.class)
                 // ⑫ 인증·권한 실패 응답 (API 는 401·403 JSON, 화면은 로그인 화면·403 화면)
                 .exceptionHandling(ex -> {
                     ex.authenticationEntryPoint(securityErrorHandler);   // 로그인 안 함

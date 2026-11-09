@@ -256,6 +256,22 @@ public class Member {
         lockedUntil = null;
         lastLoginAt = now;
     }
+    /** 비밀번호를 바꾼다 (#8). 평문이 아니라 이미 BCrypt 로 만든 해시를 받는다 (DP-02) */
+    public void changePasswordHash(String passwordHash) {
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        this.passwordHash = passwordHash;
+    }
+
+    /**
+     * 탈퇴한다 (#8, USR-14, DP-06). 계정을 비활성화(WITHDRAWN)하고 탈퇴 시각을 남긴다.
+     * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
+     */
+    public void withdraw(LocalDateTime now) {
+        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
+        this.status = STATUS_WITHDRAWN;
+        this.withdrawnAt = now;
+    }
+
     /**
      * 설정(닉네임·생년월일·성별)을 바꾼다 (#7). 이메일은 바꿀 수 없어 받지 않는다.
      * 중복·금칙어·만 14세처럼 DB·오늘 날짜가 필요한 규칙은 MemberService 가 먼저 확인한다. 여기서는 값의 모양만 확인한다.
