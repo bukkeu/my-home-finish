@@ -17,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (관리자 운영)
 *   관리자 대시보드 (이슈 #33, API 84, ADM-08). 다른 도메인의 Service 조회 메서드만 모아서 보여 준다 (다른 도메인 Repository 직접 사용 금지).
 *   - 검수 대기 강의 수 : course.CourseService.countReviewWaiting
-*   - 답변 대기 문의 수 : inquiry.InquiryService.findInquiries 의 전체 개수 (전용 개수 메서드가 생기면 교체)
+*   - 답변 대기 문의 수 : inquiry.InquiryService.findInquiriesForAdmin 의 전체 개수. 사이트 문의와 강의 문의를 모두 세고(courseId 를 비움),
+*     관리자가 숨기거나 지운 글은 뺀다. 한 건만 읽고 전체 개수만 쓴다 (전용 개수 메서드가 생기면 교체)
 *   - 진행 중인 시즌·현재 턴·참가자 수 : trading.SeasonAdminService.findSeasons
 *   - 회원 수 : member.MemberService.countMembers
 *   - 오늘 주문 수·다음 턴 점검(nextTurnReady, missing)은 trading 에 조회 메서드가 아직 없어 null 로 둔다.
@@ -39,9 +40,9 @@ public class DashboardService {
     private final SeasonAdminService seasonAdminService;
     private final MemberService memberService;
 
-    public DashboardDTO getDashboard(Long adminId) {
+    public DashboardDTO getDashboard() {
         long inquiryWaiting = inquiryService
-                .findInquiries(adminId, true, null, INQUIRY_WAITING, PageRequest.of(0, 1))
+                .findInquiriesForAdmin(null, INQUIRY_WAITING, false, false, PageRequest.of(0, 1))
                 .getTotalElements();
         MemberCountDTO members = memberService.countMembers();
 

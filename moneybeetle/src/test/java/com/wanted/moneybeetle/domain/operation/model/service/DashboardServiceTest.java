@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
-import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryListItemDTO;
+import com.wanted.moneybeetle.domain.inquiry.model.dto.AdminInquiryListItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.service.InquiryService;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberCountDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
@@ -25,8 +25,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 class DashboardServiceTest {
-
-    private static final Long ADMIN = 1L;
 
     private CourseService courseService;
     private InquiryService inquiryService;
@@ -49,9 +47,9 @@ class DashboardServiceTest {
     }
 
     private void givenInquiryWaiting(long total) {
-        PageResponse<InquiryListItemDTO> page = PageResponse.from(
-                new PageImpl<InquiryListItemDTO>(List.of(), PageRequest.of(0, 1), total));
-        when(inquiryService.findInquiries(eq(ADMIN), eq(true), any(), eq("WAITING"), any(Pageable.class)))
+        PageResponse<AdminInquiryListItemDTO> page = PageResponse.from(
+                new PageImpl<AdminInquiryListItemDTO>(List.of(), PageRequest.of(0, 1), total));
+        when(inquiryService.findInquiriesForAdmin(any(), eq("WAITING"), any(), any(), any(Pageable.class)))
                 .thenReturn(page);
     }
 
@@ -63,7 +61,7 @@ class DashboardServiceTest {
     @Test
     @DisplayName("검수 대기 강의·답변 대기 문의·회원 수를 각 도메인 서비스에서 모은다")
     void collectsCounts() {
-        var dashboard = service.getDashboard(ADMIN);
+        var dashboard = service.getDashboard();
 
         assertThat(dashboard.reviewWaiting()).isEqualTo(3);
         assertThat(dashboard.inquiryWaiting()).isEqualTo(2);
@@ -72,12 +70,12 @@ class DashboardServiceTest {
     }
 
     @Test
-    @DisplayName("답변 대기 문의는 한 건만 읽고 전체 개수를 쓴다 (관리자 권한으로 조회)")
+    @DisplayName("답변 대기 문의는 강의를 가리지 않고(사이트·강의 문의 모두), 숨김·삭제를 빼고, 한 건만 읽어 전체 개수를 쓴다")
     void inquiryWaitingUsesTotalOnly() {
         givenInquiryWaiting(42);
 
-        assertThat(service.getDashboard(ADMIN).inquiryWaiting()).isEqualTo(42);
-        verify(inquiryService).findInquiries(eq(ADMIN), eq(true), any(), eq("WAITING"), eq(PageRequest.of(0, 1)));
+        assertThat(service.getDashboard().inquiryWaiting()).isEqualTo(42);
+        verify(inquiryService).findInquiriesForAdmin(eq(null), eq("WAITING"), eq(false), eq(false), eq(PageRequest.of(0, 1)));
     }
 
     @Test
@@ -86,7 +84,7 @@ class DashboardServiceTest {
         when(seasonAdminService.findSeasons()).thenReturn(List.of(
                 season(8, "READY", 0, 0, 0), season(6, "ENDED", 12, 900, 30)));
 
-        assertThat(service.getDashboard(ADMIN).season()).isNull();
+        assertThat(service.getDashboard().season()).isNull();
     }
 
     @Test
@@ -97,7 +95,7 @@ class DashboardServiceTest {
                 season(7, "RUNNING", 5, 1240, 4),
                 season(5, "SETTLING", 12, 800, 40)));
 
-        var season = service.getDashboard(ADMIN).season();
+        var season = service.getDashboard().season();
 
         assertThat(season.seasonId()).isEqualTo(7L);
         assertThat(season.currentTurn()).isEqualTo(5);
@@ -111,10 +109,10 @@ class DashboardServiceTest {
     @DisplayName("휴장·정산 중인 시즌도 진행 중으로 본다")
     void holidayAndSettlingCountAsActive() {
         when(seasonAdminService.findSeasons()).thenReturn(List.of(season(7, "HOLIDAY", 5, 10, 1)));
-        assertThat(service.getDashboard(ADMIN).season().seasonId()).isEqualTo(7L);
+        assertThat(service.getDashboard().season().seasonId()).isEqualTo(7L);
 
         when(seasonAdminService.findSeasons()).thenReturn(List.of(season(7, "SETTLING", 12, 10, 1)));
-        assertThat(service.getDashboard(ADMIN).season().seasonId()).isEqualTo(7L);
+        assertThat(service.getDashboard().season().seasonId()).isEqualTo(7L);
     }
 
     @Test
