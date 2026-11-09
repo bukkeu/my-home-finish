@@ -7,7 +7,15 @@ import com.wanted.moneybeetle.domain.course.model.dao.LearningProgressRepository
 import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonWatchRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.ScrapRepository;
-import com.wanted.moneybeetle.domain.course.model.dto.*;
+import com.wanted.moneybeetle.domain.course.model.dto.CategoryTreeDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CompletedCourseDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseDetailDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseLabelDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonPlayDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
@@ -257,7 +265,7 @@ public class CourseService {
     /* 그 강의에 속한 영상인지 확인한다 */
     private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
         return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
-                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND)); // TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));// TODO 공통 설정 병합 후 BusinessException으로
     }
 
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
