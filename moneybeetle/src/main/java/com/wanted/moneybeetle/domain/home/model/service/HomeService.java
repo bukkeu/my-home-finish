@@ -11,6 +11,7 @@ import com.wanted.moneybeetle.domain.term.model.service.TermService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 *   - 이어서 볼 강의는 course 도메인에 "강의 + 마지막 영상 + 위치"를 한 번에 주는 메서드가 없어서, 공개된 조회 메서드 세 개
 *     (이어 볼 강의 목록, 시청 기록, 영상 재생 정보)를 조합한다. 전용 메서드가 생기면 그것으로 바꾼다.
 *  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HomeService {
@@ -98,6 +100,9 @@ public class HomeService {
                 return null;
             }
         }
+        // 상한까지 읽고도 끝나지 않았다: 그 강의의 기록이 더 오래됐거나 기록이 아주 많은 회원이다. 영상·위치 없이 강의만 보여 준다
+        log.warn("이어서 볼 강의의 마지막 영상을 최근 {}건 안에서 찾지 못했어요: memberId={}, courseId={}",
+                MAX_WATCH_PAGES * WATCH_SCAN_SIZE, memberId, courseId);
         return null;
     }
 }
