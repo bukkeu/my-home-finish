@@ -1,21 +1,26 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
+import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
-import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
+import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,7 +38,9 @@ import java.util.Set;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   회원가입, 약관 조회, 이메일·닉네임 중복 확인 (이슈 #5). 이어서 내 정보·설정(#7), 비밀번호 변경·탈퇴(#8)를 맡는다.
-*   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차).
+*   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차),
+*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6),
+*   recordAttendance / getAttendance (growth.AttendanceService 전용, #12).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5)
@@ -56,6 +63,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final ForbiddenWordService forbiddenWordService;
     private final Clock clock;
+    private final InstructorProfileRepository instructorProfileRepository;
 
     /** 회원의 현재 레벨·경험치·캐시 (growth.RewardService 용). 없는 회원이면 MEMBER_NOT_FOUND */
     public MemberBalanceDTO getBalance(Long memberId) {
@@ -113,6 +121,60 @@ public class MemberService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
         return MemberAttendanceDTO.of(member, false, today);
+    }
+
+    /**
+     * 로그인할 회원을 이메일로 찾고 그 행을 잠근다 (auth.AuthService 용). 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 조회한다 (SP-01).
+     * 잠금은 호출한 쪽의 트랜잭션이 끝날 때까지 유지된다. 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶어
+     * 같은 계정의 동시 시도가 차례로 처리되게 한다 (auth.LoginAuthenticationProvider 가 그 트랜잭션을 연다).
+     * 부여할 권한(grantedRole)도 여기서 정한다: 회원 정보상 강사여도 관리자가 승인(APPROVED)하기 전에는 MEMBER 다 (SP-07).
+     * 이메일이 비었거나 없는 회원이면 빈 값이다.
+     */
+    @Transactional
+    public Optional<LoginMemberDTO> findLoginMemberForUpdate(String email) {
+        String normalized = SignupRules.normalizeEmail(email);
+        if (normalized == null || normalized.isBlank()) {
+            return Optional.empty();
+        }
+        return memberRepository.findByEmailForUpdate(normalized).map(member -> LoginMemberDTO.from(member, grantedRole(member)));
+    }
+
+    /**
+     * 비밀번호가 틀렸을 때 로그인 실패를 기록한다 (auth.LoginAuthenticationProvider 가 AuthService 를 거쳐 부른다). 이번 실패로 잠겼으면 true.
+     * 회원 행을 잠그고 읽어서 같은 계정의 동시 실패가 서로의 횟수를 덮어쓰지 않게 한다 (DP-10). 없는 이메일이면 false.
+     */
+    @Transactional
+    public boolean recordLoginFailure(String email, LocalDateTime now) {
+        String normalized = SignupRules.normalizeEmail(email);
+        if (normalized == null || normalized.isBlank()) {
+            return false;
+        }
+        return memberRepository.findByEmailForUpdate(normalized)
+                .map(member -> {
+                    member.recordLoginFailure(now);
+                    return member.isLoginLocked(now);
+                })
+                .orElse(false);
+    }
+
+    /**
+     * 로그인 성공을 기록한다: 실패 횟수·잠금을 지우고 마지막 로그인 시각을 남긴다 (auth.LoginAuthenticationProvider 가 AuthService 를 거쳐 부른다).
+     * 회원 행을 잠그고 읽는다. 같은 계정의 동시 로그인 실패 기록(recordLoginFailure)과 서로 덮어쓰지 않고 차례로 처리된다.
+     */
+    @Transactional
+    public void recordLoginSuccess(Long memberId, LocalDateTime now) {
+        getMemberForUpdate(memberId).recordLoginSuccess(now);
+    }
+
+    /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */
+    private String grantedRole(Member member) {
+        if (!Member.ROLE_INSTRUCTOR.equals(member.getRole())) {
+            return member.getRole();
+        }
+        boolean approved = instructorProfileRepository.findByMemberId(member.getMemberId())
+                .map(InstructorProfile::isApproved)
+                .orElse(false);
+        return approved ? Member.ROLE_INSTRUCTOR : Member.ROLE_MEMBER;
     }
 
     private Member getMemberForUpdate(Long memberId) {
