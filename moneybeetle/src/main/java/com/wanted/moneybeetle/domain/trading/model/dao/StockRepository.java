@@ -16,4 +16,7 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     /** 수정할 때 자기 자신을 뺀 이름 중복 확인 */
     boolean existsByNameAndStockIdNot(String name, Long stockId);
+
+    /** 분야의 사용 중 종목 수 (분야당 2개 규칙, ADM-17) */
+    long countBySectorIdAndIsActiveTrue(Long sectorId);
 }

@@ -5,6 +5,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   관리자 시장 관리
 *   - #41 분야·종목·기업정보 (API 121~126) : 이름 중복 금지(DB UNIQUE 도 함께), 없는 분야·종목은 404
 *     같은 이름이 동시에 들어와 중복 확인을 둘 다 통과하면 DB UNIQUE 가 막는다 -> 바로 flush 해서 409 로 바꾼다
+*     분야당 사용 중 종목은 2개까지 (ADM-17) : 등록·다른 분야로 옮기기에서 확인. 사용 안 함 종목은 세지 않는다
 *   - 가격표(#42 : 지난 턴 잠금, ±30% 경고, CSV)·뉴스(#43)는 이 서비스에 이어서 추가한다
 *  */
 
@@ -38,6 +39,8 @@ public class MarketAdminService {
     /** schema.sql 의 이름 UNIQUE 제약 이름 */
     private static final String SECTOR_NAME_KEY = "uk_sector_name";
     private static final String STOCK_NAME_KEY = "uk_stock_name";
+    /** 분야당 사용 중 종목 수 (ADM-17 : 분야별 2개씩 총 30개) */
+    static final int MAX_ACTIVE_STOCKS_PER_SECTOR = 2;
 
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
@@ -113,6 +116,7 @@ public class MarketAdminService {
         if (stockRepository.existsByName(request.getName())) {
             throw new BusinessException(TradingErrorCode.STOCK_DUPLICATED);
         }
+        checkStockLimit(request.getSectorId());
         Stock stock = Stock.create(request.getSectorId(), request.getName(), request.getStartPrice());
         stock.changeCompanyInfo(request.getIntro(), request.getBusiness(), request.getRevenue(),
                 request.getOperatingProfit());
@@ -132,6 +136,10 @@ public class MarketAdminService {
         if (stockRepository.existsByNameAndStockIdNot(request.getName(), stockId)) {
             throw new BusinessException(TradingErrorCode.STOCK_DUPLICATED);
         }
+        // 같은 분야 안에서 이름·기업정보만 고칠 때는 세지 않는다. 사용 안 함 종목은 옮겨도 개수에 들어가지 않는다
+        if (stock.isActive() && !stock.getSectorId().equals(request.getSectorId())) {
+            checkStockLimit(request.getSectorId());
+        }
         stock.changeBasicInfo(request.getSectorId(), request.getName(), request.getStartPrice());
         stock.changeCompanyInfo(request.getIntro(), request.getBusiness(), request.getRevenue(),
                 request.getOperatingProfit());
@@ -145,6 +153,12 @@ public class MarketAdminService {
     private Sector getSector(Long sectorId) {
         return sectorRepository.findById(sectorId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    private void checkStockLimit(Long sectorId) {
+        if (stockRepository.countBySectorIdAndIsActiveTrue(sectorId) >= MAX_ACTIVE_STOCKS_PER_SECTOR) {
+            throw new BusinessException(TradingErrorCode.STOCK_LIMIT_EXCEEDED);
+        }
     }
 
     /** 이름 UNIQUE 위반이면 중복 에러(409)로 바꾸고, 다른 무결성 오류는 그대로 던진다 */

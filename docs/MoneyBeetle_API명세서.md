@@ -3133,7 +3133,7 @@ Header: Idempotency-Key: 4d8e...
 { "stockId": 1 }
 ```
 
-**Error**: `STOCK_DUPLICATED`, `NOT_FOUND`(없는 분야)
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(그 분야에 사용 중 종목이 이미 2개), `NOT_FOUND`(없는 분야)
 
 #### 126. 종목·기업정보 수정
 
@@ -3152,7 +3152,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 204 No Content
 
-**Error**: `STOCK_DUPLICATED`, `NOT_FOUND`
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(사용 중 종목을 이미 2개인 분야로 옮길 때), `NOT_FOUND`
 
 #### 127. 턴별 가격표
 
@@ -3650,6 +3650,7 @@ Header: Idempotency-Key: 4d8e...
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
 | 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
 | 강사·관리자 | `STOCK_DUPLICATED` | 409 | 이미 있는 종목 이름이에요 |
+| 강사·관리자 | `STOCK_LIMIT_EXCEEDED` | 409 | 한 분야에는 종목을 2개까지 둘 수 있어요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
 | 모의 청약 | `ALREADY_PAID_TODAY` | 409 | 오늘은 이미 납입했어요 |
