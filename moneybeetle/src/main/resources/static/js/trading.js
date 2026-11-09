@@ -26,6 +26,13 @@
     NO_RUNNING_SEASON: '다음 시즌을 준비 중이에요',
     RANKING_NOT_PUBLISHED: '랭킹은 시즌이 끝나면 공개돼요'
   };
+  // 시즌 상태별 제목 꼬리말과 안내 띠 (API 53 season.status : RUNNING·HOLIDAY·SETTLING·ENDED). 정산 중·종료에도 홈이 열린다
+  var STATUS_LABEL = { RUNNING: '진행 중', HOLIDAY: '휴장 중', SETTLING: '정산 중', ENDED: '종료' };
+  var STATUS_NOTICE = {
+    HOLIDAY: MSG.MARKET_HOLIDAY + ' · 시세와 뉴스는 그대로 볼 수 있어요',
+    SETTLING: MSG.SEASON_CLOSED + ' · 시세와 뉴스는 마지막 턴까지 볼 수 있어요',
+    ENDED: '시즌이 끝났어요 · 랭킹과 결과를 확인해 보세요'
+  };
   var WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
   var TONES = ['mint', 'orange', 'blue', 'purple', 'pink', 'yellow'];
 
@@ -122,17 +129,19 @@
   }
 
   function renderSeason(season) {
-    var holiday = season.status === 'HOLIDAY';
-    $('trd-season-title').textContent = season.name + (holiday ? ' 휴장 중' : ' 진행 중');
+    var closed = season.status === 'SETTLING' || season.status === 'ENDED';
+    $('trd-season-title').textContent = season.name + ' ' + (STATUS_LABEL[season.status] || STATUS_LABEL.RUNNING);
     $('trd-turn').textContent = season.currentTurn + '턴 / ' + season.totalTurns + '턴';
     var bar = $('trd-season-notice');
-    bar.textContent = holiday ? MSG.MARKET_HOLIDAY + ' · 시세와 뉴스는 그대로 볼 수 있어요' : '';
-    show(bar, holiday);
+    var notice = STATUS_NOTICE[season.status] || '';
+    bar.textContent = notice;
+    show(bar, !!notice);
 
     var end = season.endDate ? new Date(season.endDate + 'T00:00:00') : null;
     var today = new Date(); today.setHours(0, 0, 0, 0);
     var days = end ? Math.round((end - today) / 86400000) : null;
-    $('trd-dday').textContent = days == null ? '-' : days > 0 ? 'D−' + days : 'D-DAY';
+    $('trd-dday').textContent = closed ? STATUS_LABEL[season.status]
+      : days == null ? '-' : days > 0 ? 'D−' + days : 'D-DAY';
 
     var cal = $('trd-calendar');
     cal.replaceChildren();
@@ -145,13 +154,15 @@
       cell.title = day.date;
       cal.appendChild(cell);
     });
-    startCountdown(season.nextTurnAt);
+    startCountdown(season.nextTurnAt, season.status);
   }
 
   /** 다음 턴까지 남은 시간. 0 이 되면 홈과 보고 있는 종목을 다시 불러온다 (INV-05) */
-  function startCountdown(nextTurnAt) {
+  function startCountdown(nextTurnAt, status) {
     clearInterval(S.timer);
     var out = $('trd-next-turn');
+    if (status === 'SETTLING') { out.textContent = '정산을 기다리는 중이에요'; return; }
+    if (status === 'ENDED') { out.textContent = '시즌이 끝났어요'; return; }
     if (!nextTurnAt) { out.textContent = '마지막 턴이에요'; return; }
     var target = new Date(nextTurnAt).getTime();
     var tick = function () {
@@ -172,9 +183,14 @@
     if (p) {
       $('trd-cash').textContent = fmt(p.cash);
       $('trd-invest').textContent = won(p.investAmount);
+    } else if (season.status === 'SETTLING' || season.status === 'ENDED') {
+      // 정산 중·종료 시즌은 참가할 수 없다 (서버도 JOIN_CLOSED)
+      $('trd-join-title').textContent = MSG.JOIN_CLOSED;
+      show($('trd-join-btn'), false);
     } else {
       $('trd-join-title').textContent = season.name + '에 참가할까요?';
       $('trd-join-btn').textContent = season.name + ' 참가하기 →';
+      show($('trd-join-btn'), true);
     }
   }
 
