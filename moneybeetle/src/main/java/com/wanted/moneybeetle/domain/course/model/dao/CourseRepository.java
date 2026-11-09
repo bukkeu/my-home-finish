@@ -18,5 +18,9 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(String status);
 
+    // 통합 검색(#15): 허가 + 공개 + 삭제 안 됨 강의 중 제목에 키워드가 들어간 것, 최근 강의부터
+    List<Course> findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
+            String keyword, String status);
+
     List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, String status);
 }
