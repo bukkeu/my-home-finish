@@ -902,7 +902,9 @@ INSERT INTO news_tag (news_id, sector_id, stock_id) VALUES
 -- 날짜는 고정값 대신 "실행한 날(CURDATE())" 기준으로 둔다. 언제 시드를 넣어도 청약 캘린더에
 -- 모집 예정(UPCOMING)·모집 중(OPEN)·모집 마감(CLOSED)·발표 완료(ANNOUNCED) 네 단계가 모두 보이게 하기 위해서다.
 -- (화면의 상태는 status 컬럼이 아니라 오늘 날짜로 계산한다. status 는 관리자 발표 여부(ANNOUNCED)를 위해 쓰고, 나머지는 날짜와 맞춰 둔다)
--- 공고일 = 신청 시작일로 둔다 (프로토타입은 게시일·마감일만 있음)
+-- 청약 캘린더는 "공고일 <= 그 달 말일 그리고 발표일 >= 그 달 1일" 인 단지를 보여 준다 (API 63).
+-- 월초·월말에도 네 단계가 실행한 달에 걸리도록, 모집 예정 단지는 공고일을 오늘로, 발표 완료 단지 하나는 발표일을 오늘로 둔다
+-- 공고일 = 신청 시작일로 둔다 (프로토타입은 게시일·마감일만 있음). 단, 모집 예정 단지는 오늘 공고·3일 뒤 신청 시작
 -- 프로토타입의 커트라인·단지 이미지는 테이블에 컬럼이 없어 넣지 않는다 (커트라인은 #48 가점표 결정 후, 이미지는 DB 설계 후)
 -- 시드 회원 1~8의 청약통장은 위 [DBA ②] 구역에 이미 있다 (잔액 0, 0회차)
 INSERT INTO housing_complex (housing_complex_id, name, location, area_type, sale_price, supply_units, supply_type,
@@ -918,18 +920,19 @@ INSERT INTO housing_complex (housing_complex_id, name, location, area_type, sale
 (3, '광교 호수 리젠시',       '경기 수원시 영통구',  '102㎡', 1120000000, 96, '민영 일반공급',
     CURDATE() - INTERVAL 6 DAY,  CURDATE() - INTERVAL 6 DAY,  CURDATE() + INTERVAL 4 DAY,  CURDATE() + INTERVAL 11 DAY,
     'OPEN', NULL, NULL, 1),
--- 모집 예정 (UPCOMING) 1개
+-- 모집 예정 (UPCOMING) 1개 : 오늘 공고 → 월말에 넣어도 이번 달 캘린더에 걸린다
 (4, '한빛 공공분양 3단지',    '세종 나성동',         '74㎡',  290000000, 200, '공공분양 일반공급',
-    CURDATE() + INTERVAL 3 DAY,  CURDATE() + INTERVAL 3 DAY,  CURDATE() + INTERVAL 15 DAY, CURDATE() + INTERVAL 22 DAY,
+    CURDATE(),                   CURDATE() + INTERVAL 3 DAY,  CURDATE() + INTERVAL 15 DAY, CURDATE() + INTERVAL 22 DAY,
     'UPCOMING', NULL, NULL, 1),
 -- 모집 마감, 발표 전 (CLOSED) 1개
 (5, '해운대 센트럴 파크뷰',   '부산 해운대구 우동',  '84㎡',  640000000, 450, '민영 일반공급',
     CURDATE() - INTERVAL 15 DAY, CURDATE() - INTERVAL 15 DAY, CURDATE() - INTERVAL 3 DAY, CURDATE() + INTERVAL 4 DAY,
     'CLOSED', NULL, NULL, 1),
--- 발표 완료 (ANNOUNCED) 2개 : 산정·발표 일시를 함께 넣는다
+-- 발표 완료 (ANNOUNCED) 2개 : 산정·발표 일시를 함께 넣는다 (산정 → 발표 순서)
+-- 새봄 국민주택은 오늘 발표 → 월초에 넣어도 이번 달 캘린더에 걸린다
 (6, '새봄 국민주택',          '인천 연수구 송도동',  '59㎡',  250000000, 150, '공공분양 일반공급',
-    CURDATE() - INTERVAL 26 DAY, CURDATE() - INTERVAL 26 DAY, CURDATE() - INTERVAL 15 DAY, CURDATE() - INTERVAL 5 DAY,
-    'ANNOUNCED', NOW() - INTERVAL 7 DAY, NOW() - INTERVAL 5 DAY, 1),
+    CURDATE() - INTERVAL 21 DAY, CURDATE() - INTERVAL 21 DAY, CURDATE() - INTERVAL 10 DAY, CURDATE(),
+    'ANNOUNCED', CURDATE() - INTERVAL 2 DAY + INTERVAL 10 HOUR, CURDATE(), 1),
 (7, '푸른들 행복주택 2단지',  '서울 노원구 상계동',  '49㎡',  210000000,  80, '공공분양 일반공급',
     CURDATE() - INTERVAL 62 DAY, CURDATE() - INTERVAL 62 DAY, CURDATE() - INTERVAL 51 DAY, CURDATE() - INTERVAL 41 DAY,
     'ANNOUNCED', NOW() - INTERVAL 43 DAY, NOW() - INTERVAL 41 DAY, 1);
