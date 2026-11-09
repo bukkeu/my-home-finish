@@ -2000,16 +2000,16 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-06 |
-| 설명 | 검수 상태 포함. |
+| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). |
 
 **Request**
 
-- Query: status=DRAFT|REVIEW|APPROVED|REJECTED
+- Query: status=DRAFT|REVIEW|APPROVED|REJECTED (선택)
 
 **Response**
 
 ```json
-{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
+{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
 ```
 
 #### 73. 강의 생성
@@ -2020,7 +2020,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | 카테고리·소주제, 제목, 소개로 강의를 만든다(DRAFT). |
+| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
 
 **Request**
 
@@ -2035,7 +2035,7 @@ Header: Idempotency-Key: 31aa...
 { "courseId": 7, "status": "DRAFT" }
 ```
 
-**Error**: `FORBIDDEN_WORD`
+**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리)
 
 #### 74. 강의 편집 정보
 
@@ -2045,7 +2045,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-01~05 |
-| 설명 | 영상·요약글·퀴즈(정답 포함) 전체. |
+| 설명 | 본인 강의만. 강의 정보 + lessons(영상·요약글) + quizzes(테스트 퀴즈·퀴즈, 보기별 isCorrect·해설 포함) + rejectReason(가장 최근 반려 사유). |
 
 **Request**
 
@@ -2053,9 +2053,9 @@ Header: Idempotency-Key: 31aa...
 
 **Response**
 
-- (강의 상세 + lessons + testQuiz + quiz 정답 포함)
+- `{ courseId, categoryId, title, description, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
 
-**Error**: `FORBIDDEN`
+**Error**: `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 75. 강의 수정
 
@@ -2065,12 +2065,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-31 |
-| 설명 | 허가된 강의를 고치면 다시 검수(REVIEW). |
+| 설명 | 본인 강의만. 검수 중(REVIEW)에는 수정 불가. 허가된 강의를 고치면 다시 검수(REVIEW, submitted_at 갱신) → 허가 전까지 사용자에게 보이지 않음. 요청 형식·검사는 API 73과 같다. |
 
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "...", "description": "..." }
+{ "categoryId": 21, "title": "...", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2078,6 +2078,8 @@ Header: Idempotency-Key: 31aa...
 ```json
 { "courseId": 7, "status": "REVIEW" }
 ```
+
+**Error**: `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 76. 강의 삭제
 
@@ -2087,7 +2089,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `DELETE` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-32 |
-| 설명 | 학습 기록이 있으면 삭제 불가. |
+| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(비공개는 관리자에게 요청). 없으면 Soft Delete(deleted_at). |
 
 **Request**
 
@@ -2097,7 +2099,7 @@ Header: Idempotency-Key: 31aa...
 
 - 204 No Content
 
-**Error**: `COURSE_HAS_LEARNERS`
+**Error**: `COURSE_HAS_LEARNERS`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 77. 썸네일 업로드
 
@@ -2107,7 +2109,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | multipart/form-data. |
+| 설명 | 본인 강의만, 검수 중에는 불가. multipart/form-data(필드 file). 이미지 2MB·jpg·png(DP-32). |
 
 **Request**
 
@@ -2116,10 +2118,10 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "thumbnailUrl": "/files/course/7.png" }
+{ "thumbnailUrl": "/uploads/3f2a....png" }
 ```
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 78. 영상·요약글 저장
 
@@ -2446,7 +2448,8 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review·admin_log(action COURSE_APPROVE, 변경 전·후 상태) 기록. |
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
+
 
 - Path: courseId=9
 
@@ -2465,7 +2468,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-|설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, admin_log(action COURSE_REJECT, 변경 전·후 상태·사유) 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
+| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json

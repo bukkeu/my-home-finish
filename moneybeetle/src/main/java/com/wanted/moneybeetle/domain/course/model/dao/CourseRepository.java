@@ -58,4 +58,14 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
         Long getCategoryId();
         long getCourseCount();
     }
+
+    /* 강사 내 강의 목록 (API 72): 삭제 제외, status가 null이면 전체, 최근 만든 순 */
+    @Query("""
+            select c from Course c
+            where c.instructorId = :instructorId
+              and c.deletedAt is null
+              and (:status is null or c.status = :status)
+            order by c.courseId desc
+            """)
+    List<Course> findMyCourses(@Param("instructorId") Long instructorId, @Param("status") String status);
 }
