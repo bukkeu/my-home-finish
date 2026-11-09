@@ -12,6 +12,8 @@ import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryUpdateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.InquiryReply;
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+// ← 여기에 복사해 둔 ForbiddenWordService import 붙이기
+// ← 여기에 복사해 둔 NotificationService import 붙이기
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
 import com.wanted.moneybeetle.global.common.PageResponse;
@@ -26,15 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-// ForbiddenWordService, NotificationService import는 빨간 줄이 뜨면 Alt+Enter로 추가
 
 /* comment.
  *   담당 : DBA ① (문의)
@@ -46,14 +45,13 @@ import java.util.Set;
 public class InquiryService {
 
     private static final int DAILY_LIMIT = 10;                          // DP-30. TODO: system_setting 서비스가 생기면 그 값으로
-    private static final String NOTIFICATION_TYPE = Notification.TYPE_INQUIRY_REPLY;   // API 명세 알림 type
+    private static final String NOTIFICATION_TYPE = Notification.TYPE_INQUIRY_REPLY;
     private static final String NOTIFICATION_TITLE = "문의에 답변이 등록됐어요";
     private static final String HIDDEN_TEXT = "관리자에 의해 숨김 처리된 글이에요";  // DP-22
     private static final String ROLE_MEMBER = "MEMBER";
     private static final String ROLE_INSTRUCTOR = "INSTRUCTOR";
     private static final String ROLE_ADMIN = "ADMIN";
     private static final Long NO_COURSE = -1L;                          // 빈 IN () 방지
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");       // TODO: 공통 시계(Clock) Bean이 생기면 주입으로 교체
 
     private final InquiryRepository inquiryRepository;
     private final InquiryReplyRepository inquiryReplyRepository;
@@ -205,7 +203,7 @@ public class InquiryService {
         return Inquiry.STATUS_WAITING.equals(status) || Inquiry.STATUS_ANSWERED.equals(status);
     }
 
-    /* TODO: MemberService의 닉네임 조회로 바꾸기 (PR 전에 채움) */
+    /* TODO(#145): MemberService.findNicknames가 dev에 머지되면 호출로 교체. 그전까지 닉네임은 null */
     private Map<Long, String> findNicknames(Collection<Long> memberIds) {
         return Map.of();
     }
