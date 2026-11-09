@@ -13,4 +13,7 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
 
     /** 사용자에게 보이는 시즌 : 주어진 상태(진행 중·휴장 중·정산 중·종료) 중 시작일이 가장 최근인 것 (#24) */
     Optional<TradingSeason> findFirstByStatusInOrderByStartDateDesc(List<String> statuses);
+
+    /** 관리자 시즌 목록 : 최근 시작한 시즌부터 */
+    List<TradingSeason> findAllByOrderByStartDateDesc();
 }

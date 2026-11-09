@@ -6,6 +6,7 @@ import com.wanted.moneybeetle.domain.quiz.model.dao.QuizChoiceRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizQuestionRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dao.WrongAnswerNoteRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizQuestionDTO;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizReviewDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSubmitDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.TestQuizResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.WrongNoteDTO;
@@ -129,6 +130,20 @@ public class QuizService {
     @Transactional
     public void deleteWrongNote(Long memberId, Long wrongNoteId) {
         wrongAnswerNoteRepository.deleteByWrongAnswerNoteIdAndMemberId(wrongNoteId, memberId);
+    }
+
+    /* ===== 관리자 검수 (#35, course 도메인 AdminCourseService에서 호출) ===== */
+
+    /* API 90. 검수 상세의 퀴즈: 테스트·본 퀴즈 모든 문항 + 정답 포함 보기. 보기는 한 번에 조회 */
+    public List<QuizReviewDTO> findQuizzesForReview(Long courseId) {
+        List<QuizQuestion> questions =
+                quizQuestionRepository.findByCourseIdOrderByQuizTypeAscSortOrderAscQuizQuestionIdAsc(courseId);
+        Map<Long, List<QuizChoice>> choicesByQuestion = findChoicesByQuestion(questions);
+
+        return questions.stream()
+                .map(question -> QuizReviewDTO.of(question,
+                        choicesByQuestion.getOrDefault(question.getQuizQuestionId(), List.of())))
+                .toList();
     }
 
     /* ===== 내부 도우미 ===== */

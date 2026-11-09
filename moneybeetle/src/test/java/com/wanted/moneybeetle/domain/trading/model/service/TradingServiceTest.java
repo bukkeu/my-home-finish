@@ -86,7 +86,7 @@ class TradingServiceTest {
         TradingSeason season = TradingSeason.create("시즌 7", LocalDate.of(2026, 10, 19), new BigDecimal("100.00"),
                 null, 1L);
         ReflectionTestUtils.setField(season, "tradingSeasonId", SEASON_ID);
-        season.start();
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
         for (int i = 0; i < 5; i++) {
             season.advanceTurn();
         }
@@ -136,11 +136,11 @@ class TradingServiceTest {
         TradingSeason season = TradingSeason.create("시즌 7", LocalDate.of(2026, 10, 19), new BigDecimal("100.00"),
                 null, 1L);
         ReflectionTestUtils.setField(season, "tradingSeasonId", SEASON_ID);
-        season.start();
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
         for (int i = 0; i < 12; i++) {
             season.advanceTurn();
         }
-        season.startSettling();
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
         givenMarket();
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 12)).thenReturn(List.of(
