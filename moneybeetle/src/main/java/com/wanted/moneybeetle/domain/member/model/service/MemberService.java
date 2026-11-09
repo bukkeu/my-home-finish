@@ -5,9 +5,9 @@ import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepositor
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
-import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
