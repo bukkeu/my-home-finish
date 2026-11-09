@@ -578,7 +578,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. |
+| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. 사용한 토큰은 매일 새벽(03:00 KST) 정리 작업이 지우므로(DP-12), 정리되기 전에 같은 링크를 다시 쓰면 `TOKEN_USED`, 정리된 뒤에는 없는 토큰과 같게 `TOKEN_EXPIRED`로 답한다. |
 
 **Request**
 

@@ -19,6 +19,7 @@ import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import org.springframework.data.domain.PageRequest;
 import java.util.Collection;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
@@ -178,6 +179,19 @@ public class MemberService {
      * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
      * 없는 회원이면 false 다.
      */
+    /**
+     * 탈퇴한 지 PERSONAL_INFO_RETENTION_DAYS 일이 지난 회원의 개인정보를 지운다 (예약 작업 MemberCleanupJob 전용, #66, DP-06).
+     * 한 번에 batchSize 명까지만 처리하고 처리한 수를 돌려준다. 돌려준 수가 batchSize 면 아직 남았을 수 있어 다시 부른다.
+     * 호출마다 하나의 트랜잭션이라, 중간에 실패해도 그 묶음만 되돌려지고 앞서 끝낸 묶음은 남는다.
+     */
+    @Transactional
+    public int purgeWithdrawnMembers(LocalDateTime now, int batchSize) {
+        LocalDateTime cutoff = now.minusDays(Member.PERSONAL_INFO_RETENTION_DAYS);
+        List<Member> targets = memberRepository.findPurgeTargets(cutoff, PageRequest.of(0, batchSize));
+        targets.forEach(Member::purgePersonalInfo);
+        return targets.size();
+    }
+
     public boolean isActiveMember(Long memberId) {
         return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
     }
