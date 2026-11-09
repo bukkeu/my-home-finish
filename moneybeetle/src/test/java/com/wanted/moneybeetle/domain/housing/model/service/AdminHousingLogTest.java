@@ -148,6 +148,14 @@ class AdminHousingLogTest {
         when(applicationRepository.countByHousingComplexId(5L)).thenReturn(1L);
         assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 5)).deleteComplex(ADMIN_ID, 5L))
                 .isInstanceOf(BusinessException.class);
+        // 신청자가 있는 공고의 공급 세대 수 변경 → COMPLEX_HAS_APPLICANTS
+        ComplexRequestDTO changed = request("비틀 파크");
+        changed.setSupplyUnits(3);
+        assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 5)).updateComplex(ADMIN_ID, 5L, changed))
+                .isInstanceOf(BusinessException.class);
+        // 산정하지 않은 공고 발표 → NOT_COMPUTED
+        assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 17)).announce(ADMIN_ID, 5L))
+                .isInstanceOf(BusinessException.class);
 
         verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
     }
