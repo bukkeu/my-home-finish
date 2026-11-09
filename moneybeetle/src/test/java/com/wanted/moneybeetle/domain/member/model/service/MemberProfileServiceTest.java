@@ -9,7 +9,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceStatusDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
+import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.LevelTable;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
@@ -40,6 +42,7 @@ class MemberProfileServiceTest {
     private GrowthService growthService;
     private CourseService courseService;
     private FileStorageService fileStorageService;
+    private AttendanceService attendanceService;
     private MemberProfileService service;
 
     @BeforeEach
@@ -48,7 +51,8 @@ class MemberProfileServiceTest {
         growthService = mock(GrowthService.class);
         courseService = mock(CourseService.class);
         fileStorageService = mock(FileStorageService.class);
-        service = new MemberProfileService(memberService, growthService, courseService, fileStorageService);
+        attendanceService = mock(AttendanceService.class);
+        service = new MemberProfileService(memberService, growthService, courseService, attendanceService, fileStorageService);
 
         LevelTable table = levelTable();   // when() 안에서 다른 Mock 을 만들지 않도록 먼저 만든다
         when(growthService.loadLevelTable()).thenReturn(table);
@@ -79,6 +83,7 @@ class MemberProfileServiceTest {
     @DisplayName("내 정보에 칭호·다음 레벨까지 경험치·출석·학습·해금이 함께 나온다")
     void myInfo() {
         when(memberService.getProfile(1L)).thenReturn(profile(8, 1120, 3));
+        when(attendanceService.getStatus(1L)).thenReturn(new AttendanceStatusDTO(3, 2, 10_000, true));
 
         MyInfoDTO info = service.getMyInfo(1L);
 
@@ -98,6 +103,7 @@ class MemberProfileServiceTest {
     @DisplayName("최대 레벨이면 다음 레벨까지 경험치는 0, 연속 5일 이상이면 보상까지 0일")
     void maxLevel() {
         when(memberService.getProfile(1L)).thenReturn(profile(20, 99999, 7));
+        when(attendanceService.getStatus(1L)).thenReturn(new AttendanceStatusDTO(7, 0, 10_000, true));
 
         MyInfoDTO info = service.getMyInfo(1L);
 
@@ -155,12 +161,14 @@ class MemberProfileServiceTest {
     }
 
     @Test
-    @DisplayName("연속 출석 5일째부터 매일 지급이므로 남은 일수는 5 - 연속 일수, 0 미만은 없다")
-    void daysToReward() {
-        int start = com.wanted.moneybeetle.domain.growth.model.service.AttendanceService.REWARD_START_STREAK;   // 출석 서비스의 기준 일수를 따른다
-        assertThat(MemberProfileService.daysToReward(0)).isEqualTo(start);
-        assertThat(MemberProfileService.daysToReward(start - 1)).isEqualTo(1);
-        assertThat(MemberProfileService.daysToReward(start)).isZero();
-        assertThat(MemberProfileService.daysToReward(5)).isZero();
+    @DisplayName("연속 출석은 회원 행에 저장된 값이 아니라 출석 현황(오늘 기준)을 쓴다 - 어제 빠졌으면 저장값이 3이어도 0일이다")
+    void attendanceUsesStatusNotStoredStreak() {
+        when(memberService.getProfile(1L)).thenReturn(profile(8, 1120, 3));   // 저장된 연속 일수는 3 이지만 하루 빠져서 끊겼다
+        when(attendanceService.getStatus(1L)).thenReturn(new AttendanceStatusDTO(0, 5, 10_000, false));
+
+        MyInfoDTO info = service.getMyInfo(1L);
+
+        assertThat(info.attendance().streak()).isZero();
+        assertThat(info.attendance().daysToReward()).isEqualTo(AttendanceService.REWARD_START_STREAK);
     }
 }
