@@ -60,6 +60,9 @@
 
 - 아래 상세 명세의 Response는 `data` 안의 내용만 적었습니다.
 - 입력값 오류는 `error.fields`에 `[{ "field": "nickname", "message": "이미 사용 중인 닉네임이에요" }]` 형태로 입력칸별 안내를 담습니다 (EP-01).
+  - 요청 본문 검증(`@Valid`) 실패는 400 `INVALID_INPUT` 이고 `fields`에 칸마다 한 줄씩 담습니다. 여러 칸을 비교하는 검사를 `isXxx()` 메서드에 붙이면 `field`는 그 이름(예: `isPasswordConfirmed()` → `passwordConfirmed`)이고, 클래스에 붙인 검사는 `field`가 `null` 입니다.
+  - 본문 JSON 형식 오류, 필수 파라미터 누락, 파라미터 타입 오류(예: `?page=abc`)도 400 `INVALID_INPUT` 이지만 `fields`는 `null` 입니다.
+  - 입력값 오류가 아닌 모든 실패 응답의 `fields`는 `null` 입니다 (#142).
 - `message`는 화면에 그대로 보여 줄 수 있는 문구입니다. 기술 용어와 상세 원인은 넣지 않습니다 (EP-05).
 
 ### 1-3 페이지네이션
@@ -2316,13 +2319,17 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | 카테고리·소주제 트리(비활성 포함). |
+| 설명 | 카테고리 → 소주제 트리(비활성 포함). 단계 → 순서 → ID 순. 항목마다 isActive, courseCount(삭제되지 않은 강의 수). 소주제의 children은 빈 목록. |
 
-**Request**
+
 
 - 없음
 
 **Response**
+```json
+[ { "categoryId": 2, "name": "부동산", "depth": 1, "sortOrder": 1, "isActive": true, "courseCount": 0,
+    "children": [ { "categoryId": 22, "name": "전·월세", "depth": 2, "sortOrder": 2, "isActive": true, "courseCount": 3, "children": [] } ] } ]
+```
 
 - (카테고리 트리 + isActive, courseCount)
 
@@ -2334,7 +2341,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | parentId가 있으면 소주제. |
+| 설명 | parentId가 있으면 소주제(depth 2), 없으면 카테고리(depth 1). 2단계까지만(소주제 아래에는 등록 불가). 이름 30자, 순서 0 이상. |
 
 **Request**
 
@@ -2347,7 +2354,9 @@ email=admin@moneybeetle.kr&password=...
 ```json
 201 Created
 { "categoryId": 22 }
+**Error**: `CATEGORY_DEPTH_EXCEEDED`, `NOT_FOUND`(없는 parentId)
 ```
+
 
 #### 87. 카테고리 수정
 
@@ -2368,6 +2377,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+**Error**: `NOT_FOUND`
 
 #### 88. 카테고리 삭제
 
@@ -2377,7 +2387,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `DELETE` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | 강의가 연결돼 있으면 비활성으로 바꾼다. |
+| 설명 | 강의(삭제된 강의 포함)나 소주제가 연결돼 있으면 삭제하지 않고 비활성(is_active=FALSE)으로 바꾼다. 연결이 없으면 실제 삭제. 두 경우 모두 204. |
 
 **Request**
 
@@ -2387,7 +2397,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `CATEGORY_IN_USE`
+**Error**: `NOT_FOUND`, `CATEGORY_IN_USE`(삭제 확인 직후 강의가 동시에 연결된 경우. 다시 요청하면 비활성으로 처리)
 
 #### 89. 강의 목록(검수)
 
@@ -2819,7 +2829,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-30, SP-17, DP-43 |
-| 설명 | 사유 필수. 회수로 0 미만이 되면 거절. |
+| 설명 | 사유 필수(200자 이하). 금액은 1 이상 1,000,000,000(10억) 캐시 이하이고(SP-17), 회수로 0 미만이 되면 거절. |
 
 **Request**
 
@@ -2834,7 +2844,7 @@ email=admin@moneybeetle.kr&password=...
 { "cashHistoryId": 130, "balanceAfter": 14400 }
 ```
 
-**Error**: `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
+**Error**: `INVALID_AMOUNT`, `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
 
 #### 111. 서비스 설정
 
@@ -2888,7 +2898,8 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: targetType=SEASON&targetId=7&page=0&size=50
+- Query (모두 선택): targetType=SEASON&targetId=7&adminId=1&from=2026-11-01&to=2026-11-05&page=0&size=50
+    - `from`·`to` 는 날짜(yyyy-MM-dd)이고 둘 다 그날을 포함한다. `size` 기본 50, 최대 100. 최신순.
 
 **Response**
 
@@ -3650,6 +3661,7 @@ email=admin@moneybeetle.kr&password=...
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
 | 공통 | `IDEMPOTENCY_KEY_TOO_LONG` | 400 | 요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
+| 공통 | `INVALID_INPUT` | 400 | 입력한 값을 다시 확인해 주세요 (입력칸별 안내는 `error.fields`) |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
 | 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
