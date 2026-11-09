@@ -1522,7 +1522,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-01~02, INV-05, INV-14, NFR-12 |
-| 설명 | 현재 시즌·턴, 남은 현금, 순자산, 보유 종목. 해금 레벨 미달이면 403. 시즌은 진행 중·휴장 중인 시즌. `calendar`는 시작일부터 14일이고 `state`는 `DONE`(지난 턴)·`CURRENT`(현재 턴)·`UPCOMING`(남은 턴)·`HOLIDAY`(일요일, `turnNo` null). `nextTurnAt`은 다음 턴 거래일 0시(마지막 턴이면 null). 순자산 = 현금 + 보유 종목 평가금액(현재 턴 가격, 가격이 없으면 평균 단가), 수익률은 소수 둘째 자리 반올림(SP-61). 이 시즌에 참가하지 않았으면 `participation`은 null, `holdings`는 빈 목록(로그인 연결(#6) 전에는 항상 이 모양) (#23) |
+| 설명 | 현재 시즌·턴, 남은 현금, 순자산, 보유 종목. 해금 레벨 미달이면 403. 시즌은 진행 중·휴장 중·정산 중·종료 중 시작일이 가장 최근인 것(정산 중·종료에도 열리고 `season.status`로 "정산 중"·"종료"를 안내한다. 준비 중 시즌뿐이면 `NO_RUNNING_SEASON`). `calendar`는 시작일부터 14일이고 `state`는 `DONE`(지난 턴)·`CURRENT`(현재 턴)·`UPCOMING`(남은 턴)·`HOLIDAY`(일요일, `turnNo` null). `nextTurnAt`은 다음 턴 거래일 0시(마지막 턴이면 null). 순자산 = 현금 + 보유 종목 평가금액(현재 턴 가격, 가격이 없으면 평균 단가), 수익률은 소수 둘째 자리 반올림(SP-61). 이 시즌에 참가하지 않았으면 `participation`은 null, `holdings`는 빈 목록(로그인 연결(#6) 전에는 항상 이 모양) (#23) |
 
 **Request**
 

@@ -240,6 +240,24 @@ class ParticipationServiceTest {
     }
 
     @Test
+    void 정산_중인_시즌도_홈이_열리고_상태로_안내하며_참가는_마감() {
+        TradingSeason season = season(12);
+        season.startSettling();
+        givenTurns();
+
+        TradingHomeDTO home = service.getHome(null);
+
+        assertThat(home.getSeason().getStatus()).isEqualTo(TradingSeason.STATUS_SETTLING);
+        assertThat(home.getSeason().getCurrentTurn()).isEqualTo(12);
+        assertThat(home.getSeason().getNextTurnAt()).isNull();
+        verify(seasonRepository).findFirstByStatusInOrderByStartDateDesc(List.of(TradingSeason.STATUS_RUNNING,
+                TradingSeason.STATUS_HOLIDAY, TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED));
+        assertThatThrownBy(() -> service.join(SEASON_ID, MEMBER_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.JOIN_CLOSED);
+    }
+
+    @Test
     void 보이는_시즌이_없으면_홈은_NO_RUNNING_SEASON() {
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
 

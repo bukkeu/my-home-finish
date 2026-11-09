@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 /* comment.
 *   담당 : PM (모의투자)
 *   모의투자 홈·시즌 참가 (#23, API 53~54, INV-01~05, INV-14, SP-51~52, SP-61, DP-40)
-*   - 홈 : 지금 보이는 시즌(진행 중·휴장 중)과 14일 턴 달력, 내 참가(현금·순자산·수익률)와 보유 종목
+*   - 홈 : 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료)과 14일 턴 달력, 내 참가(현금·순자산·수익률)와 보유 종목
 *     순자산 = 현금 + 보유 종목 평가금액(현재 턴 가격, 가격이 없으면 평균 단가), 수익률 = (순자산 - 투자 가능 금액) / 투자 가능 금액
 *   - 참가 : Lv.8 이상(LevelCheckInterceptor), 시즌당 1회(DB UNIQUE 도 함께), 시즌 시작 후 첫 턴이 끝나기 전까지(SP-51 초안)
 *     투자 가능 금액 = 참가할 때의 캐시 잔액 + 지난 시즌 이월금. 참가해도 회원 캐시는 빼지 않는다 (PM 결정, 이슈 #23)
@@ -46,9 +46,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ParticipationService {
 
-    /** 사용자에게 보이는 시즌 상태 : 진행 중, 일요일 휴장 중 */
-    private static final List<String> VISIBLE_STATUSES =
-            List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY);
+    /**
+     * 사용자에게 보이는 시즌 상태 : 진행 중, 일요일 휴장 중, 정산 중, 종료.
+     * 정산 중·종료에도 홈은 열리고(season.status 로 화면이 "정산 중"·"종료" 안내를 띄운다), 참가만 JOIN_CLOSED 로 막힌다
+     * 준비 중(READY) 시즌은 보이지 않고, 새 시즌이 진행 중이 되면 시작일이 더 늦은 그 시즌이 보인다
+     */
+    private static final List<String> VISIBLE_STATUSES = List.of(TradingSeason.STATUS_RUNNING,
+            TradingSeason.STATUS_HOLIDAY, TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED);
     /** 참가할 수 있는 마지막 턴 : 첫 턴이 끝나기 전까지 (SP-51 초안) */
     static final int LAST_JOIN_TURN = 1;
     /** schema.sql 의 (시즌, 회원) UNIQUE 제약 이름 */
