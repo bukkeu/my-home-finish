@@ -99,5 +99,50 @@ public class HousingComplex extends BaseTimeEntity {
         return STATUS_OPEN;
     }
 
+    // ── #47 관리자 공고 관리 ──────────────────────────────
 
+    // 공고 등록 : 처음 상태는 접수 전(UPCOMING). 화면 상태는 날짜로 계산하므로 발표 전까지 status 는 바꾸지 않는다
+    public static HousingComplex create(String name, String location, String areaType, long salePrice,
+                                        int supplyUnits, String supplyType,
+                                        LocalDate noticeDate, LocalDate applyStartDate,
+                                        LocalDate applyEndDate, LocalDate announceDate, Long createdBy) {
+        HousingComplex complex = new HousingComplex();
+        complex.changeInfo(name, location, areaType, salePrice, supplyType);
+        complex.changeSchedule(noticeDate, applyStartDate, applyEndDate, announceDate, supplyUnits);
+        complex.status = STATUS_UPCOMING;
+        complex.createdBy = createdBy;
+        return complex;
+    }
+
+    // 단지 정보 수정 : 신청자가 있어도 바꿀 수 있다
+    public void changeInfo(String name, String location, String areaType, long salePrice, String supplyType) {
+        this.name = name;
+        this.location = location;
+        this.areaType = areaType;
+        this.salePrice = salePrice;
+        this.supplyType = supplyType;
+    }
+
+    // 일정·공급 세대 수 수정 : 신청자가 있으면 바꿀 수 없다 (SP-76, Service 가 먼저 확인)
+    public void changeSchedule(LocalDate noticeDate, LocalDate applyStartDate, LocalDate applyEndDate,
+                               LocalDate announceDate, int supplyUnits) {
+        this.noticeDate = noticeDate;
+        this.applyStartDate = applyStartDate;
+        this.applyEndDate = applyEndDate;
+        this.announceDate = announceDate;
+        this.supplyUnits = supplyUnits;
+    }
+
+    // 일정·공급 세대 수가 지금 값과 같은가? (신청자가 있을 때 "정보만 바꾸는 수정" 인지 판단)
+    public boolean hasSameSchedule(LocalDate noticeDate, LocalDate applyStartDate, LocalDate applyEndDate,
+                                   LocalDate announceDate, int supplyUnits) {
+        return this.noticeDate.equals(noticeDate) && this.applyStartDate.equals(applyStartDate)
+                && this.applyEndDate.equals(applyEndDate) && this.announceDate.equals(announceDate)
+                && this.supplyUnits == supplyUnits;
+    }
+
+    // 삭제 : 실제로 지우지 않고 삭제 시각만 남긴다 (Soft Delete, DB 설계 3장)
+    public void delete(LocalDateTime now) {
+        this.deletedAt = now;
+    }
 }

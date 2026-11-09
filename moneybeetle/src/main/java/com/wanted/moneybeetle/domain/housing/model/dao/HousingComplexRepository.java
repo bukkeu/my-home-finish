@@ -23,6 +23,6 @@ public interface HousingComplexRepository extends JpaRepository<HousingComplex, 
 
     Optional<HousingComplex> findByIdAndDeletedAtIsNull(Long id);
 
-
-
+    // #47 관리자 단지 목록 (API 142) : 삭제 안 된 단지, 신청 시작일 최신순
+    List<HousingComplex> findByDeletedAtIsNullOrderByApplyStartDateDesc();
 }
