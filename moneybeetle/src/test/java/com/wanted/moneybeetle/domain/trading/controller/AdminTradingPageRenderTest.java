@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.wanted.moneybeetle.domain.auth.config.SecurityConfig;
+import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
@@ -23,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -35,7 +37,7 @@ import org.springframework.web.context.WebApplicationContext;
 *  */
 @SpringBootTest(classes = {AdminTradingPageRenderTest.TestApp.class, SecurityConfig.class,
         SecurityErrorHandler.class, AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
-        AdminTradingPageController.class})
+        AdminAuthSuccessHandler.class, AdminTradingPageController.class})
 class AdminTradingPageRenderTest {
 
     @Configuration
@@ -44,6 +46,13 @@ class AdminTradingPageRenderTest {
             HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
     static class TestApp {
     }
+
+    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 화면만 보므로 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
+    /** 로그인해 둔 세션의 계정 상태 확인(ActiveMemberFilter)이 쓴다. 이 테스트의 가짜 사용자는 AuthDetails 가 아니라 호출되지 않는다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberService memberService;
 
     @Autowired
     private WebApplicationContext context;
