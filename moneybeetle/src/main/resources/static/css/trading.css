@@ -189,6 +189,7 @@ button.trd-news-item { cursor: pointer; }
 .trd-qty { display: grid; grid-template-columns: 48px 1fr 48px; border: 1.5px solid var(--color-divider); border-radius: 14px; overflow: hidden; }
 .trd-qty button { all: unset; cursor: pointer; text-align: center; font-size: 20px; line-height: 48px; background: var(--color-bg); }
 .trd-qty input { all: unset; text-align: center; font-size: 18px; font-weight: 800; min-width: 0; }
+.trd-qty:focus-within { border-color: var(--color-accent-700); }
 .trd-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .trd-quick button, .trd-reasons button { all: unset; cursor: pointer; text-align: center; padding: 8px 10px; border-radius: 999px; border: 1px solid var(--color-divider); font-size: 13px; font-weight: 700; background: #fff; }
 .trd-quick button:hover, .trd-reasons button:hover { background: var(--color-bg); }

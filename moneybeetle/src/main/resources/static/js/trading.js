@@ -33,6 +33,9 @@
     SETTLING: MSG.SEASON_CLOSED + ' · 시세와 뉴스는 마지막 턴까지 볼 수 있어요',
     ENDED: '시즌이 끝났어요 · 랭킹과 결과를 확인해 보세요'
   };
+  var REFRESH_DELAY_MS = 1500;      // 다음 턴 시각이 지나고 서버가 턴을 넘길 시간을 잠깐 기다린다
+  var REFRESH_RETRY_MS = 10000;     // 그래도 같은 시각이면 10초마다 다시 확인한다
+  var SETTLE_POLL_MS = 60000;       // 정산 중 홈 확인 간격
   var WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
   var TONES = ['mint', 'orange', 'blue', 'purple', 'pink', 'yellow'];
 
@@ -161,20 +164,41 @@
   function startCountdown(nextTurnAt, status) {
     clearInterval(S.timer);
     var out = $('trd-next-turn');
-    if (status === 'SETTLING') { out.textContent = '정산을 기다리는 중이에요'; return; }
+    if (status === 'SETTLING') { out.textContent = '정산을 기다리는 중이에요'; scheduleSettlePoll(); return; }
     if (status === 'ENDED') { out.textContent = '시즌이 끝났어요'; return; }
     if (!nextTurnAt) { out.textContent = '마지막 턴이에요'; return; }
     var target = new Date(nextTurnAt).getTime();
+    // 새로 불러왔는데도 같은 시각이면 서버가 아직 턴을 넘기지 않은 것(또는 PC 시계가 빠른 것)이다 -> 천천히 다시 확인한다
+    var repeated = S.lastTarget === target;
+    S.lastTarget = target;
     var tick = function () {
       var left = Math.max(0, Math.floor((target - Date.now()) / 1000));
       var hh = String(Math.floor(left / 3600)).padStart(2, '0');
       var mm = String(Math.floor(left % 3600 / 60)).padStart(2, '0');
       var ss = String(left % 60).padStart(2, '0');
       out.textContent = '다음 턴까지 ' + hh + ':' + mm + ':' + ss;
-      if (left === 0) { clearInterval(S.timer); setTimeout(refreshAll, 1500); }
+      if (left === 0) {
+        clearInterval(S.timer);
+        setTimeout(function () { refreshAll(true); }, repeated ? REFRESH_RETRY_MS : REFRESH_DELAY_MS);
+      }
     };
     tick();
     S.timer = setInterval(tick, 1000);
+  }
+
+  /** 정산 중에는 1분마다 홈을 다시 불러, 종료(랭킹 공개)가 되면 랭킹도 불러온다. 조회가 실패해도 계속 확인한다 */
+  function scheduleSettlePoll() {
+    S.settlePending = true;
+    clearTimeout(S.timer);
+    S.timer = setTimeout(pollSettle, SETTLE_POLL_MS);
+  }
+  function pollSettle() {
+    S.settlePending = false;
+    refreshAll(true).then(function () {
+      var status = S.season && S.season.status;
+      if (status === 'ENDED') loadRanking();
+      else if (status === 'SETTLING' && !S.settlePending && !S.locked) scheduleSettlePoll();
+    });
   }
 
   function renderBalance(season, p) {
@@ -612,6 +636,7 @@
       body: { stockId: d.stockId, orderType: side, quantity: qty, turnNo: d.turnNo, reasonId: Number(S.reasonId) }
     }).then(function () {
       delete $('trd-o-error').dataset.from;
+      S.reasonId = null;   // 새로고침이 끝날 때까지 제출 버튼을 잠근다 (같은 주문의 중복 체결 방지)
       MB.toast(d.name + ' ' + fmt(qty) + '주를 ' + (side === 'BUY' ? '샀어요' : '팔았어요'));
       refreshAll(true);
     }).catch(function (err) {
