@@ -30,8 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class CashAdjustService {
 
     /**
-     * 한 번에 지급·회수할 수 있는 최대 금액. 잔액(long)이 넘치지 않게 하는 기술적 상한이다(10억 캐시). 정책으로 정한 값이 아니므로
-     * 운영 상한이 정해지면 서비스 설정(system_setting)의 값을 읽도록 바꾼다. 넘으면 INVALID_AMOUNT 다.
+     * 한 번에 지급·회수할 수 있는 최대 금액 10억 캐시 (정책 정의서 SP-17, 팀 합의). 입력 실수로 0이 더 붙은 금액과
+     * 잔액(long) 오버플로를 함께 막는다. 넘으면 INVALID_AMOUNT 다. 상한을 운영 중에 바꿀 일이 생기면 서비스 설정(system_setting)으로 옮긴다.
      */
     public static final long MAX_AMOUNT = 1_000_000_000L;
 
