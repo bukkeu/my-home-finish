@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.member.controller;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : DBA ② (회원·인증)
 *   GET    /api/v1/agreements, /auth/check-email, /auth/check-nickname
 *   POST   /api/v1/auth/signup, /auth/instructor-signup
 *   GET    /api/v1/members/me, /members/{memberId}/profile

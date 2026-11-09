@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : DBA ② (관리자 운영)
 *   금칙어 검사 (닉네임, 문의, 강의 제목, 요약글 DP-20~21)
 *   - check(text)    : 금칙어가 들어 있으면 BusinessException(CommonErrorCode.FORBIDDEN_WORD, 400)을 던진다
 *   - contains(text) : 예외 없이 true/false 만 알고 싶을 때

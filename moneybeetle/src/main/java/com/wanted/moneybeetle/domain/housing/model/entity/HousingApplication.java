@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /* comment.
-*   담당 : SCM (성장·홈·모의 청약)
+*   담당 : SCM (모의 청약)
 *   내가 이 단지에 신청했나?, 이 단지 신청자는 몇 명인가?(경쟁률 파악)
 *   테이블 housing_application (신청 후 취소·수정 불가)
 *  */

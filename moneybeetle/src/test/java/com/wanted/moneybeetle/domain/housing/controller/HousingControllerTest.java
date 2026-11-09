@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /* comment.
-*   담당 : SCM (성장·홈·모의 청약)
+*   담당 : SCM (모의 청약)
 *   HousingController #27 확인 (Service 는 가짜, DB·로그인 없이)
 *   - 주소·파라미터 연결과 응답 JSON 모양 (API 명세서 63·64)
 *   - @RequireLevel(HOUSING) : 레벨 조회 연동(#4 TODO) 전이라 지금은 LEVEL_LOCKED 로 막힌다
