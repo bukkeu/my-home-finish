@@ -93,9 +93,23 @@ public class Course {
         this.deletedAt = deletedAt;
     }
 
+    /* 이 강의의 강사인지 (본인 강의만 수정·검수 요청, #30·#32) */
+    public boolean isOwnedBy(Long instructorId) {
+        return this.instructorId.equals(instructorId);
+    }
+
+    /* 검수 요청 (API 81, DP-34). 작성 중·반려 상태에서만 → 반려된 강의를 고쳐 다시 요청할 수 있다 */
+    public void requestReview(LocalDateTime submittedAt) {
+        if (!STATUS_DRAFT.equals(status) && !STATUS_REJECTED.equals(status)) {
+            throw new BusinessException(CourseErrorCode.COURSE_NOT_REQUESTABLE);
+        }
+        this.status = STATUS_REVIEW;
+        this.submittedAt = submittedAt;
+    }
+
     private void requireInReview() {
         if (!isInReview()) {
             throw new BusinessException(CourseErrorCode.COURSE_NOT_IN_REVIEW);
         }
     }
-}   // ← 맨
+}

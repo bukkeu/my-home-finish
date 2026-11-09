@@ -2223,9 +2223,9 @@ Header: Idempotency-Key: 4d8e...
 | --- | --- |
 | Endpoint | `/api/v1/instructor/courses/{courseId}/review-request` |
 | Method | `POST` |
-| 권한 | 강사 |
+| 권한 | 강사 (본인 강의) |
 | 관련 | TCH-07, DP-34 |
-| 설명 | 영상 1개 이상, 테스트 퀴즈 5문제, 퀴즈 5~15문제가 있어야 요청 가능. |
+| 설명 | 작성 중(DRAFT)·반려(REJECTED) 강의만 요청 가능(반려된 강의를 고쳐 다시 요청). 영상 1개 이상, 테스트 퀴즈 5문제, 퀴즈 5~15문제가 있어야 한다. 요청하면 REVIEW로 바뀌고 submitted_at을 기록. |
 
 **Request**
 
@@ -2237,7 +2237,7 @@ Header: Idempotency-Key: 4d8e...
 { "courseId": 7, "status": "REVIEW" }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`, `NO_LESSON`
+**Error**: `NO_LESSON`, `QUIZ_COUNT_INVALID`, `COURSE_NOT_REQUESTABLE`(검수 중·허가된 강의), `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 82. 내 강의 문의
 
@@ -2247,17 +2247,19 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-08 |
-| 설명 | 내 강의에 달린 문의. 답변 대기 글 먼저. |
+| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount는 필터와 상관없이 내 강의 전체의 답변 대기 수. |
 
 **Request**
 
-- Query: status=WAITING&courseId=
+- Query: status=WAITING&courseId=&page=0&size=20
 
 **Response**
 
 ```json
-{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ] }
+{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
+
+**Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
 
 ### 관리자
 
