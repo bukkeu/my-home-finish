@@ -43,6 +43,11 @@ public class Member {
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
+    /** 로그인 연속 실패 잠금 (DP-10): 5회마다 잠그고, 첫 잠금은 1분, 그 뒤 잠금은 5분 */
+    public static final int LOGIN_FAIL_LIMIT = 5;
+    public static final long FIRST_LOCK_MINUTES = 1;
+    public static final long REPEAT_LOCK_MINUTES = 5;
+
     public static final String GENDER_MALE = "MALE";
     public static final String GENDER_FEMALE = "FEMALE";
 
@@ -172,22 +177,22 @@ public class Member {
         return this.cash >= amount;
     }
 
-    /** 로그인 실패 기록. 5회 실패하면 10분간 잠근다. */
+    /**
+     * 로그인 실패를 기록하고 잠글 때가 되면 잠근다 (DP-10).
+     * 연속 5회 실패하면 1분, 그 뒤 잠금이 풀리고 실패를 5회 더 하면(누적 10회) 5분, 이후에도 5회마다 5분 잠근다.
+     * 실패 횟수는 잠금이 풀려도 지우지 않고(그래야 "또 5회"를 셀 수 있다) 로그인에 성공할 때만 0 으로 돌아간다.
+     * 이미 잠겨 있는 동안의 시도는 횟수를 올리지 않는다.
+     */
     public void recordLoginFailure(LocalDateTime now) {
         if (isLoginLocked(now)) {
             return;
         }
 
-        // 이전 잠금 시간이 만료됐다면 새로운 실패 횟수를 계산한다.
-        if (lockedUntil != null) {
-            failedLoginCount = 0;
-            lockedUntil = null;
-        }
-
         failedLoginCount++;
 
-        if (failedLoginCount >= 5) {
-            lockedUntil = now.plusMinutes(10);
+        if (failedLoginCount % LOGIN_FAIL_LIMIT == 0) {
+            long minutes = failedLoginCount == LOGIN_FAIL_LIMIT ? FIRST_LOCK_MINUTES : REPEAT_LOCK_MINUTES;
+            lockedUntil = now.plusMinutes(minutes);
         }
     }
 

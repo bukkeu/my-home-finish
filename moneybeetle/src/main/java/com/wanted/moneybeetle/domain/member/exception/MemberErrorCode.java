@@ -25,7 +25,7 @@ public enum MemberErrorCode implements ErrorCode {
 
     // 로그인 (API 6). 문구는 API 명세서 4장·정책 정의서 3-2 기준
     LOGIN_FAILED("LOGIN_FAILED", HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호를 확인해 주세요."),
-    LOGIN_LOCKED("LOGIN_LOCKED", HttpStatus.LOCKED, "로그인 시도가 너무 많아요. 10분 뒤에 다시 시도해 주세요."),
+    LOGIN_LOCKED("LOGIN_LOCKED", HttpStatus.LOCKED, "로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요."),
     ACCOUNT_SUSPENDED("ACCOUNT_SUSPENDED", HttpStatus.FORBIDDEN, "이용이 제한된 계정이에요."),
     ACCOUNT_WITHDRAWN("ACCOUNT_WITHDRAWN", HttpStatus.FORBIDDEN, "탈퇴한 계정이에요.");
 

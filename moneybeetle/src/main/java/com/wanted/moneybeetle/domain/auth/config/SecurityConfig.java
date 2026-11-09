@@ -51,7 +51,7 @@ public class SecurityConfig {
                     login.loginProcessingUrl("/api/v1/auth/login");   // 로그인 처리 POST
                     login.usernameParameter("email");
                     login.passwordParameter("password");
-                    // 성공·실패 핸들러(#6): JSON 응답, 5회 실패 10분 잠금(DP-10). 요청은 JSON 이 아니라 폼 형식(email, password)이다
+                    // 성공·실패 핸들러(#6): JSON 응답, 5회 실패 1분 잠금, 이후 5회마다 5분 잠금(DP-10). 요청은 JSON 이 아니라 폼 형식(email, password)이다
                     login.successHandler(authSuccessHandler);
                     login.failureHandler(authFailHandler);
                     // 로그인 시 세션 ID 재발급(세션 고정 보호)은 Spring Security 기본값이라 따로 설정하지 않는다

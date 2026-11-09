@@ -406,7 +406,7 @@ CREATE TABLE IF NOT EXISTS `member` (
     `attendance_streak` int NOT NULL DEFAULT '0' COMMENT '현재 연속 출석 일수',
     `last_attended_date` date DEFAULT NULL COMMENT '마지막 출석일 (KST)',
     `failed_login_count` tinyint NOT NULL DEFAULT '0' COMMENT '연속 로그인 실패 횟수',
-    `locked_until` datetime DEFAULT NULL COMMENT '로그인 잠금 해제 시각 (5회 실패 시 +10분)',
+    `locked_until` datetime DEFAULT NULL COMMENT '로그인 잠금 해제 시각 (5회 실패 시 +1분, 이후 5회마다 +5분)',
     `last_login_at` datetime DEFAULT NULL COMMENT '마지막 로그인',
     `withdrawn_at` datetime DEFAULT NULL COMMENT '탈퇴 일시',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',

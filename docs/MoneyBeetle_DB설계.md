@@ -260,7 +260,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `attendance_streak` | INT | N | - | 0 | 현재 연속 출석 일수 |
 | `last_attended_date` | DATE | Y | - | - | 마지막 출석일 (KST) |
 | `failed_login_count` | TINYINT | N | - | 0 | 연속 로그인 실패 횟수 |
-| `locked_until` | DATETIME | Y | - | - | 로그인 잠금 해제 시각 (5회 실패 시 +10분) |
+| `locked_until` | DATETIME | Y | - | - | 로그인 잠금 해제 시각 (5회 실패 시 +1분, 이후 5회마다 +5분) |
 | `last_login_at` | DATETIME | Y | - | - | 마지막 로그인 |
 | `withdrawn_at` | DATETIME | Y | - | - | 탈퇴 일시 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |

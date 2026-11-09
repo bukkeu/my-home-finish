@@ -446,7 +446,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-06, DP-10~11, GRW-01 |
-| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 10분 잠금. 로그인은 Spring Security 가 처리하는 **폼 로그인**이라 요청이 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이다. 데이터를 바꾸는 POST 라서 CSRF 토큰(`_csrf` 폼 값 또는 헤더)도 함께 보낸다. 응답은 JSON 이다. |
+| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 1분 잠금(이후 5회 실패마다 5분). 로그인은 Spring Security 가 처리하는 **폼 로그인**이라 요청이 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이다. 데이터를 바꾸는 POST 라서 CSRF 토큰(`_csrf` 폼 값 또는 헤더)도 함께 보낸다. 응답은 JSON 이다. |
 
 **Request**
 
@@ -3621,7 +3621,7 @@ Header: Idempotency-Key: 4d8e...
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
-| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 10분 뒤에 다시 시도해 주세요 |
+| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `ACCOUNT_SUSPENDED` | 403 | 이용이 제한된 계정이에요 |
 | 회원 | `ACCOUNT_WITHDRAWN` | 403 | 탈퇴한 계정이에요 |
 | 회원 | `EMAIL_DUPLICATED` | 409 | 이미 가입된 이메일이에요 |

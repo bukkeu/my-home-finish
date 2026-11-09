@@ -38,7 +38,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   로그인 흐름(이슈 #6) - 진짜 DaoAuthenticationProvider + AuthService + 성공·실패 핸들러를 이어서 돌린다.
-*   회원 저장소만 가짜(Mock)로 두므로 서버·DB 없이 돌고, 5회 실패 잠금·10분 해제 같은 시간 규칙은 움직이는 시계로 확인한다.
+*   회원 저장소만 가짜(Mock)로 두므로 서버·DB 없이 돌고, 5회 실패 잠금(1분, 이후 5분)·해제 같은 시간 규칙은 움직이는 시계로 확인한다.
 *   Spring Security 가 UserDetailsService 의 예외를 어떻게 감싸는지도 실제 객체로 확인한다.
 *  */
 class AuthLoginFlowTest {
@@ -191,13 +191,13 @@ class AuthLoginFlowTest {
     }
 
     @Test
-    @DisplayName("10분이 지나면 잠금이 풀려 로그인되고, 실패 횟수는 0 으로 돌아간다 (경계: 9분 59초까지는 잠금)")
-    void lockReleasedAfterTenMinutes() throws Exception {
+    @DisplayName("첫 잠금은 1분이다: 59초까지는 잠금, 1분이 지나면 풀려 로그인되고 실패 횟수가 0 으로 돌아간다")
+    void firstLockReleasedAfterOneMinute() throws Exception {
         for (int i = 0; i < 5; i++) {
             login(EMAIL, "wrong-password1");
         }
 
-        clock.advance(Duration.ofMinutes(9).plusSeconds(59));
+        clock.advance(Duration.ofSeconds(59));
         assertThat(login(EMAIL, PASSWORD).errorCode()).isEqualTo("LOGIN_LOCKED");
 
         clock.advance(Duration.ofSeconds(1));
@@ -208,17 +208,62 @@ class AuthLoginFlowTest {
     }
 
     @Test
-    @DisplayName("잠금이 풀린 뒤 다시 틀리면 새로 1회부터 센다")
-    void failureCountRestartsAfterLockExpires() throws Exception {
+    @DisplayName("잠금이 풀린 뒤 5회를 더 틀리면(누적 10회) 이번에는 5분 잠근다: 4분 59초까지 잠금, 5분이 지나면 풀린다")
+    void secondLockIsFiveMinutes() throws Exception {
         for (int i = 0; i < 5; i++) {
             login(EMAIL, "wrong-password1");
         }
-        clock.advance(Duration.ofMinutes(10));
+        clock.advance(Duration.ofMinutes(1));
 
-        Outcome again = login(EMAIL, "wrong-password1");
+        // 풀린 직후: 실패 횟수는 5 로 남아 있고, 이어서 틀리면 6 번째다
+        for (int i = 1; i <= 4; i++) {
+            assertThat(login(EMAIL, "wrong-password1").errorCode()).isEqualTo("LOGIN_FAILED");
+        }
+        Outcome tenth = login(EMAIL, "wrong-password1");
+        assertThat(tenth.status()).isEqualTo(423);
+        assertThat(member.getFailedLoginCount()).isEqualTo(10);
 
-        assertThat(again.errorCode()).isEqualTo("LOGIN_FAILED");
-        assertThat(member.getFailedLoginCount()).isEqualTo(1);
+        clock.advance(Duration.ofMinutes(4).plusSeconds(59));
+        assertThat(login(EMAIL, PASSWORD).errorCode()).isEqualTo("LOGIN_LOCKED");
+
+        clock.advance(Duration.ofSeconds(1));
+        assertThat(login(EMAIL, PASSWORD).status()).isEqualTo(200);
+        assertThat(member.getFailedLoginCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("그 뒤에도 5회 실패마다 5분씩 잠근다 (15회째)")
+    void laterLocksStayFiveMinutes() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            for (int i = 0; i < 5; i++) {
+                login(EMAIL, "wrong-password1");
+            }
+            clock.advance(Duration.ofMinutes(round == 0 ? 1 : 5));   // 해당 잠금이 풀릴 때까지
+        }
+        // 09:00 첫 잠금(1분) -> 09:01 에 5회 더, 5분 잠금 -> 09:06 에 5회 더(누적 15회), 다시 5분 잠금 -> 09:11 까지
+        assertThat(member.getFailedLoginCount()).isEqualTo(15);
+        assertThat(member.getLockedUntil()).isEqualTo(java.time.LocalDateTime.of(2026, 11, 9, 9, 11));
+    }
+
+    @Test
+    @DisplayName("잠금이 풀린 뒤 한 번 틀려도 횟수를 이어서 센다 (6회째), 맞게 로그인하면 처음부터 다시 센다")
+    void failureCountContinuesAfterLockExpires() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login(EMAIL, "wrong-password1");
+        }
+        clock.advance(Duration.ofMinutes(1));
+
+        Outcome sixth = login(EMAIL, "wrong-password1");
+        assertThat(sixth.errorCode()).isEqualTo("LOGIN_FAILED");
+        assertThat(member.getFailedLoginCount()).isEqualTo(6);
+
+        assertThat(login(EMAIL, PASSWORD).status()).isEqualTo(200);
+        assertThat(member.getFailedLoginCount()).isZero();
+        for (int i = 0; i < 5; i++) {
+            login(EMAIL, "wrong-password1");
+        }
+        // 성공 뒤라 다시 첫 잠금(1분)이다
+        assertThat(member.getLockedUntil()).isEqualTo(java.time.LocalDateTime.of(2026, 11, 9, 9, 2));
     }
 
     @Test
@@ -291,13 +336,13 @@ class AuthLoginFlowTest {
     }
 
     @Test
-    @DisplayName("잠금 시각은 서울 기준 지금 + 10분이다")
-    void lockedUntilIsTenMinutesFromNow() throws Exception {
+    @DisplayName("첫 잠금 시각은 서울 기준 지금 + 1분이다")
+    void lockedUntilIsOneMinuteFromNow() throws Exception {
         for (int i = 0; i < 5; i++) {
             login(EMAIL, "wrong-password1");
         }
 
         // 시계: 2026-11-09T00:00:00Z = 서울 09:00
-        assertThat(member.getLockedUntil()).isEqualTo(java.time.LocalDateTime.of(2026, 11, 9, 9, 10));
+        assertThat(member.getLockedUntil()).isEqualTo(java.time.LocalDateTime.of(2026, 11, 9, 9, 1));
     }
 }

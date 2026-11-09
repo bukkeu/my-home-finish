@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
-*   로그인 실패 처리 (API 6, 이슈 #6) - failed_login_count +1, 5회 실패 시 locked_until = 지금 + 10분 (DP-10)
+*   로그인 실패 처리 (API 6, 이슈 #6) - failed_login_count +1, 5회 실패 시 1분, 이후 5회마다 5분 잠금 (locked_until, DP-10)
 *   - 잠금(423 LOGIN_LOCKED)·정지(403)·탈퇴(403)·이메일 또는 비밀번호 오류(401 LOGIN_FAILED)를 ApiResponse JSON 으로 응답한다
 *   - 비밀번호가 틀린 경우(BadCredentialsException)에만 실패 횟수를 올린다. 없는 이메일도 같은 예외로 오므로 응답은 같다
 *   - AuthService 가 던진 잠금·정지·탈퇴 예외는 Spring Security 가 InternalAuthenticationServiceException 으로 감싸서 보내므로
