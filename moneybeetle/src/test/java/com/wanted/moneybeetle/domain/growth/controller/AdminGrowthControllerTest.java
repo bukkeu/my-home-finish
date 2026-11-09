@@ -48,7 +48,7 @@ class AdminGrowthControllerTest {
         AuthDetails principal = new AuthDetails(LoginMemberDTO.from(admin, Member.ROLE_ADMIN));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
-        mockMvc = MockMvcBuilders.standaloneSetup(new AdminGrowthController(service))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AdminGrowthController(service, mock(com.wanted.moneybeetle.domain.growth.model.service.CashAdjustService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
