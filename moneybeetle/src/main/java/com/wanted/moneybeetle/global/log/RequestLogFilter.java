@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 *   - 요청마다 요청 ID 를 정해 MDC("requestId")에 넣는다 → 이 요청 동안 남는 모든 로그 줄에 같은 ID 가 붙는다
 *     (콘솔은 logging.pattern.correlation, local 의 파일 로그는 JSON 필드로)
 *   - 응답 헤더 X-Request-Id 로도 돌려준다. 화면에서 오류를 신고할 때 이 ID 로 서버 로그를 찾을 수 있다
-*   - 요청이 끝나면 한 줄 : "GET /api/v1/housing/complexes 200 12ms" (+ MDC 의 회원 ID)
+*   - 요청이 끝나면 한 줄 : "GET /api/v1/housing/complexes 200 12ms" (+ MDC 의 회원 ID). 콘솔에는 "[요청 ID|m=회원 ID] …" 로 찍힌다
 *   - 비밀값을 남기지 않는다 : 경로만 남기고 쿼리(?token= 등)·본문·파라미터 값은 쓰지 않는다
 *   - 보안 필터보다 먼저(가장 바깥에서) 돈다 → 로그인 처리·권한 거절 로그에도 요청 ID 가 붙는다
 *  */

@@ -80,7 +80,7 @@ info:
 #    요청 본문·파라미터 값은 로그에 쓰지 않는다. Hibernate 바인딩 값(TRACE)·spring.mvc.log-request-details 는 켜지 않는다
 logging:
   pattern:
-    correlation: "[%X{requestId:-}] "   # 콘솔 한 줄마다 [요청 ID]
+    correlation: "[%X{requestId:-}|m=%X{memberId:-}] "   # 콘솔 한 줄마다 [요청 ID|m=회원 ID]. 회원 ID 는 요청 로그 줄에 붙는다(비로그인은 빈칸)
   level:
     root: INFO
     com.wanted.moneybeetle: INFO
