@@ -3,6 +3,7 @@ package com.wanted.moneybeetle.domain.course.model.service;
 import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.domain.course.model.dao.CategoryRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.CourseRepository;
+import com.wanted.moneybeetle.domain.course.model.dao.CourseReviewRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LearningProgressRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.LessonWatchRepository;
@@ -18,6 +19,7 @@ import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseReview;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
@@ -52,6 +54,7 @@ public class CourseService {
     private final LearningProgressRepository learningProgressRepository;
     private final LessonWatchRepository lessonWatchRepository;
     private final ScrapRepository scrapRepository;
+    private final CourseReviewRepository courseReviewRepository;
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -313,5 +316,18 @@ public class CourseService {
         categoryRepository.findByParentIdAndIsActiveTrue(categoryId)
                 .forEach(child -> ids.add(child.getCategoryId()));
         return ids;
+    }
+
+    /* 대시보드(#33): 검수 대기(REVIEW) 강의 수 */
+    public long countReviewWaiting() {
+        return courseRepository.countByStatusAndDeletedAtIsNull(Course.STATUS_REVIEW);
+    }
+
+    /* 강사 강의 목록(API 79): 가장 최근 반려 사유. 반려 이력이 없으면 null */
+    public String findLatestRejectReason(Long courseId) {
+        return courseReviewRepository
+                .findFirstByCourseIdAndResultOrderByCreatedAtDescCourseReviewIdDesc(courseId, CourseReview.RESULT_REJECTED)
+                .map(CourseReview::getReason)
+                .orElse(null);
     }
 }
