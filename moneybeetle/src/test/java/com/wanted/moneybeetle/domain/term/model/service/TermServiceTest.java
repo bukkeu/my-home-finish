@@ -47,6 +47,8 @@ class TermServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-11-09T03:00:00Z"), ZoneId.of("Asia/Seoul"));
         service = new TermService(scheduleRepository, termRepository, autoSelector, clock);
         List<EconomicTerm> all = List.of(term(1), term(2), term(3), term(4), term(5), term(6));
+        when(termRepository.countByActiveTrue()).thenReturn((long) all.size());
+        when(termRepository.findByActiveTrueOrderByEconomicTermIdAsc()).thenReturn(all);
         when(termRepository.findAllById(anyList())).thenAnswer(invocation -> {
             List<Long> ids = invocation.getArgument(0);
             return all.stream().filter(t -> ids.contains(t.getEconomicTermId())).toList();
@@ -115,7 +117,7 @@ class TermServiceTest {
     }
 
     @Test
-    @DisplayName("월별 현황: 일정이 있는 날만 날짜순으로, 자동 여부와 용어를 담는다")
+    @DisplayName("월별 현황: 그 달의 모든 날을 날짜순으로 — 저장된 날은 저장된 값, 저장 전인 날은 자동 선정 미리보기(isAuto)")
     void findsMonth() {
         LocalDate d1 = LocalDate.of(2026, 11, 5);
         LocalDate d2 = LocalDate.of(2026, 11, 9);
@@ -126,12 +128,37 @@ class TermServiceTest {
 
         var result = service.findMonth(YearMonth.of(2026, 11));
 
-        assertThat(result.days()).hasSize(2);
-        assertThat(result.days().get(0).date()).isEqualTo(d1);
-        assertThat(result.days().get(0).isAuto()).isFalse();
-        assertThat(result.days().get(0).terms()).hasSize(5);
-        assertThat(result.days().get(1).isAuto()).isTrue();
-        assertThat(result.days().get(1).terms().get(0).term()).isEqualTo("용어2");
+        assertThat(result.days()).hasSize(30);
+        assertThat(result.days().get(0).date()).isEqualTo(LocalDate.of(2026, 11, 1));
+        var direct = result.days().get(4);   // 11월 5일: 직접 지정
+        assertThat(direct.date()).isEqualTo(d1);
+        assertThat(direct.isAuto()).isFalse();
+        assertThat(direct.terms()).extracting("economicTermId").containsExactly(1L, 2L, 3L, 4L, 5L);
+        var savedAuto = result.days().get(8);   // 11월 9일: 이미 정해져 저장된 자동 선정
+        assertThat(savedAuto.isAuto()).isTrue();
+        assertThat(savedAuto.terms().get(0).term()).isEqualTo("용어2");
+        var preview = result.days().get(9);   // 11월 10일: 저장 전, 자동 선정 미리보기
+        assertThat(preview.isAuto()).isTrue();
+        assertThat(preview.terms()).hasSize(5);
+        assertThat(preview.terms()).extracting("economicTermId").doesNotHaveDuplicates();
+    }
+
+    @Test
+    @DisplayName("월별 현황: 사용 중인 용어가 없고 저장된 일정도 없으면 보여 줄 날이 없다")
+    void findsMonthEmptyWithoutTerms() {
+        when(termRepository.findByActiveTrueOrderByEconomicTermIdAsc()).thenReturn(List.of());
+        when(scheduleRepository.findByShowDateBetweenOrderByShowDateAscSortOrderAsc(any(), any())).thenReturn(List.of());
+
+        assertThat(service.findMonth(YearMonth.of(2026, 11)).days()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("사용 중인 용어가 5개가 되기 전에는 날짜 지정을 할 수 없다 (TERMS_NOT_ENOUGH)")
+    void assignBlockedUntilFiveTermsRegistered() {
+        when(termRepository.countByActiveTrue()).thenReturn(4L);
+
+        assertCode(() -> service.assign(TODAY.plusDays(1), List.of(1L, 2L, 3L, 4L, 5L)), TermErrorCode.TERMS_NOT_ENOUGH);
+        verify(scheduleRepository, never()).deleteByShowDate(any());
     }
 
     @Test

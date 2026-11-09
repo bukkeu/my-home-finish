@@ -30,18 +30,30 @@ public class TermAutoSelector {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<TermSchedule> select(LocalDate date) {
-        List<EconomicTerm> active = economicTermRepository.findByActiveTrueOrderByEconomicTermIdAsc();
-        if (active.isEmpty()) {
+        List<Long> picked = pickTermIds(date, economicTermRepository.findByActiveTrueOrderByEconomicTermIdAsc());
+        List<TermSchedule> rows = new ArrayList<>();
+        for (int i = 0; i < picked.size(); i++) {
+            rows.add(TermSchedule.create(date, picked.get(i), i + 1, true));
+        }
+        return rows.isEmpty() ? rows : termScheduleRepository.saveAll(rows);
+    }
+
+    /**
+     * 그 날짜에 자동 선정될 용어 번호를 순서대로 계산한다 (저장하지 않는다). 관리자 월별 화면이 지정하지 않은 날의 결과를
+     * 미리 보여 줄 때도 이 계산을 쓴다. 용어가 없으면 빈 목록이다.
+     *
+     * @param activeTerms 사용 중인 용어를 번호(등록) 순서로 놓은 목록
+     */
+    static List<Long> pickTermIds(LocalDate date, List<EconomicTerm> activeTerms) {
+        if (activeTerms.isEmpty()) {
             return List.of();
         }
-        int count = Math.min(TermSchedule.DAILY_COUNT, active.size());
-        int start = (int) Math.floorMod(date.toEpochDay() * TermSchedule.DAILY_COUNT, (long) active.size());
-
-        List<TermSchedule> rows = new ArrayList<>();
+        int count = Math.min(TermSchedule.DAILY_COUNT, activeTerms.size());
+        int start = (int) Math.floorMod(date.toEpochDay() * TermSchedule.DAILY_COUNT, (long) activeTerms.size());
+        List<Long> ids = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            Long termId = active.get((start + i) % active.size()).getEconomicTermId();
-            rows.add(TermSchedule.create(date, termId, i + 1, true));
+            ids.add(activeTerms.get((start + i) % activeTerms.size()).getEconomicTermId());
         }
-        return termScheduleRepository.saveAll(rows);
+        return ids;
     }
 }

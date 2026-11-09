@@ -70,23 +70,38 @@ public class TermService {
                 .toList());
     }
 
-    /** 그 달에 일정이 있는 날을 날짜순으로 (API 99) */
+    /**
+     * 그 달의 모든 날을 날짜순으로 (API 99). 일정이 저장된 날은 저장된 값(직접 지정 또는 이미 정해진 자동 선정)을,
+     * 아직 아무도 보지 않아 저장되지 않은 날은 자동 선정될 결과를 미리 계산해 isAuto = true 로 보여 준다 (저장하지 않는다).
+     * 미리 본 값은 그날 처음 볼 때까지 용어를 더하거나 끄면 달라질 수 있다. 용어가 하나도 없어 보여 줄 것이 없는 날은 뺀다.
+     */
     public TermScheduleListDTO findMonth(YearMonth month) {
         List<TermSchedule> rows = termScheduleRepository.findByShowDateBetweenOrderByShowDateAscSortOrderAsc(
                 month.atDay(1), month.atEndOfMonth());
-        Map<Long, EconomicTerm> terms = termsById(rows);
+        List<EconomicTerm> active = economicTermRepository.findByActiveTrueOrderByEconomicTermIdAsc();
 
         Map<LocalDate, List<TermSchedule>> byDate = new LinkedHashMap<>();
         for (TermSchedule row : rows) {
             byDate.computeIfAbsent(row.getShowDate(), date -> new ArrayList<>()).add(row);
         }
-        return new TermScheduleListDTO(byDate.entrySet().stream()
-                .map(entry -> new TermScheduleDayDTO(entry.getKey(), entry.getValue().get(0).isAuto(),
-                        entry.getValue().stream()
-                                .map(row -> terms.get(row.getEconomicTermId()))
-                                .map(term -> new ScheduledTermDTO(term.getEconomicTermId(), term.getTerm()))
-                                .toList()))
-                .toList());
+        Map<Long, EconomicTerm> terms = termsById(rows);
+        active.forEach(term -> terms.putIfAbsent(term.getEconomicTermId(), term));
+
+        List<TermScheduleDayDTO> days = new ArrayList<>();
+        for (LocalDate date = month.atDay(1); !date.isAfter(month.atEndOfMonth()); date = date.plusDays(1)) {
+            List<TermSchedule> saved = byDate.get(date);
+            boolean auto = saved == null || saved.get(0).isAuto();
+            List<Long> ids = saved != null
+                    ? saved.stream().map(TermSchedule::getEconomicTermId).toList()
+                    : TermAutoSelector.pickTermIds(date, active);
+            if (!ids.isEmpty()) {
+                days.add(new TermScheduleDayDTO(date, auto, ids.stream()
+                        .map(terms::get)
+                        .map(term -> new ScheduledTermDTO(term.getEconomicTermId(), term.getTerm()))
+                        .toList()));
+            }
+        }
+        return new TermScheduleListDTO(days);
     }
 
     /**
@@ -99,6 +114,10 @@ public class TermService {
     public void assign(LocalDate date, List<Long> economicTermIds) {
         if (date.isBefore(LocalDate.now(clock))) {
             throw new BusinessException(TermErrorCode.PAST_DATE_LOCKED);
+        }
+        // 등록된(사용 중인) 용어가 5개가 되기 전에는 날짜 지정을 할 수 없다 (SP-47). 화면도 이때는 지정을 막는다
+        if (economicTermRepository.countByActiveTrue() < TermSchedule.DAILY_COUNT) {
+            throw new BusinessException(TermErrorCode.TERMS_NOT_ENOUGH);
         }
         if (economicTermIds.stream().anyMatch(Objects::isNull)) {
             throw new BusinessException(TermErrorCode.TERM_SELECTION_INVALID);
