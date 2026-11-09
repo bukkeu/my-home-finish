@@ -41,4 +41,21 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     /* 대시보드(#33) reviewWaiting: 상태별 강의 수 (삭제 제외) */
     long countByStatusAndDeletedAtIsNull(String status);
+
+    /* 카테고리 삭제 판단 (API 88): 삭제된 강의도 FK로 연결돼 있어서 포함해 센다 */
+    boolean existsByCategoryId(Long categoryId);
+
+    /* 관리자 카테고리 트리 (API 85)의 강의 수 (삭제 제외). 카테고리마다 세지 않고 한 번에 */
+    @Query("""
+            select c.categoryId as categoryId, count(c) as courseCount
+            from Course c
+            where c.deletedAt is null
+            group by c.categoryId
+            """)
+    List<CategoryCourseCount> countCoursesByCategory();
+
+    interface CategoryCourseCount {
+        Long getCategoryId();
+        long getCourseCount();
+    }
 }

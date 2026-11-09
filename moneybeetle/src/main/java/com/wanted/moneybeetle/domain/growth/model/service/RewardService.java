@@ -4,6 +4,7 @@ import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
 import com.wanted.moneybeetle.domain.growth.model.dao.CashHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository;
+import com.wanted.moneybeetle.domain.growth.model.dto.AdminCashChangeDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.ExpHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   다른 도메인이 부르는 보상 창구 (역할분담 문서 §7 연동 약속)
 *   - grant(memberId, ruleCode, sourceId)             : 경험치·캐시 지급   [호출: 신아림 학습 완료·퀴즈, 출석]
 *   - spendCash(memberId, sourceType, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]
+*   - adjustByAdmin(adminId, memberId, give, amt, why): 관리자 수동 지급·회수 [호출: growth.CashAdjustService, 이슈 #39]
 *   - getBalance(memberId)                            : 캐시 잔액 조회
 *   - findCashHistories / findExpHistories            : 내역 조회 (API 22, 23)
 *
@@ -222,6 +224,41 @@ public class RewardService {
         MemberBalanceDTO after = memberService.deductCash(memberId, amount);
         cashHistoryRepository.save(CashHistory.use(memberId, sourceType, sourceId, amount, after.getCash()));
         return after.getCash();
+    }
+
+    /**
+     * 관리자 수동 지급·회수 (API 110, SP-17, 이슈 #39). 회원 행 잠금 → 잔액 확인 → 캐시 변경 → 내역(cash_history) 저장을 한 트랜잭션으로 한다.
+     * 캐시를 바꾸는 길을 이 서비스 하나로 모으려고 관리자 조정도 여기서 한다. 작업 기록(admin_log)은 부르는 쪽(CashAdjustService)이
+     * 같은 트랜잭션 안에서 남긴다. 금액 상한과 사유 공백 확인은 부르는 쪽 몫이다.
+     *
+     * @param give true 면 지급, false 면 회수
+     * @return 내역 번호와 변경 전·후 잔액
+     * @throws BusinessException INVALID_AMOUNT(금액이 0 이하), NOT_ENOUGH_CASH(회수할 캐시가 모자람), MEMBER_NOT_FOUND(없는 회원)
+     */
+    @Transactional
+    public AdminCashChangeDTO adjustByAdmin(Long adminId, Long memberId, boolean give, long amount, String reason) {
+        if (adminId == null || memberId == null || reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("adminId, memberId 와 사유가 필요합니다.");
+        }
+        if (amount <= 0) {
+            throw new BusinessException(GrowthErrorCode.INVALID_AMOUNT);
+        }
+
+        MemberBalanceDTO before = memberService.lockBalance(memberId);
+        MemberBalanceDTO after;
+        CashHistory history;
+        if (give) {
+            after = memberService.addReward(memberId, amount, 0);
+            history = CashHistory.adminGive(memberId, adminId, amount, after.getCash(), reason);
+        } else {
+            if (before.getCash() < amount) {
+                throw new BusinessException(GrowthErrorCode.NOT_ENOUGH_CASH);
+            }
+            after = memberService.deductCash(memberId, amount);
+            history = CashHistory.adminTake(memberId, adminId, amount, after.getCash(), reason);
+        }
+        CashHistory saved = cashHistoryRepository.save(history);
+        return new AdminCashChangeDTO(saved.getCashHistoryId(), before.getCash(), after.getCash());
     }
 
     /** 사용 중인 보상 규칙이 주는 캐시. 규칙이 없거나 꺼져 있으면 0 (예: 출석 현황 화면이 보상 금액을 보여 줄 때) */
