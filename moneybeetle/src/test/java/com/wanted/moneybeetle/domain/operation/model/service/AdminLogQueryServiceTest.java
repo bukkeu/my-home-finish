@@ -18,8 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -47,7 +47,7 @@ class AdminLogQueryServiceTest {
     @Test
     @DisplayName("관리자 닉네임을 붙이고 detail 은 JSON 객체로 돌려준다")
     void attachesNicknameAndParsesDetail() {
-        Page<AdminLog> page = new PageImpl<>(List.of(log(77, 1, "{\"from\":4,\"to\":5}"), log(76, 2, null)));
+        Slice<AdminLog> page = new SliceImpl<>(List.of(log(77, 1, "{\"from\":4,\"to\":5}"), log(76, 2, null)));
         when(repository.search(any(), any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
         when(memberService.findNicknames(any())).thenReturn(Map.of(1L, "김운영"));
 
@@ -63,7 +63,7 @@ class AdminLogQueryServiceTest {
     @Test
     @DisplayName("기간은 from 날짜 시작부터 to 날짜 끝까지(다음 날 0시 미만)로 바꾸고, 쪽 크기는 기본 50·최대 100 이다")
     void convertsPeriodAndPaging() {
-        when(repository.search(any(), any(), any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
+        when(repository.search(any(), any(), any(), any(), any(), any(Pageable.class))).thenReturn(new SliceImpl<>(List.of()));
 
         service.findLogs(" ", null, 1L, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 5), -3, 500);
 

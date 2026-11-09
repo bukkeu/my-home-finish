@@ -29,6 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CashAdjustService {
 
+    /**
+     * 한 번에 지급·회수할 수 있는 최대 금액. 잔액(long)이 넘치지 않게 하는 기술적 상한이다(10억 캐시). 정책으로 정한 값이 아니므로
+     * 운영 상한이 정해지면 서비스 설정(system_setting)의 값을 읽도록 바꾼다. 넘으면 INVALID_AMOUNT 다.
+     */
+    public static final long MAX_AMOUNT = 1_000_000_000L;
+
     static final String ACTION_GIVE = "CASH_GIVE";
     static final String ACTION_TAKE = "CASH_TAKE";
     static final String TARGET_TYPE = "MEMBER";
@@ -40,13 +46,13 @@ public class CashAdjustService {
     private final AdminLogService adminLogService;
 
     /**
-     * @throws BusinessException INVALID_AMOUNT(금액이 0 이하), REASON_REQUIRED(사유 없음),
+     * @throws BusinessException INVALID_AMOUNT(금액이 0 이하이거나 상한 초과), REASON_REQUIRED(사유 없음),
      *                           NOT_ENOUGH_CASH(회수할 캐시가 모자람), MEMBER_NOT_FOUND(없는 회원)
      */
     @Transactional
     public CashAdjustResultDTO adjust(Long adminId, Long memberId, CashAdjustDTO request) {
         long amount = request.amount();
-        if (amount <= 0) {
+        if (amount <= 0 || amount > MAX_AMOUNT) {
             throw new BusinessException(GrowthErrorCode.INVALID_AMOUNT);
         }
         String reason = request.reason() == null ? "" : request.reason().strip();

@@ -42,10 +42,10 @@ public class RewardRuleService {
                 .toList());
     }
 
-    /** 없는 규칙이면 NOT_FOUND(404) */
+    /** 없는 규칙이면 NOT_FOUND(404). 규칙 행을 잠그고 읽어서 동시 수정에도 작업 기록의 변경 전·후 값이 이어진다 */
     @Transactional
     public void updateRule(Long adminId, Long ruleId, RewardRuleUpdateDTO request) {
-        RewardRule rule = rewardRuleRepository.findById(ruleId)
+        RewardRule rule = rewardRuleRepository.findByIdForUpdate(ruleId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         Map<String, Object> before = snapshot(rule);
 

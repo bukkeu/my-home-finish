@@ -38,7 +38,7 @@ class RewardRuleServiceTest {
         service = new RewardRuleService(repository, adminLogService);
         rule = RewardRule.create(RewardRule.COURSE_COMPLETE, "학습 완료", 3000, 100, null);
         ReflectionTestUtils.setField(rule, "rewardRuleId", 1L);
-        when(repository.findById(1L)).thenReturn(Optional.of(rule));
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(rule));
     }
 
     @Test
@@ -87,7 +87,7 @@ class RewardRuleServiceTest {
     @Test
     @DisplayName("없는 규칙이면 NOT_FOUND")
     void notFound() {
-        when(repository.findById(99L)).thenReturn(Optional.empty());
+        when(repository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateRule(9L, 99L, new RewardRuleUpdateDTO(1, 1, true)))
                 .isInstanceOfSatisfying(BusinessException.class,

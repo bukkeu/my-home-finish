@@ -109,4 +109,15 @@ class AdminOperationControllerTest {
         verify(logQueryService).findLogs(eq("SEASON"), eq(7L), eq(null), eq(LocalDate.of(2026, 11, 1)),
                 eq(LocalDate.of(2026, 11, 5)), eq(0), eq(50));
     }
+
+    @Test
+    @DisplayName("서비스 설정 값이 공백이거나 너무 길면 서비스를 부르지 않는다 (응답 코드는 @Valid 예외 처리 #142 가 정한다)")
+    void invalidSettingValueSkipsService() throws Exception {
+        mockMvc.perform(put("/api/v1/admin/settings/UNLOCK_LEVEL_TRADING").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"   \"}"));
+        mockMvc.perform(put("/api/v1/admin/settings/UNLOCK_LEVEL_TRADING").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"" + "9".repeat(201) + "\"}"));
+
+        org.mockito.Mockito.verifyNoInteractions(settingService);
+    }
 }

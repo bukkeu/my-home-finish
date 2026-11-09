@@ -122,4 +122,27 @@ class CashAdjustServiceTest {
         verify(memberService, never()).lockBalance(anyLong());
         verify(adminLogService, never()).record(any(), any(), any(), any(), any());
     }
+
+    @Test
+    @DisplayName("한 번에 지급·회수할 수 있는 최대 금액을 넘으면 INVALID_AMOUNT 이고 잔액이 넘치지 않도록 회원 행도 건드리지 않는다")
+    void rejectsAmountAboveCap() {
+        assertThatThrownBy(() -> service.adjust(ADMIN, MEMBER,
+                new CashAdjustDTO("GIVE", CashAdjustService.MAX_AMOUNT + 1, "사유")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(GrowthErrorCode.INVALID_AMOUNT));
+        assertThatThrownBy(() -> service.adjust(ADMIN, MEMBER, new CashAdjustDTO("GIVE", Long.MAX_VALUE, "사유")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(GrowthErrorCode.INVALID_AMOUNT));
+
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("사유는 DB 컬럼 길이(200자)까지만 받는다 - 입력 검사(@Size)가 붙어 있다")
+    void reasonLengthMatchesColumn() throws NoSuchFieldException {
+        var size = CashAdjustDTO.class.getDeclaredField("reason").getAnnotation(jakarta.validation.constraints.Size.class);
+
+        assertThat(size).isNotNull();
+        assertThat(size.max()).isEqualTo(CashAdjustDTO.REASON_MAX_LENGTH).isEqualTo(200);
+    }
 }

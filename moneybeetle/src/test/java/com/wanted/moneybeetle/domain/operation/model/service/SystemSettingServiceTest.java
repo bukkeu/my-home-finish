@@ -103,4 +103,15 @@ class SystemSettingServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.NOT_FOUND));
     }
+
+    @Test
+    @DisplayName("숫자 모양이어도 int 범위를 넘는 값은 숫자 설정에 넣을 수 없다 (SETTING_VALUE_INVALID)")
+    void rejectsNumberOutOfIntRange() {
+        assertThatThrownBy(() -> service.updateSetting(1L, "UNLOCK_LEVEL_TRADING", "99999999999"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(OperationErrorCode.SETTING_VALUE_INVALID));
+
+        assertThat(trading.getSettingValue()).isEqualTo("8");
+        verify(adminLogService, never()).record(any(), any(), any(), any(), any());
+    }
 }

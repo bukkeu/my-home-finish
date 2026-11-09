@@ -98,4 +98,15 @@ class AdminGrowthControllerTest {
                 .andExpect(jsonPath("$.data.cashHistoryId").value(130))
                 .andExpect(jsonPath("$.data.balanceAfter").value(14400));
     }
+
+    @Test
+    @DisplayName("type 이 GIVE·TAKE 가 아니거나 amount 가 없으면 서비스를 부르지 않는다 (응답 코드는 @Valid 예외 처리 #142 가 정한다)")
+    void invalidCashAdjustmentSkipsService() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/members/8/cash-adjustments").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"X\",\"amount\":100,\"reason\":\"r\"}"));
+        mockMvc.perform(post("/api/v1/admin/members/8/cash-adjustments").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"GIVE\",\"reason\":\"r\"}"));
+
+        org.mockito.Mockito.verifyNoInteractions(cashAdjustService);
+    }
 }

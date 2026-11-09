@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.growth.model.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /* comment.
 *   담당 : DBA ② (성장·캐시·레벨)
@@ -12,7 +13,10 @@ import jakarta.validation.constraints.Pattern;
 public record CashAdjustDTO(
         @NotNull @Pattern(regexp = "GIVE|TAKE") String type,
         @NotNull Long amount,
-        String reason) {
+        @Size(max = REASON_MAX_LENGTH) String reason) {
+
+    /** cash_history.reason 컬럼 길이 (schema.sql 의 varchar(200)). 넘으면 DB 오류가 나기 전에 막는다 */
+    public static final int REASON_MAX_LENGTH = 200;
 
     public boolean isGive() {
         return "GIVE".equals(type);

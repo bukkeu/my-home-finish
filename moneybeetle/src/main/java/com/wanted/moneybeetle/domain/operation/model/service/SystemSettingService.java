@@ -61,7 +61,15 @@ public class SystemSettingService {
     }
 
     private static boolean isInteger(String text) {
-        return text != null && text.matches("-?\\d+");
+        if (text == null || !text.matches("-?\\d+")) {
+            return false;
+        }
+        try {
+            Integer.parseInt(text);   // 숫자 모양이어도 int 범위를 넘으면 숫자 설정값으로 쓸 수 없다
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static String toJson(String key, String before, String after) {
