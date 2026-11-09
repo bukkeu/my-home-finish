@@ -43,6 +43,9 @@ public class Member {
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
+    /** 탈퇴한 회원의 학습·문의 기록에 보여 주는 이름 (DP-06) */
+    public static final String WITHDRAWN_NICKNAME = "탈퇴한 사용자";
+
     public static final String GENDER_MALE = "MALE";
     public static final String GENDER_FEMALE = "FEMALE";
 
@@ -170,6 +173,14 @@ public class Member {
 
     public boolean hasEnoughCash(long amount) {
         return this.cash >= amount;
+    }
+
+    /**
+     * 다른 사람에게 보여 줄 닉네임. 탈퇴한 회원은 실제 닉네임 대신 "탈퇴한 사용자"를 보여 준다 (DP-06).
+     * 정지된 회원은 그대로 보인다.
+     */
+    public String displayNickname() {
+        return STATUS_WITHDRAWN.equals(status) ? WITHDRAWN_NICKNAME : nickname;
     }
 
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */

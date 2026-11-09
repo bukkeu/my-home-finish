@@ -458,4 +458,74 @@ class MemberServiceTest {
         assertThatThrownBy(() -> memberService.signup(validRequest())).isSameAs(unknown);
         verify(memberTermsAgreementRepository, never()).saveAll(any());
     }
+
+    /* ---------- findNicknames (이슈 #145, 다른 도메인용) ---------- */
+
+    private Member memberWithId(long id, String nickname, String status) {
+        Member member = Member.signup("m" + id + "@b.com", "hash", nickname,
+                java.time.LocalDate.of(1999, 4, 12), null, java.time.LocalDate.of(2026, 11, 9));
+        ReflectionTestUtils.setField(member, "memberId", id);
+        ReflectionTestUtils.setField(member, "status", status);
+        return member;
+    }
+
+    @Test
+    @DisplayName("findNicknames: ID 여러 개를 한 번의 조회로 받아 ID → 닉네임 맵을 돌려준다 (N+1 방지)")
+    void findNicknamesInOneQuery() {
+        when(memberRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(
+                memberWithId(1L, "민지", Member.STATUS_ACTIVE), memberWithId(2L, "도현", Member.STATUS_ACTIVE)));
+
+        java.util.Map<Long, String> result = memberService.findNicknames(List.of(1L, 2L));
+
+        assertThat(result).containsOnly(
+                java.util.Map.entry(1L, "민지"), java.util.Map.entry(2L, "도현"));
+        verify(memberRepository, org.mockito.Mockito.times(1)).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("findNicknames: 없는 ID 는 결과에서 빠지고, null·중복 ID 는 걸러서 조회한다")
+    void findNicknamesSkipsMissingNullAndDuplicates() {
+        when(memberRepository.findAllById(Set.of(1L, 99L))).thenReturn(List.of(memberWithId(1L, "민지", Member.STATUS_ACTIVE)));
+
+        java.util.Map<Long, String> result =
+                memberService.findNicknames(java.util.Arrays.asList(1L, null, 1L, 99L));
+
+        assertThat(result).containsOnly(java.util.Map.entry(1L, "민지"));   // 99 는 없는 회원이라 빠진다
+        verify(memberRepository).findAllById(Set.of(1L, 99L));            // null 과 중복은 걸러진 ID 만 넘어간다
+    }
+
+    @Test
+    @DisplayName("findNicknames: 빈 목록·null·null 만 있는 목록이면 조회하지 않고 빈 맵이다")
+    void findNicknamesEmptyInputDoesNotQuery() {
+        assertThat(memberService.findNicknames(List.of())).isEmpty();
+        assertThat(memberService.findNicknames(null)).isEmpty();
+        assertThat(memberService.findNicknames(java.util.Collections.singletonList(null))).isEmpty();
+
+        verify(memberRepository, never()).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("findNicknames: 탈퇴한 회원은 닉네임 대신 '탈퇴한 사용자', 정지된 회원은 그대로 (DP-06)")
+    void findNicknamesMasksWithdrawnMembers() {
+        when(memberRepository.findAllById(Set.of(1L, 2L, 3L))).thenReturn(List.of(
+                memberWithId(1L, "민지", Member.STATUS_WITHDRAWN),
+                memberWithId(2L, "도현", Member.STATUS_SUSPENDED),
+                memberWithId(3L, "하린", Member.STATUS_ACTIVE)));
+
+        java.util.Map<Long, String> result = memberService.findNicknames(List.of(1L, 2L, 3L));
+
+        assertThat(result.get(1L)).isEqualTo("탈퇴한 사용자");
+        assertThat(result.get(2L)).isEqualTo("도현");
+        assertThat(result.get(3L)).isEqualTo("하린");
+    }
+
+    @Test
+    @DisplayName("findNicknames: 돌려준 맵은 수정할 수 없다")
+    void findNicknamesResultIsUnmodifiable() {
+        when(memberRepository.findAllById(Set.of(1L))).thenReturn(List.of(memberWithId(1L, "민지", Member.STATUS_ACTIVE)));
+
+        java.util.Map<Long, String> result = memberService.findNicknames(List.of(1L));
+
+        assertThatThrownBy(() -> result.put(2L, "x")).isInstanceOf(UnsupportedOperationException.class);
+    }
 }
