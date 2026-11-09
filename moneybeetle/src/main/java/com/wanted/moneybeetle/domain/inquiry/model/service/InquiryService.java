@@ -216,10 +216,7 @@ public class InquiryService {
         adminLogService.record(adminId, hidden ? ACTION_HIDE : ACTION_UNHIDE, LOG_TARGET_TYPE, inquiryId,
                 hiddenLogJson(before, hidden, beforeHiddenBy));
     }
-    /* 대시보드(#33) inquiryWaiting: 답변 대기 문의 수 */
-    public long countWaiting() {
-        return inquiryRepository.countByStatusAndDeletedAtIsNull(Inquiry.STATUS_WAITING);
-    }
+
 
     /* ===== 내부 도우미 ===== */
 

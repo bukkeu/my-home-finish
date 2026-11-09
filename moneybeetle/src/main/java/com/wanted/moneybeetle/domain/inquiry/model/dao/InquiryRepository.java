@@ -49,8 +49,6 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
     /* 하루 작성 수 (DP-30). 지운 글도 센다: 썼다 지웠다 반복해서 한도를 피하지 못하게 */
     long countByMemberIdAndCreatedAtGreaterThanEqual(Long memberId, LocalDateTime from);
 
-    /* 대시보드(#33) inquiryWaiting: 상태별 문의 수 (삭제 제외) */
-    long countByStatusAndDeletedAtIsNull(String status);
 
     /* 문의 목록 (API 47, SP-40)
      * - courseId가 있으면 그 강의 문의, 없으면 사이트 문의
