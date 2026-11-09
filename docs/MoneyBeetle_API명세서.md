@@ -60,6 +60,9 @@
 
 - 아래 상세 명세의 Response는 `data` 안의 내용만 적었습니다.
 - 입력값 오류는 `error.fields`에 `[{ "field": "nickname", "message": "이미 사용 중인 닉네임이에요" }]` 형태로 입력칸별 안내를 담습니다 (EP-01).
+  - 요청 본문 검증(`@Valid`) 실패는 400 `INVALID_INPUT` 이고 `fields`에 칸마다 한 줄씩 담습니다. 여러 칸을 비교하는 검사를 `isXxx()` 메서드에 붙이면 `field`는 그 이름(예: `isPasswordConfirmed()` → `passwordConfirmed`)이고, 클래스에 붙인 검사는 `field`가 `null` 입니다.
+  - 본문 JSON 형식 오류, 필수 파라미터 누락, 파라미터 타입 오류(예: `?page=abc`)도 400 `INVALID_INPUT` 이지만 `fields`는 `null` 입니다.
+  - 입력값 오류가 아닌 모든 실패 응답의 `fields`는 `null` 입니다 (#142).
 - `message`는 화면에 그대로 보여 줄 수 있는 문구입니다. 기술 용어와 상세 원인은 넣지 않습니다 (EP-05).
 
 ### 1-3 페이지네이션
@@ -907,11 +910,12 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | GRW-08 |
-| 설명 | 안 읽은 알림 수와 목록. |
+| 설명 | 안 읽은 알림 수와 목록. 최신순이다. 로그인한 회원 자신의 알림만 준다. |
 
 **Request**
 
 - Query: page=0&size=20
+    - `page` 기본값은 0이고 0 미만이면 0으로 본다. `size` 기본값은 20이고 1 미만이면 1, 50을 넘으면 50으로 맞춘다(최대 50).
 
 **Response**
 
@@ -2826,7 +2830,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-30, SP-17, DP-43 |
-| 설명 | 사유 필수. 회수로 0 미만이 되면 거절. |
+| 설명 | 사유 필수(200자 이하). 금액은 1 이상 1,000,000,000(10억) 캐시 이하이고(SP-17), 회수로 0 미만이 되면 거절. |
 
 **Request**
 
@@ -2841,7 +2845,7 @@ email=admin@moneybeetle.kr&password=...
 { "cashHistoryId": 130, "balanceAfter": 14400 }
 ```
 
-**Error**: `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
+**Error**: `INVALID_AMOUNT`, `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
 
 #### 111. 서비스 설정
 
@@ -2895,7 +2899,8 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: targetType=SEASON&targetId=7&page=0&size=50
+- Query (모두 선택): targetType=SEASON&targetId=7&adminId=1&from=2026-11-01&to=2026-11-05&page=0&size=50
+    - `from`·`to` 는 날짜(yyyy-MM-dd)이고 둘 다 그날을 포함한다. `size` 기본 50, 최대 100. 최신순.
 
 **Response**
 
@@ -3554,7 +3559,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400), `NOT_FOUND`(404, 없거나 삭제된 단지), `COMPLEX_HAS_APPLICANTS`(409)
+**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400), `NOT_FOUND`(404, 없거나 삭제된 단지), `COMPLEX_HAS_APPLICANTS`(409), `ALREADY_COMPUTED`(409, 산정한 공고는 신청자가 없어도 일정·세대 수 변경 불가 — 신청이 다시 열리지 않게, #48)
 
 #### 145. 공고 삭제
 
@@ -3584,17 +3589,22 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-37 |
-| 설명 | 가점, 납입회차. |
+| 설명 | 단지 신청자와 신청 시점 가점·납입회차, 산정 결과. 산정 전에는 가점 높은 순 → 납입회차 많은 순 → 먼저 신청한 순, 산정 뒤에는 산정 순위 순. |
 
 **Request**
 
-- Query: sort=score
+- 없음 (정렬은 위 순서로 고정)
 
 **Response**
 
 ```json
-{ "items": [ { "applicationId": 40, "nickname": "민지", "totalScore": 24, "paidCount": 14, "result": null } ] }
+{ "items": [ { "applicationId": 40, "nickname": "민지", "receiptNo": "MB-261105-0001", "totalScore": 24, "paidCount": 14, "appliedAt": "2026-11-05T09:00:00", "result": null, "resultRank": null } ] }
 ```
+
+- `paidCount`: 신청 시점 납입회차(`paid_count_snapshot`)
+- `result`: `WIN` · `LOSE`, 산정 전 `null` / `resultRank`: 산정 순위(1부터, 낙첨자 포함), 산정 전 `null`
+
+**Error**: `NOT_FOUND`(404, 없거나 삭제된 단지)
 
 #### 147. 당첨자 산정
 
@@ -3604,7 +3614,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-38, SP-75 |
-| 설명 | 발표일 이후. 가점 → 납입회차 → 추첨 순으로 공급 세대 수만큼 당첨. |
+| 설명 | 신청 마감 다음 날부터 한 번만. 가점 → 납입회차 → 추첨 순으로 순위를 매겨 공급 세대 수만큼 `WIN`, 나머지 `LOSE`. 산정만으로는 회원에게 결과가 보이지 않는다(발표 148 뒤에 공개). |
 
 **Request**
 
@@ -3613,10 +3623,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "applicants": 1860, "winners": 120, "computedAt": "2026-11-17T09:00:00" }
+{ "applicants": 4, "winners": 2, "computedAt": "2026-11-11T09:00:00" }
 ```
 
-**Error**: `BEFORE_ANNOUNCE_DATE`, `ALREADY_COMPUTED`
+- 신청자가 공급 세대 수보다 적으면 모두 당첨(`winners` = `applicants`). 신청자가 0명이어도 산정 완료로 기록한다(`computed_at`)
+
+**Error**: `APPLY_NOT_CLOSED`(409, 신청 마감일까지), `ALREADY_COMPUTED`(409), `NOT_FOUND`(404)
 
 #### 148. 결과 발표
 
@@ -3626,7 +3638,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-39 |
-| 설명 | 산정 후 공개, 신청자에게 알림. |
+| 설명 | 산정한 뒤 발표일부터 한 번만. 단지 상태가 `ANNOUNCED` 가 되어 회원에게 결과가 보이고(API 71), 신청자 모두에게 알림(`HOUSING_RESULT`)을 보낸다. |
 
 **Request**
 
@@ -3635,10 +3647,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "announcedAt": "2026-11-17T10:00:00" }
+{ "announcedAt": "2026-11-17T10:00:00", "notified": 4 }
 ```
 
-**Error**: `NOT_COMPUTED`
+- `notified`: 알림을 보낸 신청자 수
+
+**Error**: `NOT_COMPUTED`(409), `BEFORE_ANNOUNCE_DATE`(409), `ALREADY_ANNOUNCED`(409), `NOT_FOUND`(404)
 
 ---
 
@@ -3657,6 +3671,7 @@ email=admin@moneybeetle.kr&password=...
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
 | 공통 | `IDEMPOTENCY_KEY_TOO_LONG` | 400 | 요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
+| 공통 | `INVALID_INPUT` | 400 | 입력한 값을 다시 확인해 주세요 (입력칸별 안내는 `error.fields`) |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
 | 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
@@ -3696,6 +3711,11 @@ email=admin@moneybeetle.kr&password=...
 | 모의 청약 | `INVALID_COMPLEX_INPUT` | 400 | 단지 정보를 모두 입력해 주세요. 분양가와 공급 세대 수는 1 이상이에요 |
 | 모의 청약 | `INVALID_SCHEDULE` | 400 | 일정 순서가 맞지 않아요. 공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 발표일로 정해 주세요 |
 | 모의 청약 | `COMPLEX_HAS_APPLICANTS` | 409 | 신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요 |
+| 모의 청약 | `APPLY_NOT_CLOSED` | 409 | 신청이 마감된 뒤에 산정할 수 있어요 |
+| 모의 청약 | `ALREADY_COMPUTED` | 409 | 이미 산정한 공고예요 |
+| 모의 청약 | `NOT_COMPUTED` | 409 | 당첨자를 먼저 산정해 주세요 |
+| 모의 청약 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일부터 발표할 수 있어요 |
+| 모의 청약 | `ALREADY_ANNOUNCED` | 409 | 이미 발표한 공고예요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |

@@ -2,7 +2,10 @@ package com.wanted.moneybeetle.domain.housing.controller;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.housing.model.dto.AdminComplexDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.AnnounceResultDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.ApplicantDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexRequestDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.ComputeResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.service.AdminHousingService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +27,7 @@ import java.util.Map;
 /* comment.
 *   담당 : SCM (모의 청약)
 *   #47 관리자 공고 관리 (API 142~145) - /api/v1/admin/** 은 SecurityConfig 에서 ADMIN 만 통과
-*   신청자 목록·산정·발표(GET /complexes/{id}/applications, POST /compute, /announce)는 #48
+*   #48 신청자 목록·당첨자 산정·결과 발표 (API 146~148)
 *   화면 : /admin/housing-management (#70)
 *  */
 @RestController
@@ -62,5 +65,23 @@ public class AdminHousingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteComplex(@PathVariable Long complexId) {
         adminHousingService.deleteComplex(complexId);
+    }
+
+    // API 146 신청자 목록 → { "items": [...] } (산정 전 가점순, 산정 뒤 순위순)
+    @GetMapping("/complexes/{complexId}/applications")
+    public ApiResponse<Map<String, List<ApplicantDTO>>> findApplicants(@PathVariable Long complexId) {
+        return ApiResponse.success(Map.of("items", adminHousingService.findApplicants(complexId)));
+    }
+
+    // API 147 당첨자 산정 → { applicants, winners, computedAt }
+    @PostMapping("/complexes/{complexId}/compute")
+    public ApiResponse<ComputeResultDTO> compute(@PathVariable Long complexId) {
+        return ApiResponse.success(adminHousingService.compute(complexId));
+    }
+
+    // API 148 결과 발표 → { announcedAt, notified }
+    @PostMapping("/complexes/{complexId}/announce")
+    public ApiResponse<AnnounceResultDTO> announce(@PathVariable Long complexId) {
+        return ApiResponse.success(adminHousingService.announce(complexId));
     }
 }

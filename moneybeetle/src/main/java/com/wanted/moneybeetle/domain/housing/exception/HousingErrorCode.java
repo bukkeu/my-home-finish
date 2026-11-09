@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
  *   #28 : ALREADY_PAID_TODAY, DEPOSIT_BELOW_MIN, DEPOSIT_ABOVE_MAX
  *   #29 : INVALID_SCORE_INPUT, NOT_IN_APPLY_PERIOD, ALREADY_APPLIED, RECEIPT_NO_CONFLICT, NOT_ANNOUNCED_YET
  *   #47 : INVALID_SCHEDULE, INVALID_COMPLEX_INPUT, COMPLEX_HAS_APPLICANTS
- *   #48 에서 추가 : BEFORE_ANNOUNCE_DATE
+ *   #48 : APPLY_NOT_CLOSED, ALREADY_COMPUTED, NOT_COMPUTED, BEFORE_ANNOUNCE_DATE, ALREADY_ANNOUNCED
  *  */
 @Getter
 @RequiredArgsConstructor
@@ -32,7 +32,14 @@ public enum HousingErrorCode implements ErrorCode {          // ① #2 에서 �
     // #47 관리자 공고 관리
     INVALID_SCHEDULE(HttpStatus.BAD_REQUEST, "일정 순서가 맞지 않아요. 공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 발표일로 정해 주세요"),
     INVALID_COMPLEX_INPUT(HttpStatus.BAD_REQUEST, "단지 정보를 모두 입력해 주세요. 분양가와 공급 세대 수는 1 이상이에요"),
-    COMPLEX_HAS_APPLICANTS(HttpStatus.CONFLICT, "신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요");
+    COMPLEX_HAS_APPLICANTS(HttpStatus.CONFLICT, "신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요"),
+
+    // #48 당첨자 산정·결과 발표 (SP-75)
+    APPLY_NOT_CLOSED(HttpStatus.CONFLICT, "신청이 마감된 뒤에 산정할 수 있어요"),
+    ALREADY_COMPUTED(HttpStatus.CONFLICT, "이미 산정한 공고예요"),
+    NOT_COMPUTED(HttpStatus.CONFLICT, "당첨자를 먼저 산정해 주세요"),
+    BEFORE_ANNOUNCE_DATE(HttpStatus.CONFLICT, "발표일부터 발표할 수 있어요"),
+    ALREADY_ANNOUNCED(HttpStatus.CONFLICT, "이미 발표한 공고예요");
 
     private final HttpStatus status;
     private final String message;

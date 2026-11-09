@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.housing.exception.HousingErrorCode;
 import com.wanted.moneybeetle.domain.housing.model.dto.AdminComplexDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.AnnounceResultDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.ApplicantDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.ComputeResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexRequestDTO;
 import com.wanted.moneybeetle.domain.housing.model.service.AdminHousingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -22,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /* comment.
 *   담당 : SCM (모의 청약)
-*   AdminHousingController #47 확인 (Service 는 가짜, 관리자 1번으로 로그인한 상태)
+*   AdminHousingController #47·#48 확인 (Service 는 가짜, 관리자 1번으로 로그인한 상태)
 *   - 주소·본문 연결, 응답 코드(200·201·204)와 JSON 모양 (API 명세서 142~145)
 *   - 등록한 관리자 번호는 세션에서 꺼내 Service 에 넘긴다
 *   ADMIN 만 들어올 수 있는지는 SecurityConfig(/api/v1/admin/**) 가 맡는다
@@ -145,5 +149,62 @@ class AdminHousingControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(adminHousingService).deleteComplex(3L);
+    }
+
+    // ── #48 신청자 목록·산정·발표 (API 146~148) ──
+
+    @Test
+    void 신청자_목록은_items_안에_닉네임_가점_결과() throws Exception {
+        when(adminHousingService.findApplicants(1L)).thenReturn(List.of(new ApplicantDTO(40L, "민지",
+                "MB-261105-0001", 24, 14, LocalDateTime.of(2026, 11, 5, 9, 0), null, null)));
+
+        mockMvc.perform(get("/api/v1/admin/housing/complexes/1/applications"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].applicationId").value(40))
+                .andExpect(jsonPath("$.data.items[0].nickname").value("민지"))
+                .andExpect(jsonPath("$.data.items[0].totalScore").value(24))
+                .andExpect(jsonPath("$.data.items[0].paidCount").value(14));
+    }
+
+    @Test
+    void 산정은_신청자_수와_당첨자_수를_돌려준다() throws Exception {
+        when(adminHousingService.compute(1L))
+                .thenReturn(new ComputeResultDTO(8, 2, LocalDateTime.of(2026, 11, 11, 9, 0)));
+
+        mockMvc.perform(post("/api/v1/admin/housing/complexes/1/compute"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.applicants").value(8))
+                .andExpect(jsonPath("$.data.winners").value(2))
+                .andExpect(jsonPath("$.data.computedAt").value("2026-11-11T09:00:00"));
+    }
+
+    @Test
+    void 이미_산정한_공고를_다시_산정하면_409() throws Exception {
+        when(adminHousingService.compute(1L)).thenThrow(new BusinessException(HousingErrorCode.ALREADY_COMPUTED));
+
+        mockMvc.perform(post("/api/v1/admin/housing/complexes/1/compute"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("ALREADY_COMPUTED"));
+    }
+
+    @Test
+    void 발표는_발표_시각과_알림_보낸_수를_돌려준다() throws Exception {
+        when(adminHousingService.announce(1L))
+                .thenReturn(new AnnounceResultDTO(LocalDateTime.of(2026, 11, 17, 10, 0), 8));
+
+        mockMvc.perform(post("/api/v1/admin/housing/complexes/1/announce"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.announcedAt").value("2026-11-17T10:00:00"))
+                .andExpect(jsonPath("$.data.notified").value(8));
+    }
+
+    @Test
+    void 발표일_전에_발표하면_409() throws Exception {
+        when(adminHousingService.announce(1L))
+                .thenThrow(new BusinessException(HousingErrorCode.BEFORE_ANNOUNCE_DATE));
+
+        mockMvc.perform(post("/api/v1/admin/housing/complexes/1/announce"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("BEFORE_ANNOUNCE_DATE"));
     }
 }
