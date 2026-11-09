@@ -449,25 +449,37 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-06, DP-10~11, GRW-01 |
-| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 10분 잠금. |
+| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 1분 잠금(이후 5회 실패마다 5분). 로그인은 Spring Security 가 처리하는 **폼 로그인**이라 요청이 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이다. 데이터를 바꾸는 POST 라서 CSRF 토큰(`_csrf` 폼 값 또는 헤더)도 함께 보낸다. 응답은 JSON 이다. |
 
 **Request**
 
-```json
-{ "email": "minji@gmail.com", "password": "beetle1234" }
 ```
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
+```
+
+- `email`은 대소문자·앞뒤 공백을 구분하지 않는다. `next`는 선택이고, 로그인 뒤 이동할 사이트 안 경로(`/`로 시작)만 받는다.
+- JSON 본문(`{"email": ...}`)은 읽지 않아 `LOGIN_FAILED` 로 응답한다.
 
 **Response**
 
 ```json
 {
   "memberId": 1, "nickname": "민지", "role": "MEMBER",
-  "attendance": { "checkedToday": true, "streak": 5, "rewardCash": 1000 },
   "redirectUrl": "/user/home"
 }
 ```
 
-**Error**: `LOGIN_FAILED`, `LOGIN_LOCKED`, `ACCOUNT_SUSPENDED`, `ACCOUNT_WITHDRAWN`
+- `role`은 실제로 부여된 권한이다. 회원 정보상 강사여도 관리자가 승인하기 전에는 `MEMBER` 로 로그인된다(SP-07).
+- `redirectUrl`: `next` → 로그인 전에 가려던 화면 → 역할별 첫 화면(`/user/home`, `/instructor/dashboard`, `/admin/dashboard`) 순이다.
+- `attendance`(`checkedToday`, `streak`, `rewardCash`)는 출석 서비스(#12)가 연결되면 응답에 더한다.
+
+**Error**: `LOGIN_FAILED`(401), `LOGIN_LOCKED`(423), `ACCOUNT_SUSPENDED`(403), `ACCOUNT_WITHDRAWN`(403)
+
+- 없는 이메일과 틀린 비밀번호는 같은 `LOGIN_FAILED` 로 응답한다. 계정이 있는지 알려 주지 않기 위해서다.
+- 비밀번호가 틀린 경우만 실패 횟수를 올리고, 5번째 실패 응답부터 `LOGIN_LOCKED` 이다. 잠금·정지·탈퇴는 비밀번호보다 먼저 확인한다.
 
 #### 7. 로그아웃
 
@@ -477,15 +489,16 @@
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | USR-06 |
-| 설명 | 세션을 끝낸다. |
+| 설명 | 세션을 끝낸다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
 
 **Request**
 
-- 없음
+- 없음 (`Accept: application/json` 으로 보내는 `fetch` 요청)
 
 **Response**
 
 - 204 No Content
+- 브라우저가 직접 보낸 폼 요청(사이드바 로그아웃 버튼)은 204 대신 첫 화면(`/`)으로 이동한다.
 
 #### 8. 간편 로그인 시작
 
@@ -3610,7 +3623,7 @@ Header: Idempotency-Key: 4d8e...
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
-| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 10분 뒤에 다시 시도해 주세요 |
+| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `ACCOUNT_SUSPENDED` | 403 | 이용이 제한된 계정이에요 |
 | 회원 | `ACCOUNT_WITHDRAWN` | 403 | 탈퇴한 계정이에요 |
 | 회원 | `EMAIL_DUPLICATED` | 409 | 이미 가입된 이메일이에요 |
