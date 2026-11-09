@@ -145,7 +145,7 @@ class MemberControllerTest {
                         .content(invalid))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
-        verify(memberService, never()).signup(any(SignupDTO.class));
+        verify(memberSignupService, never()).signup(any(SignupDTO.class));
     }
 
     private static String validSignupJson() {
