@@ -3,12 +3,9 @@ package com.wanted.moneybeetle.domain.growth.model.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
-import com.wanted.moneybeetle.domain.growth.model.dao.CashHistoryRepository;
+import com.wanted.moneybeetle.domain.growth.model.dto.AdminCashChangeDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashAdjustDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashAdjustResultDTO;
-import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
-import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
-import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.LinkedHashMap;
@@ -21,9 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (성장·캐시·레벨)
 *   관리자 캐시 수동 지급·회수 (이슈 #39, API 110, ADM-30, SP-17)
 *   - 사유는 필수(REASON_REQUIRED). 회수로 잔액이 0 미만이 되면 거절(NOT_ENOUGH_CASH).
-*   - 회원 행을 먼저 잠가서 같은 회원에 대한 동시 지급·회수·사용과 순서가 꼬이지 않게 한다 (RewardService 와 같은 방식).
-*   - 캐시 변경은 MemberService 메서드로만 한다. 내역(cash_history)과 작업 기록(admin_log, CASH_GIVE·CASH_TAKE)은
-*     같은 트랜잭션에서 남기므로, 어느 하나가 실패하면 모두 되돌려진다.
+*   - 금액 범위·사유를 확인한 뒤 RewardService.adjustByAdmin 에 맡긴다. 회원 행 잠금, 잔액 확인, 캐시 변경, 내역(cash_history) 저장은
+*     그쪽이 하고(캐시를 바꾸는 길은 RewardService 하나), 이 서비스는 작업 기록(admin_log, CASH_GIVE·CASH_TAKE)을 같은 트랜잭션에서 남긴다.
+*     어느 하나가 실패하면 모두 되돌려진다.
 *  */
 @Service
 @RequiredArgsConstructor
@@ -41,8 +38,7 @@ public class CashAdjustService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final MemberService memberService;
-    private final CashHistoryRepository cashHistoryRepository;
+    private final RewardService rewardService;
     private final AdminLogService adminLogService;
 
     /**
@@ -60,23 +56,12 @@ public class CashAdjustService {
             throw new BusinessException(GrowthErrorCode.REASON_REQUIRED);
         }
 
-        MemberBalanceDTO before = memberService.lockBalance(memberId);
-        CashHistory history;
-        long balanceAfter;
-        if (request.isGive()) {
-            balanceAfter = memberService.addReward(memberId, amount, 0).getCash();
-            history = cashHistoryRepository.save(CashHistory.adminGive(memberId, adminId, amount, balanceAfter, reason));
-        } else {
-            if (before.getCash() < amount) {
-                throw new BusinessException(GrowthErrorCode.NOT_ENOUGH_CASH);
-            }
-            balanceAfter = memberService.deductCash(memberId, amount).getCash();
-            history = cashHistoryRepository.save(CashHistory.adminTake(memberId, adminId, amount, balanceAfter, reason));
-        }
+        // 회원 잠금·잔액 확인·캐시 변경·내역 저장은 RewardService 가 한다 (캐시를 바꾸는 길은 그 서비스 하나). 같은 트랜잭션이다
+        AdminCashChangeDTO change = rewardService.adjustByAdmin(adminId, memberId, request.isGive(), amount, reason);
 
         adminLogService.record(adminId, request.isGive() ? ACTION_GIVE : ACTION_TAKE, TARGET_TYPE, memberId,
-                toJson(amount, reason, before.getCash(), balanceAfter));
-        return new CashAdjustResultDTO(history.getCashHistoryId(), balanceAfter);
+                toJson(amount, reason, change.balanceBefore(), change.balanceAfter()));
+        return new CashAdjustResultDTO(change.cashHistoryId(), change.balanceAfter());
     }
 
     private static String toJson(long amount, String reason, long balanceBefore, long balanceAfter) {

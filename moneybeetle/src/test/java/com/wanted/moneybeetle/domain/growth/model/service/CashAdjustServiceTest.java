@@ -39,7 +39,13 @@ class CashAdjustServiceTest {
         memberService = mock(MemberService.class);
         cashHistoryRepository = mock(CashHistoryRepository.class);
         adminLogService = mock(AdminLogService.class);
-        service = new CashAdjustService(memberService, cashHistoryRepository, adminLogService);
+        // 캐시를 바꾸는 일은 RewardService 가 한다. 실제 RewardService 에 저장소만 가짜로 넣어 지급·회수 흐름까지 함께 확인한다
+        RewardService rewardService = new RewardService(
+                mock(com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository.class),
+                cashHistoryRepository,
+                mock(com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository.class),
+                memberService, mock(GrowthService.class));
+        service = new CashAdjustService(rewardService, adminLogService);
         when(memberService.lockBalance(MEMBER)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 100, 12_400));
         when(cashHistoryRepository.save(any(CashHistory.class))).thenAnswer(invocation -> {
             CashHistory saved = invocation.getArgument(0);

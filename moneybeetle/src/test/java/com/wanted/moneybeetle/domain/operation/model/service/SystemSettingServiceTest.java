@@ -39,8 +39,8 @@ class SystemSettingServiceTest {
         ReflectionTestUtils.setField(trading, "systemSettingId", 2L);
         text = SystemSetting.create("SERVICE_NOTICE", "점검 예정", null);
         ReflectionTestUtils.setField(text, "systemSettingId", 9L);
-        when(repository.findBySettingKey("UNLOCK_LEVEL_TRADING")).thenReturn(Optional.of(trading));
-        when(repository.findBySettingKey("SERVICE_NOTICE")).thenReturn(Optional.of(text));
+        when(repository.findBySettingKeyForUpdate("UNLOCK_LEVEL_TRADING")).thenReturn(Optional.of(trading));
+        when(repository.findBySettingKeyForUpdate("SERVICE_NOTICE")).thenReturn(Optional.of(text));
     }
 
     @Test
@@ -97,7 +97,7 @@ class SystemSettingServiceTest {
     @Test
     @DisplayName("없는 키이면 NOT_FOUND")
     void unknownKey() {
-        when(repository.findBySettingKey("NOPE")).thenReturn(Optional.empty());
+        when(repository.findBySettingKeyForUpdate("NOPE")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateSetting(1L, "NOPE", "1"))
                 .isInstanceOfSatisfying(BusinessException.class,

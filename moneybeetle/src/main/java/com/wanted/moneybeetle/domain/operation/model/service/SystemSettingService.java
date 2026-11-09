@@ -44,7 +44,7 @@ public class SystemSettingService {
 
     @Transactional
     public void updateSetting(Long adminId, String key, String value) {
-        SystemSetting setting = systemSettingRepository.findBySettingKey(key)
+        SystemSetting setting = systemSettingRepository.findBySettingKeyForUpdate(key)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         String newValue = value == null ? "" : value.strip();
         if (isInteger(setting.getSettingValue()) && !isInteger(newValue)) {
