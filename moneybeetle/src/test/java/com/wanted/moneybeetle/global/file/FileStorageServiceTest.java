@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /* comment.
+*   담당 : SCM (공통 기반·보안)
 *   FileStorageService 경계 조건 확인 (스프링 없이 단독 실행)
 *   - 이름 없음 / 점 없음 / 허용하지 않는 확장자 / 이름만 바꾼 파일 / 잘리거나 다른 형식의 mp4 → FILE_TYPE_NOT_ALLOWED
 *   - 이미지 2MB 초과 → FILE_TOO_LARGE, 정확히 2MB 는 통과

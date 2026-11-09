@@ -16,7 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : DBA ② (관리자 운영)
 *   ForbiddenWordService - Repository 를 Mock 으로 두고 서버·DB 없이 돈다
 *  */
 class ForbiddenWordServiceTest {

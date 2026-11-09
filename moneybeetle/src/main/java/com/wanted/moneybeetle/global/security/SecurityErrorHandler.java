@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   Security 필터 단계의 인증·권한 실패 응답 (컨트롤러 전이라 GlobalExceptionHandler 가 못 잡는다)
 *   - 로그인 안 함 : API -> 401 UNAUTHORIZED JSON / 화면 -> 로그인 화면으로 이동
 *   - 권한 없음   : API -> 403 FORBIDDEN JSON    / 화면 -> error/403.html

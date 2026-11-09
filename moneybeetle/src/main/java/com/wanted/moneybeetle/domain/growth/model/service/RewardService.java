@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   다른 도메인이 부르는 보상 창구 (역할분담 문서 §7 연동 약속)
 *   - grant(memberId, ruleCode, sourceId)             : 경험치·캐시 지급   [호출: 신아림 학습 완료·퀴즈, 출석]
 *   - spendCash(memberId, sourceType, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]

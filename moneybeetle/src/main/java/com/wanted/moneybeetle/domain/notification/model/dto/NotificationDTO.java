@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (알림)
 *   알림 한 줄 (API 25 items)
 *   - boolean 필드의 getter 는 isRead() 라서 Jackson 이 "read" 로 내보낸다. 명세서대로 "isRead" 로 고정한다
 *  */

@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   SecurityConfig URL 권한 + SecurityErrorHandler 응답 확인 (#4)
 *   DB 없이 Security 와 MVC 만 띄우고, 로그인은 가짜 사용자(authority = member.role)로 대신한다
 *  */
