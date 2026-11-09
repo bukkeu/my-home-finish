@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.auth.config;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   Spring Security 설정 (세션 방식, 30분 만료 DP-11)
 *   - PasswordEncoder(BCrypt) Bean
 *   - URL 권한 : /api/v1/admin/** ADMIN, /api/v1/instructor/** INSTRUCTOR, 나머지 /api/v1/** 로그인

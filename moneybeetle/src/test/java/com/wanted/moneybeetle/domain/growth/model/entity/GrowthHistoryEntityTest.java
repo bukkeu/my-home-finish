@@ -7,7 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   보상 규칙·캐시 내역·경험치 내역 Entity 의 규칙 (SP-15, SP-22) - 서버·DB 없이 돈다
 *  */
 class GrowthHistoryEntityTest {

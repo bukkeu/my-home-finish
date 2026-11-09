@@ -104,10 +104,14 @@ com.wanted.moneybeetle
 │  ├─ security            레벨 해금 확인, 중복 요청 방지
 │  └─ file                파일 업로드
 └─ domain
-   ├─ auth · member · inquiry · operation   (SCM)
-   ├─ course · quiz · trading               (DBA)
-   └─ growth · home · term · notification · housing   (PM)
+   ├─ auth (config 제외) · member (AdminMemberController 제외) (DBA ②)
+   ├─ course · quiz · inquiry (DBA ①)
+   ├─ growth · notification · home API(#13) · term · operation (DBA ②)
+   ├─ home 검색 API(#15) · trading (PM)
+   └─ housing (SCM)
 ```
+
+`global/**`와 `auth/config/SecurityConfig`는 SCM, `global/security/IdempotencyFilter`는 이슈 #65 담당자인 PM이 맡습니다. `member` 경로의 `AdminMemberController`는 이슈 #37 담당자인 DBA ①이 맡습니다. `HomeController`는 홈 API(#13, DBA ②)와 검색 API(#15, PM)를 기능별로 구분합니다. 파일 경로만으로 담당자를 단정하지 말고 `docs/MoneyBeetle_역할분담.md`의 이슈별 배정과 GitHub 이슈 담당자를 함께 확인합니다.
 
 **도메인 안은 모두 같은 모양입니다.**
 
@@ -399,7 +403,7 @@ public class MyInfoDTO {
 2. 다른 도메인의 테이블(Repository)을 직접 쓰지 않는다. 그 도메인의 Service 메서드를 부른다.
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
 4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. `schema.sql`을 다시 실행하면 데이터가 지워지므로, 이미 만든 DB에 변경만 적용해야 할 때에 한해 DBA가 `sql/migration/<날짜>_<설명>.sql`(ALTER 등)을 추가하고 같은 변경을 `schema.sql`에도 반영한다.
-5. 마이페이지·관리자 대시보드는 틀(SCM)과 탭 내용(`templates/fragments/...`, 각 담당)을 나눈다.
+5. 마이페이지 틀은 PM(#54), 관리자 대시보드 틀은 DBA ②(#61)가 맡고, 탭 내용(`templates/fragments/...`)은 `docs/MoneyBeetle_역할분담.md` §6의 해당 이슈 담당자가 맡는다.
 
 **아직 구현이 없는 도메인과 협업할 때** (학습 25·26일차): 필요한 쪽이 **인터페이스**를 먼저 정의하고, 상대 팀의 실제 구현이 나올 때까지 `Fake` 구현으로 대신한다. 실제 구현이 생기면 Fake만 지우면 되고 사용하는 쪽 코드는 바뀌지 않는다.
 

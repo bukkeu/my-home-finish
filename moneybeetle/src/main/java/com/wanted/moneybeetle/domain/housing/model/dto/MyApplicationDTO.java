@@ -7,7 +7,7 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 
 /* comment.
- *   담당 : SCM (성장·홈·모의 청약)  :  상세(접수번호, 총점, 신청 시각 -> 신청 안 했으면 모두 null)
+ *   담당 : SCM (모의 청약)  :  상세(접수번호, 총점, 신청 시각 -> 신청 안 했으면 모두 null)
  *   공고 상세(API 64)의 내 신청 정보 - 신청하지 않았으면 이 DTO 대신 null
  *  */
 @Getter

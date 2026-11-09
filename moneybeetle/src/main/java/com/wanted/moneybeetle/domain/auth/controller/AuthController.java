@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.auth.controller;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : DBA ② (회원·인증)
 *   POST /api/v1/auth/login, /logout, /admin/auth/login
 *   GET  /api/v1/auth/oauth/{provider}
 *   POST /api/v1/auth/find-email, /password-reset/request, /password-reset/confirm

@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
-*   담당 : DBA ② (모의투자)
+*   담당 : PM (모의투자)
 *   테이블 ranking_award (상위 3위)
 *  */
 @Entity

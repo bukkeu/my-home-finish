@@ -60,23 +60,25 @@ flowchart LR
 
 ## 애플리케이션 모듈 구성
 
-서버는 **도메인(기능 영역)별 패키지**로 나눕니다. 패키지 이름과 담당은 팀 프로젝트 골격(`moneybeetle/README.md`)을 따르고, 모든 도메인 안은 `controller` / `model/dao` / `model/dto` / `model/entity` / `model/service` / `exception`으로 같은 모양입니다. 화면은 역할별 주소(`/user`, `/instructor`, `/admin`)로 나뉘고, 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(`AdminCourseController` 등). 코드 작성 규칙은 코딩 컨벤션 문서를 따릅니다.
+서버는 **도메인(기능 영역)별 패키지**로 나눕니다. 패키지 이름은 팀 프로젝트 골격(`moneybeetle/README.md`)을 따르고, 담당·이슈 범위는 `docs/MoneyBeetle_역할분담.md`와 GitHub 이슈의 담당자 배정을 기준으로 합니다. 같은 도메인 안에서도 이슈에 따라 담당자가 다를 수 있습니다. 모든 도메인 안은 `controller` / `model/dao` / `model/dto` / `model/entity` / `model/service` / `exception`으로 같은 모양입니다. 화면은 역할별 주소(`/user`, `/instructor`, `/admin`)로 나뉘고, 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(`AdminCourseController` 등). 코드 작성 규칙은 코딩 컨벤션 문서를 따릅니다.
 
 | 서버 패키지 | 맡는 일 | 쓰는 화면 | 담당 | 호출하는 모듈 |
 | --- | --- | --- | --- | --- |
-| `auth` | 로그인·로그아웃, 간편 로그인(OAuth2), 비밀번호 재설정 | UserLogin, Instructor·Admin Login | SCM | member |
-| `member` | 가입, 강사 가입·승인, 약관, 마이페이지, 탈퇴 | UserSignup, InstructorSignup, UserMyPage | SCM | growth(가입 시 청약통장 생성) |
-| `inquiry` | 사이트 문의 게시판(비공개 글 포함), 강의 Q&A, 관리자 답변·숨김 | UserInquiry, AdminDashboard(?view=board) | SCM | notification |
-| `operation` | 서비스 설정값, 관리자 작업 기록, 금칙어 | AdminDashboard(작업 기록) | SCM | — |
+| `auth` | 로그인·로그아웃, 간편 로그인(OAuth2), 비밀번호 재설정 | UserLogin, Instructor·Admin Login | DBA ② (단, `auth/config/SecurityConfig`는 SCM) | member |
+| `member` | 가입, 강사 가입, 약관, 마이페이지, 탈퇴 | UserSignup, InstructorSignup, UserMyPage | DBA ② (단, `AdminMemberController` #37은 DBA ①) | growth(가입 시 청약통장 생성) |
+| `inquiry` | 사이트 문의 게시판(비공개 글 포함), 강의 Q&A, 관리자 답변·숨김 | UserInquiry, AdminDashboard(?view=board) | DBA ① | notification |
+| `operation` | 서비스 설정값, 관리자 작업 기록, 금칙어 | AdminDashboard(작업 기록) | DBA ② | — |
 | `course` | 카테고리·소주제·강의 조회, 영상 이어보기, 스크랩, 강사의 강의 생성·검수 요청, 관리자 검수 | UserLectureCategory·Detail, InstructorDashboard·CourseCreate, AdminDashboard | DBA ① | global.file |
 | `quiz` | 테스트 퀴즈·퀴즈 채점, 오답노트 | UserLectureDetail, UserMyPage | DBA ① | course, growth |
-| `growth` | 출석, 경험치, 레벨·칭호, 캐시 원장, 해금 판정 | 모든 사용자 화면 사이드바 | PM | — |
-| `home` | 홈 조립(수강 이력 유무로 두 가지), 통합 검색·자동완성 | UserHome-vr1·vr2, UserSearch | PM | course, growth, inquiry |
-| `term` | 오늘의 경제 용어, 용어 사전·날짜별 지정 | 홈의 경제단어 팝업, AdminDashboard(?view=terms) | PM | — |
-| `notification` | 알림 생성·읽음 처리·알림 끄기 | 모든 화면의 종 버튼 | PM | — |
-| `housing` | 청약통장 납입, 가점, 공고·신청·당첨 산정·발표 | UserDemoHousingSubscription, AdminHousingManagement | PM | growth, global.file |
-| `trading` | 모의투자 시즌·턴·주문·랭킹·정산 | UserDemoTrading, AdminTradingManagement | DBA ② | growth |
-| `global` | 설정(`config`), 공통 응답·예외(`common`, `exception`), 레벨 해금·중복 요청 방지(`security`), 파일 저장(`file`), KST 시계 | — | SCM | (모든 모듈이 사용) |
+| `growth` | 출석, 경험치, 레벨·칭호, 캐시 원장, 해금 판정 | 모든 사용자 화면 사이드바 | DBA ② | — |
+| `home` | 홈 조립(수강 이력 유무로 두 가지), 통합 검색·자동완성 | UserHome-vr1·vr2, UserSearch | 홈 API #13: DBA ② / 통합 검색 API #15: PM | course, growth, inquiry |
+| `term` | 오늘의 경제 용어, 용어 사전·날짜별 지정 | 홈의 경제단어 팝업, AdminDashboard(?view=terms) | DBA ② | — |
+| `notification` | 알림 생성·읽음 처리·알림 끄기 | 모든 화면의 종 버튼 | DBA ② | — |
+| `housing` | 청약통장 납입, 가점, 공고·신청·당첨 산정·발표 | UserDemoHousingSubscription, AdminHousingManagement | SCM | growth, global.file |
+| `trading` | 모의투자 시즌·턴·주문·랭킹·정산 | UserDemoTrading, AdminTradingManagement | PM | growth |
+| `global` | 설정(`config`), 공통 응답·예외(`common`, `exception`), 레벨 해금·중복 요청 방지(`security`), 파일 저장(`file`), KST 시계 | — | SCM (단, `IdempotencyFilter` #65는 PM) | (모든 모듈이 사용) |
+
+**담당 구분 유의사항**: 위 표는 도메인의 기본 담당을 요약합니다. 파일 단위 담당은 `docs/MoneyBeetle_역할분담.md`의 이슈별 배정과 실제 GitHub 이슈 담당자를 따릅니다. `HomeController`는 홈 API(#13, DBA ②)와 검색 API(#15, PM)가 함께 있으므로 기능별로 구분합니다.
 
 핵심은 `growth`입니다. 캐시·경험치를 바꾸는 코드는 `growth`(`RewardService`)에만 두고, 퀴즈·모의투자·청약은 그 지급·차감 메서드를 불러서만 값을 바꿉니다. 다른 도메인의 Repository는 직접 쓰지 않고 그 도메인의 Service 메서드를 부릅니다. 알림은 `notification.NotificationService`, 관리자 작업 기록은 `operation.AdminLogService`가 맡아서 각 모듈이 알림·기록 코드를 직접 만들지 않습니다.
 

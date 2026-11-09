@@ -14,7 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   sample-data.sql 의 level_policy 시드가 이슈 #11 확정값(LevelTableFixture)과 같은지 확인한다.
 *   시드는 DB 에 넣어야 돌아가서 테스트가 직접 실행하지 못하므로, 파일의 INSERT 값을 읽어 비교한다.
 *  */

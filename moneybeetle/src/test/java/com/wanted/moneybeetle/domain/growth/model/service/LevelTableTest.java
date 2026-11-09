@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   LevelTable · UnlockRules (이슈 #11) - 값만으로 판단하므로 서버·DB 없이 돈다
 *  */
 class LevelTableTest {

@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.WebApplicationContext;
 
 /* comment.
-*   담당 : DBA ② (공통 레이아웃, 이슈 #49)
+*   담당 : DBA ② (홈)
 *   공통 레이아웃 조각(header · sidebar · notice)이 실제로 그려지는지 확인한다.
 *   서버 시작 클래스(#2)와 DB 없이 돌도록, 이 테스트 안에서만 쓰는 작은 설정으로 Thymeleaf + Security 만 띄운다.
 *   test/resources/templates/layout-preview.html 이 세 조각을 한 화면에 모아 그린다.

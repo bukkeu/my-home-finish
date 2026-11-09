@@ -11,7 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   테이블 level_policy - 레벨별 필요 누적 경험치, 칭호, 레벨업 캐시 (SP-14, SP-20, SP-21)
 *   - 읽기 전용 정책표다. 값은 시드(sample-data.sql)·관리자 설정으로 정하고 코드에서 바꾸지 않는다
 *   - required_exp 는 "그 레벨이 되기 위한 누적 경험치"다 (Lv.1 = 0)

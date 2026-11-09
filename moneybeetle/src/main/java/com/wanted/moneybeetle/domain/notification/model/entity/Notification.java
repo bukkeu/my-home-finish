@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (알림)
 *   테이블 notification
 *   - 다른 도메인(member)은 Entity가 아니라 ID로 참조한다
 *   - 읽음 처리는 markRead() 로만 바꾼다 (읽음 -> 안 읽음으로 되돌리는 메서드는 두지 않는다)
