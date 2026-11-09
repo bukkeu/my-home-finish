@@ -34,7 +34,7 @@
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
-| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 실패(2xx가 아닌) 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 헤더가 없으면 막지 않고 그대로 처리한다 (`IdempotencyFilter`, #65) |
+| 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 거절된 4xx 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 5xx 응답은 처리 여부를 알 수 없어 보관하고 같은 키로 다시 오면 그 응답을 돌려준다(이미 저장된 주문·납입이 다시 실행되지 않게). 5xx를 받은 화면은 새 키로 다시 시도한다. 헤더가 없으면 막지 않고 그대로 처리한다 (`IdempotencyFilter`, #65) |
 
 ### 1-2 응답 형식
 

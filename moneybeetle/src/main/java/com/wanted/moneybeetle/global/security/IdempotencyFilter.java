@@ -8,7 +8,8 @@ package com.wanted.moneybeetle.global.security;
 *   - 같은 키 + 같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려준다
 *   - 같은 키 + 다른 내용이면 처리하지 않고 409 IDEMPOTENCY_KEY_CONFLICT
 *   - 처음 요청이 아직 처리 중이면 409 DUPLICATE_REQUEST
-*   - 성공(2xx)한 결과만 24시간 보관한다. 실패하면 기록을 지워서 같은 키로 다시 시도할 수 있다
+*   - 결과는 24시간 보관한다. 단 4xx(요청이 거절됨)는 기록을 지워서 같은 키로 다시 시도할 수 있다
+*     5xx는 처리됐는지 알 수 없어서(커밋 뒤 응답 중 오류 등) 그대로 보관한다 -> 같은 키로 다시 실행되지 않는다
 *   - 헤더가 없으면 막지 않고 그대로 처리한다 (화면은 항상 헤더를 보낸다)
 *   Spring Security 필터 다음에 실행되므로 로그인 정보(getUserPrincipal)를 쓸 수 있다
 *  */
@@ -94,16 +95,19 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         try {
             chain.doFilter(cachedRequest, cachedResponse);
         } catch (IOException | ServletException | RuntimeException e) {
+            // 보통 예외는 GlobalExceptionHandler 가 500 응답으로 바꿔서 여기까지 오지 않는다.
+            // 여기 오는 것은 응답을 만들지 못한 경우라 돌려줄 결과가 없으므로 기록을 지운다
             store.remove(storeKey);
             throw e;
         }
 
         int status = cachedResponse.getStatus();
-        if (status >= 200 && status < 300) {
+        boolean clientError = status >= 400 && status < 500;
+        if (clientError) {
+            store.remove(storeKey);
+        } else {
             store.complete(storeKey, status, cachedResponse.getContentType(),
                     cachedResponse.getContentAsByteArray());
-        } else {
-            store.remove(storeKey);
         }
         cachedResponse.copyBodyToResponse();
     }

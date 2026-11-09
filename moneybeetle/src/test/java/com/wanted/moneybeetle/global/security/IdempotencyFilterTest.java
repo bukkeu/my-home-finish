@@ -24,7 +24,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 *   IdempotencyFilter 확인 (스프링 없이 단독 실행)
 *   - 같은 키·같은 내용은 한 번만 처리하고 처음 결과를 다시 돌려준다
 *   - 같은 키·다른 내용은 409 IDEMPOTENCY_KEY_CONFLICT, 처리 중이면 409 DUPLICATE_REQUEST
-*   - 실패 응답은 저장하지 않고, 24시간이 지나면 기록이 지워진다
+*   - 4xx 응답은 저장하지 않고, 5xx 응답은 저장한다. 24시간이 지나면 기록이 지워진다
 *  */
 class IdempotencyFilterTest {
 
@@ -136,7 +136,22 @@ class IdempotencyFilterTest {
     }
 
     @Test
-    void 실패한_응답은_저장하지_않아_같은_키로_다시_시도할_수_있다() throws Exception {
+    void 서버_오류_응답은_저장해서_같은_키로_다시_실행하지_않는다() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        String errorBody = "{\"success\":false,\"error\":{\"code\":\"INTERNAL_ERROR\"}}";
+
+        MockHttpServletResponse failed = send(request("minji", "k-1", BUY_BODY), chain(calls, 500, errorBody));
+        MockHttpServletResponse retried = send(request("minji", "k-1", BUY_BODY), chain(calls, 201, CREATED_BODY));
+
+        assertThat(calls).hasValue(1);
+        assertThat(failed.getStatus()).isEqualTo(500);
+        assertThat(retried.getStatus()).isEqualTo(500);
+        assertThat(retried.getContentAsString()).isEqualTo(errorBody);
+        assertThat(retried.getHeader(IdempotencyFilter.REPLAYED_HEADER)).isEqualTo("true");
+    }
+
+    @Test
+    void 거절된_4xx_응답은_저장하지_않아_같은_키로_다시_시도할_수_있다() throws Exception {
         AtomicInteger calls = new AtomicInteger();
 
         MockHttpServletResponse failed = send(request("minji", "k-1", BUY_BODY),
