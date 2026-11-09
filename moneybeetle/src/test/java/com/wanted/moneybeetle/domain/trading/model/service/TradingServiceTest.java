@@ -210,6 +210,7 @@ class TradingServiceTest {
     void 종목_상세의_내_보유는_참가한_시즌의_보유_수량과_평균_단가() {
         givenRunningSeasonAtTurn5();
         when(stockRepository.findById(1L)).thenReturn(Optional.of(stock(1L, 1L, "한빛반도체")));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
         SeasonParticipant participant = SeasonParticipant.create(SEASON_ID, 8L, 3_000_000L, 0L);
         ReflectionTestUtils.setField(participant, "seasonParticipantId", 120L);
         Holding holding = Holding.create(120L, 1L);
@@ -224,6 +225,19 @@ class TradingServiceTest {
         assertThat(detail.getMyHolding().getQuantity()).isEqualTo(12);
         assertThat(detail.getMyHolding().getAvgPrice()).isEqualTo(79_000);
         assertThat(detail.getPrice()).isNull();
+    }
+
+    @Test
+    void 사용_안_함_분야의_종목_상세는_NOT_FOUND() {
+        givenRunningSeasonAtTurn5();
+        Sector inactive = sector(3L, "옛분야", 9);
+        inactive.deactivate();
+        when(stockRepository.findById(5L)).thenReturn(Optional.of(stock(5L, 3L, "옛분야종목")));
+        when(sectorRepository.findById(3L)).thenReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> service.getStock(5L, null))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.NOT_FOUND);
     }
 
     @Test
@@ -249,8 +263,8 @@ class TradingServiceTest {
                 .thenReturn(List.of(news(9L, 5, "AI 기기 수요 확대"), news(5L, 3, "원재료 가격 급등")));
         when(newsTagRepository.findByNewsIdIn(List.of(9L, 5L))).thenReturn(List.of(
                 NewsTag.createForSector(9L, 1L), NewsTag.createForStock(9L, 1L), NewsTag.createForSector(5L, 2L)));
-        when(sectorRepository.findAll()).thenReturn(List.of(sector(1L, "반도체", 1), sector(2L, "모빌리티", 2)));
-        when(stockRepository.findAll()).thenReturn(List.of(stock(1L, 1L, "한빛반도체")));
+        when(sectorRepository.findAllById(anyList())).thenReturn(List.of(sector(1L, "반도체", 1), sector(2L, "모빌리티", 2)));
+        when(stockRepository.findAllById(List.of(1L))).thenReturn(List.of(stock(1L, 1L, "한빛반도체")));
 
         List<NewsDTO> items = service.findNews(null, null);
 

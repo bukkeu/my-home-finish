@@ -5,7 +5,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   홈, 시세, 종목 상세, 뉴스 조회 / 시즌 참가(캐시는 RewardService, 투자 가능 금액 확정 SP-52)
 *   - #24 조회 (API 55~58) : 지금 보이는 시즌(진행 중·휴장 중)의 현재 턴까지만 보여 준다.
 *     다음 턴 이후의 가격·뉴스는 미리 입력돼 있어도 응답에 넣지 않는다
-*   - 사용 안 함 분야·종목은 목록과 상세에 나오지 않는다
+*   - 사용 안 함 분야·종목은 목록과 상세에 나오지 않는다 (사용 안 함 분야의 종목 상세도 NOT_FOUND)
 *  */
 
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
@@ -107,7 +107,11 @@ public class TradingService {
         Stock stock = stockRepository.findById(stockId)
                 .filter(Stock::isActive)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
-        String sectorName = sectorRepository.findById(stock.getSectorId()).map(Sector::getName).orElse(null);
+        // 사용 안 함 분야의 종목은 목록에 나오지 않으므로 상세도 NOT_FOUND
+        String sectorName = sectorRepository.findById(stock.getSectorId())
+                .filter(Sector::isActive)
+                .map(Sector::getName)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         List<StockPrice> history = priceRepository.findByTradingSeasonIdAndStockIdAndTurnNoLessThanEqualOrderByTurnNoAsc(
                 season.getTradingSeasonId(), stockId, season.getCurrentTurn());
         return StockDetailDTO.of(stock, sectorName, season.getCurrentTurn(), history,
@@ -135,9 +139,13 @@ public class TradingService {
         Map<Long, List<NewsTag>> tagsByNews = newsTagRepository
                 .findByNewsIdIn(newsList.stream().map(News::getNewsId).toList()).stream()
                 .collect(Collectors.groupingBy(NewsTag::getNewsId));
-        Map<Long, String> sectorNames = sectorRepository.findAll().stream()
+        // 이름은 뉴스에 걸린 분야·종목만 조회한다
+        List<NewsTag> allTags = tagsByNews.values().stream().flatMap(List::stream).toList();
+        Map<Long, String> sectorNames = sectorRepository.findAllById(allTags.stream()
+                        .filter(NewsTag::isSectorTag).map(NewsTag::getSectorId).distinct().toList()).stream()
                 .collect(Collectors.toMap(Sector::getSectorId, Sector::getName));
-        Map<Long, String> stockNames = stockRepository.findAll().stream()
+        Map<Long, String> stockNames = stockRepository.findAllById(allTags.stream()
+                        .filter(NewsTag::isStockTag).map(NewsTag::getStockId).distinct().toList()).stream()
                 .collect(Collectors.toMap(Stock::getStockId, Stock::getName));
 
         return newsList.stream()
