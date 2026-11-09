@@ -76,6 +76,9 @@ class PasswordResetConcurrencyTest {
 
     @Autowired
     private AccountService accountService;
+    /** 서비스가 시간을 판단하는 시계와 같은 시계로 토큰을 만든다. 시스템 기본 시간대(CI 는 UTC)로 만들면 서울 시계와 9시간 어긋나 토큰이 곧바로 만료로 보인다 */
+    @Autowired
+    private Clock clock;
     @Autowired
     private MemberRepository memberRepository;
     @Autowired
@@ -90,8 +93,8 @@ class PasswordResetConcurrencyTest {
         String hash = "concurrent-token-hash";
         tx.executeWithoutResult(status -> {
             Member member = memberRepository.save(Member.signup("race@gmail.com", "old-hash", "경쟁",
-                    LocalDate.of(1999, 4, 12), "FEMALE", LocalDate.now()));
-            tokenRepository.save(PasswordResetToken.issue(member.getMemberId(), hash, LocalDateTime.now()));
+                    LocalDate.of(1999, 4, 12), "FEMALE", LocalDate.now(clock)));
+            tokenRepository.save(PasswordResetToken.issue(member.getMemberId(), hash, LocalDateTime.now(clock)));
         });
 
         int threads = 2;
