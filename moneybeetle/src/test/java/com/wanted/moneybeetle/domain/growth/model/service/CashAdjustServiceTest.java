@@ -44,7 +44,8 @@ class CashAdjustServiceTest {
                 mock(com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository.class),
                 cashHistoryRepository,
                 mock(com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository.class),
-                memberService, mock(GrowthService.class));
+                memberService, mock(GrowthService.class),
+                mock(com.wanted.moneybeetle.domain.notification.model.service.NotificationService.class));
         service = new CashAdjustService(rewardService, adminLogService);
         when(memberService.lockBalance(MEMBER)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 100, 12_400));
         when(cashHistoryRepository.save(any(CashHistory.class))).thenAnswer(invocation -> {

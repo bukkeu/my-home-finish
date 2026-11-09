@@ -910,11 +910,12 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | GRW-08 |
-| 설명 | 안 읽은 알림 수와 목록. |
+| 설명 | 안 읽은 알림 수와 목록. 최신순이다. 로그인한 회원 자신의 알림만 준다. |
 
 **Request**
 
 - Query: page=0&size=20
+    - `page` 기본값은 0이고 0 미만이면 0으로 본다. `size` 기본값은 20이고 1 미만이면 1, 50을 넘으면 50으로 맞춘다(최대 50).
 
 **Response**
 
@@ -2226,9 +2227,9 @@ Header: Idempotency-Key: 4d8e...
 | --- | --- |
 | Endpoint | `/api/v1/instructor/courses/{courseId}/review-request` |
 | Method | `POST` |
-| 권한 | 강사 |
+| 권한 | 강사 (본인 강의) |
 | 관련 | TCH-07, DP-34 |
-| 설명 | 영상 1개 이상, 테스트 퀴즈 5문제, 퀴즈 5~15문제가 있어야 요청 가능. |
+| 설명 | 작성 중(DRAFT)·반려(REJECTED) 강의만 요청 가능(반려된 강의를 고쳐 다시 요청). 영상 1개 이상, 테스트 퀴즈 5문제, 퀴즈 5~15문제가 있어야 한다. 요청하면 REVIEW로 바뀌고 submitted_at을 기록. |
 
 **Request**
 
@@ -2240,7 +2241,7 @@ Header: Idempotency-Key: 4d8e...
 { "courseId": 7, "status": "REVIEW" }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`, `NO_LESSON`
+**Error**: `NO_LESSON`, `QUIZ_COUNT_INVALID`, `COURSE_NOT_REQUESTABLE`(검수 중·허가된 강의), `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 82. 내 강의 문의
 
@@ -2250,17 +2251,19 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-08 |
-| 설명 | 내 강의에 달린 문의. 답변 대기 글 먼저. |
+| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount는 필터와 상관없이 내 강의 전체의 답변 대기 수. |
 
 **Request**
 
-- Query: status=WAITING&courseId=
+- Query: status=WAITING&courseId=&page=0&size=20
 
 **Response**
 
 ```json
-{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ] }
+{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
+
+**Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
 
 ### 관리자
 
@@ -2609,7 +2612,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-05 |
-| 설명 | 월별 지정 현황. |
+| 설명 | 월별 지정 현황. 그 달의 모든 날을 돌려주고, 아직 정해지지 않은 날은 자동 선정될 결과를 미리 보여 준다(`isAuto: true`, 저장되지 않음). |
 
 **Request**
 
@@ -2629,7 +2632,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-05, SP-46~47 |
-| 설명 | 5개를 지정. 지난 날짜는 변경 불가, 용어가 5개 미만이면 저장 불가. |
+| 설명 | 5개를 지정. 지난 날짜는 변경 불가, 사용 중인 용어가 5개가 되기 전이거나 고른 용어가 5개 미만이면 저장 불가. |
 
 **Request**
 

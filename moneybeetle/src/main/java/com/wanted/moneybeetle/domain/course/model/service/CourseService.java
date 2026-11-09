@@ -268,6 +268,12 @@ public class CourseService {
                 .toList();
     }
 
+    /* 문의(inquiry 도메인) 강사 문의함(API 82): 이 강사가 맡은 강의(삭제 제외)의 ID → 제목 */
+    public Map<Long, String> findCourseTitlesByInstructor(Long instructorId) {
+        return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
+    }
+
     /* 이재성: 통합 검색 */
     public List<CourseListDTO> search(String keyword) {
         return List.of(); // TODO 제목 검색 (허가 + 공개만)
