@@ -71,7 +71,8 @@ class MemberServiceTest {
                 memberTermsAgreementRepository,
                 passwordEncoder,
                 forbiddenWordService,
-                clock
+                clock,
+                org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository.class)
         );
     }
 
