@@ -4,6 +4,7 @@ import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
@@ -11,6 +12,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -74,6 +76,24 @@ public class MemberService {
         Member member = getMemberForUpdate(memberId);
         member.spendCash(amount);
         return MemberBalanceDTO.from(member);
+    }
+
+    /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 용). 회원 행을 잠가서 같은 사람이 동시에 두 번 불러도 하루 한 번만 기록된다.
+     * 이미 오늘 출석했으면 값을 바꾸지 않고 newlyChecked = false 로 돌려준다.
+     */
+    @Transactional
+    public MemberAttendanceDTO recordAttendance(Long memberId, LocalDate today) {
+        Member member = getMemberForUpdate(memberId);
+        boolean newlyChecked = member.checkAttendance(today);
+        return MemberAttendanceDTO.of(member, newlyChecked, today);
+    }
+
+    /** 오늘 기준 출석 상태를 읽기만 한다 (growth.AttendanceService 용, API 21) */
+    public MemberAttendanceDTO getAttendance(Long memberId, LocalDate today) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+        return MemberAttendanceDTO.of(member, false, today);
     }
 
     private Member getMemberForUpdate(Long memberId) {

@@ -205,6 +205,11 @@ public class RewardService {
         return after.getCash();
     }
 
+    /** 사용 중인 보상 규칙이 주는 캐시. 규칙이 없거나 꺼져 있으면 0 (예: 출석 현황 화면이 보상 금액을 보여 줄 때) */
+    public long findActiveCash(String ruleCode) {
+        return rewardRuleRepository.findByCodeAndActiveTrue(ruleCode).map(RewardRule::getCashAmount).orElse(0);
+    }
+
     /** 회원의 현재 캐시 잔액을 조회한다. 없는 회원이면 MEMBER_NOT_FOUND */
     public long getBalance(Long memberId) {
         return memberService.getBalance(memberId).getCash();
