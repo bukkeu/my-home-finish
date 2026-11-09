@@ -26,7 +26,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /* comment.
 *   담당 : SCM (공통 기반·보안)
@@ -97,6 +99,30 @@ class GlobalExceptionHandlerTest {
         public String crash() {
             throw new IllegalStateException("예상 못한 오류");
         }
+
+        // 화면 요청 (/api 가 아님) : 업로드 용량 초과처럼 400 이 나는 경우
+        @GetMapping("/test/upload")
+        public String uploadPage() {
+            throw new BusinessException(CommonErrorCode.FILE_TOO_LARGE);
+        }
+
+        @GetMapping("/test/missing")
+        public String missingPage() {
+            throw new BusinessException(CommonErrorCode.NOT_FOUND);
+        }
+    }
+
+    @Test
+    void 화면_요청의_400은_400_오류_페이지로_보여준다() throws Exception {
+        // #114 : 전에는 400 도 error/500 으로 갔다
+        mockMvc.perform(get("/test/upload"))
+                .andExpect(status().isBadRequest())
+                .andExpect(view().name("error/400"))
+                .andExpect(model().attribute("message", CommonErrorCode.FILE_TOO_LARGE.getMessage()));
+        // 나머지 매핑은 그대로
+        mockMvc.perform(get("/test/missing"))
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/404"));
     }
 
     @Test
