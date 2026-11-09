@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MemberControllerTest {
 
     private final MemberService memberService = mock(MemberService.class);
+    private final com.wanted.moneybeetle.domain.member.model.service.MemberSignupService memberSignupService = mock(com.wanted.moneybeetle.domain.member.model.service.MemberSignupService.class);
 
     private MockMvc mockMvc() {
         var json = new MappingJackson2HttpMessageConverter(
@@ -44,7 +45,8 @@ class MemberControllerTest {
         return MockMvcBuilders.standaloneSetup(
                         new MemberController(memberService,
                                 mock(com.wanted.moneybeetle.domain.member.model.service.AccountService.class),
-                                mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class)))
+                                mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class),
+                                memberSignupService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(json)
                 .build();
@@ -107,7 +109,7 @@ class MemberControllerTest {
 
     @Test
     void 이미_가입된_이메일이면_가입_요청은_409와_오류_코드를_반환한다() throws Exception {
-        when(memberService.signup(any(SignupDTO.class)))
+        when(memberSignupService.signup(any(SignupDTO.class)))
                 .thenThrow(new BusinessException(MemberErrorCode.EMAIL_DUPLICATED));
 
         mockMvc().perform(post("/api/v1/auth/signup")
@@ -171,7 +173,7 @@ class MemberControllerTest {
                 LocalDate.of(2026, 11, 9)
         );
 
-        when(memberService.signup(any(SignupDTO.class)))
+        when(memberSignupService.signup(any(SignupDTO.class)))
                 .thenReturn(SignupResultDTO.from(member));
 
         String request = """
