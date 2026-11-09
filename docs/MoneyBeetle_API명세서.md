@@ -1581,7 +1581,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-06 |
-| 설명 | 15개 분야와 소속 종목. |
+| 설명 | 15개 분야와 소속 종목. 사용 중인 분야를 정렬 순서대로, 분야마다 사용 중인 종목을 종목 번호 순으로 보여 준다(#24). |
 
 **Request**
 
@@ -1601,7 +1601,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-06, INV-10 |
-| 설명 | 현재 턴 가격과 등락률. sort=popular(인기) |
+| 설명 | 현재 턴 가격과 등락률. 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료 중 시작일이 가장 최근인 것) 기준이고 정산 중·종료에도 마지막 턴까지 계속 보여 주며(주문만 `SEASON_CLOSED`로 막힌다), 다음 턴 이후 가격은 미리 입력돼 있어도 나오지 않는다. 기본 정렬은 분야 정렬 순서 → 종목 번호, `sort=popular`(인기)는 이번 시즌 거래 수가 많은 순(같으면 종목 번호, 제안). `sectorId`, `keyword`(종목 이름 일부)로 거를 수 있다. 가격이 아직 입력되지 않은 종목은 `price`·`changeRate`가 null, 1턴은 `changeRate`가 null (#24) |
 
 **Request**
 
@@ -1613,6 +1613,8 @@ Header: Idempotency-Key: 7c1e...
 { "turnNo": 5, "stocks": [ { "stockId": 1, "name": "한빛반도체", "sectorName": "반도체", "price": 84500, "changeRate": 2.8 } ] }
 ```
 
+**Error**: `NO_RUNNING_SEASON`
+
 #### 57. 종목 상세
 
 | 항목 | 내용 |
@@ -1621,7 +1623,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-07 |
-| 설명 | 현재 가격, 지난 턴까지 가격 흐름, 기업정보, 내 보유 수량. |
+| 설명 | 현재 가격, 1턴부터 현재 턴까지 가격 흐름, 기업정보, 내 보유 수량. `myHolding`은 로그인 회원이 이 시즌에 참가하지 않았거나 그 종목이 없으면 null. 사용 안 함 종목은 `NOT_FOUND` (#24) |
 
 **Request**
 
@@ -1638,7 +1640,7 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `NOT_FOUND`
+**Error**: `NOT_FOUND`, `NO_RUNNING_SEASON`
 
 #### 58. 가상 뉴스
 
@@ -1648,7 +1650,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-08 |
-| 설명 | 현재 턴까지 공개된 뉴스. stockId로 종목 뉴스 탭. |
+| 설명 | 현재 턴까지 공개된 뉴스, 최근 턴부터. `turnNo`를 주면 그 턴만(현재 턴보다 뒤면 빈 목록), `stockId`를 주면 그 종목이 관련 종목으로 걸린 뉴스만(종목 뉴스 탭). 관리자 메모는 나오지 않는다 (#24) |
 
 **Request**
 
@@ -1659,6 +1661,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 { "items": [ { "newsId": 31, "turnNo": 5, "title": "한빛반도체, 대형 메모리 공급 계약", "content": "...", "sectors": ["반도체"], "stocks": ["한빛반도체"] } ] }
 ```
+
+**Error**: `NO_RUNNING_SEASON`
 
 #### 59. 매매 이유 선택지
 
@@ -2922,7 +2926,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-09, ADM-12, SP-50 |
-| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력을 자동 생성. copyFromSeasonId를 주면 이전 시즌의 분야·종목을 그대로 가져온다. |
+| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력(일요일 제외)을 자동 생성. 기본 설정은 이월 100%·상한 없음·해금 Lv.8(SP-63). copyFromSeasonId를 주면 그 시즌의 이월 비율·상한·해금 레벨을 그대로 가져온다(분야·종목은 시즌과 상관없이 공통이라 복사할 것이 없다). 없는 시즌이면 `NOT_FOUND`. 만든 관리자(`created_by`)는 로그인한 관리자 번호이고, 로그인 정보가 없으면 401 `UNAUTHORIZED` (#40) |
 
 **Request**
 
@@ -2937,7 +2941,7 @@ email=admin@moneybeetle.kr&password=...
 { "seasonId": 8, "turns": [ { "turnNo": 1, "tradeDate": "2026-11-16" } ] }
 ```
 
-**Error**: `START_DATE_NOT_MONDAY`
+**Error**: `START_DATE_NOT_MONDAY`, `NOT_FOUND`
 
 #### 116. 시즌 설정
 
@@ -2947,7 +2951,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-11 |
-| 설명 | 이월 비율·상한, 참가 해금 레벨. |
+| 설명 | 이월 비율(0~100%, 소수 둘째 자리까지)·상한(없으면 null), 참가 해금 레벨(1~20). 정산 중·종료된 시즌은 바꿀 수 없다. |
 
 **Request**
 
@@ -2959,6 +2963,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `SEASON_CLOSED`, `NOT_FOUND`
+
 #### 117. 시즌 상태 변경
 
 | 항목 | 내용 |
@@ -2967,7 +2973,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-10, SP-65 |
-| 설명 | READY → RUNNING → HOLIDAY → SETTLING → ENDED 순서로만. |
+| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING → ENDED 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. 그 밖의 변경과 거꾸로 가는 변경은 거절. |
 
 **Request**
 
@@ -3061,7 +3067,11 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (분야 목록)
+```json
+{ "items": [ { "sectorId": 1, "name": "반도체", "sortOrder": 1, "isActive": true } ] }
+```
+
+- 정렬 순서(sortOrder) → 번호 순. 사용 안 함(isActive=false) 분야도 포함한다.
 
 #### 122. 분야 등록
 
@@ -3085,6 +3095,8 @@ email=admin@moneybeetle.kr&password=...
 { "sectorId": 15 }
 ```
 
+**Error**: `SECTOR_DUPLICATED`
+
 #### 123. 분야 수정
 
 | 항목 | 내용 |
@@ -3097,12 +3109,16 @@ email=admin@moneybeetle.kr&password=...
 **Request**
 
 ```json
-{ "name": "핀테크", "isActive": true }
+{ "name": "핀테크", "isActive": true, "sortOrder": 15 }
 ```
 
 **Response**
 
 - 204 No Content
+
+- isActive·sortOrder는 줄 때만 바꾼다.
+
+**Error**: `SECTOR_DUPLICATED`, `NOT_FOUND`
 
 #### 124. 종목 목록
 
@@ -3120,7 +3136,11 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (종목 목록 + startPrice)
+```json
+{ "items": [ { "stockId": 1, "sectorId": 1, "sectorName": "반도체", "name": "한빛반도체", "startPrice": 76800, "intro": "...", "business": "...", "revenue": "1조 2,000억", "operatingProfit": "1,450억", "isActive": true } ] }
+```
+
+- 분야 정렬 순서 → 종목 번호 순.
 
 #### 125. 종목 등록
 
@@ -3130,7 +3150,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-17~18 |
-| 설명 | 이름, 분야, 시작 가격, 기업정보. |
+| 설명 | 이름, 분야, 시작 가격, 기업정보. 회사 소개(`intro`)는 16,000자 이하(DB `TEXT` 65,535바이트에 들어가게). |
 
 **Request**
 
@@ -3145,7 +3165,7 @@ email=admin@moneybeetle.kr&password=...
 { "stockId": 1 }
 ```
 
-**Error**: `STOCK_DUPLICATED`
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(그 분야에 사용 중 종목이 이미 2개), `NOT_FOUND`(없는 분야)
 
 #### 126. 종목·기업정보 수정
 
@@ -3164,6 +3184,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(사용 중 종목을 이미 2개인 분야로 옮길 때), `NOT_FOUND`
+
 #### 127. 턴별 가격표
 
 | 항목 | 내용 |
@@ -3172,7 +3194,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-19, ADM-22 |
-| 설명 | 종목(행) × 1~12턴(열). |
+| 설명 | 종목(행) × 1~12턴(열). 비어 있는 칸은 null. currentTurn 이하의 턴은 잠겨 있다(수정 불가). 종목 순서는 관리자 종목 목록(API 124)과 같다. |
 
 **Request**
 
@@ -3181,7 +3203,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "rows": [ { "stockId": 1, "stockName": "한빛반도체", "prices": [76800, 78900, 80100, 82200, 84500, null, null] } ] }
+{ "currentTurn": 5, "rows": [ { "stockId": 1, "stockName": "한빛반도체", "prices": [76800, 78900, 80100, 82200, 84500, null, null, null, null, null, null, null] } ] }
 ```
 
 #### 128. 턴별 가격 저장
@@ -3192,7 +3214,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-19~20, ADM-23~24, SP-60 |
-| 설명 | 가격 또는 변동률로 입력. 지난 턴은 수정 불가. ±30% 초과·0 이하는 warnings로 알려 주고 confirm=true면 저장. |
+| 설명 | 가격 또는 변동률(지난 턴 대비 %)로 입력. 변동률은 지난 턴 가격(없으면 시작 가격) × (1 + 변동률)을 50원 단위로 반올림해 가격으로 바꾼다. 현재 턴 이하(이미 지난 턴)는 수정 불가. 지난 턴보다 ±30%를 넘게 움직이면 warnings로 알려 주고, confirm=false면 저장하지 않고 `saved: 0`, confirm=true면 저장한다. 0원 이하는 DB가 받지 않으므로 경고가 아니라 거절. 저장할 때 변동률(change_rate)도 다시 계산한다. |
 
 **Request**
 
@@ -3206,7 +3228,7 @@ email=admin@moneybeetle.kr&password=...
 { "saved": 2, "warnings": [ { "stockId": 2, "turnNo": 6, "message": "한 턴에 ±30%를 넘는 변동이에요" } ] }
 ```
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_LOCKED`, `PRICE_NOT_POSITIVE`, `PRICE_OUT_OF_RANGE`(변동률로 계산한 가격이 너무 큼), `NOT_FOUND`
 
 #### 129. 가격표 CSV 내려받기
 
@@ -3216,7 +3238,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-21 |
-| 설명 | text/csv. |
+| 설명 | text/csv(UTF-8, 엑셀용 BOM). 제목 줄 `stockId,stockName,turn1,…,turn12`, 빈 칸은 가격 없음. 종목 이름에 쉼표·큰따옴표·줄바꿈이 있으면 큰따옴표로 감싸고(안쪽 `"`는 `""`, RFC 4180), `=` `+` `-` `@`로 시작하면 엑셀 수식으로 읽히지 않게 앞에 `'`를 붙인다. |
 
 **Request**
 
@@ -3234,7 +3256,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-21 |
-| 설명 | 형식 오류가 있으면 전체 취소, 오류 행 반환. |
+| 설명 | 내려받은 CSV와 같은 형식(큰따옴표로 감싼 칸은 RFC 4180 규칙으로 읽는다). 빈 칸은 그대로 두고 값이 있는 칸만 저장한다. 지난 턴 칸은 기존 값과 같으면 통과, 다르면 오류. 형식 오류(제목 줄, 칸 수, 없는 종목, 같은 종목 중복, 1 이상의 정수가 아닌 값)가 하나라도 있으면 전체 취소하고 오류 행을 돌려준다. ±30% 경고는 저장한 뒤 warnings로 알려 준다. |
 
 **Request**
 
@@ -3243,7 +3265,13 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "saved": 360 }
+{ "saved": 360, "warnings": [] }
+```
+
+오류(400)
+
+```json
+{ "success": false, "data": { "errors": [ { "line": 3, "message": "없는 종목 번호예요: 99" } ] }, "error": { "code": "CSV_INVALID", "message": "CSV 형식이 맞지 않는 행이 있어요" } }
 ```
 
 **Error**: `CSV_INVALID`
@@ -3256,7 +3284,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-25~26 |
-| 설명 | 턴별 뉴스(관리자 메모 포함). |
+| 설명 | 턴별 뉴스(관리자 메모 포함). `turnNo`를 빼면 시즌 전체를 턴 순서로 (#43) |
 
 **Request**
 
@@ -3264,7 +3292,12 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (뉴스 목록 + adminMemo)
+```json
+{ "items": [ { "newsId": 31, "turnNo": 6, "title": "...", "content": "...", "adminMemo": "다음 턴 상승 유도",
+  "sectors": [ { "id": 1, "name": "반도체" } ], "stocks": [ { "id": 1, "name": "한빛반도체" } ] } ] }
+```
+
+**Error**: `NOT_FOUND`(없는 시즌)
 
 #### 132. 뉴스 등록
 
@@ -3274,7 +3307,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-25~26 |
-| 설명 | 제목, 본문, 관련 분야·종목, 관리자 메모. |
+| 설명 | 제목(100자), 본문(16,000자), 관련 분야·종목(없으면 빈 목록), 관리자 메모(500자). 다음 턴 이후(`turnNo` > 현재 턴)에만 등록할 수 있다 (#43) |
 
 **Request**
 
@@ -3289,6 +3322,8 @@ email=admin@moneybeetle.kr&password=...
 { "newsId": 40 }
 ```
 
+**Error**: `PAST_TURN_NEWS_LOCKED`(현재 턴 이하), `NOT_FOUND`(없는 시즌·분야·종목)
+
 #### 133. 뉴스 수정
 
 | 항목 | 내용 |
@@ -3297,7 +3332,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-27, SP-60 |
-| 설명 | 지난 턴 뉴스는 오타 수정만(admin_log 기록). |
+| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
 
 **Request**
 
@@ -3307,7 +3342,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
 
 #### 134. 뉴스 삭제
 
@@ -3317,7 +3352,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `DELETE` |
 | 권한 | 관리자 |
 | 관련 | ADM-25 |
-| 설명 | 다음 턴 이후 뉴스만. |
+| 설명 | 다음 턴 이후 뉴스만. 관련 분야·종목도 함께 지운다 (#43) |
 
 **Request**
 
@@ -3327,7 +3362,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
 
 #### 135. 참가자 목록
 
@@ -3659,6 +3694,11 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
+| 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
+| 강사·관리자 | `STOCK_DUPLICATED` | 409 | 이미 있는 종목 이름이에요 |
+| 강사·관리자 | `STOCK_LIMIT_EXCEEDED` | 409 | 한 분야에는 종목을 2개까지 둘 수 있어요 |
+| 강사·관리자 | `START_DATE_NOT_MONDAY` | 400 | 시즌 시작일은 월요일이어야 해요 |
+| 강사·관리자 | `INVALID_STATUS_TRANSITION` | 409 | 지금 상태에서는 그 상태로 바꿀 수 없어요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
 | 모의 청약 | `ALREADY_APPLIED` | 409 | 신청 완료 |
 | 모의 청약 | `RECEIPT_NO_CONFLICT` | 409 | 신청이 몰려 접수하지 못했어요. 다시 신청해 주세요 |
@@ -3672,7 +3712,10 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
-| 강사·관리자 | `CSV_INVALID` | 400 | N행의 형식이 맞지 않아요 |
+| 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
+| 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |
+| 강사·관리자 | `PRICE_NOT_POSITIVE` | 400 | 가격은 1원 이상이어야 해요 |
+| 강사·관리자 | `PRICE_OUT_OF_RANGE` | 400 | 변동률이 너무 커서 가격을 계산할 수 없어요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
 

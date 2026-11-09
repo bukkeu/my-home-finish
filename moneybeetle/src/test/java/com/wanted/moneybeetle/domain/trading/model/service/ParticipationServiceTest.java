@@ -79,7 +79,7 @@ class ParticipationServiceTest {
         TradingSeason season = TradingSeason.create("시즌 7", MONDAY, new BigDecimal("100.00"), null, 1L);
         ReflectionTestUtils.setField(season, "tradingSeasonId", SEASON_ID);
         if (currentTurn > 0) {
-            season.start();
+            season.changeStatus(TradingSeason.STATUS_RUNNING);
             for (int i = 0; i < currentTurn; i++) {
                 season.advanceTurn();
             }
@@ -242,7 +242,7 @@ class ParticipationServiceTest {
     @Test
     void 정산_중인_시즌도_홈이_열리고_상태로_안내하며_참가는_마감() {
         TradingSeason season = season(12);
-        season.startSettling();
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
         givenTurns();
 
         TradingHomeDTO home = service.getHome(null);
