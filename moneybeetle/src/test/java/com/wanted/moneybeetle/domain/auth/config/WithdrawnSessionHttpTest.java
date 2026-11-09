@@ -110,6 +110,8 @@ class WithdrawnSessionHttpTest {
     @MockitoBean
     private com.wanted.moneybeetle.domain.member.model.service.MemberProfileService memberProfileService;
     @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberSignupService memberSignupService;
+    @MockitoBean
     private com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository memberTermsAgreementRepository;
     @MockitoBean
     private com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService forbiddenWordService;
