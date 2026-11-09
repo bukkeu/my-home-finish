@@ -78,7 +78,7 @@ public class Inquiry extends BaseTimeEntity {
     }
 
     /* 실제로 지우지 않고 삭제 일시만 기록한다 (DH-01) */
-    public void delete() {
-        this.deletedAt = LocalDateTime.now();
+    public void delete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

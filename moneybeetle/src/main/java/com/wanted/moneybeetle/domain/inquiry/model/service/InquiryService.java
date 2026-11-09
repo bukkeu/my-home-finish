@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +52,7 @@ public class InquiryService {
     private static final String ROLE_INSTRUCTOR = "INSTRUCTOR";
     private static final String ROLE_ADMIN = "ADMIN";
     private static final Long NO_COURSE = -1L;                          // 빈 IN () 방지
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");       // TODO: 공통 시계(Clock) Bean이 생기면 주입으로 교체
 
     private final InquiryRepository inquiryRepository;
     private final InquiryReplyRepository inquiryReplyRepository;
@@ -85,7 +87,7 @@ public class InquiryService {
         forbiddenWordService.check(request.title());
         forbiddenWordService.check(request.content());
 
-        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfToday = LocalDate.now(SEOUL).atStartOfDay();
         if (inquiryRepository.countByMemberIdAndCreatedAtGreaterThanEqual(memberId, startOfToday) >= DAILY_LIMIT) {
             throw new BusinessException(InquiryErrorCode.INQUIRY_DAILY_LIMIT);
         }
@@ -149,7 +151,7 @@ public class InquiryService {
         if (!admin && !inquiry.isWrittenBy(memberId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
-        inquiry.delete();
+        inquiry.delete(LocalDateTime.now(SEOUL));
     }
 
     /* API 52 답글 작성: 강사·관리자 답글이면 ANSWERED + 작성자에게 알림 */
