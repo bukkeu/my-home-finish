@@ -2384,9 +2384,8 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-03~04 |
-| 설명 | 상태별 강의 목록. |
+| 설명 | 상태별 강의 목록(삭제된 강의 제외). status=DRAFT·REVIEW·APPROVED·REJECTED, 없거나 모르는 값이면 전체. 검수 요청 최신순. 항목: courseId, title, instructorName, status, isPublic, submittedAt, learners(학습 시작 회원 수). 페이지 응답(PageResponse). |
 
-**Request**
 
 - Query: status=REVIEW&page=0&size=20
 
@@ -2404,9 +2403,8 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-03 |
-| 설명 | 영상·요약글·퀴즈(정답 포함)와 검수 이력. |
+| 설명 | 강의 편집 정보 + lessons[](영상·요약글, 순서대로) + quizzes[](테스트·본 퀴즈 전체, 보기별 isCorrect·해설 포함) + reviews[](검수 이력 최신순: result, reason, adminId, createdAt). 삭제된 강의는 NOT_FOUND. |
 
-**Request**
 
 - Path: courseId=9
 
@@ -2422,13 +2420,13 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 허가 + 공개. course_review·admin_log 기록. |
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
 
-**Request**
 
 - Path: courseId=9
 
 **Response**
+#### **Error**: `COURSE_NOT_IN_REVIEW`, `NOT_FOUND`
 
 ```json
 { "status": "APPROVED", "isPublic": true }
@@ -2442,8 +2440,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-| 설명 | 사유 필수. 강사에게 알림. |
-
+| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
@@ -2456,7 +2453,7 @@ Header: Idempotency-Key: 4d8e...
 { "status": "REJECTED" }
 ```
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `COURSE_NOT_IN_REVIEW`, `NOT_FOUND`
 
 #### 93. 공개·비공개
 
@@ -2466,9 +2463,8 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-04 |
-| 설명 | 허가된 강의를 비공개로 바꾸거나 다시 공개. |
+| 설명 | 허가(APPROVED)된 강의만 비공개로 바꾸거나 다시 공개. 허가 안 된 강의는 공개할 수 없음. |
 
-**Request**
 
 ```json
 { "isPublic": false }
@@ -2477,6 +2473,7 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 - 204 No Content
+**Error**: `COURSE_NOT_APPROVED`, `NOT_FOUND`
 
 #### 94. 강의 삭제
 
