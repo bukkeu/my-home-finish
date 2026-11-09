@@ -1,12 +1,16 @@
 package com.wanted.moneybeetle.domain.housing.controller;
 
-import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDTO;
-import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDetailDTO;
+import com.wanted.moneybeetle.domain.housing.model.dto.*;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
+import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.security.RequireLevel;
 import com.wanted.moneybeetle.global.security.UnlockFeature;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.YearMonth;
@@ -44,5 +48,25 @@ public class HousingController {
     //  지금은 null → 신청 여부는 모두 "안 함"으로 나온다
     private Long currentMemberId() {
         return null;
+    }
+
+    // API 65 내 청약통장 : GET /api/v1/housing/account   (레벨 조건 없음)
+    @GetMapping("/account")
+    public ApiResponse<AccountDTO> getAccount() {
+        return ApiResponse.success(housingService.getAccount(currentMemberId()));
+    }
+
+    // API 66 청약통장 납입 : POST /api/v1/housing/account/deposits   { "amount": 300000 }
+    @PostMapping("/account/deposits")                         // ① POST 요청 연결
+    @ResponseStatus(HttpStatus.CREATED)                    // 성공하면 201
+    public ApiResponse<DepositResultDTO> deposit(@RequestBody DepositRequestDTO request) {   // ② 요청 본문(JSON) 받기
+        return ApiResponse.success(housingService.deposit(currentMemberId(), request.getAmount()));   // ③ 금액 꺼내기
+    }
+
+    // API 67 납입 내역 : GET /api/v1/housing/account/deposits?page=0&size=20   (최신순)
+    @GetMapping("/account/deposits")
+    public ApiResponse<PageResponse<DepositDTO>> findDeposits(
+            @PageableDefault(size = 20, sort = "paidDate", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ApiResponse.success(housingService.findDeposits(currentMemberId(), pageable));
     }
 }

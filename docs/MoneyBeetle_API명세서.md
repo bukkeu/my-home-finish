@@ -412,7 +412,10 @@
 { "memberId": 1, "nickname": "민지" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `REQUIRED_TERMS_NOT_AGREED`, `AGE_UNDER_14`, `FORBIDDEN_WORD`
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`
+
+- `EMAIL_DUPLICATED`·`NICKNAME_DUPLICATED`는 두 요청이 동시에 같은 값으로 가입해 중복 확인을 함께 통과해도 DB 고유 제약(`uk_member_email`, `uk_member_nickname`)에서 걸러져 같은 409로 응답한다.
+- 청약통장 개설은 서수영의 `HousingService.openAccount` 연동 뒤에 붙는다(이슈 #5 남은 작업).
 
 #### 5. 본인인증
 
@@ -446,25 +449,37 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-06, DP-10~11, GRW-01 |
-| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 10분 잠금. |
+| 설명 | 성공하면 세션을 만들고 오늘 첫 접속이면 출석을 기록한다. 5회 연속 실패 시 1분 잠금(이후 5회 실패마다 5분). 로그인은 Spring Security 가 처리하는 **폼 로그인**이라 요청이 JSON 이 아니라 **폼 형식**(`application/x-www-form-urlencoded`)이다. 데이터를 바꾸는 POST 라서 CSRF 토큰(`_csrf` 폼 값 또는 헤더)도 함께 보낸다. 응답은 JSON 이다. |
 
 **Request**
 
-```json
-{ "email": "minji@gmail.com", "password": "beetle1234" }
 ```
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
+```
+
+- `email`은 대소문자·앞뒤 공백을 구분하지 않는다. `next`는 선택이고, 로그인 뒤 이동할 사이트 안 경로(`/`로 시작)만 받는다.
+- JSON 본문(`{"email": ...}`)은 읽지 않아 `LOGIN_FAILED` 로 응답한다.
 
 **Response**
 
 ```json
 {
   "memberId": 1, "nickname": "민지", "role": "MEMBER",
-  "attendance": { "checkedToday": true, "streak": 5, "rewardCash": 1000 },
   "redirectUrl": "/user/home"
 }
 ```
 
-**Error**: `LOGIN_FAILED`, `LOGIN_LOCKED`, `ACCOUNT_SUSPENDED`, `ACCOUNT_WITHDRAWN`
+- `role`은 실제로 부여된 권한이다. 회원 정보상 강사여도 관리자가 승인하기 전에는 `MEMBER` 로 로그인된다(SP-07).
+- `redirectUrl`: `next` → 로그인 전에 가려던 화면 → 역할별 첫 화면(`/user/home`, `/instructor/dashboard`, `/admin/dashboard`) 순이다.
+- `attendance`(`checkedToday`, `streak`, `rewardCash`)는 출석 서비스(#12)가 연결되면 응답에 더한다.
+
+**Error**: `LOGIN_FAILED`(401), `LOGIN_LOCKED`(423), `ACCOUNT_SUSPENDED`(403), `ACCOUNT_WITHDRAWN`(403)
+
+- 없는 이메일과 틀린 비밀번호는 같은 `LOGIN_FAILED` 로 응답한다. 계정이 있는지 알려 주지 않기 위해서다.
+- 비밀번호가 틀린 경우만 실패 횟수를 올리고, 5번째 실패 응답부터 `LOGIN_LOCKED` 이다. 잠금·정지·탈퇴는 비밀번호보다 먼저 확인한다.
 
 #### 7. 로그아웃
 
@@ -474,15 +489,16 @@
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | USR-06 |
-| 설명 | 세션을 끝낸다. |
+| 설명 | 세션을 끝낸다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
 
 **Request**
 
-- 없음
+- 없음 (`Accept: application/json` 으로 보내는 `fetch` 요청)
 
 **Response**
 
 - 204 No Content
+- 브라우저가 직접 보낸 폼 요청(사이드바 로그아웃 버튼)은 204 대신 첫 화면(`/`)으로 이동한다.
 
 #### 8. 간편 로그인 시작
 
@@ -1314,7 +1330,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-06, SP-36 |
-| 설명 | 카테고리·강의별로 모아 본다. |
+| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. |
 
 **Request**
 
@@ -1325,7 +1341,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 {
   "items": [ { "wrongNoteId": 9, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "categoryName": "부동산 › 청약",
-    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" } ]
+    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" }   ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1
 }
 ```
 
@@ -1337,8 +1354,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-06 |
-| 설명 | 오답노트 문제만 다시 풀고 채점 결과를 본다. 기록·보상 없음. |
-
+| 설명 | 오답노트 문제만 다시 풀고 채점 결과를 본다. 기록·보상 없음. 요청한 문항 중 내 오답노트에 있고 공개된 강의의 문제만 채점한다. |
 **Request**
 
 ```json
@@ -1359,8 +1375,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | SP-36 |
-| 설명 | 오답노트에서 지운다(실제 삭제). |
-
+| 설명 | 오답노트에서 지운다(실제 삭제). 본인 오답만 지워지며, 없거나 남의 ID여도 204(존재 여부를 알리지 않음). |
 **Request**
 
 - Path: wrongNoteId=9
@@ -1808,7 +1823,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-04, SP-70 |
-| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부, 납입 한도(1회 20,000~500,000, 하루 인정 250,000. SP-70 초안). (Lv.12 전 납입 허용 여부는 팀 확인 필요) |
+| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부(`paidToday`, 오늘 = Asia/Seoul), 납입 기준(1회 20,000~500,000, 하루 인정 250,000. SP-70 확정 #76), 내 캐시. **레벨 조건 없음**(가입과 동시에 통장 개설, #28). |
 
 **Request**
 
@@ -1820,6 +1835,8 @@ Header: Idempotency-Key: 9b2f...
 { "accountId": 1, "balance": 1840000, "recognizedAmount": 1590000, "paidCount": 14, "lastPaidDate": "2026-11-04", "paidToday": false,
   "depositPolicy": { "minAmount": 20000, "maxAmount": 500000, "dailyRecognizedLimit": 250000 }, "cash": 1250000 }
 ```
+
+**Error**: `NOT_FOUND`(통장 없음 : 가입 때 만들어지므로 보통 생기지 않음)
 
 #### 66. 청약통장 납입
 
@@ -1845,7 +1862,10 @@ Header: Idempotency-Key: 31aa...
 { "depositId": 15, "amount": 300000, "recognizedAmount": 250000, "balance": 2140000, "totalRecognizedAmount": 1840000, "paidCount": 15, "cash": 950000 }
 ```
 
-**Error**: `ALREADY_PAID_TODAY`, `DEPOSIT_BELOW_MIN`, `DEPOSIT_ABOVE_MAX`, `NOT_ENOUGH_CASH`
+**Error**: `ALREADY_PAID_TODAY`(409), `DEPOSIT_BELOW_MIN`(400), `DEPOSIT_ABOVE_MAX`(400), `NOT_ENOUGH_CASH`(캐시 차감 RewardService 가 던짐), `NOT_FOUND`(통장 없음)
+
+- 처리 순서: 금액 검사 → 통장 잠금 조회(동시 요청 방지) → 하루 1회 확인 → 납입 내역 저장 → 캐시 차감 → 통장 잔액·인정금액·회차·마지막 납입일 반영. 하나라도 실패하면 모두 취소된다.
+- `Idempotency-Key` 헤더 처리는 #65(IdempotencyFilter)에서 붙인다.
 
 #### 67. 납입 내역
 
@@ -1855,7 +1875,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-05 |
-| 설명 | 납입 기록 최신순. |
+| 설명 | 납입 기록. 기본 20개씩 납입일 최신순(`sort=paidDate,desc`). 목록 응답 형식(1-3)을 따른다. |
 
 **Request**
 
@@ -1864,7 +1884,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ] }
+{ "items": [ { "depositId": 15, "paidDate": "2026-11-05", "amount": 300000, "recognizedAmount": 250000, "paidCountAfter": 15 } ], "page": 0, "size": 20, "totalElements": 15, "totalPages": 1 }
 ```
 
 #### 68. 가점 계산기
@@ -3610,7 +3630,7 @@ Header: Idempotency-Key: 4d8e...
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
-| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 10분 뒤에 다시 시도해 주세요 |
+| 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `ACCOUNT_SUSPENDED` | 403 | 이용이 제한된 계정이에요 |
 | 회원 | `ACCOUNT_WITHDRAWN` | 403 | 탈퇴한 계정이에요 |
 | 회원 | `EMAIL_DUPLICATED` | 409 | 이미 가입된 이메일이에요 |

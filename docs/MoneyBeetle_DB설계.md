@@ -16,6 +16,7 @@
   - **구조 변경**(컬럼·제약·기본값): `sql/migration/`에 `ALTER` 파일을 추가하고(기존 DB용), 새 DB용으로 `schema.sql`에도 같은 변경을 반영합니다. 둘 다 DBA가 같은 PR에서 고칩니다.
   - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
   - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
+- **모의투자 시드**(#72): 분야 15개, 종목 30개(기업정보 포함), 매매 이유 6개, 시즌 1개(시즌 7, 12턴 중 현재 5턴, 이월 100%·상한 없음), 턴 12개, 가격 360행(12턴 전부), 뉴스 25개와 태그. 6~12턴 가격은 미래 턴이라 조회 API(#24)는 현재 턴까지만 보여 준다. 날짜는 고정값이라 현재 턴은 `current_turn`으로만 판단한다. 참가자·보유·거래 내역은 넣지 않는다.
 
 ---
 
@@ -259,8 +260,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `cash` | BIGINT | N | CHECK >= 0 | 0 | 보유 캐시. 0 미만 불가 |
 | `attendance_streak` | INT | N | - | 0 | 현재 연속 출석 일수 |
 | `last_attended_date` | DATE | Y | - | - | 마지막 출석일 (KST) |
-| `failed_login_count` | TINYINT | N | - | 0 | 연속 로그인 실패 횟수 |
-| `locked_until` | DATETIME | Y | - | - | 로그인 잠금 해제 시각 (5회 실패 시 +10분) |
+| `failed_login_count` | INT | N | - | 0 | 연속 로그인 실패 횟수 (로그인에 성공할 때만 0 으로 초기화, 5회마다 잠금) |
+| `locked_until` | DATETIME | Y | - | - | 로그인 잠금 해제 시각 (5회 실패 시 +1분, 이후 5회마다 +5분) |
 | `last_login_at` | DATETIME | Y | - | - | 마지막 로그인 |
 | `withdrawn_at` | DATETIME | Y | - | - | 탈퇴 일시 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -939,7 +940,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `subscription_account_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 통장 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE | - | 회원 (1:1) |
 | `balance` | BIGINT | N | - | 0 | 통장 잔액 (납입액 전액) |
-| `recognized_amount` | BIGINT | N | - | 0 | 누적 인정금액 (납입 1회당 최대 250,000, SP-70 초안) |
+| `recognized_amount` | BIGINT | N | - | 0 | 누적 인정금액 (각 납입의 `subscription_deposit.recognized_amount` 합, 하루 인정 한도 250,000, SP-70 확정 #76) |
 | `paid_count` | INT | N | - | 0 | 납입회차 |
 | `last_paid_date` | DATE | Y | - | - | 마지막 납입일 (KST) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -956,10 +957,12 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `subscription_deposit_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 납입 ID |
 | `subscription_account_id` | BIGINT | N | FK → subscription_account.subscription_account_id, UNIQUE(subscription_account_id, paid_date) | - | 통장 |
 | `paid_date` | DATE | N | UNIQUE(subscription_account_id, paid_date) | - | 납입일 (KST) |
-| `amount` | INT | N | - | - | 납입 캐시 (1회 20,000~500,000, SP-70 초안) |
-| `recognized_amount` | INT | N | - | - | 이번 납입의 인정금액 = min(amount, 250,000) |
+| `amount` | INT | N | - | - | 납입 캐시 (1회 20,000~500,000, SP-70 확정 #76) |
+| `recognized_amount` | INT | N | - | - | 이번 납입의 인정금액 = min(amount, 250,000) (SP-70 확정 #76) |
 | `paid_count_after` | INT | N | - | - | 납입 후 회차 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
+
+**이미 DB를 만든 경우**: `sql/migration/2026-11-09_subscription_recognized_amount.sql`을 실행한다. 두 테이블에 `recognized_amount`를 추가하고, 기존 납입 내역은 `min(amount, 250000)`으로 채우며, `subscription_account.recognized_amount`는 그 합으로 맞춘다(여러 번 실행해도 결과가 같다). 새로 만드는 DB는 `schema.sql`에 이미 반영되어 있다.
 
 #### 43. `housing_complex` 청약 단지·공고
 
@@ -1133,7 +1136,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- |
 | 사이트 문의 게시판 | `inquiry.course_id`가 NULL이면 사이트 문의로 처리 (페이지의 문의하기 게시판) | 강의 문의와 사이트 문의를 한 테이블로 둘지 나눌지 |
 | 강사 가입 방식 | `instructor_profile.approval_status` PENDING → 관리자 승인 (페이지의 강사 회원가입 반영) | 직접 가입 신청 허용 여부 |
-| 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 초안, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
+| 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 확정, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
 | 청약 결과 | `result` WIN/LOSE (정책 SP-75). 페이지 목업에는 예비(RESERVE) 있음 | 예비 당첨 여부 |
 | 시즌 참가 캐시 차감 | `season_participant.saved_cash` 기록, 차감 시 `cash_history`에 SEASON_JOIN | 참가 때 캐시 차감 여부 |
 | 이월 상한 | `trading_season.carryover_cap` NULL 허용 | 상한 금액 |
