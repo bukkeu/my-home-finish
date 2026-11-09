@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.global.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -169,11 +170,9 @@ class IdempotencyFilterTest {
             throw new IllegalStateException("처리 실패");
         };
 
-        try {
-            send(request("minji", "k-1", BUY_BODY), broken);
-        } catch (IllegalStateException expected) {
-            // 예외는 그대로 위로 전달된다
-        }
+        // 예외는 삼키지 않고 그대로 위로 전달된다
+        assertThatThrownBy(() -> send(request("minji", "k-1", BUY_BODY), broken))
+                .isInstanceOf(IllegalStateException.class);
 
         assertThat(store.find("minji POST " + ORDER_PATH + " k-1")).isEmpty();
     }
@@ -184,11 +183,9 @@ class IdempotencyFilterTest {
             throw new StackOverflowError("처리 실패");
         };
 
-        try {
-            send(request("minji", "k-1", BUY_BODY), broken);
-        } catch (StackOverflowError expected) {
-            // Error 도 그대로 위로 전달된다
-        }
+        // Error 도 삼키지 않고 그대로 위로 전달된다
+        assertThatThrownBy(() -> send(request("minji", "k-1", BUY_BODY), broken))
+                .isInstanceOf(StackOverflowError.class);
 
         assertThat(store.find("minji POST " + ORDER_PATH + " k-1")).isEmpty();
     }
