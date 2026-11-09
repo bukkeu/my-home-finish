@@ -92,6 +92,10 @@ class MemberSignupServiceTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    /** #171(레벨업 해금 알림)이 병합되면 RewardService 가 알림 서비스를 쓴다. 이 테스트는 알림을 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.notification.model.service.NotificationService notificationService;
+
     @MockitoBean
     private MemberRepository memberRepository;
     @MockitoBean

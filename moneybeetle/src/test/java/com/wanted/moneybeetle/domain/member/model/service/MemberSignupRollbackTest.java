@@ -31,6 +31,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
@@ -87,6 +88,10 @@ class MemberSignupRollbackTest {
             return Clock.system(ZoneId.of("Asia/Seoul"));
         }
     }
+
+    /** #171(레벨업 해금 알림)이 병합되면 RewardService 가 알림 서비스를 쓴다. 이 테스트는 알림을 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.notification.model.service.NotificationService notificationService;
 
     @Autowired
     private MemberSignupService signupService;
