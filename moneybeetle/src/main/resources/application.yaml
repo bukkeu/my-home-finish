@@ -55,6 +55,36 @@ app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
   mail-from: ${MAIL_FROM:no-reply@moneybeetle.local}
 
+# 서버 상태 확인 (#84, 시스템 설계 "모니터링") : health·info 만 웹으로 연다. 나머지(env, beans, …)는 열지 않는다
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never              # DB·디스크 같은 내부 정보는 보여 주지 않고 UP/DOWN 만
+  health:
+    mail:
+      enabled: false                   # 메일(비밀번호 재설정)은 로컬에 메일 도구가 없어도 서버는 정상이라 상태 확인에서 뺀다. DB 는 확인한다
+  info:
+    env:
+      enabled: true                    # 아래 info.* 값을 /actuator/info 로 보여 준다
+info:
+  app:
+    name: moneybeetle
+    description: 경제 학습 + 모의투자 + 모의 청약 (로컬 발표용)
+
+# 로그 (#84) : 요청마다 요청 ID(requestId)를 붙인다 (RequestLogFilter, 시스템 설계 "로그", EP-05)
+#  - 비밀번호·세션 ID·토큰은 남기지 않는다 : 요청 로그는 주소의 경로만 남기고(?token= 같은 쿼리는 뺀다),
+#    요청 본문·파라미터 값은 로그에 쓰지 않는다. Hibernate 바인딩 값(TRACE)·spring.mvc.log-request-details 는 켜지 않는다
+logging:
+  pattern:
+    correlation: "[%X{requestId:-}] "   # 콘솔 한 줄마다 [요청 ID]
+  level:
+    root: INFO
+    com.wanted.moneybeetle: INFO
+
 ---
 # local 프로필 (각자 노트북·발표 노트북). .env 의 SPRING_PROFILES_ACTIVE=local 이면 켜진다 (#114, 환경변수 문서 4)
 spring:
@@ -66,3 +96,16 @@ spring:
     properties:
       hibernate:
         format_sql: true
+# local 로그 (#84) : 우리 코드는 DEBUG 까지, 파일은 logs/moneybeetle.log 에 JSON 한 줄씩(요청 ID·회원 ID 포함), 7일 보관
+logging:
+  level:
+    com.wanted.moneybeetle: DEBUG
+  file:
+    name: logs/moneybeetle.log
+  structured:
+    format:
+      file: logstash
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
