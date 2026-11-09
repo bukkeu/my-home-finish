@@ -1,0 +1,97 @@
+package com.wanted.moneybeetle.domain.member.model.service;
+
+import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
+import com.wanted.moneybeetle.domain.growth.model.service.LevelTable;
+import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
+import com.wanted.moneybeetle.global.exception.BusinessException;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import com.wanted.moneybeetle.global.file.FileStorageService;
+import java.io.IOException;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+/* comment.
+*   담당 : DBA ② (회원·인증)
+*   내 정보·공개 프로필·프로필 이미지 (이슈 #7, API 13·15·18)
+*   - 레벨 칭호·다음 레벨까지 경험치는 growth.GrowthService, 학습 수는 course.CourseService 를 거쳐 받는다 (다른 도메인 Repository 는 쓰지 않는다).
+*   - growth.GrowthService 가 MemberService 를 쓰므로, MemberService 가 growth 를 부르면 서로 물려 버린다.
+*     그래서 여러 도메인 값을 모으는 일은 MemberService 가 아니라 이 클래스가 맡는다.
+*   - 트랜잭션은 부르는 Service 메서드가 각각 연다. 이 클래스는 읽기와 파일 저장만 한다.
+*  */
+@Service
+@RequiredArgsConstructor
+public class MemberProfileService {
+
+    /** 연속 출석 캐시가 시작되는 연속 일수 (SP-12) */
+    static final int STREAK_REWARD_DAYS = 5;
+
+    private final MemberService memberService;
+    private final GrowthService growthService;
+    private final CourseService courseService;
+    private final FileStorageService fileStorageService;
+
+    /** 내 정보 (API 13) */
+    public MyInfoDTO getMyInfo(Long memberId) {
+        MemberProfileDTO profile = memberService.getProfile(memberId);
+        LevelTable levelTable = growthService.loadLevelTable();
+        int level = profile.level();
+
+        // 최대 레벨이면 남은 경험치가 없다
+        int expToNextLevel = level >= levelTable.maxLevel()
+                ? 0
+                : Math.max(0, levelTable.policyOf(level + 1).getRequiredExp() - profile.exp());
+
+        long watchedLessons = courseService.findWatchHistories(memberId, PageRequest.of(0, 1)).getTotalElements();
+        long completedCourses = courseService.findCompletedCourses(memberId, PageRequest.of(0, 1)).getTotalElements();
+
+        return new MyInfoDTO(
+                profile.memberId(), profile.email(), profile.nickname(), profile.profileImageUrl(),
+                profile.birthDate(), profile.gender(), profile.role(),
+                level, levelTable.titleOf(level), profile.exp(), expToNextLevel, profile.cash(),
+                new MyInfoDTO.Attendance(profile.attendanceStreak(), daysToReward(profile.attendanceStreak())),
+                new MyInfoDTO.Learning(watchedLessons, completedCourses),
+                new MyInfoDTO.Unlocks(level >= UnlockRules.TRADING_LEVEL, level >= UnlockRules.HOUSING_LEVEL,
+                        UnlockRules.HOUSING_LEVEL));
+    }
+
+    /** 다른 회원 공개 프로필 (API 18). 개인정보는 담지 않는다 */
+    public PublicProfileDTO getPublicProfile(Long memberId) {
+        MemberProfileDTO profile = memberService.getActiveProfile(memberId);
+        String title = growthService.loadLevelTable().titleOf(profile.level());
+
+        // TODO(trading 의 수상 내역 조회 메서드가 공개되면 연결): 지금은 빈 목록
+        return new PublicProfileDTO(profile.memberId(), profile.nickname(), profile.profileImageUrl(),
+                profile.level(), title, List.of());
+    }
+
+    /**
+     * 프로필 이미지 변경 (API 15). 2MB 이하 jpg·png 검사는 FileStorageService 가 하고, 맞지 않으면 FILE_TOO_LARGE·FILE_TYPE_NOT_ALLOWED 다.
+     * 회원이 있는지 먼저 확인해서, 없는 회원 때문에 파일만 남지 않게 한다.
+     */
+    public ProfileImageDTO changeProfileImage(Long memberId, MultipartFile file) {
+        memberService.getProfile(memberId);
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(CommonErrorCode.FILE_TYPE_NOT_ALLOWED);
+        }
+        String url;
+        try {
+            url = fileStorageService.saveImage(file);
+        } catch (IOException e) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_ERROR);
+        }
+        return memberService.changeProfileImageUrl(memberId, url);
+    }
+
+    /** 연속 출석 캐시(연속 5일째부터)까지 남은 일수. 이미 5일 이상이면 0 */
+    static int daysToReward(int streak) {
+        return Math.max(0, STREAK_REWARD_DAYS - streak);
+    }
+}

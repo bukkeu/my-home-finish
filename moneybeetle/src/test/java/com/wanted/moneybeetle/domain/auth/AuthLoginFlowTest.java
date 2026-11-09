@@ -106,7 +106,7 @@ class AuthLoginFlowTest {
         LoginAuthenticationProvider provider = new LoginAuthenticationProvider(authService, encoder, txManager);
         authenticationManager = new ProviderManager(provider);
         failHandler = new AuthFailHandler(objectMapper);
-        successHandler = new AuthSuccessHandler(objectMapper);
+        successHandler = new AuthSuccessHandler(objectMapper, mock(com.wanted.moneybeetle.domain.growth.model.service.AttendanceService.class));
     }
 
     private void givenMember(String role, String status) {

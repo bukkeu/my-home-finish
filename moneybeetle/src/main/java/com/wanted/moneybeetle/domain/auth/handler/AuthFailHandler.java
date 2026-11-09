@@ -1,7 +1,10 @@
 package com.wanted.moneybeetle.domain.auth.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wanted.moneybeetle.domain.auth.exception.AdminOnlyException;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import com.wanted.moneybeetle.global.exception.ErrorCode;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Component;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   로그인 실패 응답 (API 6, 이슈 #6)
+*   - 관리자 로그인 주소에 관리자가 아닌 계정이 들어오면 403 FORBIDDEN (#33)
 *   - 잠금(423 LOGIN_LOCKED)·정지(403)·탈퇴(403)·이메일 또는 비밀번호 오류(401 LOGIN_FAILED)를 ApiResponse JSON 으로 응답한다
 *   - 실패 횟수 기록과 잠금(5회 실패 시 1분, 이후 5회마다 5분, DP-10)은 여기서 하지 않는다. 인증 제공자
 *     (LoginAuthenticationProvider)가 회원 행 잠금 트랜잭션 안에서 이미 끝냈고, 이 핸들러는 그 결과를 응답으로 바꾸기만 한다
@@ -35,7 +39,7 @@ public class AuthFailHandler implements AuthenticationFailureHandler {
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException {
-        MemberErrorCode errorCode = resolve(exception);
+        ErrorCode errorCode = resolve(exception);
 
         response.setStatus(errorCode.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -43,9 +47,12 @@ public class AuthFailHandler implements AuthenticationFailureHandler {
         objectMapper.writeValue(response.getWriter(), ApiResponse.fail(errorCode));
     }
 
-    private MemberErrorCode resolve(AuthenticationException exception) {
+    private ErrorCode resolve(AuthenticationException exception) {
         Throwable cause = exception;
         while (cause != null) {
+            if (cause instanceof AdminOnlyException) {
+                return CommonErrorCode.FORBIDDEN;   // 관리자 로그인 주소에 관리자가 아닌 계정 (API 83)
+            }
             if (cause instanceof LockedException) {
                 return MemberErrorCode.LOGIN_LOCKED;
             }

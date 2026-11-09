@@ -100,6 +100,56 @@ class MemberEntityTest {
     }
 
     @Test
+    @DisplayName("출석: 처음은 1일, 어제도 출석했으면 +1, 하루라도 빠지면 1일부터 다시, 같은 날 두 번째는 기록하지 않는다 (SP-10~11)")
+    void checkAttendance() {
+        Member m = Member.signup("a@b.com", "hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
+        LocalDate day1 = LocalDate.of(2026, 11, 9);
+
+        assertThat(m.checkAttendance(day1)).isTrue();
+        assertThat(m.getAttendanceStreak()).isEqualTo(1);
+        assertThat(m.hasAttended(day1)).isTrue();
+
+        assertThat(m.checkAttendance(day1)).isFalse();             // 같은 날
+        assertThat(m.getAttendanceStreak()).isEqualTo(1);
+
+        assertThat(m.checkAttendance(day1.plusDays(1))).isTrue();  // 이어서
+        assertThat(m.checkAttendance(day1.plusDays(2))).isTrue();
+        assertThat(m.getAttendanceStreak()).isEqualTo(3);
+
+        assertThat(m.checkAttendance(day1.plusDays(4))).isTrue();  // 하루 빠짐 (3일차 다음 날 건너뜀)
+        assertThat(m.getAttendanceStreak()).isEqualTo(1);
+        assertThat(m.getLastAttendedDate()).isEqualTo(day1.plusDays(4));
+    }
+
+    @Test
+    @DisplayName("출석: 이미 기록된 날짜보다 이전·같은 날짜는 값을 바꾸지 않는다 (기기 시간 이상 방어)")
+    void checkAttendanceIgnoresPastDates() {
+        Member m = Member.signup("a@b.com", "hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
+        m.checkAttendance(LocalDate.of(2026, 11, 9));
+        m.checkAttendance(LocalDate.of(2026, 11, 10));
+
+        assertThat(m.checkAttendance(LocalDate.of(2026, 11, 8))).isFalse();
+        assertThat(m.getAttendanceStreak()).isEqualTo(2);
+        assertThat(m.getLastAttendedDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+        assertThatThrownBy(() -> m.checkAttendance(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("현재 연속 일수: 오늘이나 어제 출석했으면 저장된 값, 그보다 오래됐거나 출석한 적이 없으면 0")
+    void currentStreak() {
+        Member m = Member.signup("a@b.com", "hash", "민지", LocalDate.of(1999, 4, 12), null, TODAY);
+        assertThat(m.currentStreak(LocalDate.of(2026, 11, 9))).isZero();
+        assertThat(m.hasAttended(LocalDate.of(2026, 11, 9))).isFalse();
+
+        m.checkAttendance(LocalDate.of(2026, 11, 9));
+        m.checkAttendance(LocalDate.of(2026, 11, 10));
+
+        assertThat(m.currentStreak(LocalDate.of(2026, 11, 10))).isEqualTo(2);   // 오늘 출석
+        assertThat(m.currentStreak(LocalDate.of(2026, 11, 11))).isEqualTo(2);   // 어제 출석, 오늘은 아직
+        assertThat(m.currentStreak(LocalDate.of(2026, 11, 12))).isZero();       // 하루 빠져서 끊김
+    }
+
+    @Test
     @DisplayName("약관은 이름·본문이 있어야 하고, 동의 기록은 회원·약관이 있어야 한다")
     void termsAndAgreement() {
         Terms t = Terms.create("서비스 이용약관", "본문", true, "1.0", LocalDateTime.of(2026, 11, 1, 0, 0));
