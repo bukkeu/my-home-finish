@@ -34,4 +34,9 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from PasswordResetToken t where t.tokenHash = :tokenHash and t.usedAt is null")
     int deleteUnusedByTokenHash(@Param("tokenHash") String tokenHash);
+
+    /** 이미 만료된 토큰을 지운다 (예약 작업, #66). 사용한 토큰도 10분이면 만료되므로 다음 실행에 함께 지워진다 */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from PasswordResetToken t where t.expiresAt < :now")
+    int deleteExpired(@Param("now") LocalDateTime now);
 }

@@ -67,6 +67,12 @@ public class AccountService {
                 });
     }
 
+    /** 만료된 재설정 토큰을 지운다 (예약 작업 MemberCleanupJob 전용, #66, DP-12). 지운 개수를 돌려준다 */
+    @Transactional
+    public int deleteExpiredPasswordResetTokens(LocalDateTime now) {
+        return passwordResetTokenRepository.deleteExpired(now);
+    }
+
     /** 새 토큰의 메일이 발송 대기열에 들어간 뒤 부른다. 이 회원의 쓰지 않은 이전 토큰을 쓸 수 없게 한다 (새 토큰은 남긴다) */
     @Transactional
     public void invalidateOtherPasswordResetTokens(String tokenHash) {
