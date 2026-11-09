@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,4 +45,21 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
 
     /* 학습 기록이 하나라도 있는지 (홈 vr1/vr2 분기) */
     boolean existsByMemberId(Long memberId);
+
+    /* 강의 삭제 가능 여부 (SP-32): 한 명이라도 학습 기록이 있으면 삭제 불가 */
+    boolean existsByCourseId(Long courseId);
+
+    /* 관리자 강의 목록의 수강생 수. 강의 여러 개를 한 번에 세서 N+1을 막는다 */
+    @Query("""
+            select lp.courseId as courseId, count(lp) as learners
+            from LearningProgress lp
+            where lp.courseId in :courseIds
+            group by lp.courseId
+            """)
+    List<CourseLearnerCount> countLearnersByCourseIds(@Param("courseIds") Collection<Long> courseIds);
+
+    interface CourseLearnerCount {
+        Long getCourseId();
+        long getLearners();
+    }
 }
