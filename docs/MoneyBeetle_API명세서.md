@@ -468,13 +468,14 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "memberId": 1, "nickname": "민지", "role": "MEMBER",
-  "redirectUrl": "/user/home"
+  "redirectUrl": "/user/home",
+  "attendance": { "checkedToday": true, "newlyChecked": true, "streak": 5, "rewardCash": 10000 }
 }
 ```
 
 - `role`은 실제로 부여된 권한이다. 회원 정보상 강사여도 관리자가 승인하기 전에는 `MEMBER` 로 로그인된다(SP-07).
 - `redirectUrl`: `next` → 로그인 전에 가려던 화면 → 역할별 첫 화면(`/user/home`, `/instructor/dashboard`, `/admin/dashboard`) 순이다.
-- `attendance`(`checkedToday`, `streak`, `rewardCash`)는 출석 서비스(#12)가 연결되면 응답에 더한다.
+- `attendance`는 일반 회원(`MEMBER`)이 로그인할 때 오늘 출석을 기록한 결과다. `newlyChecked`는 오늘 처음 기록했는지, `rewardCash`는 이번 출석으로 받은 캐시(연속 5일째부터, 이미 출석했거나 보상 규칙이 꺼져 있으면 0)다. 강사·관리자 로그인이거나 출석 기록이 실패하면 `null` 이고, 출석이 실패해도 로그인은 성공한다.
 
 **Error**: `LOGIN_FAILED`(401), `LOGIN_LOCKED`(423), `ACCOUNT_SUSPENDED`(403), `ACCOUNT_WITHDRAWN`(403)
 
@@ -824,7 +825,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 **Response**
 
 ```json
-{ "streak": 3, "daysToReward": 2, "rewardCash": 1000, "checkedToday": true }
+{ "streak": 3, "daysToReward": 2, "rewardCash": 10000, "checkedToday": true }
 ```
 
 #### 22. 캐시 내역

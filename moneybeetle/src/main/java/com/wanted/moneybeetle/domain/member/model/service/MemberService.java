@@ -6,6 +6,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
@@ -45,8 +46,9 @@ import java.util.stream.Collectors;
 *   담당 : DBA ② (회원·인증)
 *   회원가입, 약관 조회, 이메일·닉네임 중복 확인 (이슈 #5). 이어서 내 정보·설정(#7), 비밀번호 변경·탈퇴(#8)를 맡는다.
 *   다른 도메인에 제공하는 메서드 : getBalance / lockBalance / addReward / deductCash (growth.RewardService 전용, #10 2차),
+*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6),
+*   recordAttendance / getAttendance (growth.AttendanceService 전용, #12).
 *   findNicknames (회원 ID 여러 개 -> 닉네임, 문의 게시판 등, #145).
-*   findLoginMemberForUpdate / recordLoginFailure / recordLoginSuccess (auth.AuthService 전용, #6).
 *   회원의 캐시·경험치는 이 메서드를 통해서만 바뀐다 (다른 도메인은 Member Entity·Repository 를 쓰지 않는다).
 *
 *   진행 상태 (이슈 #5)
@@ -109,6 +111,24 @@ public class MemberService {
         Member member = getMemberForUpdate(memberId);
         member.spendCash(amount);
         return MemberBalanceDTO.from(member);
+    }
+
+    /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 용). 회원 행을 잠가서 같은 사람이 동시에 두 번 불러도 하루 한 번만 기록된다.
+     * 이미 오늘 출석했으면 값을 바꾸지 않고 newlyChecked = false 로 돌려준다.
+     */
+    @Transactional
+    public MemberAttendanceDTO recordAttendance(Long memberId, LocalDate today) {
+        Member member = getMemberForUpdate(memberId);
+        boolean newlyChecked = member.checkAttendance(today);
+        return MemberAttendanceDTO.of(member, newlyChecked, today);
+    }
+
+    /** 오늘 기준 출석 상태를 읽기만 한다 (growth.AttendanceService 용, API 21) */
+    public MemberAttendanceDTO getAttendance(Long memberId, LocalDate today) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+        return MemberAttendanceDTO.of(member, false, today);
     }
 
     /**
