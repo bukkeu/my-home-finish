@@ -25,6 +25,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -142,6 +143,9 @@ public class TermService {
             termScheduleRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(CommonErrorCode.DUPLICATE_REQUEST);   // 다른 관리자가 같은 날짜를 동시에 지정했다
+        } catch (PessimisticLockingFailureException e) {
+            // 잠금 충돌·데드락으로 DB 가 이 요청을 되돌렸다. 다른 요청이 성공했다는 뜻이 아니므로 DUPLICATE_REQUEST 와 구분해서 다시 시도하게 한다
+            throw new BusinessException(TermErrorCode.SCHEDULE_CONFLICT);
         }
     }
 

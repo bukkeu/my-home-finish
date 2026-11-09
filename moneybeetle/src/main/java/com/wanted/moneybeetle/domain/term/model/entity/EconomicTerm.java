@@ -1,17 +1,15 @@
 package com.wanted.moneybeetle.domain.term.model.entity;
 
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 /* comment.
 *   담당 : DBA ② (경제 용어)
@@ -23,7 +21,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Table(name = "economic_term")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class EconomicTerm {
+public class EconomicTerm extends BaseTimeEntity {
 
     public static final int TERM_MAX_LENGTH = 50;
     public static final int DESCRIPTION_MAX_LENGTH = 500;
@@ -40,13 +38,6 @@ public class EconomicTerm {
 
     @Column(name = "is_active", nullable = false)
     private boolean active;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 
     private EconomicTerm(String term, String description) {
         this.term = term;

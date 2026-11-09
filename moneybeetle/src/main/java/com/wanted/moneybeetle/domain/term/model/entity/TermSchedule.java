@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.term.model.entity;
 
+import com.wanted.moneybeetle.global.common.CreatedTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -8,11 +9,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
 *   담당 : DBA ② (경제 용어)
@@ -27,7 +26,7 @@ import org.hibernate.annotations.CreationTimestamp;
         @UniqueConstraint(columnNames = {"show_date", "economic_term_id"})})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TermSchedule {
+public class TermSchedule extends CreatedTimeEntity {
 
     public static final int DAILY_COUNT = 5;
 
@@ -49,9 +48,6 @@ public class TermSchedule {
     @Column(name = "is_auto", nullable = false)
     private boolean auto;
 
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
 
     private TermSchedule(LocalDate showDate, Long economicTermId, int sortOrder, boolean auto) {
         this.showDate = showDate;

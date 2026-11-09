@@ -207,6 +207,16 @@ class TermServiceTest {
     }
 
     @Test
+    @DisplayName("잠금 충돌·데드락으로 DB 가 요청을 되돌리면 다시 시도하라는 SCHEDULE_CONFLICT (DUPLICATE_REQUEST 와 구분)")
+    void lockConflictIsRetryable() {
+        when(termRepository.findByEconomicTermIdInAndActiveTrue(anyCollection()))
+                .thenReturn(List.of(term(1), term(2), term(3), term(4), term(5)));
+        when(scheduleRepository.deleteByShowDate(any())).thenThrow(new org.springframework.dao.CannotAcquireLockException("deadlock"));
+
+        assertCode(() -> service.assign(TODAY.plusDays(1), List.of(1L, 2L, 3L, 4L, 5L)), TermErrorCode.SCHEDULE_CONFLICT);
+    }
+
+    @Test
     @DisplayName("다른 관리자와 같은 날짜를 동시에 지정해 DB 제약에 걸리면 DUPLICATE_REQUEST")
     void concurrentAssign() {
         when(termRepository.findByEconomicTermIdInAndActiveTrue(anyCollection()))
