@@ -141,7 +141,7 @@ class HousingApplicationServiceTest {
 
     @Test
     void 신청_기간_안이면_신청_시점의_점수를_저장하고_접수번호를_준다() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex("OPEN")));
         when(applicationRepository.countByAppliedAtGreaterThanEqual(TODAY.atStartOfDay())).thenReturn(41L);
 
         ApplyResultDTO result = serviceOn(TODAY).apply(MEMBER_ID, 1L, new ScoreRequestDTO(3, 1));
@@ -159,7 +159,7 @@ class HousingApplicationServiceTest {
 
     @Test
     void 신청_기간_밖이면_NOT_IN_APPLY_PERIOD_시작일_마감일_당일은_가능() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex("OPEN")));
 
         assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 2)).apply(MEMBER_ID, 1L, new ScoreRequestDTO(3, 1)),
                 HousingErrorCode.NOT_IN_APPLY_PERIOD);
@@ -172,7 +172,7 @@ class HousingApplicationServiceTest {
 
     @Test
     void 같은_단지에_두_번_신청하면_ALREADY_APPLIED() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex("OPEN")));
         when(applicationRepository.existsByMemberIdAndHousingComplexId(MEMBER_ID, 1L)).thenReturn(true);
 
         assertRejected(() -> serviceOn(TODAY).apply(MEMBER_ID, 1L, new ScoreRequestDTO(3, 1)),
@@ -182,7 +182,7 @@ class HousingApplicationServiceTest {
 
     @Test
     void 동시에_신청해_회원_단지_유니크_키에_걸리면_ALREADY_APPLIED() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex("OPEN")));
         when(applicationRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException(
                 "Duplicate entry '8-1' for key 'housing_application.uk_housing_application_1'"));
 
@@ -192,7 +192,7 @@ class HousingApplicationServiceTest {
 
     @Test
     void 접수번호가_겹치면_신청_완료가_아니라_RECEIPT_NO_CONFLICT() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex("OPEN")));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex("OPEN")));
         when(applicationRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException(
                 "Duplicate entry 'MB-261105-0001' for key 'housing_application.uk_housing_application_receipt_no'"));
 
@@ -202,7 +202,7 @@ class HousingApplicationServiceTest {
 
     @Test
     void 없는_단지는_NOT_FOUND() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+        when(complexRepository.findForUpdate(99L)).thenReturn(Optional.empty());
         assertRejected(() -> serviceOn(TODAY).apply(MEMBER_ID, 99L, new ScoreRequestDTO(3, 1)),
                 CommonErrorCode.NOT_FOUND);
     }

@@ -155,4 +155,28 @@ public class HousingComplex extends BaseTimeEntity {
     public void delete(LocalDateTime now) {
         this.deletedAt = now;
     }
+
+    // ── #48 당첨자 산정·결과 발표 (SP-75) ─────────────────
+    //  산정 : 신청 마감 다음 날부터, 한 번만  /  발표 : 산정한 뒤 발표일부터, 한 번만
+
+    // 산정했나? (산정 일시가 있으면 산정 완료. 신청자가 0명이어도 산정 일시는 남긴다)
+    public boolean isComputed() {
+        return computedAt != null;
+    }
+
+    // 발표일이 아직 안 왔나?
+    public boolean isBeforeAnnounceDate(LocalDate today) {
+        return today.isBefore(announceDate);
+    }
+
+    // 산정 완료 기록
+    public void markComputed(LocalDateTime now) {
+        this.computedAt = now;
+    }
+
+    // 결과 발표 : 이때부터 상태가 ANNOUNCED 가 되고 회원에게 결과가 보인다
+    public void announce(LocalDateTime now) {
+        this.status = STATUS_ANNOUNCED;
+        this.announcedAt = now;
+    }
 }

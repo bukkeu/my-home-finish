@@ -94,4 +94,10 @@ public class HousingApplication {
     public boolean isWin() {
         return RESULT_WIN.equals(result);
     }
+
+    // 당첨자 산정 (#48) : 순위와 결과(WIN/LOSE)를 기록한다. 산정은 단지마다 한 번뿐이다 (SP-75)
+    public void changeResult(int rank, boolean win) {
+        this.resultRank = rank;
+        this.result = win ? RESULT_WIN : RESULT_LOSE;
+    }
 }
