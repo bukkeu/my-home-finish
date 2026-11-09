@@ -1,6 +1,6 @@
 # MoneyBeetle 역할 분담 (세부)
 
-> 기준일 2026-11-07. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87·#95(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/schema.sql`(테이블 47개)
+> 기준일 2026-11-09. 저장소 `bukkeu/my-home-finish`, GitHub 이슈 #2~#87·#95와 후속 이슈 #111·#114·#119·#123·#132(이슈 번호는 이 저장소 기준, **담당자(Assignee) 지정 완료**, #123·#132는 담당자 미지정 — §10), `docs/MoneyBeetle_API명세서.md`(API 148개), `moneybeetle-page/ROUTES.md`(화면 20개), `moneybeetle/src/main/resources/sql/schema.sql`(테이블 47개)
 > 이슈 1개 = 작업 브랜치 1개 = PR 1개. 브랜치 이름은 Git 규칙(`feat/be-<이슈번호>-<설명>`)을 따릅니다.
 
 ---
@@ -35,6 +35,7 @@
 
 - 이슈 #3(DB 스키마 SQL)와 #87(인덱스·쿼리 점검)은 DBA 두 명이 구역을 나눠 맡습니다(GitHub 담당자도 두 명, 점수는 #3은 각각 3, #87은 각각 2로 반영).
 - GitHub 담당자(Assignee)는 이 문서의 배정과 같게 지정되어 있습니다. 담당을 옮길 때는 이 문서와 GitHub 담당자를 같이 고칩니다.
+- 리뷰 반영·버그 수정으로 생긴 **후속 이슈**(#111·#114·#119·#123·#132)는 원래 기능의 담당자가 맡고, 점수·이슈 수에는 넣지 않습니다(아래 표의 "후속" 칸).
 - API 합계는 148개이고 모든 API가 한 번씩 배정되어 있습니다. API 수가 DBA ①에 많은 것은 강의·문의·강사 관리 API가 많기 때문이고, 화면과 난이도는 점수에 반영했습니다.
 
 ### FE / BE 구분
@@ -43,12 +44,12 @@
 
 **담당자별 BE / FE 이슈** (점수는 부록 기준, 기타 = 문서·시드·브랜치·점검 이슈)
 
-| 담당 | BE 이슈 | FE 이슈 | 기타 |
-| --- | --- | --- | --- |
-| 서수영 | 9개 · 54점<br>#2 #4 #27 #28 #29 #47 #48 #67 #84 | 3개 · 29점<br>#58 #63 #70 | #68 #74 #83 #85 |
-| 이재성 | 13개 · 58점<br>#15 #23~#26 #40~#46 #65 | 4개 · 29점<br>#54 #56 #57 #62 | #72 #76 #86 |
-| 신아림 | 14개 · 60점<br>#16~#22 #30 #31 #32 #34 #35 #37 #38 | 6개 · 39점<br>#52 #53 #55 #59 #60 #71 | #73 #87 #95 |
-| 김예린 | 15개 · 64점<br>#5~#14 #33 #36 #39 #64 #66 | 5개 · 35점<br>#49 #50 #51 #61 #69 | #75 #87 #95 |
+| 담당 | BE 이슈 | FE 이슈 | 기타 | 후속 (점수 없음) |
+| --- | --- | --- | --- | --- |
+| 서수영 | 9개 · 54점<br>#2 #4 #27 #28 #29 #47 #48 #67 #84 | 3개 · 29점<br>#58 #63 #70 | #68 #74 #83 #85 | #114 (#2 리뷰 반영) |
+| 이재성 | 13개 · 58점<br>#15 #23~#26 #40~#46 #65 | 4개 · 29점<br>#54 #56 #57 #62 | #72 #76 #86 | #111 (#40·#41 TradingSeason 정리) |
+| 신아림 | 14개 · 60점<br>#16~#22 #30 #31 #32 #34 #35 #37 #38 | 6개 · 39점<br>#52 #53 #55 #59 #60 #71 | #73 #87 #95 | #132 (#17·#18 로그인 회원 ID 연결) |
+| 김예린 | 15개 · 64점<br>#5~#14 #33 #36 #39 #64 #66 | 5개 · 35점<br>#49 #50 #51 #61 #69 | #75 #87 #95 | #119 #123 (#49 공통 레이아웃 수정, 닫힘) |
 
 **폴더·이슈 소유** — 자기 이슈가 아닌 쪽의 파일은 직접 고치지 않고 이슈로 요청합니다(§8). 아래 경로는 모두 **저장소 루트** 기준이고, 저장소 루트에는 Gradle 래퍼가 없어서 명령은 `moneybeetle/` 폴더에서 실행합니다.
 
@@ -108,6 +109,7 @@
 | #83 | README 실행 가이드·담당 표기 정리 (문서) | — | 3 | 로컬 실행 방법(`.env.example` → DB → `bootRun`), 폴더 구조, 규칙 요약, 코드 파일 머리말·README의 옛 담당 표기 수정 |
 | #84 | Actuator·로그 설정 | — | 3 | `health`·`info`만 노출, 프로필별 로그 레벨·보관, 비밀번호·토큰 로그 금지, 요청 ID(MDC). 배포하지 않으므로 Docker·Nginx 헬스 체크는 없음 |
 | #85 | 브랜치 정리·보호 규칙 설정 | — | 2 | `sy`·`test` 등 남은 브랜치 정리, `main`·`dev` 보호(PR 필수·승인 1명), `main`은 `dev`에서만 병합 |
+| #114 | #2 리뷰 코멘트 반영 (후속) | — | — | 릴리스 PR #106 리뷰 지적: DB 계정 환경변수화, 400 오류 페이지, 공통 `Clock` |
 
 **다른 사람에게 줘야 하는 것**: `HousingService.openAccount(memberId)`(김예린 가입), `HousingService.getDashboardSummary()`(김예린 관리자 첫 화면), `FileStorageService.save(file, dir)`(**신아림**·**김예린**), `LevelCheckInterceptor`·`SecurityConfig`
 **서수영이 쓰는 것**: 김예린 `GrowthService.getLevel`, `RewardService.spend`, `NotificationService.send`
@@ -144,6 +146,7 @@
 | #72 | 샘플 데이터 — 종목·가격·뉴스 | — | 5 | 시연용 분야 15·종목 30·12턴 가격표·턴당 뉴스·매매 이유. `new1/App.jsx` 기준 |
 | #76 | 캐시 보상·청약통장 납입·이월금 기준 확정 (문서) | — | 2 | 출석·학습 완료·레벨업 캐시, 청약통장 납입, 이월금, 랭킹 보상 값 확정 → 정책 정의서·시드·`mb-config.js` 반영. 결정 조율은 PM |
 | #86 | 통합 점검·시연 시나리오 리허설 | — | 4 | 시연 시나리오 4개(학습·모의투자·청약·강사/관리자)를 `dev`에서 끝까지 실행, 문제는 담당자 이슈로 정리. 기능이 `dev`에 모인 뒤 진행 |
+| #111 | TradingSeason 상태 전이 검증·해금 레벨 기본값 정리 (후속) | — | — | 릴리스 PR #106 리뷰 제안. trading 도메인이라 이재성이 판단해 필요한 것만 반영 |
 
 **다른 사람에게 줘야 하는 것**: `RankingService.findAwards(memberId)`(김예린 Drawer·마이페이지), `TradingService.getDashboardSummary()`(김예린 관리자 첫 화면), `IdempotencyFilter`(전원)
 **이재성이 쓰는 것**: 김예린 `RewardService.getBalance`·`spend`, `NotificationService.send`, 신아림 `CourseService.search`·`InquiryService.search`
@@ -183,6 +186,7 @@
 | #73 | 샘플 데이터 — 강의·영상·퀴즈 | — | 4 | 시연용 카테고리 2·소주제·샘플 강의·영상 경로·요약글·OX 5문제·4지선다 퀴즈 |
 | #87 | 인덱스·쿼리 점검 (김예린과 공동) | — | 2 | 회원·강의·문의·운영 구역의 조회 실행 계획(EXPLAIN)·인덱스 점검. DB 설계서와 `schema.sql`을 같은 PR에서 수정 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (김예린과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
+| #132 | 로그인 병합 후 강의·스크랩 API에 로그인 회원 ID 연결 (후속) | — | — | #17·#18 리뷰 지적. `CourseController.currentMemberId()`·`currentMemberIdOrNull()`을 `@AuthenticationPrincipal` 기반으로 교체. 선행 #4·#6 |
 
 **다른 사람에게 줘야 하는 것**: `CourseService.hasLearningHistory(memberId)`(김예린 홈·로그인 분기), `CourseService.findContinueWatching / findLearningSummary(memberId)`(김예린 홈·Drawer), `CourseService.search(q)`·`InquiryService.search(q)`(이재성 검색)
 **신아림이 쓰는 것**: 김예린 `RewardService.grant`·`NotificationService.send`·`ForbiddenWordService.check`·`AdminLogService.write`, 서수영 `FileStorageService.save`
@@ -192,8 +196,8 @@
 ## 5. 김예린(DBA ②) — 회원·인증 · 성장 · 홈 · 관리자 틀
 
 **패키지**: `domain/member`, `domain/auth`(config 제외), `domain/growth`, `domain/notification`, `domain/home`, `domain/term`, `domain/operation`, `templates/fragments/layout`·`static/**`
-**테이블(코드 담당 14)**: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule
-**DB 관리**: 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개, 시드의 레벨 정책·보상 규칙·분야·종목·가격
+**테이블(코드 담당 17)**: member, instructor_profile, social_account, terms, member_terms_agreement, password_reset_token, system_setting, admin_log, forbidden_word, attendance, cash_history, exp_history, level_policy, reward_rule, notification, economic_term, term_schedule
+**DB 관리**: 성장·알림·경제 용어 8개 + 청약 4개 + 모의투자 12개 = 24개, 시드의 레벨 정책·보상 규칙·경제 용어(모의투자 시드 #72는 이재성, 청약 시드 #74는 서수영이 쓰고 김예린이 컬럼 검토 — §8)
 **요구사항**: USR-01~14, HOM-01~06, GRW-01~08, ADM-01, ADM-05, ADM-29~30, NFR-06, NFR-08~10, NFR-13
 **23개 · 점수 106 (+3) · API 40개**
 
@@ -222,6 +226,8 @@
 | #75 | 샘플 데이터 — 경제 용어·알림 | — | 3 | 시연용 경제 용어 사전·날짜별 5개·개발용 알림 샘플 |
 | #87 | 인덱스·쿼리 점검 (신아림과 공동) | — | 2 | 성장·알림·경제 용어·청약·모의투자 구역의 조회 실행 계획·인덱스 점검 |
 | #95 | SQL 파일을 `schema.sql` + `sample-data.sql`로 정리 (신아림과 공동, 사후 기록) | — | 2 | 수업 형식으로 SQL 구조 정리(PR #91~#93 병합 완료). 후속: DB 이름·접속 계정 정리 |
+| #119 | 사이드바 로그아웃 폼 주소 수정 (후속, 닫힘) | — | — | `fragments/layout/sidebar.html` 로그아웃 폼을 `/api/v1/auth/logout`(API 7)으로 수정 |
+| #123 | 알림 패널 버튼 포커스 표시·읽음 요청 keepalive (후속, 닫힘) | — | — | 릴리스 PR #106 리뷰 FE 지적. `common.css` `:focus-visible`, `notify.js` `keepalive` (PR #124) |
 
 **다른 사람에게 줘야 하는 것**: `RewardService.grant / spend / getBalance`, `GrowthService.getLevel(memberId)`, `NotificationService.send(memberId, type, title, link)`, `AttendanceService.checkToday(memberId)`, `ForbiddenWordService.check(text)`, `AdminLogService.write(...)`
 **김예린이 쓰는 것**: 신아림 `CourseService.*`, 서수영 `HousingService.openAccount`·`getDashboardSummary`, 이재성 `RankingService.findAwards`·`TradingService.getDashboardSummary`
@@ -326,12 +332,12 @@
 
 ---
 
-## 10. 현재 깃·이슈 상태 (2026-11-07)
+## 10. 현재 깃·이슈 상태 (2026-11-09)
 
 | 항목 | 상태 |
 | --- | --- |
-| 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#87·#95(81개). #3(DB 스키마 SQL)은 닫힘, 나머지 열림. **담당자(Assignee) 지정 완료**(이 문서 배정과 같음, #3·#87·#95는 DBA 두 명). #83~#87은 2026-11-07, #95는 11-08에 추가 |
-| PR 번호 | 이슈와 PR이 번호를 같이 씀: PR은 #1, #77~#82 |
+| 이슈 | `bukkeu/my-home-finish`의 이슈 #2~#87·#95(81개)와 후속 이슈 #111·#114·#119·#123·#132. **닫힘**: #2, #16, #17, #18, #67, #95, #119, #123. 나머지 열림(#3 포함). **담당자(Assignee)는 이 문서 배정과 같음**(#3·#87·#95는 DBA 두 명). 단 #123(김예린, 닫힘)·#132(신아림)는 GitHub 담당자가 비어 있어 지정 필요. #83~#87은 2026-11-07, #95는 11-08, #111~#132는 11-08~09에 추가 |
+| PR 번호 | 이슈와 PR이 번호를 같이 씀: PR은 #1, #77~#82, #88 이후(예: #105·#106 릴리스, #124~#131, #133~#138) |
 | 최근 확정 사항 | #9 본인인증·간편 로그인은 **가상**, #11 최대 Lv.20·칭호 구간별 필요 XP(첫 칭호 **고시원**), #20 통과 **70점**, #23 시즌 참가 시 **캐시 차감 없음**, #31 영상은 **파일 업로드**(1개 500MB 이하·mp4, DP-33), #48 청약 당첨 규칙은 **임시안**(추후 확정), #68 XP 값·#76 캐시·청약통장 기준 확정 필요 |
 | 브랜치 | 원격에 `main`, `dev`, `sy`, `test`, `feat/be-3-schema-course`, `fix/issue-auto-close`. 작업은 `feat/…` → `dev` → `main` 흐름(Git 규칙) |
 | 코드 | `moneybeetle/`는 골격(대부분 주석만). `./gradlew compileJava`는 성공하지만 `MoneyBeetleApplication`에 `@SpringBootApplication`·main이 없고 `application.yaml`이 비어 있어 `bootRun`은 실패(#2에서 해결) |
@@ -355,6 +361,7 @@
 | 브랜치 흐름 | `sy`·`test` 등 정리와 `main`·`dev` 보호는 새 이슈 #85에서 처리 | #85 |
 | SQL 파일 구조 | 수업(14일차 JDBC 팀 프로젝트)과 같은 형식: 실행 순서 `create_database.sql` → `schema.sql` → `sample-data.sql`. 시드는 구역별로 담당이 작성하고 DBA가 검토 | §8 |
 | 추가한 이슈 | #83 README·담당 표기, #84 Actuator·로그, #85 브랜치 정리·보호, #86 통합 점검·시연, #87 인덱스·쿼리 점검 | §2~§5 |
+| 후속 이슈 | 리뷰 반영·버그 수정 이슈(#111·#114·#119·#123·#132)는 원래 기능 담당자가 맡고 점수에는 넣지 않음 | §1, §2~§5 |
 
 ### 남은 확인 사항
 

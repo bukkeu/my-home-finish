@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   테이블 level_policy
 *  */
 public interface LevelPolicyRepository extends JpaRepository<LevelPolicy, Long> {

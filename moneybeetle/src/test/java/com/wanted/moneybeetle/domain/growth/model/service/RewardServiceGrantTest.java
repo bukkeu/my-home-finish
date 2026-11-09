@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /* comment.
-*   담당 : DBA ② (성장)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   RewardService 지급·사용·잔액 (이슈 #10 2차) - Repository·MemberService 를 Mock 으로 두고 서버·DB 없이 돈다.
 *   이중 지급 방지, 잔액 부족, 규칙 없음 같은 실패 경우를 함께 확인한다 (SP-15, SP-18, NFR-06).
 *  */

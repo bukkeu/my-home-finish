@@ -224,6 +224,11 @@ public class CourseService {
                 .toList();
     }
 
+    /* 퀴즈(quiz 도메인): 강의가 공개 상태인지 확인. 아니면 COURSE_NOT_PUBLIC */
+    public void checkCourseVisible(Long courseId) {
+        getVisibleCourse(courseId);
+    }
+
     /* 이재성: 통합 검색 */
     public List<CourseListDTO> search(String keyword) {
         return List.of(); // TODO 제목 검색 (허가 + 공개만)

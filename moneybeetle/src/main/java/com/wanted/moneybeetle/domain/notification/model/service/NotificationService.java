@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (알림)
 *   알림 창구 (역할분담 문서 §7 연동 약속)
 *   - send(memberId, type, title, linkUrl) : 알림 한 건을 만든다 [호출: 신아림 검수 결과, 이재성 턴 진행·랭킹 공개, 서수영 청약 결과, 김예린 해금]
 *       부르는 쪽 트랜잭션에 함께 묶인다. 그 트랜잭션이 되돌려지면 알림도 사라진다

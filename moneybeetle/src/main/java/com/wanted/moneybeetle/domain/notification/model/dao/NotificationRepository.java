@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (알림)
 *   테이블 notification
 *  */
 public interface NotificationRepository extends JpaRepository<Notification, Long> {

@@ -6,7 +6,7 @@ import java.util.List;
 import lombok.Getter;
 
 /* comment.
-*   담당 : PM (성장·홈·모의 청약)
+*   담당 : DBA ② (성장·캐시·레벨)
 *   레벨 한 줄 (API 24 levels): 필요 누적 경험치, 칭호, 레벨업 캐시, 이 레벨에서 새로 열리는 기능
 *   - unlocks 는 열리는 기능이 있는 레벨에만 내려간다 (없으면 필드를 생략)
 *  */

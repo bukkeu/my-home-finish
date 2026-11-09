@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.file;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   파일 업로드 저장 - 용도별로 용량·형식 검사
 *   - saveImage : 프로필 이미지, 강의 썸네일 (2MB, jpg·png / DP-32)
 *   - saveVideo : 강의 영상 (500MB, mp4 / DP-33)

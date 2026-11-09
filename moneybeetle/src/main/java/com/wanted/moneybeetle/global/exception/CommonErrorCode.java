@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.global.exception;
 
 /* comment.
-*   담당 : SCM (회원·공통)
+*   담당 : SCM (공통 기반·보안)
 *   공통 에러 (API 명세서 4장) : UNAUTHORIZED, SESSION_EXPIRED, FORBIDDEN, LEVEL_LOCKED, NOT_FOUND,
 *   DUPLICATE_REQUEST, IDEMPOTENCY_KEY_CONFLICT, FORBIDDEN_WORD, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, INTERNAL_ERROR
 *   : 양식에 맞춰 미리 써 둔 신고서 묶음
