@@ -72,6 +72,9 @@ class HousingSecurityFlowTest {
     static class TestApp {
     }
 
+    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 출석 자체를 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
     @MockitoBean
     private HousingService housingService;
     @MockitoBean
