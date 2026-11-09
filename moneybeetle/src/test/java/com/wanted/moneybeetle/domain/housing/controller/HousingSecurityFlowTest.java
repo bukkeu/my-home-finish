@@ -11,6 +11,7 @@ import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.housing.model.dto.AccountDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositPolicyDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositResultDTO;
+import com.wanted.moneybeetle.domain.housing.model.service.HousingApplicationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.config.WebConfig;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
@@ -73,6 +74,8 @@ class HousingSecurityFlowTest {
 
     @MockitoBean
     private HousingService housingService;
+    @MockitoBean
+    private HousingApplicationService applicationService;
     @MockitoBean
     private GrowthService growthService;
     /** 로그인 핸들러(#6)가 필요로 하는 것들. 이 테스트는 로그인 뒤 흐름만 보므로 가짜로 둔다 */
