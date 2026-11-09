@@ -2,8 +2,10 @@ package com.wanted.moneybeetle.domain.home.model.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,6 +159,31 @@ class HomeServiceTest {
         assertThat(home.continueCourse().courseId()).isEqualTo(7L);
         assertThat(home.continueCourse().lessonId()).isNull();
         verify(courseService, never()).findWatchHistories(eq(MEMBER), eq(PageRequest.of(2, HomeService.WATCH_SCAN_SIZE)));
+    }
+
+    @Test
+    @DisplayName("기록이 한없이 이어져도 최대 MAX_WATCH_PAGES 쪽까지만 읽고 멈춘다 (홈을 열 때마다 끝없이 읽지 않는다)")
+    void stopsAtMaxPages() {
+        CourseListDTO continuing = course(7, "청약통장 기초와 가점 계산");
+        when(courseService.findContinueWatching(MEMBER)).thenReturn(List.of(continuing));
+        WatchHistoryDTO other = watch(9, 40, "다른 강의 영상");
+        // 어느 쪽을 읽어도 다른 강의 기록만 있고 다음 쪽이 계속 있다고 답한다
+        when(courseService.findWatchHistories(eq(MEMBER), any(Pageable.class))).thenAnswer(invocation -> {
+            Pageable pageable = invocation.getArgument(1);
+            if (pageable.getPageSize() != HomeService.WATCH_SCAN_SIZE) {
+                return new PageImpl<>(List.of(), pageable, 0);   // 학습 기록 개수를 세는 한 건짜리 조회
+            }
+            return new PageImpl<>(List.of(other), pageable, 1_000_000);
+        });
+
+        var home = service.getHome(MEMBER);
+
+        assertThat(home.continueCourse().courseId()).isEqualTo(7L);
+        assertThat(home.continueCourse().lessonId()).isNull();
+        verify(courseService, times(HomeService.MAX_WATCH_PAGES))
+                .findWatchHistories(eq(MEMBER), argThat(pageable -> pageable.getPageSize() == HomeService.WATCH_SCAN_SIZE));
+        verify(courseService, never()).findWatchHistories(eq(MEMBER),
+                eq(PageRequest.of(HomeService.MAX_WATCH_PAGES, HomeService.WATCH_SCAN_SIZE)));
     }
 
     @Test
