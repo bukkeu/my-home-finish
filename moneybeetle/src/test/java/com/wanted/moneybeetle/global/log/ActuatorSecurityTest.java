@@ -1,28 +1,14 @@
 package com.wanted.moneybeetle.global.log;
 
-import com.wanted.moneybeetle.domain.auth.config.SecurityConfig;
-import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
-import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
-import com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider;
-import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
-import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import com.wanted.moneybeetle.support.MockSecurityServices;
+import com.wanted.moneybeetle.support.SecurityTestApp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -48,26 +34,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *   - 그 외 actuator 주소(env, beans)는 웹에 열지 않는다 : 로그인 안 하면 로그인 화면으로, 로그인해도 404
 *   - 요청 로그 필터가 함께 돌아 응답에 X-Request-Id 가 붙는다
 *  */
-@SpringBootTest(classes = {ActuatorSecurityTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
-        AuthSuccessHandler.class, AdminAuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
-        RequestLogFilter.class})
+@SpringBootTest(classes = {SecurityTestApp.class, RequestLogFilter.class})
+@MockSecurityServices        // 로그인 핸들러·계정 상태 확인이 쓰는 서비스는 가짜. 이 테스트는 actuator 주소만 본다 (#161)
 class ActuatorSecurityTest {
 
-    @Configuration
-    @EnableAutoConfiguration(exclude = {
-            DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
-            HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
-    static class TestApp {
-    }
-
-    /** SecurityConfig·로그인 핸들러가 필요로 하는 것들. 이 테스트는 actuator 주소만 보므로 가짜로 둔다 */
-    @MockitoBean
-    private AttendanceService attendanceService;
-    @MockitoBean
-    private AuthService authService;
-    @MockitoBean
-    private LoginAuthenticationProvider loginAuthenticationProvider;
-    @MockitoBean
+    /** ActiveMemberFilter 가 쓰는 계정 상태 확인 (@MockSecurityServices 의 가짜). 이 테스트의 회원은 정상 계정이다 */
+    @Autowired
     private MemberService memberService;
 
     @Autowired
