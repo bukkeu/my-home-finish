@@ -60,6 +60,7 @@
   function seasonPath(suffix) { return '/seasons/' + state.season.seasonId + suffix; }
   // 시즌별 요청의 순번. 시즌을 A -> B -> A 로 바꿔도 먼저 보낸 요청의 늦은 응답이 지금 화면을 덮어쓰지 않게 한다
   var req = { turn: 0, prices: 0, news: 0, people: 0, stats: 0, rank: 0 };
+  var personReq = 0;   // 참가자 상세 요청 순번: 가장 나중에 고른 참가자의 응답만 그린다
   function begin(key) { return { token: ++req[key], seasonId: state.season ? state.season.seasonId : null }; }
   function stale(key, t) { return t.token !== req[key] || !state.season || state.season.seasonId !== t.seasonId; }
   function errText(err) {
@@ -201,12 +202,23 @@
   }
 
   seasonSelect.addEventListener('change', function () {
-    state.season = pickSeason(state.seasons, seasonSelect.value);
-    state.edits = {};
-    state.newsTurn = null;
-    closeNewsForm();
-    renderHeader();
-    loadTab();
+    var wanted = seasonSelect.value;
+    var previous = state.season ? String(state.season.seasonId) : '';
+    // 저장하지 않은 가격이 있으면 시즌을 바꾸기 전에 묻는다 (바꾸면 입력한 값이 사라진다)
+    var go = Object.keys(state.edits).length
+      ? confirmModal({ title: '저장하지 않은 가격이 있어요', body: '시즌을 바꾸면 입력한 가격이 사라져요.', ok: '시즌 바꾸기', danger: true })
+      : Promise.resolve(true);
+    go.then(function (ok) {
+      if (!ok) { seasonSelect.value = previous; return; }
+      state.season = pickSeason(state.seasons, wanted);
+      state.edits = {};
+      state.prices = null;   // 새 가격표를 받기 전에는 이전 시즌 가격표로 저장 버튼이 켜져 있지 않게 한다
+      updatePriceStatus();
+      state.newsTurn = null;
+      closeNewsForm();
+      renderHeader();
+      loadTab();
+    });
   });
 
   function renderSeasonTab() {
@@ -511,13 +523,17 @@
    * ===================================================================== */
   var priceRows = $('at-price-rows');
 
-  function loadPrices() {
+  function loadPrices(force) {
     var t = begin('prices');
     if (!state.season) { fill($('at-price-head'), []); return emptyRow(priceRows, 1, noSeasonText()); }
+    // 탭을 다녀온 것만으로는 저장하지 않은 입력을 지우지 않는다. 저장·CSV 올리기 뒤(force)와 시즌 변경은 새로 불러온다
+    if (!force && state.prices && state.prices.seasonId === state.season.seasonId && Object.keys(state.edits).length) {
+      return renderPrices();
+    }
     emptyRow(priceRows, 1, '불러오는 중…');
     api(seasonPath('/prices')).then(function (data) {
       if (stale('prices', t)) return;
-      state.prices = { currentTurn: data && data.currentTurn != null ? data.currentTurn : state.season.currentTurn, rows: (data && data.rows) || [] };
+      state.prices = { seasonId: t.seasonId, currentTurn: data && data.currentTurn != null ? data.currentTurn : state.season.currentTurn, rows: (data && data.rows) || [] };
       state.edits = {};
       renderPrices();
     }, function (err) {
@@ -630,7 +646,7 @@
         }).then(function (ok) { if (ok) return savePrices(true); });
       }
       MB.toast(((res && res.saved) || 0) + '칸을 저장했어요');
-      loadPrices();
+      loadPrices(true);
     }, toastError);
   }
   $('at-price-save').addEventListener('click', function () { savePrices(false); });
@@ -668,6 +684,7 @@
     if (Object.keys(state.edits).length) return MB.toast('저장하거나 되돌린 뒤에 CSV를 올려 주세요', 'error');
     var form = new FormData();
     form.append('file', file);
+    input.disabled = true;   // 요청 중 다시 올리지 못하게 잠근다 (같은 가격표가 두 번 저장되는 것 방지)
     rawFetch(BASE + seasonPath('/prices/import'), { method: 'POST', body: form }).then(function (res) {
       return readJson(res).then(function (body) {
         if (res.ok && (!body || body.success !== false)) {
@@ -676,7 +693,7 @@
           showCsvResult((data && data.saved || 0) + '칸을 저장했어요' + (warnings.length ? ' · ±30%를 넘는 칸이 있어요' : ''),
             warnings.map(function (w) { var r = rowOf(w.stockId); return (r ? r.stockName : w.stockId) + ' ' + w.turnNo + '턴 · ' + w.message; }));
           MB.toast('CSV를 저장했어요');
-          loadPrices();
+          loadPrices(true);
           return;
         }
         // CSV_INVALID: 전체가 취소되고 오류 행이 data.errors 로 온다 (API 130)
@@ -684,7 +701,8 @@
         showCsvResult((err.message || 'CSV를 올리지 못했어요') + (rows.length ? ' · 아무것도 저장하지 않았어요' : ''),
           rows.map(function (r) { return r.line + '행 · ' + r.message; }));
       });
-    }).catch(function (err) { showCsvResult(errText(err), []); });
+    }).catch(function (err) { showCsvResult(errText(err), []); })
+      .then(function () { input.disabled = false; });
     function showCsvResult(title, list) {
       fill(box, [el('strong', { text: title }), list.length ? el('ul', {}, list.map(function (t) { return el('li', { text: t }); })) : null]);
       box.hidden = false;
@@ -824,6 +842,9 @@
    * ===================================================================== */
   function loadPeople() {
     var rows = $('at-people-rows'), t = begin('people');
+    personReq += 1;   // 보내 둔 참가자 상세 요청을 무효로 만들고 상세 영역을 처음 상태로 돌린다
+    $('at-person-title').textContent = '참가자 상세';
+    emptyBox($('at-person-detail'), '왼쪽에서 참가자를 골라 주세요');
     if (!state.season) return emptyRow(rows, 5, noSeasonText());
     emptyRow(rows, 5, '불러오는 중…');
     api(seasonPath('/participants?sort=netAsset&page=0&size=50')).then(function (data) {
@@ -842,11 +863,13 @@
   }
 
   function selectPerson(p, tr) {
+    var token = ++personReq;
     tr.parentNode.querySelectorAll('tr').forEach(function (x) { x.classList.toggle('hl', x === tr); });
     $('at-person-title').textContent = p.nickname + ' 상세';
     var box = $('at-person-detail');
     emptyBox(box, '불러오는 중…');
     api('/participants/' + p.participantId).then(function (d) {
+      if (token !== personReq) return;
       var holdings = (d && d.holdings) || [], orders = (d && d.orders) || [];
       fill(box, [
         el('h4', { class: 'at-sub', text: '보유 종목' }),
@@ -862,7 +885,7 @@
           ]);
         }) : [el('div', { class: 'at-empty', text: '거래 내역이 없어요' })])
       ]);
-    }, function (err) { emptyBox(box, errText(err), true); });
+    }, function (err) { if (token === personReq) emptyBox(box, errText(err), true); });
   }
 
   /* =====================================================================
