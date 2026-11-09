@@ -47,7 +47,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 /* comment.
 *   담당 : PM (#24)
 *   TradingService 시세·뉴스 조회 확인 (DB 없이 Repository 는 가짜(mock))
-*   - 진행 중·휴장 중 시즌이 없으면 NO_RUNNING_SEASON
+*   - 진행 중·휴장 중·정산 중·종료 시즌이 하나도 없으면 NO_RUNNING_SEASON, 정산 중 시즌도 시세·뉴스를 보여 준다
 *   - 현재 턴까지만 보이고(가격 흐름·뉴스), 관리자 메모는 응답에 없다
 *   - 시세 정렬(분야 순서·인기순)과 거르기, 내 보유
 *  */
@@ -127,7 +127,30 @@ class TradingServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.NO_RUNNING_SEASON);
         verify(seasonRepository).findFirstByStatusInOrderByStartDateDesc(
-                List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY));
+                List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY,
+                        TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED));
+    }
+
+    @Test
+    void 정산_중인_시즌도_마지막_턴의_시세와_뉴스를_보여준다() {
+        TradingSeason season = TradingSeason.create("시즌 7", LocalDate.of(2026, 10, 19), new BigDecimal("100.00"),
+                null, 1L);
+        ReflectionTestUtils.setField(season, "tradingSeasonId", SEASON_ID);
+        season.start();
+        for (int i = 0; i < 12; i++) {
+            season.advanceTurn();
+        }
+        season.startSettling();
+        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
+        givenMarket();
+        when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 12)).thenReturn(List.of(
+                StockPrice.create(SEASON_ID, 1L, 12, 96_950, new BigDecimal("4.98"))));
+        when(newsRepository.findByTradingSeasonIdAndTurnNoLessThanEqualOrderByTurnNoDescNewsIdDesc(SEASON_ID, 12))
+                .thenReturn(List.of());
+
+        assertThat(service.findStocks(null, null, null).getTurnNo()).isEqualTo(12);
+        assertThat(service.findNews(null, null)).isEmpty();
+        verify(priceRepository).findByTradingSeasonIdAndTurnNo(SEASON_ID, 12);
     }
 
     @Test

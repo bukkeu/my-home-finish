@@ -11,6 +11,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Long> {
 
-    /** 사용자에게 보이는 시즌 : 진행 중이거나 휴장 중인 시즌 중 가장 최근 것 (#24) */
+    /** 사용자에게 보이는 시즌 : 주어진 상태(진행 중·휴장 중·정산 중·종료) 중 시작일이 가장 최근인 것 (#24) */
     Optional<TradingSeason> findFirstByStatusInOrderByStartDateDesc(List<String> statuses);
 }

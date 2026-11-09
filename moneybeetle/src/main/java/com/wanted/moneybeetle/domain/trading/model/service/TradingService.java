@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 /* comment.
 *   담당 : PM (모의투자)
 *   홈, 시세, 종목 상세, 뉴스 조회 / 시즌 참가(캐시는 RewardService, 투자 가능 금액 확정 SP-52)
-*   - #24 조회 (API 55~58) : 지금 보이는 시즌(진행 중·휴장 중)의 현재 턴까지만 보여 준다.
+*   - #24 조회 (API 55~58) : 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료)의 현재 턴까지만 보여 준다.
 *     다음 턴 이후의 가격·뉴스는 미리 입력돼 있어도 응답에 넣지 않는다
 *   - 사용 안 함 분야·종목은 목록과 상세에 나오지 않는다 (사용 안 함 분야의 종목 상세도 NOT_FOUND)
 *  */
@@ -48,9 +48,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TradingService {
 
-    /** 사용자에게 보이는 시즌 상태 : 진행 중, 일요일 휴장 중 */
-    private static final List<String> VISIBLE_STATUSES =
-            List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY);
+    /**
+     * 사용자에게 보이는 시즌 상태 : 진행 중, 일요일 휴장 중, 정산 중, 종료.
+     * 정산 중·종료에도 시세·뉴스를 계속 보여 준다. 정산 중에는 주문만 막힌다(SEASON_CLOSED, SP-58)
+     * 준비 중(READY) 시즌은 보이지 않고, 새 시즌이 진행 중이 되면 시작일이 더 늦은 그 시즌이 보인다
+     */
+    private static final List<String> VISIBLE_STATUSES = List.of(TradingSeason.STATUS_RUNNING,
+            TradingSeason.STATUS_HOLIDAY, TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED);
     /** 시세 정렬 : 인기순 (이번 시즌 거래 수가 많은 순) */
     public static final String SORT_POPULAR = "popular";
 
@@ -162,7 +166,7 @@ public class TradingService {
                 .toList();
     }
 
-    /** 지금 보이는 시즌. 진행 중·휴장 중인 시즌이 없으면 NO_RUNNING_SEASON (404) */
+    /** 지금 보이는 시즌. 보이는 상태의 시즌이 하나도 없으면(준비 중뿐이거나 시즌 없음) NO_RUNNING_SEASON (404) */
     private TradingSeason getVisibleSeason() {
         return seasonRepository.findFirstByStatusInOrderByStartDateDesc(VISIBLE_STATUSES)
                 .orElseThrow(() -> new BusinessException(TradingErrorCode.NO_RUNNING_SEASON));
