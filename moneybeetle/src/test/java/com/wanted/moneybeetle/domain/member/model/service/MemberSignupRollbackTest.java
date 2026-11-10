@@ -96,7 +96,7 @@ class MemberSignupRollbackTest {
 
     /** 본인인증 확인은 IdentityVerificationServiceTest 가 따로 본다. 여기서는 인증을 마친 것으로 두고 가입·통장의 한 묶음만 본다 */
     @MockitoBean
-    private com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService identityVerificationService;
+    private SignupIdentityVerifier identityVerificationService;
 
     private final org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
 

@@ -1,6 +1,5 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
-import com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
@@ -26,7 +25,7 @@ public class MemberSignupService {
 
     private final MemberService memberService;
     private final HousingService housingService;
-    private final IdentityVerificationService identityVerificationService;
+    private final SignupIdentityVerifier identityVerificationService;   // auth.IdentityVerificationService 가 구현 (member -> auth 직접 참조 없음)
 
     /** 회원가입 (API 4). 본인인증을 마친 이메일이어야 하고, 가입한 회원의 청약통장을 같은 트랜잭션에서 만든다 */
     @Transactional

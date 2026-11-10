@@ -98,7 +98,7 @@ class MemberSignupServiceTest {
 
     /** 본인인증 확인은 IdentityVerificationServiceTest 가 따로 본다. 여기서는 가입 흐름에서 언제 확인하고 지우는지만 본다 */
     @MockitoBean
-    private com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService identityVerificationService;
+    private SignupIdentityVerifier identityVerificationService;
 
     private final org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
 

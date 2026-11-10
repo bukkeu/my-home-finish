@@ -4,6 +4,7 @@ import com.wanted.moneybeetle.domain.auth.model.dto.IdentityVerificationState;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.member.model.service.SignupIdentityVerifier;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
@@ -36,7 +37,7 @@ import org.springframework.stereotype.Service;
 *  */
 @Slf4j
 @Service
-public class IdentityVerificationService {
+public class IdentityVerificationService implements SignupIdentityVerifier {
 
     static final String SESSION_KEY = "identityVerification";
     static final int CODE_LENGTH = 6;
@@ -130,6 +131,7 @@ public class IdentityVerificationService {
     }
 
     /** 가입 전에 호출한다. 이 세션에서 그 이메일이 인증돼 있지 않으면 IDENTITY_NOT_VERIFIED 로 막는다 (API 4) */
+    @Override
     public void requireVerified(String rawEmail, HttpSession session) {
         IdentityVerificationState state = stateOf(session);
         if (state == null || !state.isVerifiedFor(SignupRules.normalizeEmail(rawEmail), clock.instant())) {
@@ -138,6 +140,7 @@ public class IdentityVerificationService {
     }
 
     /** 가입이 끝났다. 인증 표시를 지워 같은 인증으로 다른 이메일을 가입시키지 못하게 한다 */
+    @Override
     public void clear(HttpSession session) {
         session.removeAttribute(SESSION_KEY);
     }
