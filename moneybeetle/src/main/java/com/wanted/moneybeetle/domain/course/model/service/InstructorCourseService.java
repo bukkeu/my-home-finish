@@ -136,7 +136,7 @@ public class InstructorCourseService {
         course.checkEditable();                         // 검수 중이면 파일을 저장하기 전에 막는다 (고아 파일 방지)
         try {
             String thumbnailUrl = fileStorageService.saveImage(file);
-            course.changeThumbnail(thumbnailUrl);
+            course.changeThumbnail(thumbnailUrl, LocalDateTime.now(clock));
             return new ThumbnailDTO(thumbnailUrl);
         } catch (IOException e) {
             throw new UncheckedIOException("썸네일 저장 실패", e);

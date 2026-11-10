@@ -150,10 +150,15 @@ public class Course {
         }
     }
 
-    /* 썸네일 주소 바꾸기 (API 77). 검수 중에는 못 바꾼다 */
-    public void changeThumbnail(String thumbnailUrl) {
+    /* 썸네일 주소 바꾸기 (API 77). 검수 중에는 못 바꾼다.
+     * 허가된 강의의 썸네일을 바꾸면 정보 수정과 같이 다시 검수(REVIEW, SP-31) */
+    public void changeThumbnail(String thumbnailUrl, LocalDateTime now) {
         checkEditable();
         this.thumbnailUrl = thumbnailUrl;
+        if (isApproved()) {
+            this.status = STATUS_REVIEW;
+            this.submittedAt = now;
+        }
     }
 
     /* 수정할 수 있는 상태인지 (API 75·77). 검수 중이면 COURSE_IN_REVIEW
