@@ -206,6 +206,17 @@ public class MemberService {
         return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
     }
 
+    /**
+     * INSTRUCTOR 권한으로 로그인해 둔 회원의 강사 권한이 지금은 없는가 (auth.ActiveMemberFilter 가 INSTRUCTOR 세션에만 부른다, #37 CodeRabbit 지적).
+     * 관리자가 강사 권한을 회수(API 103)하면 true → 이미 열린 세션도 다음 요청에서 끊긴다.
+     * 권한 부여는 세션을 건드리지 않아 다음 로그인부터 적용된다 (SP-07). 없는 회원이면 true.
+     */
+    public boolean isInstructorRevoked(Long memberId) {
+        return memberRepository.findById(memberId)
+                .map(member -> !Member.ROLE_INSTRUCTOR.equals(grantedRole(member)))
+                .orElse(true);
+    }
+
     /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */
     private String grantedRole(Member member) {
         if (!Member.ROLE_INSTRUCTOR.equals(member.getRole())) {

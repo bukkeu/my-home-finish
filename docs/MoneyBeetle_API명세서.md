@@ -2723,7 +2723,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-07 |
-| 설명 | INSTRUCTOR ↔︎ MEMBER. INSTRUCTOR로 바꾸면 강사 정보를 승인(없으면 닉네임을 표시 이름으로 만들어 승인)해서 다음 로그인부터 강사 권한이 생긴다(SP-07). MEMBER로 바꾸면 강사 정보를 회수(REVOKED)한다(만든 강의는 남고 강사 화면·API만 막힘). 관리자·탈퇴 계정은 바꿀 수 없다. admin_log 기록(MEMBER_ROLE_CHANGE). |
+| 설명 | INSTRUCTOR ↔︎ MEMBER. INSTRUCTOR로 바꾸면 강사 정보를 승인(없으면 닉네임을 표시 이름으로 만들어 승인)해서 다음 로그인부터 강사 권한이 생긴다(SP-07). MEMBER로 바꾸면 강사 정보를 회수(REVOKED)한다(만든 강의는 남고 강사 화면·API만 막힘). 회수하면 이미 로그인해 둔 강사 세션도 다음 요청에서 끊기고(다시 로그인하면 MEMBER), 부여는 기존 세션을 건드리지 않아 다음 로그인부터 적용된다. 관리자·탈퇴 계정은 바꿀 수 없다. admin_log 기록(MEMBER_ROLE_CHANGE). |
 
 **Request**
 
