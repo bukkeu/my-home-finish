@@ -3,6 +3,8 @@ package com.wanted.moneybeetle.domain.trading.model.dao;
 import com.wanted.moneybeetle.domain.trading.model.entity.SeasonParticipant;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,4 +35,10 @@ public interface SeasonParticipantRepository extends JpaRepository<SeasonPartici
 
         long getParticipantCount();
     }
+
+    /** 주문할 때 같은 참가자의 현금·보유가 동시에 바뀌지 않도록 행을 잠그고 읽는다 (#25) */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from SeasonParticipant p where p.tradingSeasonId = :seasonId and p.memberId = :memberId")
+    Optional<SeasonParticipant> findForUpdateBySeasonAndMember(@Param("seasonId") Long tradingSeasonId,
+            @Param("memberId") Long memberId);
 }

@@ -2,6 +2,8 @@ package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.TradeOrder;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +38,7 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
             """)
     long countOrdersBetween(@Param("seasonId") Long tradingSeasonId, @Param("from") java.time.LocalDateTime from,
             @Param("to") java.time.LocalDateTime to);
+
+    /** 내 거래 내역 한 쪽. 정렬은 Pageable 로 (최근 거래부터) (#25) */
+    Page<TradeOrder> findBySeasonParticipantId(Long seasonParticipantId, Pageable pageable);
 }
