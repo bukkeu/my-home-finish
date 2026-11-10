@@ -9,6 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,9 +19,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -126,6 +130,28 @@ class RequestLogFilterTest {
 
         assertThat(requestLines()).isEmpty();
         assertThat(MDC.get(RequestLogFilter.MDC_REQUEST_ID)).isNull();
+        assertThat(MDC.get(RequestLogFilter.MDC_MEMBER_ID)).isNull();
+    }
+
+    @Test
+    void 로그인한_요청에서_예외가_나도_요청_로그를_남기고_MDC_를_비운다() {
+        AuthDetails details = mock(AuthDetails.class);
+        when(details.getMemberId()).thenReturn(8L);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(details, null, List.of()));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/test/echo");
+        request.addHeader(RequestLogFilter.HEADER, "front-1234");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // 필터 체인(컨트롤러·보안 필터)에서 예외가 난 경우
+        assertThatThrownBy(() -> new RequestLogFilter().doFilter(request, response, (req, res) -> {
+            assertThat(MDC.get(RequestLogFilter.MDC_REQUEST_ID)).isEqualTo("front-1234");   // 예외 전에는 들어 있다
+            throw new IOException("연결 끊김");
+        })).isInstanceOf(IOException.class);
+
+        assertThat(requestLines()).singleElement().satisfies(e -> assertThat(e.getMDCPropertyMap())
+                .containsEntry("requestId", "front-1234").containsEntry("memberId", "8"));
+        assertThat(MDC.get(RequestLogFilter.MDC_REQUEST_ID)).isNull();                        // 예외 뒤에는 비워진다
         assertThat(MDC.get(RequestLogFilter.MDC_MEMBER_ID)).isNull();
     }
 }
