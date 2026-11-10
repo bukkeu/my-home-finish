@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.operation.model.dao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.operation.model.entity.AdminLog;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
