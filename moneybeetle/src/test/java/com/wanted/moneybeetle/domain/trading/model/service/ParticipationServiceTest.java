@@ -139,7 +139,7 @@ class ParticipationServiceTest {
     }
 
     @Test
-    void 이전_시즌이_정산_전이면_PREVIOUS_SEASON_NOT_SETTLED이고_참가_기록을_만들지_않는다() {
+    void rejectsUnsettledPreviousSeasonWithoutCreatingParticipation() {
         season(1);
         SeasonParticipant unsettled = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
         when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID)).thenReturn(Optional.of(unsettled));
