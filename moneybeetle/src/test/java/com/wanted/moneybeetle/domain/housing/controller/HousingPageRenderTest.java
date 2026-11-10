@@ -88,6 +88,8 @@ class HousingPageRenderTest {
                 .contains("경험치를 모아 Lv.12 달성 (현재 Lv.8)")
                 .contains("mb-blur")
                 .contains("Lv.12부터 볼 수 있어요")
+                .contains("청약 단지는 Lv.12부터 볼 수 있어요.")
+                .doesNotContain("id=\"hs-score-form\"")
                 .contains("data-locked=\"true\"");
     }
 
@@ -98,6 +100,9 @@ class HousingPageRenderTest {
         assertThat(html).doesNotContain("모의 청약은 Lv.12부터 이용할 수 있어요.")
                 .doesNotContain("mb-blur")
                 .contains("data-locked=\"false\"")
+                .contains("id=\"hs-score-form\"")
+                .contains("가점 계산하고 신청하기")
+                .doesNotContain("청약 단지는 Lv.12부터 볼 수 있어요.")
                 .contains("이용 가능");
     }
 

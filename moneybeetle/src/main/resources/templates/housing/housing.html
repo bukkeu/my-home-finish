@@ -216,9 +216,156 @@
         </section>
       </div>
 
-      <!--/* ===================== 청약 단지 (2단계에서 채운다) ===================== */-->
+      <!--/* ===================== 청약 단지 : 목록 → 상세(API 64) → 가점 계산·신청(API 68·69) ===================== */-->
       <div class="hs-panel" data-panel="complexes" hidden>
-        <div class="card hs-empty-card">청약 단지 목록은 준비 중이에요.</div>
+
+        <!--/* Lv.12 미만 : 단지 목록·신청은 열리지 않는다 (SP-24, 서버도 LEVEL_LOCKED) */-->
+        <section class="card hs-lock" th:if="${page.locked}">
+          <div class="hs-lock__head">
+            <span class="hs-lock__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </span>
+            <h2 th:text="|청약 단지는 Lv.${page.unlockLevel}부터 볼 수 있어요.|">청약 단지는 Lv.12부터 볼 수 있어요.</h2>
+          </div>
+          <p th:text="|지금은 Lv.${page.level}이에요. 학습으로 경험치를 모으면 단지 정보와 신청이 열려요.|">지금은 Lv.8이에요.</p>
+          <div class="hs-actions">
+            <a class="btn btn-primary" th:href="@{/user/home}">학습하러 가기</a>
+          </div>
+        </section>
+
+        <th:block th:unless="${page.locked}">
+          <!--/* 목록 */-->
+          <section class="hs-section" data-view="list">
+            <div class="hs-section__head">
+              <h2>청약 단지</h2>
+              <div class="hs-cal-nav">
+                <button type="button" class="btn btn-ghost btn-icon" data-list-month="prev" aria-label="이전 달">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 6-6 6 6 6"></path></svg>
+                </button>
+                <span class="hs-cal-title" data-bind="listTitle">-</span>
+                <button type="button" class="btn btn-ghost btn-icon" data-list-month="next" aria-label="다음 달">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"></path></svg>
+                </button>
+              </div>
+            </div>
+            <div class="hs-filter">
+              <label>모집 상태
+                <select data-filter="status">
+                  <option value="">전체</option>
+                  <option value="UPCOMING">모집 예정</option>
+                  <option value="OPEN">모집 중</option>
+                  <option value="CLOSED">모집 마감</option>
+                  <option value="ANNOUNCED">발표 완료</option>
+                </select>
+              </label>
+              <span class="hs-muted">그 달에 일정이 걸쳐 있는 단지예요 · <b data-bind="listCount">0</b>개</span>
+            </div>
+            <div class="hs-open-grid" data-list="complexList"></div>
+          </section>
+
+          <!--/* 상세 (API 64) */-->
+          <section class="hs-section" data-view="detail" hidden>
+            <button type="button" class="btn btn-ghost hs-back" data-back="list">← 단지 목록</button>
+            <div class="card hs-detail">
+              <div class="hs-detail__img">가상 아파트 이미지</div>
+              <div class="hs-detail__info">
+                <div class="hs-detail__tags"><span data-d="statusTag"></span></div>
+                <h2 data-d="name">-</h2>
+                <dl class="hs-cx__rows">
+                  <dt>소재지</dt><dd data-d="location">-</dd>
+                  <dt>공급 유형</dt><dd data-d="supplyType">-</dd>
+                  <dt>전용면적</dt><dd data-d="areaType">-</dd>
+                  <dt>가상 분양가</dt><dd data-d="salePrice">-</dd>
+                  <dt>공급 세대 수</dt><dd data-d="supplyUnits">-</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="hs-detail-grid">
+              <div class="card hs-box">
+                <h3>모집 일정</h3>
+                <dl class="hs-kv">
+                  <dt>청약 접수</dt><dd data-d="applyPeriod">-</dd>
+                  <dt>당첨자 발표</dt><dd data-d="announceDate">-</dd>
+                  <dt>경쟁률</dt><dd data-d="competition">-</dd>
+                </dl>
+                <p class="hs-muted hs-small">경쟁률은 접수가 끝난 뒤 공개돼요. 발표일에 결과를 확인할 수 있어요.</p>
+              </div>
+              <div class="card hs-box">
+                <h3>신청 가능 여부</h3>
+                <ul class="hs-checks" data-list="checks"></ul>
+                <p class="hs-applied-note" data-d="appliedNote" hidden></p>
+                <div class="hs-actions">
+                  <button type="button" class="btn btn-primary" data-start-apply>가점 계산하고 신청하기</button>
+                  <button type="button" class="btn btn-secondary" data-go-tab="history" data-d="historyBtn" hidden>내 신청 내역 보기</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!--/* 가점 계산·신청 (API 68·69, SP-71·SP-73) */-->
+          <section class="hs-section" data-view="apply" hidden>
+            <button type="button" class="btn btn-ghost hs-back" data-back="detail">← 공고로 돌아가기</button>
+            <div class="hs-section__head">
+              <div>
+                <h2>나의 청약 가점</h2>
+                <p class="hs-muted" data-bind="applyFor">-</p>
+              </div>
+            </div>
+            <div class="hs-detail-grid">
+              <form class="card hs-box" id="hs-score-form" novalidate>
+                <h3>내 정보 입력</h3>
+                <label class="hs-field">
+                  <span>무주택 기간 (년)</span>
+                  <span class="hs-input"><input type="number" name="homelessYears" min="0" max="50" step="1" inputmode="numeric" value="0"><span>년</span></span>
+                  <small class="hs-muted">1년 미만이면 0. 15년 이상은 모두 만점(32점)이에요.</small>
+                  <span class="hs-field-msg" data-msg="homelessYears"></span>
+                </label>
+                <label class="hs-field">
+                  <span>부양가족 수 (명)</span>
+                  <span class="hs-input"><input type="number" name="dependents" min="0" max="20" step="1" inputmode="numeric" value="0"><span>명</span></span>
+                  <small class="hs-muted">본인 제외. 6명 이상은 모두 만점(35점)이에요.</small>
+                  <span class="hs-field-msg" data-msg="dependents"></span>
+                </label>
+                <div class="hs-kv-row"><span>청약통장 납입 회차</span><b><span data-bind="paidCount">-</span>회차 (자동)</b></div>
+                <button type="submit" class="btn btn-secondary">가점 계산하기</button>
+              </form>
+
+              <div class="card hs-box">
+                <h3>예상 가점</h3>
+                <div data-score-empty class="hs-muted">정보를 넣고 "가점 계산하기"를 눌러 보세요.</div>
+                <div data-score hidden>
+                  <div class="hs-score-total"><b data-s="totalScore">0</b><span>/ <span data-s="maxScore">84</span>점</span></div>
+                  <ul class="hs-score-list">
+                    <li><span>무주택 기간</span><span class="hs-bar"><i data-bar="homeless"></i></span><b><span data-s="homelessScore">0</span> / 32</b></li>
+                    <li><span>부양가족</span><span class="hs-bar"><i data-bar="dependent"></i></span><b><span data-s="dependentScore">0</span> / 35</b></li>
+                    <li><span>청약통장</span><span class="hs-bar"><i data-bar="account"></i></span><b><span data-s="accountScore">0</span> / 17</b></li>
+                  </ul>
+                  <p class="hs-muted hs-small"><span data-s="baseDate">-</span> 기준 · 통장 점수는 납입 1회를 1개월로 봐요 (SP-71)</p>
+                  <div class="hs-confirm">
+                    <p>신청한 뒤에는 <b>취소하거나 고칠 수 없어요.</b> 이 점수로 신청할까요?</p>
+                    <button type="button" class="btn btn-primary" data-apply>이 점수로 신청하기</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!--/* 신청 완료 */-->
+          <section class="card hs-done" data-view="done" hidden>
+            <span class="hs-done__icon" aria-hidden="true">✓</span>
+            <h2>청약 신청이 완료됐어요</h2>
+            <dl class="hs-kv">
+              <dt>단지</dt><dd data-bind="doneName">-</dd>
+              <dt>접수번호</dt><dd data-bind="doneReceipt">-</dd>
+              <dt>신청 가점</dt><dd><span data-bind="doneScore">-</span>점</dd>
+              <dt>당첨자 발표</dt><dd data-bind="doneAnnounce">-</dd>
+            </dl>
+            <div class="hs-actions">
+              <button type="button" class="btn btn-primary" data-go-tab="history">내 신청 내역 보기</button>
+              <button type="button" class="btn btn-secondary" data-back="list">단지 목록으로</button>
+            </div>
+          </section>
+        </th:block>
       </div>
 
       <!--/* ===================== 내 신청 내역 (3단계에서 채운다) ===================== */-->

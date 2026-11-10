@@ -69,15 +69,13 @@
     });
     root.querySelectorAll('.hs-panel').forEach(function (p) { p.hidden = p.dataset.panel !== name; });
     if (history.replaceState) history.replaceState(null, '', name === 'home' ? location.pathname : '#' + name);
+    if (window.HS && window.HS.onTab) window.HS.onTab(name);
   }
   tabs.forEach(function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
   root.addEventListener('click', function (e) {
     var go = e.target.closest('[data-go-tab]');
     if (go) showTab(go.dataset.goTab);
   });
-  var start = location.hash.replace('#', '');
-  if (start === 'complexes' || start === 'history') showTab(start);
-
   // 다른 단계(공고 상세)에서 쓰도록 열어 둔다
   window.HS = window.HS || {};
   window.HS.showTab = showTab;
@@ -278,26 +276,50 @@
       box.appendChild(empty);
       return;
     }
-    items.forEach(function (c) {
-      var card = el('div', 'card hs-cx');
-      var img = el('div', 'hs-cx__img', '단지 이미지');
-      img.appendChild(statusTag(c.status));
-      if (c.applied) img.appendChild(el('span', 'hs-applied', '신청 완료'));
-      card.appendChild(img);
-      var body = el('div', 'hs-cx__body');
-      body.appendChild(el('span', 'hs-cx__name', c.name));
-      var rows = el('dl', 'hs-cx__rows');
-      [['접수 기간', shortDate(c.applyStartDate) + ' ~ ' + shortDate(c.applyEndDate)],
-        ['접수 마감', c.applyEndDate.replace(/-/g, '.')],
-        ['당첨자 발표', c.announceDate.replace(/-/g, '.')]].forEach(function (r) {
-        rows.appendChild(el('dt', null, r[0]));
-        rows.appendChild(el('dd', null, r[1]));
-      });
-      body.appendChild(rows);
-      body.appendChild(detailButton(c.complexId));
-      card.appendChild(body);
-      box.appendChild(card);
+    items.forEach(function (c) { box.appendChild(complexCard(c, false)); });
+  }
+
+  // 단지 카드 (모집 중 단지·청약 단지 목록이 같이 쓴다). withApply 면 신청 버튼도 단다
+  function complexCard(c, withApply) {
+    var card = el('div', 'card hs-cx');
+    var img = el('div', 'hs-cx__img', '단지 이미지');
+    img.appendChild(statusTag(c.status));
+    if (c.applied) img.appendChild(el('span', 'hs-applied', '신청 완료'));
+    card.appendChild(img);
+    var body = el('div', 'hs-cx__body');
+    body.appendChild(el('span', 'hs-cx__name', c.name));
+    var rows = el('dl', 'hs-cx__rows');
+    [['접수 기간', shortDate(c.applyStartDate) + ' ~ ' + shortDate(c.applyEndDate)],
+      ['접수 마감', dotted(c.applyEndDate)],
+      ['당첨자 발표', dotted(c.announceDate)]].forEach(function (r) {
+      rows.appendChild(el('dt', null, r[0]));
+      rows.appendChild(el('dd', null, r[1]));
     });
+    body.appendChild(rows);
+    var actions = el('div', 'hs-cx__actions');
+    actions.appendChild(detailButton(c.complexId));
+    if (withApply) {
+      // 신청 기간(모집 중)이고 아직 신청하지 않았을 때만 누를 수 있다 (SP-73, #58 완료 조건)
+      var apply = el('button', 'btn btn-primary', applyLabel(c.status, c.applied));
+      apply.type = 'button';
+      apply.disabled = !(c.status === 'OPEN' && !c.applied);
+      apply.addEventListener('click', function () { window.HS.openDetail(c.complexId, true); });
+      actions.appendChild(apply);
+    }
+    body.appendChild(actions);
+    card.appendChild(body);
+    return card;
+  }
+
+  function dotted(text) {
+    return String(text || '').replace(/-/g, '.');
+  }
+
+  function applyLabel(status, applied) {
+    if (applied) return '신청 완료';
+    if (status === 'OPEN') return '신청하기';
+    if (status === 'UPCOMING') return '접수 전이에요';
+    return '접수 마감';
   }
 
   function loadMonth() {
@@ -348,9 +370,243 @@
     renderOpenComplexes(sample);
   }
 
+  // ---------- 청약 단지 : 목록(63) → 상세(64) → 가점 계산(68) → 신청(69) ----------
+  var panel = root.querySelector('[data-panel="complexes"]');
+  var cx = { year: TODAY.y, month: TODAY.m, items: [], loaded: false, status: '', detail: null, input: null };
+
+  function view(name) {
+    panel.querySelectorAll('[data-view]').forEach(function (v) { v.hidden = v.dataset.view !== name; });
+  }
+  function setD(name, text) {
+    panel.querySelectorAll('[data-d="' + name + '"]').forEach(function (n) { n.textContent = text; });
+  }
+  function won(n) {                                      // 320000000 → 3억 2,000만 원
+    var eok = Math.floor(n / 100000000);
+    var man = Math.floor((n % 100000000) / 10000);
+    return (eok ? eok + '억 ' : '') + (man ? fmt(man) + '만 ' : '') + '원';
+  }
+
+  // 탭으로 들어오면 목록부터 (Lv.12 미만이면 잠금 안내만 있다)
+  window.HS.onTab = function (name) {
+    if (name !== 'complexes' || LOCKED) return;
+    view('list');
+    if (!cx.loaded) loadList();
+  };
+
+  function loadList() {
+    bind('listTitle', cx.year + '년 ' + cx.month + '월');
+    var month = cx.year + '-' + String(cx.month).padStart(2, '0');
+    return MB.api(API + '/complexes?month=' + month).then(function (data) {
+      cx.items = (data && data.items) || [];
+      cx.loaded = true;
+      renderList();
+    }).catch(function (err) {
+      cx.items = [];
+      renderList();
+      MB.toast(err.message, 'error');
+    });
+  }
+
+  function renderList() {
+    var items = cx.items.filter(function (c) { return !cx.status || c.status === cx.status; });
+    bind('listCount', String(items.length));
+    var box = list('complexList');
+    box.replaceChildren();
+    if (!items.length) {
+      var empty = el('div', 'card hs-empty-card');
+      empty.appendChild(el('strong', null, '조건에 맞는 단지가 없어요'));
+      empty.appendChild(el('p', 'hs-muted', '다른 달이나 모집 상태를 골라 보세요.'));
+      box.appendChild(empty);
+      return;
+    }
+    items.forEach(function (c) { box.appendChild(complexCard(c, true)); });
+  }
+
+  if (!LOCKED) {
+    panel.querySelector('[data-filter="status"]').addEventListener('change', function (e) {
+      cx.status = e.target.value;
+      renderList();
+    });
+    panel.querySelectorAll('[data-list-month]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cx.month += btn.dataset.listMonth === 'next' ? 1 : -1;
+        if (cx.month === 0) { cx.month = 12; cx.year -= 1; }
+        if (cx.month === 13) { cx.month = 1; cx.year += 1; }
+        loadList();
+      });
+    });
+    panel.addEventListener('click', function (e) {
+      var back = e.target.closest('[data-back]');
+      if (!back) return;
+      if (back.dataset.back === 'detail' && cx.detail) openDetail(cx.detail.complexId);
+      else { view('list'); if (!cx.loaded) loadList(); }
+    });
+  }
+
+  // ----- 상세 (API 64) -----
+  function canApply(c) {
+    return c.status === 'OPEN' && !c.myApplication;
+  }
+
+  function openDetail(id, thenApply) {
+    if (LOCKED || !id) { showTab('complexes'); return; }
+    showTab('complexes');
+    MB.api(API + '/complexes/' + id).then(function (c) {
+      cx.detail = c;
+      renderDetail(c);
+      if (thenApply && canApply(c)) openApply();
+      else view('detail');
+      root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).catch(function (err) {
+      MB.toast(err.message, 'error');
+    });
+  }
+  window.HS.openDetail = openDetail;
+
+  function renderDetail(c) {
+    panel.querySelector('[data-d="statusTag"]').replaceChildren(statusTag(c.status));
+    setD('name', c.name);
+    setD('location', c.location);
+    setD('supplyType', c.supplyType);
+    setD('areaType', c.areaType);
+    setD('salePrice', won(c.salePrice));
+    setD('supplyUnits', fmt(c.supplyUnits) + '세대');
+    setD('applyPeriod', dotted(c.applyStartDate) + ' ~ ' + dotted(c.applyEndDate));
+    setD('announceDate', dotted(c.announceDate));
+    // 경쟁률은 접수가 끝난 뒤에만 온다 (SP-74). 신청자 ÷ 공급 세대
+    setD('competition', c.competitionRate == null ? '접수 마감 후 공개' : c.competitionRate.toFixed(2) + ' : 1');
+
+    var checks = list('checks');
+    checks.replaceChildren();
+    var periodReason = c.status === 'UPCOMING'
+        ? '접수는 ' + dotted(c.applyStartDate) + '부터예요'
+        : '접수가 ' + dotted(c.applyEndDate) + '에 끝났어요';
+    [{ ok: true, label: 'Lv.' + root.dataset.unlockLevel + ' 이상' },
+      { ok: c.status === 'OPEN', label: c.status === 'OPEN' ? '신청 기간이에요 (~' + dotted(c.applyEndDate) + ')' : '신청 기간', reason: periodReason },
+      { ok: !c.myApplication, label: '이 단지 첫 신청', reason: '이미 신청한 단지예요. 단지마다 한 번만 신청할 수 있어요' }
+    ].forEach(function (ck) {
+      var li = el('li', 'hs-check' + (ck.ok ? '' : ' is-bad'));
+      li.appendChild(el('span', 'hs-check__icon', ck.ok ? '✓' : '!'));
+      var text = el('span', 'hs-check__text');
+      text.appendChild(el('span', null, ck.label));
+      if (!ck.ok && ck.reason) text.appendChild(el('span', 'hs-check__reason', ck.reason));
+      li.appendChild(text);
+      checks.appendChild(li);
+    });
+
+    var note = panel.querySelector('[data-d="appliedNote"]');
+    var historyBtn = panel.querySelector('[data-d="historyBtn"]');
+    var mine = c.myApplication;
+    note.hidden = !mine;
+    historyBtn.hidden = !mine;
+    if (mine) note.textContent = '이미 신청했어요 · 접수번호 ' + mine.receiptNo + ' · 신청 가점 ' + mine.totalScore + '점';
+
+    var start = panel.querySelector('[data-start-apply]');
+    start.disabled = !canApply(c);
+    start.textContent = mine ? '이미 신청한 단지예요' : c.status === 'OPEN' ? '가점 계산하고 신청하기' : '지금은 신청 기간이 아니에요';
+  }
+
+  if (!LOCKED) {
+    panel.querySelector('[data-start-apply]').addEventListener('click', function () {
+      if (cx.detail && canApply(cx.detail)) openApply();
+    });
+  }
+
+  // ----- 가점 계산 (API 68) -----
+  var scoreForm = document.getElementById('hs-score-form');
+
+  function openApply() {
+    var c = cx.detail;
+    bind('applyFor', c.name + ' · 접수 ~' + dotted(c.applyEndDate) + ' · 발표 ' + dotted(c.announceDate));
+    resetScore();
+    view('apply');
+  }
+
+  function resetScore() {
+    cx.input = null;
+    panel.querySelector('[data-score]').hidden = true;
+    panel.querySelector('[data-score-empty]').hidden = false;
+  }
+
+  function fieldMsg(name, text) {
+    var m = scoreForm.querySelector('[data-msg="' + name + '"]');
+    m.textContent = text || '';
+    scoreForm.querySelector('input[name="' + name + '"]').closest('.hs-input').classList.toggle('is-error', !!text);
+  }
+
+  // 입력값만 보고 알 수 있는 범위 (SP-71: 무주택 0~50년, 부양가족 0~20명). 서버도 같은 규칙으로 다시 확인한다
+  function readScoreInput() {
+    var ok = true;
+    var out = {};
+    [['homelessYears', 50, '무주택 기간은 0~50년으로 입력해 주세요'], ['dependents', 20, '부양가족 수는 0~20명으로 입력해 주세요']]
+        .forEach(function (f) {
+          var raw = scoreForm.querySelector('input[name="' + f[0] + '"]').value.trim();
+          var valid = /^\d+$/.test(raw) && Number(raw) <= f[1];
+          fieldMsg(f[0], valid ? '' : f[2]);
+          if (!valid) ok = false;
+          out[f[0]] = Number(raw);
+        });
+    return ok ? out : null;
+  }
+
+  function renderScore(s) {
+    panel.querySelector('[data-score-empty]').hidden = true;
+    panel.querySelector('[data-score]').hidden = false;
+    ['totalScore', 'maxScore', 'homelessScore', 'dependentScore', 'accountScore'].forEach(function (k) {
+      panel.querySelector('[data-s="' + k + '"]').textContent = s[k];
+    });
+    panel.querySelector('[data-s="baseDate"]').textContent = dotted(s.baseDate);
+    [['homeless', s.homelessScore, 32], ['dependent', s.dependentScore, 35], ['account', s.accountScore, 17]]
+        .forEach(function (b) {
+          panel.querySelector('[data-bar="' + b[0] + '"]').style.width = Math.round(b[1] / b[2] * 100) + '%';
+        });
+  }
+
+  if (!LOCKED) {
+    scoreForm.addEventListener('input', resetScore);          // 값을 바꾸면 다시 계산해야 신청할 수 있다
+    scoreForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var input = readScoreInput();
+      if (!input) return;
+      MB.api(API + '/score-preview', { method: 'POST', body: input }).then(function (s) {
+        cx.input = input;
+        renderScore(s);
+      }).catch(function (err) {
+        MB.toast(err.message, 'error');
+      });
+    });
+
+    // ----- 신청 (API 69). 신청 뒤에는 취소·수정할 수 없다 (SP-73) -----
+    var applyBtn = panel.querySelector('[data-apply]');
+    applyBtn.addEventListener('click', function () {
+      var c = cx.detail;
+      if (!c || !cx.input) return;
+      applyBtn.disabled = true;
+      MB.api(API + '/complexes/' + c.complexId + '/applications', { method: 'POST', body: cx.input })
+          .then(function (r) {
+            bind('doneName', c.name);
+            bind('doneReceipt', r.receiptNo);
+            bind('doneScore', String(r.totalScore));
+            bind('doneAnnounce', dotted(c.announceDate));
+            view('done');
+            MB.toast('청약 신청이 완료됐어요 · 접수번호 ' + r.receiptNo);
+            cx.loaded = false;                                  // 목록·캘린더의 "신청 완료" 표시를 새로 받는다
+            loadMonth();
+          })
+          .catch(function (err) {
+            MB.toast(err.message, 'error');
+            // 그사이 기간이 끝났거나 이미 신청했으면 상세를 다시 보여 준다
+            if (err.code === 'NOT_IN_APPLY_PERIOD' || err.code === 'ALREADY_APPLIED') openDetail(c.complexId);
+          })
+          .finally(function () { applyBtn.disabled = false; });
+    });
+  }
+
   // ---------- 시작 ----------
   loadAccount();
   loadDeposits();
   if (LOCKED) renderLockedSamples();
   loadMonth();
+  var startTab = location.hash.replace('#', '');           // 주소 끝 #complexes, #history 로 바로 열기 (알림 링크 등)
+  if (startTab === 'complexes' || startTab === 'history') showTab(startTab);
 })();
