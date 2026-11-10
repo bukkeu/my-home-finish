@@ -10,7 +10,9 @@ import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.config.WebConfig;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.security.LevelCheckInterceptor;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import com.wanted.moneybeetle.support.MockSecurityServices;
 import com.wanted.moneybeetle.support.SecurityTestApp;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +52,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *            / 청약통장은 Lv.1 도 통과 / 납입 POST 는 CSRF 토큰이 있어야 한다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class,
-        WebConfig.class, LevelCheckInterceptor.class, HousingController.class, GlobalExceptionHandler.class})
+        WebConfig.class, LevelCheckInterceptor.class, UnlockLevelProvider.class, HousingController.class,
+        GlobalExceptionHandler.class})
 @MockSecurityServices        // 로그인 핸들러·계정 상태 확인이 쓰는 서비스는 가짜 (#161)
 class HousingSecurityFlowTest {
 
@@ -62,6 +65,9 @@ class HousingSecurityFlowTest {
     private HousingApplicationService applicationService;
     @MockitoBean
     private GrowthService growthService;
+    /** 해금 레벨 운영 설정 (#223). 가짜는 빈 값을 돌려주므로 기본 Lv.12 로 검사한다 */
+    @MockitoBean
+    private SystemSettingService systemSettingService;
     /** SecurityConfig 의 ActiveMemberFilter(#8)가 요청마다 계정 상태를 확인한다 (@MockSecurityServices 의 가짜). 이 테스트의 회원은 정상 계정이다 */
     @Autowired
     private MemberService memberService;
