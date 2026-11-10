@@ -88,10 +88,15 @@ class SeasonParticipantRepositoryTest {
         TradingSeason third = season("3기", start);
         participate(first, MEMBER_ID, 1_100_000L);
         participate(second, MEMBER_ID, 1_620_000L);
+        participate(third, MEMBER_ID, 2_500_000L);
 
+        // 3기 기준으로는 2기가 직전 시즌이고, 2기 기준으로는 같은 날 시작한 3기를 제외해야 한다.
         assertThat(participantRepository.findPreviousParticipation(MEMBER_ID, third.getTradingSeasonId()))
                 .get().extracting(SeasonParticipant::getCarryoverOut)
                 .isEqualTo(1_620_000L);
+        assertThat(participantRepository.findPreviousParticipation(MEMBER_ID, second.getTradingSeasonId()))
+                .get().extracting(SeasonParticipant::getCarryoverOut)
+                .isEqualTo(1_100_000L);
     }
 
 }
