@@ -77,9 +77,9 @@ public class MemberController {
     // API 4. 회원가입
     @PostMapping("/api/v1/auth/signup")
     public ResponseEntity<ApiResponse<SignupResultDTO>> signup(
-            @Valid @RequestBody SignupDTO request) {
+            @Valid @RequestBody SignupDTO request, HttpSession session) {
 
-        SignupResultDTO result = memberSignupService.signup(request);
+        SignupResultDTO result = memberSignupService.signup(request, session);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -100,10 +100,11 @@ public class MemberController {
     @DeleteMapping("/api/v1/members/me")
     public ResponseEntity<Void> withdraw(
             @AuthenticationPrincipal AuthDetails me,
-            @Valid @RequestBody WithdrawDTO request,
+            @RequestBody(required = false) WithdrawDTO request,
             HttpServletRequest httpRequest) {
-        accountService.withdraw(me.getMemberId(), request.getPassword());
         HttpSession session = httpRequest.getSession(false);
+        // 비밀번호가 있는 회원은 현재 비밀번호로, 간편 로그인 회원은 구글·카카오로 다시 로그인한 세션으로 본인 확인한다
+        accountService.withdraw(me.getMemberId(), request == null ? null : request.getPassword(), session);
         if (session != null) {
             session.invalidate();
         }

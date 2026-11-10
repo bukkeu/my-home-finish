@@ -34,14 +34,16 @@ class MemberPurgeServiceTest {
 
     private MemberRepository memberRepository;
     private MemberService memberService;
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
 
     @BeforeEach
     void setUp() {
         memberRepository = mock(MemberRepository.class);
+        socialAccountRepository = mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class);
         memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), mock(ForbiddenWordService.class),
                 Clock.fixed(Instant.parse("2026-11-08T18:00:00Z"), ZoneId.of("Asia/Seoul")),
-                mock(InstructorProfileRepository.class));
+                mock(InstructorProfileRepository.class), socialAccountRepository);
     }
 
     private Member withdrawn(long id) {
@@ -68,6 +70,18 @@ class MemberPurgeServiceTest {
         ArgumentCaptor<LocalDateTime> cutoff = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(memberRepository).findPurgeTargets(cutoff.capture(), eq(PageRequest.of(0, 100)));
         assertThat(cutoff.getValue()).isEqualTo(NOW.minusDays(30));
+    }
+
+    @Test
+    @DisplayName("개인정보를 지울 때 같은 회원들의 간편 로그인 연결도 함께 지운다")
+    void purgesSocialAccountsOfTargets() {
+        Member a = withdrawn(8);
+        Member b = withdrawn(9);
+        when(memberRepository.findPurgeTargets(any(), any(Pageable.class))).thenReturn(List.of(a, b));
+
+        memberService.purgeWithdrawnMembers(NOW, 100);
+
+        verify(socialAccountRepository).deleteByMemberIdIn(List.of(8L, 9L));
     }
 
     @Test

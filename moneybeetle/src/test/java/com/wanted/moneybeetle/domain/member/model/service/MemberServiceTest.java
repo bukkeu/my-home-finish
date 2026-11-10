@@ -50,6 +50,7 @@ class MemberServiceTest {
     private PasswordEncoder passwordEncoder;
     private ForbiddenWordService forbiddenWordService;
     private Clock clock;
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
     private MemberService memberService;
 
     @BeforeEach
@@ -59,6 +60,7 @@ class MemberServiceTest {
         memberTermsAgreementRepository = mock(MemberTermsAgreementRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         forbiddenWordService = mock(ForbiddenWordService.class);
+        socialAccountRepository = mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class);
 
         clock = Clock.fixed(
                 Instant.parse("2026-11-08T00:00:00Z"),
@@ -72,7 +74,8 @@ class MemberServiceTest {
                 passwordEncoder,
                 forbiddenWordService,
                 clock,
-                org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository.class)
+                org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository.class),
+                socialAccountRepository
         );
     }
 
