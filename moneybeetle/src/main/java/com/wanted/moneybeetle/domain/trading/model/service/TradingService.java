@@ -36,6 +36,7 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -213,7 +214,8 @@ public class TradingService {
      * 다음 턴이 있고, 휴장이 아니고, 진행 중이고, 사용 중 종목이 있고 그 가격이 모두 있고, 뉴스가 1개 이상 있어야 ready
      */
     public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
-        boolean holiday = season.isHoliday();
+        // 관리자가 휴장(HOLIDAY)으로 바꾸지 않았어도 서울 기준 일요일이면 휴장일이다 (SP-50, 휴장일에는 턴이 잠긴다)
+        boolean holiday = season.isHoliday() || LocalDate.now(clock).getDayOfWeek() == DayOfWeek.SUNDAY;
         if (season.isLastTurn()) {
             return new NextTurnCheckDTO(false, null, List.of(), 0, holiday, isPreviousSeasonSettled(season),
                     isAfterMarketClose(season));
@@ -233,7 +235,7 @@ public class TradingService {
         long newsCount = newsRepository.countByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn);
         boolean previousSettled = isPreviousSeasonSettled(season);
         boolean afterClose = isAfterMarketClose(season);
-        boolean ready = season.isRunning() && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0
+        boolean ready = season.isRunning() && !holiday && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0
                 && previousSettled && afterClose;
         return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday, previousSettled, afterClose);
     }

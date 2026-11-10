@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,6 +71,7 @@ class NewsAdminServiceTest {
             season.advanceTurn();
         }
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(SEASON_ID)).thenReturn(Optional.of(season));
         // 분야 1, 종목 1 은 있다
         when(sectorRepository.findAllById(Set.of(1L))).thenReturn(List.of(sector(1L, "반도체")));
         when(stockRepository.findAllById(Set.of(1L))).thenReturn(List.of(stock(1L, "한빛반도체")));
@@ -141,6 +143,7 @@ class NewsAdminServiceTest {
     @Test
     void 없는_시즌이면_NOT_FOUND() {
         when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findNews(99L, null))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -238,5 +241,22 @@ class NewsAdminServiceTest {
         assertThat(items.get(0).getAdminMemo()).isEqualTo("원래 메모");
         assertThat(items.get(0).getSectors()).extracting(AdminNewsDTO.Tag::getName).containsExactly("반도체");
         assertThat(items.get(0).getStocks()).extracting(AdminNewsDTO.Tag::getId).containsExactly(1L);
+    }
+
+    @Test
+    void 뉴스_등록_수정_삭제는_턴_진행과_같은_시즌_행_잠금을_잡고_현재_턴을_확인한다() {
+        when(newsRepository.save(any(News.class))).thenAnswer(invocation -> {
+            News saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "newsId", 40L);
+            return saved;
+        });
+        savedNews(50L, 6);
+        savedNews(51L, 7);
+
+        service.createNews(SEASON_ID, request(6, List.of(1L), List.of(1L)));
+        service.changeNews(50L, request(6, List.of(1L), List.of(1L)));
+        service.deleteNews(51L);
+
+        verify(seasonRepository, times(3)).findByIdForUpdate(SEASON_ID);
     }
 }

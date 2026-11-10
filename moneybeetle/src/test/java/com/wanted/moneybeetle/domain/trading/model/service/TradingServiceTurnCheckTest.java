@@ -298,5 +298,18 @@ class TradingServiceTurnCheckTest {
         assertThat(check.afterMarketClose()).isTrue();
         assertThat(check.ready()).isTrue();
     }
-}
 
+    // ===== 일요일은 시즌 상태와 상관없이 휴장일 =====
+
+    @Test
+    void 일요일에는_시즌이_진행_중으로_남아_있어도_휴장일이고_ready_가_아니다() {
+        when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
+        when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
+
+        NextTurnCheckDTO check = serviceAt("2026-11-08T21:00:00").checkNextTurn(season);   // 일요일 장 마감 뒤
+
+        assertThat(season.isRunning()).isTrue();
+        assertThat(check.isHoliday()).isTrue();
+        assertThat(check.ready()).isFalse();
+    }
+}
