@@ -9,8 +9,8 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #42 턴별 가격 : PAST_TURN_LOCKED, PRICE_NOT_POSITIVE, PRICE_OUT_OF_RANGE, CSV_INVALID
 *   - #40 시즌 관리 : START_DATE_NOT_MONDAY, INVALID_STATUS_TRANSITION, SEASON_CLOSED
 *   - #24 시세·뉴스 조회 : NO_RUNNING_SEASON
-*   - 앞으로 추가 : NOT_ENOUGH_QUANTITY, STALE_TURN_PRICE, MARKET_HOLIDAY, RANKING_NOT_PUBLISHED,
-*     NEXT_TURN_NOT_READY
+*   - #111 턴 진행 규칙 : MARKET_HOLIDAY, LAST_TURN_REACHED
+*   - 앞으로 추가 : NOT_ENOUGH_QUANTITY, STALE_TURN_PRICE, RANKING_NOT_PUBLISHED, NEXT_TURN_NOT_READY
 *  */
 
 import com.wanted.moneybeetle.global.exception.ErrorCode;
@@ -36,7 +36,9 @@ public enum TradingErrorCode implements ErrorCode {
     CSV_INVALID(HttpStatus.BAD_REQUEST, "CSV 형식이 맞지 않는 행이 있어요"),                                        // 400
     START_DATE_NOT_MONDAY(HttpStatus.BAD_REQUEST, "시즌 시작일은 월요일이어야 해요"),                                 // 400
     INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "지금 상태에서는 그 상태로 바꿀 수 없어요"),                          // 409
-    SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요");                                        // 409
+    SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요"),                                        // 409
+    MARKET_HOLIDAY(HttpStatus.CONFLICT, "오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요"),                            // 409
+    LAST_TURN_REACHED(HttpStatus.CONFLICT, "마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요");                          // 409
 
     private final HttpStatus status;
     private final String message;
