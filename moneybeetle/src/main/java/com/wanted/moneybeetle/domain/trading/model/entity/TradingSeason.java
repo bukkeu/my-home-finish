@@ -165,6 +165,11 @@ public class TradingSeason {
         return dates;
     }
 
+    /** n턴의 예정 거래일 (1~totalTurns) */
+    public LocalDate tradeDateOf(int turnNo) {
+        return tradeDates().get(turnNo - 1);
+    }
+
     /**
      * 다음 턴으로 넘긴다 (SP-59). 진행 중(RUNNING)일 때만, 마지막 턴(totalTurns) 이후에는 넘길 수 없다.
      * 휴장(HOLIDAY)에는 MARKET_HOLIDAY, 그 밖의 상태에서는 INVALID_STATUS_TRANSITION 으로 거절한다

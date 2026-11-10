@@ -215,7 +215,7 @@ public class TradingService {
         // 관리자가 휴장(HOLIDAY)으로 바꾸지 않았어도 서울 기준 일요일이면 휴장일이다 (SP-50, 휴장일에는 턴이 잠긴다)
         boolean holiday = season.isHoliday() || TradingSeason.isClosedDay(today());
         if (season.isLastTurn()) {
-            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday);
+            return new NextTurnCheckDTO(false, null, null, List.of(), 0, holiday);
         }
         int nextTurn = season.getCurrentTurn() + 1;
         Set<Long> activeSectorIds = sectorRepository.findByIsActiveTrueOrderBySortOrderAscSectorIdAsc().stream()
@@ -231,7 +231,7 @@ public class TradingService {
                 .toList();
         long newsCount = newsRepository.countByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn);
         boolean ready = season.isRunning() && !holiday && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0;
-        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday);
+        return new NextTurnCheckDTO(ready, nextTurn, season.tradeDateOf(nextTurn), missingPrices, newsCount, holiday);
     }
 
     /**
