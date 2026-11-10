@@ -37,6 +37,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -214,7 +215,8 @@ public class TradingService {
     public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
         boolean holiday = season.isHoliday();
         if (season.isLastTurn()) {
-            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday, isPreviousSeasonSettled(season));
+            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday, isPreviousSeasonSettled(season),
+                    isAfterMarketClose(season));
         }
         int nextTurn = season.getCurrentTurn() + 1;
         Set<Long> activeSectorIds = sectorRepository.findByIsActiveTrueOrderBySortOrderAscSectorIdAsc().stream()
@@ -230,9 +232,18 @@ public class TradingService {
                 .toList();
         long newsCount = newsRepository.countByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn);
         boolean previousSettled = isPreviousSeasonSettled(season);
+        boolean afterClose = isAfterMarketClose(season);
         boolean ready = season.isRunning() && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0
-                && previousSettled;
-        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday, previousSettled);
+                && previousSettled && afterClose;
+        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday, previousSettled, afterClose);
+    }
+
+    /**
+     * 턴을 넘길 수 있는 시각인가 (#208). 거래 중인 턴(1턴 이후)은 장 마감(20:00) 뒤에만 넘긴다.
+     * 장이 닫혀 있는 시각(20:00~다음 날 08:00)이면 되고, 첫 턴을 시작하는 0턴 → 1턴은 시각을 따지지 않는다
+     */
+    private boolean isAfterMarketClose(TradingSeason season) {
+        return season.getCurrentTurn() < 1 || !MarketHours.isOpen(LocalDateTime.now(clock));
     }
 
     /** 이전 시즌(시작일이 더 이른 가장 최근 시즌)이 없거나, 정산을 마치고 끝났는가 (#207) */
