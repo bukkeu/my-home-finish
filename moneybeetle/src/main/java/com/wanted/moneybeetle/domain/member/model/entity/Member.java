@@ -312,6 +312,39 @@ public class Member {
         this.profileImageUrl = profileImageUrl;
     }
 
+    /**
+     * 관리자가 계정을 정지한다 (#37, API 102, SP-06). 정지된 계정은 로그인할 수 없고,
+     * 이미 로그인한 세션도 다음 요청에서 끊긴다(ActiveMemberFilter 가 isActive 를 본다). 사유는 서비스가 확인한다.
+     */
+    public void suspend(String reason) {
+        require(!STATUS_WITHDRAWN.equals(status), "탈퇴한 회원은 정지할 수 없습니다.");
+        require(reason != null && !reason.isBlank(), "정지 사유가 필요합니다.");
+        this.status = STATUS_SUSPENDED;
+        this.suspendedReason = reason;
+    }
+
+    /** 관리자가 정지를 푼다 (#37, API 102). 정지 사유도 지운다 */
+    public void activate() {
+        require(!STATUS_WITHDRAWN.equals(status), "탈퇴한 회원은 바꿀 수 없습니다.");
+        this.status = STATUS_ACTIVE;
+        this.suspendedReason = null;
+    }
+
+    /**
+     * 관리자가 강사 권한을 주거나 회수한다 (#37, API 103·105, SP-07). MEMBER ↔ INSTRUCTOR 만 바꾼다.
+     * 실제 INSTRUCTOR 권한은 강사 정보(instructor_profile)가 승인(APPROVED)일 때만 생긴다 (MemberService.grantedRole).
+     */
+    public void changeRole(String newRole) {
+        require(!ROLE_ADMIN.equals(role), "관리자 권한은 바꿀 수 없습니다.");
+        require(ROLE_MEMBER.equals(newRole) || ROLE_INSTRUCTOR.equals(newRole), "MEMBER 또는 INSTRUCTOR 만 줄 수 있습니다.");
+        this.role = newRole;
+    }
+
+    /** 탈퇴한 회원인가 */
+    public boolean isWithdrawn() {
+        return STATUS_WITHDRAWN.equals(status);
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);
