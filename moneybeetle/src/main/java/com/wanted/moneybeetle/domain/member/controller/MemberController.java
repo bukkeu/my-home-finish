@@ -3,6 +3,8 @@ package com.wanted.moneybeetle.domain.member.controller;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.InstructorSignupDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.InstructorSignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.PasswordChangeDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.WithdrawDTO;
 import com.wanted.moneybeetle.domain.member.model.service.AccountService;
@@ -80,6 +82,18 @@ public class MemberController {
             @Valid @RequestBody SignupDTO request, HttpSession session) {
 
         SignupResultDTO result = memberSignupService.signup(request, session);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(result));
+    }
+
+    // API 12. 강사 가입 신청 (#30) - 승인 대기(PENDING)로 저장, 관리자가 승인하면 강사 권한. 본인인증을 마친 이메일이어야 한다
+    @PostMapping("/api/v1/auth/instructor-signup")
+    public ResponseEntity<ApiResponse<InstructorSignupResultDTO>> signupInstructor(
+            @Valid @RequestBody InstructorSignupDTO request, HttpSession session) {
+
+        InstructorSignupResultDTO result = memberSignupService.signupInstructor(request, session);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
