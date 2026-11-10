@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface SeasonTurnRepository extends JpaRepository<SeasonTurn, Long> {
 
-    /** 시즌의 12턴 달력 (#44) */
+    /** 시즌의 12턴 달력 (#23 홈, #44 관리자 달력) */
     List<SeasonTurn> findByTradingSeasonIdOrderByTurnNoAsc(Long tradingSeasonId);
 
     Optional<SeasonTurn> findByTradingSeasonIdAndTurnNo(Long tradingSeasonId, int turnNo);
