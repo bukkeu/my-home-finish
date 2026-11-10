@@ -15,14 +15,15 @@ import org.springframework.data.repository.query.Param;
 *  */
 public interface AdminMemberRepository extends Repository<Member, Long> {
 
-    /* API 101 사용자·강사 목록: 관리자 계정은 빼고, 역할·상태·키워드(닉네임·이메일) 모두 선택. 최근 가입 순 */
+    /* API 101 사용자·강사 목록: 관리자 계정은 빼고, 역할·상태·키워드(닉네임·이메일) 모두 선택. 최근 가입 순
+     * keyword 는 서비스가 LIKE 특수문자(! % _)를 '!'로 이스케이프해서 넘긴다 → 글자 그대로 검색 */
     @Query(value = """
             select m from Member m
             where m.role <> 'ADMIN'
               and (:role is null or m.role = :role)
               and (:status is null or m.status = :status)
-              and (:keyword is null or m.nickname like concat('%', :keyword, '%')
-                   or m.email like concat('%', :keyword, '%'))
+              and (:keyword is null or m.nickname like concat('%', :keyword, '%') escape '!'
+                   or m.email like concat('%', :keyword, '%') escape '!')
             order by m.memberId desc
             """,
             countQuery = """
@@ -30,21 +31,21 @@ public interface AdminMemberRepository extends Repository<Member, Long> {
             where m.role <> 'ADMIN'
               and (:role is null or m.role = :role)
               and (:status is null or m.status = :status)
-              and (:keyword is null or m.nickname like concat('%', :keyword, '%')
-                   or m.email like concat('%', :keyword, '%'))
+              and (:keyword is null or m.nickname like concat('%', :keyword, '%') escape '!'
+                   or m.email like concat('%', :keyword, '%') escape '!')
             """)
     Page<Member> search(@Param("role") String role, @Param("status") String status,
                         @Param("keyword") String keyword, Pageable pageable);
 
-    /* API 104 강사 가입 신청 목록: 승인 상태별(기본 PENDING), 탈퇴 회원 제외, 신청 순 */
+    /* API 104 강사 가입 신청 목록: 승인 상태별(기본 PENDING), 탈퇴 회원 제외, 신청(강사 정보 생성) 순 */
     @Query(value = """
             select new com.wanted.moneybeetle.domain.member.model.dto.InstructorApplicationDTO(
-                       p.memberId, p.displayName, p.field, m.email, p.approvalStatus, m.createdAt)
+                       p.memberId, p.displayName, p.field, m.email, p.approvalStatus, p.createdAt)
             from InstructorProfile p, Member m
             where p.memberId = m.memberId
               and p.approvalStatus = :status
               and m.status <> 'WITHDRAWN'
-            order by m.createdAt asc, m.memberId asc
+            order by p.createdAt asc, p.instructorProfileId asc
             """,
             countQuery = """
             select count(p) from InstructorProfile p, Member m

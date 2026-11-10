@@ -60,7 +60,7 @@ public class AdminMemberService {
         if (keywordFilter != null && keywordFilter.length() > KEYWORD_MAX_LENGTH) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
-        return PageResponse.from(adminMemberRepository.search(roleFilter, statusFilter, keywordFilter, pageable)
+        return PageResponse.from(adminMemberRepository.search(roleFilter, statusFilter, escapeLike(keywordFilter), pageable)
                 .map(AdminMemberItemDTO::from));
     }
 
@@ -128,6 +128,14 @@ public class AdminMemberService {
     }
 
     /* ===== 내부 도우미 ===== */
+
+    /* LIKE 특수문자를 글자 그대로 찾게 한다 (쿼리의 escape '!'). 이스케이프 문자 '!'를 먼저 바꾼다 */
+    private String escapeLike(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        return keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+    }
 
     /* 회원 행을 잠가 읽는다. 관리자·탈퇴 계정은 바꾸지 않는다 */
     private Member getChangeableMember(Long memberId) {

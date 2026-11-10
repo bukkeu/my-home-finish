@@ -2681,7 +2681,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 역할·상태·키워드 검색(#37). 관리자 계정은 빼고, role(MEMBER·INSTRUCTOR)·status(ACTIVE·SUSPENDED·WITHDRAWN)·keyword(닉네임·이메일 일부) 모두 선택, 모르는 값은 필터 없이. 최근 가입 순, 기본 20개(최대 50). 목록 응답 형식(1-3). `role`은 회원 정보상 역할이라 승인 전 강사도 INSTRUCTOR로 보인다. |
+| 설명 | 역할·상태·키워드 검색(#37). 키워드의 `%`·`_`는 글자 그대로 찾는다. 관리자 계정은 빼고, role(MEMBER·INSTRUCTOR)·status(ACTIVE·SUSPENDED·WITHDRAWN)·keyword(닉네임·이메일 일부) 모두 선택, 모르는 값은 필터 없이. 최근 가입 순, 기본 20개(최대 50). 목록 응답 형식(1-3). `role`은 회원 정보상 역할이라 승인 전 강사도 INSTRUCTOR로 보인다. |
 
 **Request**
 
@@ -2745,7 +2745,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인 대기 강사. status(PENDING·APPROVED·REVOKED, 기본 PENDING), 탈퇴 회원 제외, 신청 순, 기본 20개(최대 50). `createdAt`은 신청(가입) 시각. 목록 응답 형식(1-3). |
+| 설명 | 승인 대기 강사. status(PENDING·APPROVED·REVOKED, 기본 PENDING), 탈퇴 회원 제외, 신청 순, 기본 20개(최대 50). `createdAt`은 신청 시각(강사 정보를 만든 시각), 그 순서로 정렬. 목록 응답 형식(1-3). |
 
 **Request**
 

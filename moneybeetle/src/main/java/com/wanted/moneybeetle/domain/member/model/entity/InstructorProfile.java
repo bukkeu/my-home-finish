@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.member.model.entity;
 
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -16,12 +17,13 @@ import lombok.NoArgsConstructor;
 *   테이블 instructor_profile (member 1:1) - 강사 정보와 승인 상태
 *   - 로그인(AuthService)이 승인 상태를 읽어서, 승인된(APPROVED) 강사에게만 INSTRUCTOR 권한을 준다 (SP-07)
 *   - 관리자 승인·회수(approve·revoke)는 #37 에서 더했다. 신청 폼 값은 강사 가입(API 12)에서 이어서 더한다
+*   - created_at(신청 시각)·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#37, 신청 목록 정렬)
 *  */
 @Entity
 @Table(name = "instructor_profile")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class InstructorProfile {
+public class InstructorProfile extends BaseTimeEntity {
 
     /** 승인 상태 (approval_status) */
     public static final String PENDING = "PENDING";
