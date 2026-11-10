@@ -10,6 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface StockPriceRepository extends JpaRepository<StockPrice, Long> {
 
+    /** 시즌의 가격표 전체 (30종목 x 12턴) */
+    List<StockPrice> findAllByTradingSeasonId(Long tradingSeasonId);
+
     /** 그 시즌·턴의 모든 종목 가격 (#24 시세) */
     List<StockPrice> findByTradingSeasonIdAndTurnNo(Long tradingSeasonId, int turnNo);
 
