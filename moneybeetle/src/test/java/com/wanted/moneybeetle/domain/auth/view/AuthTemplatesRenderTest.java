@@ -152,7 +152,14 @@ class AuthTemplatesRenderTest {
     @Test
     @DisplayName("auth.js 의 화면별 블록(if (page === '...'))이 byId 로 찾는 id 가 그 화면을 그린 결과에 모두 있다")
     void everyElementIdUsedByEachPageExistsInThatPage() throws Exception {
-        String script = read("/static/js/auth.js");
+        String lf = read("/static/js/auth.js").replace("\r\n", "\n");
+        assertEveryScriptIdExists(lf);                                  // LF 로 받은 파일
+        assertEveryScriptIdExists(lf.replace("\n", "\r\n"));   // Windows 에서 받아 CRLF 가 된 파일
+    }
+
+    private void assertEveryScriptIdExists(String rawScript) throws Exception {
+        // 줄 끝이 CRLF 면 정규식의 \n 과 맞지 않으므로 LF 로 맞춘 뒤 찾는다
+        String script = rawScript.replace("\r\n", "\n");
         String[][] pages = {{"login", "/t/login"}, {"signup", "/t/signup"}, {"social-signup", "/t/social-signup"},
                 {"find-email", "/t/find-email"}, {"password-reset", "/t/password-reset"}};
         for (String[] page : pages) {
