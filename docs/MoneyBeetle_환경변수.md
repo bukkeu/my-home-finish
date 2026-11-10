@@ -60,7 +60,7 @@
 | `KAKAO_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
-| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결) | | `./uploads` | DP-32·33 |
+| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
 - 간편 로그인은 요구사항 우선순위가 **하**입니다. 구현 전에는 `GOOGLE_*`, `KAKAO_*`를 비워 둬도 됩니다. 단, 값이 비어 있는 채로 로그인 등록 설정을 켜면 서버가 뜨지 않을 수 있으므로, 구현할 때 "키가 없으면 해당 로그인을 끄는" 처리를 함께 넣습니다.
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
@@ -98,6 +98,8 @@
 | `spring.servlet.multipart.max-request-size` | `510MB` (영상은 한 요청에 한 개씩 올리므로 파일 한 개 한도보다 조금 크게. 영상 한 개당 업로드는 API명세서 #78 "영상 파일 올리기") | DP-33 |
 | 시간대 | `Asia/Seoul` (서버·DB·Jackson) | DP-42 |
 | `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql` | `local` 프로필에서만 켬 (`application.yaml` 아래의 `on-profile: local` 구역, 기본은 `show-sql: false`, #114). `format_sql`은 `properties.hibernate` 아래에 써야 적용된다 | 학습 (09 module07) |
+| `management.endpoints.web.exposure.include` | `health,info` 만 웹에 연다. `health` 는 UP/DOWN 만(`show-details: never`), 메일 상태는 확인에서 뺀다(`management.health.mail.enabled: false`). `/actuator/health`·`/actuator/info` 는 누구나, 나머지 actuator 주소는 열지 않는다 (#84) | 시스템 설계 "모니터링" |
+| `logging.*` | 콘솔은 줄마다 `[요청 ID|m=회원 ID]`(`logging.pattern.correlation`, 비로그인은 회원 ID 칸이 빈다). `local` 프로필은 우리 코드 `DEBUG`, 파일 `logs/moneybeetle.log` 에 JSON 한 줄(`requestId`·`memberId` 포함, `logging.structured.format.file: logstash`), 10MB 마다 나누고 7일 보관. `logs/` 는 Git 제외 (#84) | 시스템 설계 "로그", EP-05 |
 
 ---
 

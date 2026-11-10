@@ -16,8 +16,10 @@
   - **구조 변경**(컬럼·제약·기본값): `sql/migration/`에 `ALTER` 파일을 추가하고(기존 DB용), 새 DB용으로 `schema.sql`에도 같은 변경을 반영합니다. 둘 다 DBA가 같은 PR에서 고칩니다.
   - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
   - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
+- **강의 영상 시드**(#73, 회원·강의·퀴즈 구역): 시드 영상 27개는 저장소에 넣어 둔 시연용 샘플 영상 3개(`moneybeetle/uploads/videos/sample-1~3.mp4`, 각 30초)를 영상 순서(`sort_order`)대로 함께 쓴다(1번째 영상 → `sample-1.mp4`). `lesson.duration_seconds`는 실제 파일 길이와 같은 30초라서, 영상 완료(서버가 인정한 본 시간 90% 이상, #20) → 퀴즈 열기 → 통과까지 바로 시연할 수 있다(퀴즈가 있는 강의 4·15번). 시드 회원 8(민지)의 이어보기 위치(`learning_progress.last_position_seconds`)는 영상 길이를 넘지 않게 12초로 둔다. 이미 시드를 넣어 둔 DB는 `sql/migration/2026-11-10_lesson_sample_video.sql`을 실행한다: 예전 시드 경로(`/uploads/videos/course-?-?.mp4`)인 영상만 샘플 영상·30초로 바꾸고(강사가 올린 영상은 그대로), 이어보기 위치가 영상 길이를 넘으면 영상 길이로 줄인다(여러 번 실행해도 결과가 같다). 서버는 `moneybeetle` 폴더 기준 기본 저장 폴더(`./uploads`)로 실행해야 샘플 영상이 재생된다.
 - **모의투자 시드**(#72): 분야 15개, 종목 30개(기업정보 포함), 매매 이유 6개, 시즌 1개(시즌 7, 12턴 중 현재 5턴, 이월 100%·상한 없음), 턴 12개, 가격 360행(12턴 전부), 뉴스 25개와 태그. 6~12턴 가격은 미래 턴이라 조회 API(#24)는 현재 턴까지만 보여 준다. 날짜는 고정값이라 현재 턴은 `current_turn`으로만 판단한다. 참가자·보유·거래 내역은 넣지 않는다.
 - **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 8개(모집 중 3, 모집 예정 1, 모집 마감 2, 발표 완료 2. 등록 관리자 1). 8번 `비틀 시범 행복주택`은 #48 산정·발표 시연용(모집 마감, 오늘 발표, 산정 전, 2세대)이고 신청자 4명(시드 회원 2~5, 점수는 SP-71대로 계산한 값)을 함께 넣는다. 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인은 쓰지 않고(#48 가점 순위 방식 확정), 단지 이미지는 컬럼이 없어 넣지 않는다. 납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 청약 신청은 신청 시점 점수를 저장하므로 8번 단지 시연용만 넣는다. 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
+- **경제 용어·알림 시드**(#75, `[DBA ②] 성장·알림·경제 용어 구역`): `economic_term` 12개(관리자 화면 프로토타입의 용어 전부, 번호 순서 = 등록 순서), `term_schedule` 10행(실행한 날(한국 시간 기준) = 1~5번, 다음 날 = 6~10번, 관리자 직접 지정), `notification` 5건(회원 8 민지 4건 중 읽지 않은 3건, 강사 5 반려 알림 1건. 종류 UNLOCK · INQUIRY_REPLY · HOUSING_RESULT · RANKING · COURSE_REJECTED, 제목·이동 주소는 알림을 보내는 코드와 같은 형식, 문의 시드가 없어 INQUIRY_REPLY 의 이동 주소는 NULL). 그 밖의 날은 오늘의 용어가 처음 조회될 때 자동 선정되어 저장된다. 이미 시드를 넣어 둔 DB 는 `sql/migration/2026-11-09_economic_term_notification_seed.sql` 을 실행한다(여러 번 실행해도 안전).
 
 ---
 
@@ -417,10 +419,11 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | code | 의미 | 기본값 | 쓰는 곳 |
 | --- | --- | --- | --- |
 | `ATTENDANCE_STREAK` | 연속 출석 보상. 연속 **5일째부터 매일** 지급 (SP-12) | 캐시 10,000 · 경험치 0 · 사용 중 | `AttendanceService.checkToday` → `RewardService.grant` (원인 ID = 그날의 `attendance_id`) |
-| `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | XP 값 확정(#68) 뒤 시드 | 학습 완료 처리 |
-| `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | XP 값 확정(#68) 뒤 시드 | 퀴즈 제출 처리 |
+| `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | 캐시 30,000 · 경험치 150 · 사용 중 (#68) | 학습 완료 처리 |
+| `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | 캐시 0 · 경험치 30 · 사용 중 (#68) | 퀴즈 제출 처리 |
+| `ATTENDANCE_DAILY` | 출석 경험치 (SP-22). 출석한 날마다 지급 | 캐시 0 · 경험치 10 · 사용 중 (#68). **경험치는 기본값(10) × 연속 일수 구간**: 1~5일째 ×1, 6~10일째 ×2, …, 21일째부터 ×5(상한 50). 구간 계산은 코드 | 출석 처리 (`AttendanceService`, 구현 요청 #68 후속) |
 
-- `ATTENDANCE_STREAK`만 먼저 시드에 들어 있다(`sample-data.sql`, 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`). 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
+- 시드: `sample-data.sql`에 네 규칙이 모두 있다. 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`(연속 출석)과 `sql/migration/2026-11-10_reward_rule_exp_seed.sql`(학습 완료·퀴즈 만점·출석 경험치, #68)을 실행한다. 학습 완료·퀴즈 만점 규칙이 없으면 그 보상 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다. 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
 - 마이그레이션은 규칙이 **없을 때만** 넣고 이미 있는 규칙은 바꾸지 않는다(관리자가 값을 고쳤을 수 있다). 다시 실행해도 결과가 같다.
 - 5일째가 되는 기준(연속 일수)은 코드 상수 `AttendanceService.REWARD_START_STREAK`이고, 규칙 표에는 금액만 둔다.
 
@@ -532,7 +535,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `course_id` | BIGINT | N | FK → course.course_id, UNIQUE(course_id, sort_order) | - | 강의 |
 | `sort_order` | TINYINT | N | UNIQUE(course_id, sort_order), CHECK BETWEEN 1 AND 3 | - | 영상 순서 1~3 |
 | `title` | VARCHAR(100) | N | - | - | 영상 제목 |
-| `video_url` | VARCHAR(500) | N | - | - | 영상 주소 (업로드/외부 링크 미정) |
+| `video_url` | VARCHAR(500) | N | - | - | 영상 파일 키 (`/uploads/….mp4`, 파일 업로드 방식 확정 DP-33. 시드는 샘플 영상 `/uploads/videos/sample-1~3.mp4`, #73) |
 | `duration_seconds` | INT | N | - | 0 | 재생 시간(초) |
 | `summary` | TEXT | Y | - | - | 영상 요약글 (2,000자 이내) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
