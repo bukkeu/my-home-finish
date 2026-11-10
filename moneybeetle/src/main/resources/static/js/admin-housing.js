@@ -30,12 +30,12 @@
   function dotted(text) {                               // 2026-11-03 → 2026.11.03
     return String(text || '').replace(/-/g, '.');
   }
-  function won(n) {                                     // 320000000 → 3억 2,000만
+  function won(n) {                                     // 320000000 → 3억 2,000만 캐시, 123456789 → 1억 2,345만 6,789 캐시
     var eok = Math.floor(n / 100000000);
     var man = Math.floor((n % 100000000) / 10000);
-    var rest = n % 10000;
-    var out = (eok ? eok + '억 ' : '') + (man ? fmt(man) + '만' : '');
-    return (out || fmt(rest)).trim() + ' 캐시';
+    var rest = n % 10000;                               // 만 단위 아래도 버리지 않는다 (폼은 1 이상 정수를 모두 받는다)
+    var out = (eok ? eok + '억 ' : '') + (man ? fmt(man) + '만 ' : '') + (rest ? fmt(rest) : '');
+    return (out.trim() || '0') + ' 캐시';
   }
   function statusTag(status) {
     return el('span', 'ah-status is-' + status, STATUS_TEXT[status] || status);

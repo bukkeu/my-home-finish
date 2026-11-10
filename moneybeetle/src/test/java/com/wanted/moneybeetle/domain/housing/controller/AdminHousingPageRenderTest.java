@@ -90,6 +90,7 @@ class AdminHousingPageRenderTest {
                 .contains("/js/common.js")
                 .contains("id=\"ah-form\"")
                 .contains("공고 관리").contains("신청 현황").contains("당첨 산정·발표")
-                .contains("mb-admin-side");                   // 관리자 사이드바 (공통 조각)
+                .contains("mb-admin-side")                    // 관리자 사이드바 (공통 조각)
+                .contains("가상 실습이며 실제 금융 거래가 아니에요");   // NFR-12 고지 (공통 조각)
     }
 }
