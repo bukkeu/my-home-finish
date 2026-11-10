@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService;
 import com.wanted.moneybeetle.domain.auth.model.service.PasswordResetService;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dto.MaskedEmailDTO;
@@ -34,11 +35,12 @@ class AuthControllerTest {
 
     private final AccountService accountService = mock(AccountService.class);
     private final PasswordResetService passwordResetService = mock(PasswordResetService.class);
+    private final IdentityVerificationService identityVerificationService = mock(IdentityVerificationService.class);
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(accountService, passwordResetService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(accountService, passwordResetService, identityVerificationService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
                 .build();
@@ -98,5 +100,70 @@ class AuthControllerTest {
                 .content("{\"email\":\"not-an-email\"}"));
 
         verify(passwordResetService, never()).requestReset(any());
+    }
+
+    @Test
+    @DisplayName("본인인증 코드 요청은 202 이고 서비스에 정규화 전 이메일을 그대로 넘긴다")
+    void requestIdentityCode() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/identity-verification/request").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"minji@gmail.com\"}"))
+                .andExpect(status().isAccepted());
+
+        verify(identityVerificationService).requestCode(Mockito.eq("minji@gmail.com"), any());
+    }
+
+    @Test
+    @DisplayName("코드를 너무 자주 요청하면 429 IDENTITY_CODE_TOO_SOON")
+    void requestIdentityCodeTooSoon() throws Exception {
+        Mockito.doThrow(new BusinessException(MemberErrorCode.IDENTITY_CODE_TOO_SOON))
+                .when(identityVerificationService).requestCode(any(), any());
+
+        mockMvc.perform(post("/api/v1/auth/identity-verification/request").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"minji@gmail.com\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("IDENTITY_CODE_TOO_SOON"));
+    }
+
+    @Test
+    @DisplayName("이메일 형식이 틀린 코드 요청은 서비스를 부르지 않고 400")
+    void requestIdentityCodeInvalidEmail() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/identity-verification/request").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(identityVerificationService, never()).requestCode(any(), any());
+    }
+
+    @Test
+    @DisplayName("맞는 코드로 본인인증하면 verified: true")
+    void verifyIdentity() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/identity-verification").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"minji@gmail.com\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.verified").value(true));
+
+        verify(identityVerificationService).verify(Mockito.eq("minji@gmail.com"), Mockito.eq("123456"), any());
+    }
+
+    @Test
+    @DisplayName("틀린 코드는 400 IDENTITY_CODE_INVALID")
+    void verifyIdentityWrongCode() throws Exception {
+        Mockito.doThrow(new BusinessException(MemberErrorCode.IDENTITY_CODE_INVALID))
+                .when(identityVerificationService).verify(any(), any(), any());
+
+        mockMvc.perform(post("/api/v1/auth/identity-verification").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"minji@gmail.com\",\"code\":\"000000\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("IDENTITY_CODE_INVALID"));
+    }
+
+    @Test
+    @DisplayName("코드가 숫자 6자리가 아니면 서비스를 부르지 않고 400")
+    void verifyIdentityInvalidCodeFormat() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/identity-verification").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"minji@gmail.com\",\"code\":\"12ab\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(identityVerificationService, never()).verify(any(), any(), any());
     }
 }

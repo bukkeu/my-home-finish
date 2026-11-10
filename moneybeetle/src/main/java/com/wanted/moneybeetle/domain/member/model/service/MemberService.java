@@ -339,6 +339,15 @@ public class MemberService {
      */
     @Transactional
     public SignupResultDTO signup(SignupDTO request) {
+        return signup(request, false);
+    }
+
+    /**
+     * 회원가입 (API 4). 가입 전에 본인인증(이메일 코드)을 마쳤으면 identityVerified 를 true 로 넘겨 그 결과를 함께 저장한다.
+     * 인증을 마쳤는지 확인하는 일은 가입 흐름(MemberSignupService)이 하고, 여기서는 받은 결과만 저장한다.
+     */
+    @Transactional
+    public SignupResultDTO signup(SignupDTO request, boolean identityVerified) {
         if (request == null) {
             throw new IllegalArgumentException("회원가입 정보가 필요합니다.");
         }
@@ -363,6 +372,9 @@ public class MemberService {
                 request.getBirthDate(),
                 request.getGender(),
                 today);
+        if (identityVerified) {
+            member.completeIdentityVerification();
+        }
         Member savedMember = saveMember(member);
         saveAgreements(savedMember.getMemberId(), agreedTerms);
 

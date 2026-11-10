@@ -94,6 +94,12 @@ class MemberSignupRollbackTest {
     @MockitoBean
     private com.wanted.moneybeetle.domain.notification.model.service.NotificationService notificationService;
 
+    /** 본인인증 확인은 IdentityVerificationServiceTest 가 따로 본다. 여기서는 인증을 마친 것으로 두고 가입·통장의 한 묶음만 본다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService identityVerificationService;
+
+    private final org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+
     @Autowired
     private MemberSignupService signupService;
     @Autowired
@@ -124,10 +130,14 @@ class MemberSignupRollbackTest {
     @Test
     @DisplayName("가입하면 회원과 청약통장이 함께 저장된다")
     void savesMemberAndAccount() {
-        Long memberId = signupService.signup(request).getMemberId();
+        Long memberId = signupService.signup(request, session).getMemberId();
 
         assertThat(memberRepository.existsByEmail("minji@gmail.com")).isTrue();
         assertThat(accountRepository.findByMemberId(memberId)).isPresent();
+        // 본인인증을 마친 가입이라 그 결과가 회원에 저장되고, 가입이 끝나면 인증 표시를 지운다
+        assertThat(memberRepository.findById(memberId).orElseThrow().isIdentityVerified()).isTrue();
+        org.mockito.Mockito.verify(identityVerificationService).requireVerified("minji@gmail.com", session);
+        org.mockito.Mockito.verify(identityVerificationService).clear(session);
     }
 
     @Test
@@ -137,7 +147,7 @@ class MemberSignupRollbackTest {
 
         // 아무 예외나 받지 않는다: 나이·약관 검증 같은 가입 규칙(BusinessException)에서 먼저 실패해도 통과하는 일이 없도록,
         // 청약통장 테이블이 없어서 생긴 DB 오류인지 확인한다. 같은 요청이 savesMemberAndAccount 에서는 가입에 성공한다.
-        assertThatThrownBy(() -> signupService.signup(request))
+        assertThatThrownBy(() -> signupService.signup(request, session))
                 .isInstanceOf(DataAccessException.class)
                 .hasStackTraceContaining("SUBSCRIPTION_ACCOUNT");
 

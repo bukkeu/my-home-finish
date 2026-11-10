@@ -1,8 +1,10 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
+import com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 *   - MemberService 가 직접 HousingService 를 부르지 않는 이유: HousingService 가 RewardService 를 거쳐 MemberService 를 쓰므로,
 *     MemberService 가 HousingService 를 가지면 서로 물려서 서버가 뜨지 않는다. 그래서 둘을 모두 아는 이 클래스가 이어 붙인다.
 *   - 강사 가입(instructor-signup)은 학습자 통장이 필요 없어 이 경로를 쓰지 않는다.
+*   - 가입 전에 이 세션에서 그 이메일의 본인인증(이메일 코드, 이슈 #9)을 마쳤는지 확인한다. 마치지 않았으면 IDENTITY_NOT_VERIFIED.
+*     확인은 회원 저장 전에 하고, 인증 표시는 가입이 성공한 뒤에 지운다 (닉네임 중복 같은 오류로 가입이 실패해도 다시 인증하지 않게).
 *  */
 @Service
 @RequiredArgsConstructor
@@ -22,12 +26,15 @@ public class MemberSignupService {
 
     private final MemberService memberService;
     private final HousingService housingService;
+    private final IdentityVerificationService identityVerificationService;
 
-    /** 회원가입 (API 4). 가입한 회원의 청약통장을 같은 트랜잭션에서 만든다 */
+    /** 회원가입 (API 4). 본인인증을 마친 이메일이어야 하고, 가입한 회원의 청약통장을 같은 트랜잭션에서 만든다 */
     @Transactional
-    public SignupResultDTO signup(SignupDTO request) {
-        SignupResultDTO result = memberService.signup(request);
+    public SignupResultDTO signup(SignupDTO request, HttpSession session) {
+        identityVerificationService.requireVerified(request.getEmail(), session);
+        SignupResultDTO result = memberService.signup(request, true);
         housingService.openAccount(result.getMemberId());
+        identityVerificationService.clear(session);
         return result;
     }
 }

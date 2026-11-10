@@ -118,7 +118,8 @@
 | 2 | `GET` | `/api/v1/auth/check-email` | 이메일 중복 확인 | 비회원 | USR-01, SP-01 |
 | 3 | `GET` | `/api/v1/auth/check-nickname` | 닉네임 중복·규칙 확인 | 비회원 | USR-01, SP-02, DP-21 |
 | 4 | `POST` | `/api/v1/auth/signup` | 회원가입 | 비회원 | USR-01~04, SP-01~05, SUB-04 |
-| 5 | `POST` | `/api/v1/auth/identity-verification` | 본인인증 | 비회원 | USR-05, EP-02 |
+| 5-1 | `POST` | `/api/v1/auth/identity-verification/request` | 본인인증 코드 요청 | 비회원 | USR-05, EP-02 |
+| 5 | `POST` | `/api/v1/auth/identity-verification` | 본인인증 (코드 확인) | 비회원 | USR-05, EP-02 |
 | 6 | `POST` | `/api/v1/auth/login` | 로그인 | 비회원 | USR-06, DP-10~11, GRW-01 |
 | 7 | `POST` | `/api/v1/auth/logout` | 로그아웃 | 회원 | USR-06 |
 | 8 | `GET` | `/api/v1/auth/oauth/{provider}` | 간편 로그인 시작 | 비회원 | USR-07, DP-13 |
@@ -394,7 +395,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-01~04, SP-01~05, SUB-04 |
-| 설명 | 가입과 동시에 청약통장을 만든다. |
+| 설명 | 가입과 동시에 청약통장을 만든다. 같은 브라우저 세션에서 그 이메일의 본인인증(API 5)을 마친 뒤에만 가입할 수 있고, 인증 결과는 회원에 저장된다(`is_identity_verified`). 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. |
 
 **Request**
 
@@ -417,12 +418,34 @@
 { "memberId": 1, "nickname": "민지" }
 ```
 
-**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`, `IDENTITY_NOT_VERIFIED`
 
 - `EMAIL_DUPLICATED`·`NICKNAME_DUPLICATED`는 두 요청이 동시에 같은 값으로 가입해 중복 확인을 함께 통과해도 DB 고유 제약(`uk_member_email`, `uk_member_nickname`)에서 걸러져 같은 409로 응답한다.
 - 청약통장 개설은 서수영의 `HousingService.openAccount` 연동 뒤에 붙는다(이슈 #5 남은 작업).
 
-#### 5. 본인인증
+#### 5-1. 본인인증 코드 요청
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/identity-verification/request` |
+| Method | `POST` |
+| 권한 | 비회원 |
+| 관련 | USR-05, EP-02 |
+| 설명 | 가입하려는 이메일로 6자리 인증번호를 보낸다(5분 안에 입력). 메일은 요청과 다른 스레드에서 보내 응답이 바로 돌아가고, 메일 서버 실패는 1회 자동 재시도한 뒤 서버 로그에만 남긴다(EP-02). 같은 이메일로는 60초에 한 번만 보낼 수 있다(브라우저·세션이 달라도 같다). 이미 가입된 이메일이면 보내지 않는다. 새로 요청하면 이전 번호는 쓸 수 없다. 진행 상태는 HTTP 세션에 담아 두며 DB 테이블은 쓰지 않는다. |
+
+**Request**
+
+```json
+{ "email": "minji@gmail.com" }
+```
+
+**Response**
+
+- 202 Accepted (본문 없음)
+
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `IDENTITY_CODE_TOO_SOON`, `IDENTITY_MAIL_UNAVAILABLE`
+
+#### 5. 본인인증 (코드 확인)
 
 | 항목 | 내용 |
 | --- | --- |
@@ -430,12 +453,12 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-05, EP-02 |
-| 설명 | 가입 중 본인인증 결과를 확인한다. 외부 연동 또는 가상 화면(팀 확인 필요). 실패 시 1회 자동 재시도. |
+| 설명 | 이메일로 받은 6자리 번호가 맞으면 이 세션에서 그 이메일을 인증된 것으로 표시한다. 표시는 30분 동안 가입(API 4)에 쓸 수 있고 가입이 끝나면 지워진다. 번호를 5번 틀리면 그 번호는 버려지고 다시 받아야 한다(`IDENTITY_CODE_EXPIRED`). 5분이 지났거나 번호를 받은 적이 없거나 다른 이메일의 번호이면 `IDENTITY_CODE_EXPIRED`로 같게 답한다. |
 
 **Request**
 
 ```json
-{ "signupToken": "a81c...", "provider": "PASS", "verificationToken": "..." }
+{ "email": "minji@gmail.com", "code": "123456" }
 ```
 
 **Response**
@@ -444,7 +467,7 @@
 { "verified": true }
 ```
 
-**Error**: `OAUTH_FAILED`
+**Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`
 
 #### 6. 로그인
 
@@ -600,7 +623,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-10, ADM-06 |
-| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. |
+| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. 학습자 가입(API 4)과 같게, 같은 브라우저 세션에서 그 이메일의 본인인증(API 5-1·5)을 마친 뒤에만 신청할 수 있고 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. 구현은 `IdentityVerificationService.requireVerified`(저장 전)·`clear`(성공 뒤)를 부른다(#30, DP-44). |
 
 **Request**
 
@@ -618,7 +641,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "memberId": 31, "approvalStatus": "PENDING" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `PASSWORD_MISMATCH`
+**Error**: `EMAIL_DUPLICATED`, `PASSWORD_MISMATCH`, `IDENTITY_NOT_VERIFIED`
 
 #### 13. 내 정보 (메뉴 프로필)
 
@@ -3725,6 +3748,11 @@ email=admin@moneybeetle.kr&password=...
 | 회원 | `PASSWORD_MISMATCH` | 400 | 비밀번호가 서로 달라요 |
 | 회원 | `REQUIRED_TERMS_NOT_AGREED` | 400 | 필수 약관에 동의해 주세요 |
 | 회원 | `AGE_UNDER_14` | 400 | 만 14세 이상부터 가입할 수 있어요 |
+| 회원 | `IDENTITY_NOT_VERIFIED` | 400 | 본인인증을 먼저 해 주세요 |
+| 회원 | `IDENTITY_CODE_INVALID` | 400 | 인증번호가 맞지 않아요. 다시 확인해 주세요 |
+| 회원 | `IDENTITY_CODE_EXPIRED` | 400 | 인증번호가 만료되었거나 너무 많이 틀렸어요. 인증번호를 다시 받아 주세요 |
+| 회원 | `IDENTITY_CODE_TOO_SOON` | 429 | 인증번호는 1분에 한 번만 받을 수 있어요. 잠시 뒤에 다시 시도해 주세요 |
+| 회원 | `IDENTITY_MAIL_UNAVAILABLE` | 503 | 지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `OAUTH_FAILED` | 502 | 간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요 |
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |

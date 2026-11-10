@@ -77,9 +77,9 @@ public class MemberController {
     // API 4. 회원가입
     @PostMapping("/api/v1/auth/signup")
     public ResponseEntity<ApiResponse<SignupResultDTO>> signup(
-            @Valid @RequestBody SignupDTO request) {
+            @Valid @RequestBody SignupDTO request, HttpSession session) {
 
-        SignupResultDTO result = memberSignupService.signup(request);
+        SignupResultDTO result = memberSignupService.signup(request, session);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

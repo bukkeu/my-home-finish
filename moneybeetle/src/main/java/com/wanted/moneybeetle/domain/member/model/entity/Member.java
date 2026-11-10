@@ -156,6 +156,11 @@ public class Member {
         return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, birthDate, gender);
     }
 
+    /** 가입 중 본인인증(이메일 코드)을 마쳤다고 기록한다 (결과값만 저장한다, DB설계 member.is_identity_verified) */
+    public void completeIdentityVerification() {
+        this.identityVerified = true;
+    }
+
     /**
      * 활동 보상으로 캐시·경험치를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
      * 레벨은 여기서 바꾸지 않는다 - 경험치로 레벨이 오르면 growth 가 {@link #levelUp} 을 이어서 부른다.

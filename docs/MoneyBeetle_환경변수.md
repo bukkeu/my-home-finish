@@ -48,7 +48,7 @@
 
 | 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 관련 |
 | --- | --- | --- | --- | --- |
-| `MAIL_HOST` | 비밀번호 재설정 메일 발송 (`spring-boot-starter-mail`, `PasswordResetService`) | | `localhost` | USR-09, DP-12 |
+| `MAIL_HOST` | 비밀번호 재설정·가입 본인인증 메일 발송 (`spring-boot-starter-mail`, `PasswordResetService`, `IdentityVerificationService`) | | `localhost` | USR-09, DP-12, USR-05, DP-44 |
 | `MAIL_PORT` | 메일 서버 포트 | | `1025` (로컬 메일 확인 도구) | 〃 |
 | `MAIL_USERNAME` | 메일 계정 | | 비워 둠 | 〃 |
 | `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호) | ✅ | 비워 둠 | 〃 |
@@ -118,7 +118,7 @@ DB_URL=jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&charac
 DB_USERNAME=moneybeetle
 DB_PASSWORD=change-me
 
-# 메일 (비밀번호 재설정) - 기능 구현 시
+# 메일 (비밀번호 재설정·가입 본인인증) - 기능 구현 시
 MAIL_HOST=localhost
 MAIL_PORT=1025
 MAIL_USERNAME=
