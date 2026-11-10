@@ -3607,7 +3607,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-36 |
-| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수. 신청 시작일 최신순. |
+| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수, 산정 여부. 신청 시작일 최신순. |
 
 **Request**
 
@@ -3616,11 +3616,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3 } ] }
+{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3, "computed": false } ] }
 ```
 
 - `status`: `UPCOMING`(접수 전) · `OPEN`(접수 중) · `CLOSED`(마감, 발표 전) · `ANNOUNCED`(발표)
 - `applicants`가 1 이상이면 일정·공급 세대 수 수정(144)과 삭제(145)가 막힌다
+- `computed`: 당첨자 산정(147)을 했는지(`computed_at` 있음). 신청자가 0명이어도 산정하면 `true`. `true`면 일정·공급 세대 수 수정(144)이 막히고, 발표일부터 결과 발표(148)를 할 수 있다 (#63)
 
 #### 143. 공고 등록
 

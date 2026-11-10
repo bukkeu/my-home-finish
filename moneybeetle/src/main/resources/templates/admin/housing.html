@@ -1,5 +1,149 @@
-<!-- comment.
-    담당 : SCM 서수영 (#63, 모의 청약 운영 화면)
-    원본 디자인 : AdminHousingManagement.dc.html
-    경로 : /admin/housing-management
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : SCM 서수영 (#63, 모의 청약 운영 화면)
+  원본 디자인 : moneybeetle-page/AdminHousingManagement.dc.html
+  경로 : /admin/housing-management (AdminHousingViewController, 관리자만)
+  Model : today (서울 날짜 yyyy-MM-dd)
+  구성 : 요약(상태별 공고 수) + 탭 3개 - 공고 관리(등록·수정·삭제) / 신청 현황 / 당첨 산정·발표
+         데이터는 static/js/admin-housing.js 가 운영 API(142~148)로 불러온다
+  프로토타입과 다른 점 (확정 정책·API 기준) : 청약 유형(공공·민영), 거주지역, 단지 이미지, 비공개 전환은 쓰지 않는다
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('모의 청약 운영')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/admin-housing.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('housing')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+    <main class="mb-main ah" id="ah" th:attr="data-today=${today}">
+      <section class="ah-head">
+        <div class="ah-head__title">
+          <h1>모의 청약 운영</h1>
+          <p>가상 단지 공고를 등록하고, 신청 현황을 보고, 당첨자를 산정해 발표해요.</p>
+        </div>
+        <span class="ah-today">오늘 <b th:text="${#temporals.format(today, 'yyyy.MM.dd')}">2026.11.10</b></span>
+      </section>
+
+      <!--/* 상태별 공고 수 (누르면 공고 목록이 그 상태로 걸러진다) */-->
+      <section class="ah-summary" aria-label="상태별 공고 수">
+        <button type="button" class="card ah-stat" data-stat="">
+          <span>전체</span><b data-count="ALL">-</b>
+        </button>
+        <button type="button" class="card ah-stat" data-stat="UPCOMING">
+          <span>접수 전</span><b data-count="UPCOMING">-</b>
+        </button>
+        <button type="button" class="card ah-stat" data-stat="OPEN">
+          <span>접수 중</span><b data-count="OPEN">-</b>
+        </button>
+        <button type="button" class="card ah-stat" data-stat="CLOSED">
+          <span>마감 · 발표 전</span><b data-count="CLOSED">-</b>
+        </button>
+        <button type="button" class="card ah-stat" data-stat="ANNOUNCED">
+          <span>발표 완료</span><b data-count="ANNOUNCED">-</b>
+        </button>
+      </section>
+
+      <nav class="ah-tabs" role="tablist" aria-label="모의 청약 운영 메뉴">
+        <button type="button" role="tab" class="ah-tab is-active" data-tab="notices" aria-selected="true">공고 관리</button>
+        <button type="button" role="tab" class="ah-tab" data-tab="applicants" aria-selected="false">신청 현황</button>
+        <button type="button" role="tab" class="ah-tab" data-tab="results" aria-selected="false">당첨 산정·발표</button>
+      </nav>
+
+      <!--/* ===================== 공고 관리 (API 142~145) ===================== */-->
+      <div class="ah-panel" data-panel="notices">
+        <div class="ah-notices">
+          <!--/* 등록·수정 폼 */-->
+          <form class="card ah-form" id="ah-form" novalidate>
+            <div class="ah-form__head">
+              <h2 data-form-title>새 공고 등록</h2>
+              <span class="ah-badge" data-form-editing hidden>수정 중</span>
+            </div>
+            <div class="ah-grid">
+              <label class="ah-field ah-field--wide">단지명
+                <input name="name" maxlength="100" placeholder="예: 그린숲 행복주택">
+              </label>
+              <label class="ah-field">위치
+                <input name="location" maxlength="100" placeholder="예: 가상시 덕양구">
+              </label>
+              <label class="ah-field">공급 유형
+                <input name="supplyType" maxlength="30" placeholder="예: 일반공급">
+              </label>
+              <label class="ah-field">전용면적
+                <input name="areaType" maxlength="30" placeholder="예: 59㎡">
+              </label>
+              <label class="ah-field">분양가 (캐시)
+                <input name="salePrice" inputmode="numeric" placeholder="예: 320000000">
+              </label>
+              <label class="ah-field" data-lockable>공급 세대 수
+                <input name="supplyUnits" inputmode="numeric" placeholder="예: 120">
+              </label>
+            </div>
+            <fieldset class="ah-dates" data-lockable>
+              <legend>일정 <small>공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 당첨자 발표일</small></legend>
+              <label class="ah-field">공고일<input type="date" name="noticeDate"></label>
+              <label class="ah-field">신청 시작일<input type="date" name="applyStartDate"></label>
+              <label class="ah-field">신청 마감일<input type="date" name="applyEndDate"></label>
+              <label class="ah-field">당첨자 발표일<input type="date" name="announceDate"></label>
+            </fieldset>
+            <p class="ah-lock-note" data-lock-note hidden></p>
+            <p class="ah-form-msg" data-form-msg role="alert"></p>
+            <div class="ah-actions">
+              <button type="submit" class="btn btn-primary" data-form-submit>공고 등록</button>
+              <button type="button" class="btn btn-secondary" data-form-cancel hidden>수정 취소</button>
+            </div>
+          </form>
+
+          <!--/* 목록 */-->
+          <section class="ah-section">
+            <div class="ah-section__head">
+              <h2>공고 목록 <small class="ah-muted"><span data-bind="noticeCount">0</span>건</small></h2>
+              <div class="ah-filter">
+                <select data-filter="status" aria-label="상태로 거르기">
+                  <option value="">전체 상태</option>
+                  <option value="UPCOMING">접수 전</option>
+                  <option value="OPEN">접수 중</option>
+                  <option value="CLOSED">마감 · 발표 전</option>
+                  <option value="ANNOUNCED">발표 완료</option>
+                </select>
+                <input type="search" data-filter="q" placeholder="단지명 검색" aria-label="단지명 검색">
+              </div>
+            </div>
+            <div class="ah-list" data-list="notices">
+              <div class="card ah-empty">불러오는 중이에요…</div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!--/* ===================== 신청 현황 (API 146) ===================== */-->
+      <div class="ah-panel" data-panel="applicants" hidden>
+        <div class="card ah-empty">신청 현황은 다음 단계에서 채워요.</div>
+      </div>
+
+      <!--/* ===================== 당첨 산정·발표 (API 147·148) ===================== */-->
+      <div class="ah-panel" data-panel="results" hidden>
+        <div class="card ah-empty">당첨 산정·발표는 다음 단계에서 채워요.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!--/* 확인창 (삭제·산정·발표처럼 되돌릴 수 없는 작업 전에) */-->
+<dialog class="ah-dialog" id="ah-confirm" aria-labelledby="ah-confirm-title">
+  <form method="dialog" class="ah-dialog__box">
+    <h2 id="ah-confirm-title" data-confirm-title>확인</h2>
+    <p data-confirm-body></p>
+    <div class="ah-actions ah-actions--end">
+      <button type="submit" value="cancel" class="btn btn-secondary">취소</button>
+      <button type="submit" value="ok" class="btn btn-primary" data-confirm-ok>확인</button>
+    </div>
+  </form>
+</dialog>
+
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/admin-housing.js}"></script>
+</body>
+</html>

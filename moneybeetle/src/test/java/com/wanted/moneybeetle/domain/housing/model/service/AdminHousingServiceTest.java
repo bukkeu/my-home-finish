@@ -77,9 +77,11 @@ class AdminHousingServiceTest {
     }
 
     @Test
-    void 목록은_신청자_수와_오늘_기준_상태를_보여준다() {
+    void 목록은_신청자_수와_오늘_기준_상태와_산정_여부를_보여준다() {
+        HousingComplex computed = saved(2L);
+        computed.markComputed(LocalDateTime.of(2026, 11, 4, 9, 0));
         when(complexRepository.findByDeletedAtIsNullOrderByApplyStartDateDesc())
-                .thenReturn(List.of(saved(1L), saved(2L)));
+                .thenReturn(List.of(saved(1L), computed));
         when(applicationRepository.countGroupByHousingComplexIdIn(List.of(1L, 2L)))
                 .thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
 
@@ -87,6 +89,7 @@ class AdminHousingServiceTest {
 
         assertThat(result).extracting(AdminComplexDTO::getApplicants).containsExactly(3L, 0L);
         assertThat(result.get(0).getStatus()).isEqualTo(HousingComplex.STATUS_OPEN);   // 11/5 는 신청 기간
+        assertThat(result).extracting(AdminComplexDTO::isComputed).containsExactly(false, true);   // #63 발표 버튼 판단
     }
 
     @Test
