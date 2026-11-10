@@ -37,20 +37,23 @@ public interface AdminMemberRepository extends Repository<Member, Long> {
     Page<Member> search(@Param("role") String role, @Param("status") String status,
                         @Param("keyword") String keyword, Pageable pageable);
 
-    /* API 104 강사 가입 신청 목록: 승인 상태별(기본 PENDING), 탈퇴 회원 제외, 신청(강사 정보 생성) 순 */
+    /* API 104 강사 가입 신청 목록: 실제로 신청한(applied_at 있는) 강사만, 승인 상태별(기본 PENDING), 탈퇴 회원 제외, 신청 순.
+     * 관리자가 직접 권한을 준 강사(API 103)는 신청이 아니라서 빠진다 */
     @Query(value = """
             select new com.wanted.moneybeetle.domain.member.model.dto.InstructorApplicationDTO(
-                       p.memberId, p.displayName, p.field, m.email, p.approvalStatus, p.createdAt)
+                       p.memberId, p.displayName, p.field, m.email, p.approvalStatus, p.appliedAt)
             from InstructorProfile p, Member m
             where p.memberId = m.memberId
               and p.approvalStatus = :status
+              and p.appliedAt is not null
               and m.status <> 'WITHDRAWN'
-            order by p.createdAt asc, p.instructorProfileId asc
+            order by p.appliedAt asc, p.instructorProfileId asc
             """,
             countQuery = """
             select count(p) from InstructorProfile p, Member m
             where p.memberId = m.memberId
               and p.approvalStatus = :status
+              and p.appliedAt is not null
               and m.status <> 'WITHDRAWN'
             """)
     Page<InstructorApplicationDTO> findApplications(@Param("status") String status, Pageable pageable);

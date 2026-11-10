@@ -303,6 +303,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `approval_status` | VARCHAR(20) | N | - | PENDING | PENDING / APPROVED / REVOKED |
 | `approved_by` | BIGINT | Y | FK → member.member_id | - | 승인한 관리자 |
 | `approved_at` | DATETIME | Y | - | - | 승인 일시 |
+| `applied_at` | DATETIME | Y | - | - | 강사 가입 신청 일시 (API 12). 관리자가 직접 권한을 준 강사(API 103)는 NULL이라 신청 목록(API 104)에 나오지 않는다 (#37). 기존 DB는 `sql/migration/2026-11-10_instructor_profile_applied_at.sql` |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
 

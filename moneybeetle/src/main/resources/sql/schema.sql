@@ -313,6 +313,7 @@ CREATE TABLE IF NOT EXISTS `instructor_profile` (
     `approval_status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING / APPROVED / REVOKED',
     `approved_by` bigint DEFAULT NULL COMMENT '승인한 관리자',
     `approved_at` datetime DEFAULT NULL COMMENT '승인 일시',
+    `applied_at` datetime DEFAULT NULL COMMENT '강사 가입 신청 일시 (관리자가 직접 권한을 준 강사는 NULL, #37)',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     PRIMARY KEY (`instructor_profile_id`),

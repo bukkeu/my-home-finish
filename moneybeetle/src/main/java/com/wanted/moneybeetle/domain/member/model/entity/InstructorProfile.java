@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 *   테이블 instructor_profile (member 1:1) - 강사 정보와 승인 상태
 *   - 로그인(AuthService)이 승인 상태를 읽어서, 승인된(APPROVED) 강사에게만 INSTRUCTOR 권한을 준다 (SP-07)
 *   - 관리자 승인·회수(approve·revoke)는 #37 에서 더했다. 신청 폼 값은 강사 가입(API 12)에서 이어서 더한다
-*   - created_at(신청 시각)·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#37, 신청 목록 정렬)
+*   - created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다. 신청 시각은 applied_at 에 따로 둔다 (#37)
 *  */
 @Entity
 @Table(name = "instructor_profile")
@@ -51,7 +51,21 @@ public class InstructorProfile extends BaseTimeEntity {
 
     private LocalDateTime approvedAt;
 
-    /** 새 강사 정보. 승인 전이라 PENDING 으로 시작한다 */
+    /** 강사 가입 신청 시각. 실제로 신청(API 12)한 강사만 있고, 관리자가 직접 권한을 준 강사는 NULL (#37) */
+    private LocalDateTime appliedAt;
+
+    /** 강사 가입 신청 (API 12). 승인 대기(PENDING)로 시작하고 신청 시각을 남긴다 → 관리자 신청 목록(API 104)에 나온다 */
+    public static InstructorProfile apply(Long memberId, String displayName, String field, LocalDateTime appliedAt) {
+        if (appliedAt == null) {
+            throw new IllegalArgumentException("신청 시각이 필요합니다.");
+        }
+        InstructorProfile profile = create(memberId, displayName, field);
+        profile.appliedAt = appliedAt;
+        return profile;
+    }
+
+    /** 새 강사 정보. 승인 전이라 PENDING 으로 시작한다.
+     *  신청 없이 만든다(관리자 직접 권한 부여 API 103) → 신청 시각이 없어 신청 목록에는 나오지 않는다 */
     public static InstructorProfile create(Long memberId, String displayName, String field) {
         if (memberId == null) {
             throw new IllegalArgumentException("강사 회원이 필요합니다.");
