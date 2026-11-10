@@ -124,7 +124,8 @@ public class CourseService {
     }
 
     /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38).
-     * 퀴즈 제출(QuizService.submitQuiz)과 같은 회원 행 잠금을 먼저 잡아, 학습 완료 상태를 오래된 값으로 덮어쓰지 않는다 */
+     * 퀴즈 제출(QuizService.submitQuiz)과 같은 회원 행 잠금을 먼저 잡아, 학습 완료 상태를 오래된 값으로 덮어쓰지 않는다.
+     * 영상 완료 여부는 화면의 completed 값이 아니라 서버 시계로 확인한 본 시간으로 정한다 (LessonWatch.record) */
     @Transactional
     public void saveProgress(Long memberId, Long courseId, Long lessonId, ProgressDTO request) {
         memberService.lockBalance(memberId);
@@ -135,9 +136,10 @@ public class CourseService {
                 .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
         progress.moveTo(lessonId, lesson.clampSeconds(request.getPositionSeconds()));
 
+        LocalDateTime now = LocalDateTime.now(clock);
         LessonWatch watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
-                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId)));
-        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), request.isCompleted());
+                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId, now)));
+        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), lesson.getDurationSeconds(), now);
         // 수정은 save()를 다시 부르지 않는다. 트랜잭션이 끝날 때 변경 감지로 UPDATE된다
     }
 
