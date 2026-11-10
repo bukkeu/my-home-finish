@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.auth.config;
 
+import com.wanted.moneybeetle.support.SecurityTestApp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -11,16 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
-import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -31,11 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -55,9 +47,7 @@ import org.springframework.web.context.WebApplicationContext;
 *   탈퇴·정지된 계정의 다른 세션이 막히는지 실제 HTTP 요청으로 확인한다 (이슈 #8). Security 필터 체인(formLogin·CSRF·세션·로그아웃)과 핸들러를 모두 띄우고,
 *   회원 저장소만 가짜로 둔다 (DB 없이 돈다). 로그인 요청이 폼 형식(email, password)이라는 것과 CSRF 토큰이 필요하다는 것도 여기서 고정한다.
 *  */
-@SpringBootTest(classes = {WithdrawnSessionHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
-        AuthSuccessHandler.class, com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler.class,
-        AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
+@SpringBootTest(classes = {SecurityTestApp.class, WithdrawnSessionHttpTest.TestApp.class, AuthService.class,
         com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider.class,
         MemberService.class, com.wanted.moneybeetle.domain.member.model.service.AccountService.class,
         com.wanted.moneybeetle.domain.member.controller.MemberController.class,
@@ -67,10 +57,8 @@ class WithdrawnSessionHttpTest {
     private static final String EMAIL = "minji@gmail.com";
     private static final String PASSWORD = "beetle1234";
 
+    // SecurityConfig·로그인 핸들러·DB 제외 설정은 SecurityTestApp(#161). 여기는 이 테스트에만 필요한 빈
     @Configuration
-    @EnableAutoConfiguration(exclude = {
-            DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
-            HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
     static class TestApp {
         @Bean
         org.springframework.transaction.PlatformTransactionManager transactionManager() {
@@ -109,6 +97,8 @@ class WithdrawnSessionHttpTest {
     private com.wanted.moneybeetle.domain.member.model.dao.PasswordResetTokenRepository passwordResetTokenRepository;
     @MockitoBean
     private com.wanted.moneybeetle.domain.member.model.service.MemberProfileService memberProfileService;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.service.MemberSignupService memberSignupService;
     @MockitoBean
     private com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository memberTermsAgreementRepository;
     @MockitoBean

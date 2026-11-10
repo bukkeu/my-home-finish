@@ -40,6 +40,11 @@ public class Member {
     public static final String STATUS_SUSPENDED = "SUSPENDED";
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
 
+    /** 탈퇴한 회원의 개인정보를 지우기까지 두는 기간(일) (DP-06) */
+    public static final int PERSONAL_INFO_RETENTION_DAYS = 30;
+    /** 개인정보를 지운 뒤 닉네임은 "탈퇴한 사용자#회원ID" 가 된다 (닉네임 컬럼은 NULL 불가·고유라서 ID 를 붙인다) */
+    public static final String PURGED_NICKNAME_PREFIX = "탈퇴한 사용자#";
+
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
@@ -270,6 +275,21 @@ public class Member {
         require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
         this.status = STATUS_WITHDRAWN;
         this.withdrawnAt = now;
+    }
+
+    /**
+     * 탈퇴한 지 PERSONAL_INFO_RETENTION_DAYS 일이 지난 회원의 개인정보를 지운다 (DP-06, DH-05).
+     * 이메일·비밀번호 해시·생년월일·성별·프로필 이미지는 NULL 로 만들고, 닉네임은 "탈퇴한 사용자#회원ID" 로 바꾼다.
+     * 행은 학습·거래 기록 보존을 위해 남긴다. 탈퇴한 회원만 지울 수 있다.
+     */
+    public void purgePersonalInfo() {
+        require(STATUS_WITHDRAWN.equals(status), "탈퇴한 회원만 개인정보를 지울 수 있습니다.");
+        this.email = null;
+        this.passwordHash = null;
+        this.birthDate = null;
+        this.gender = null;
+        this.profileImageUrl = null;
+        this.nickname = PURGED_NICKNAME_PREFIX + memberId;
     }
 
     /**

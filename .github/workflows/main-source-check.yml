@@ -1,0 +1,34 @@
+name: Main source branch check
+
+# main 으로 오는 PR 은 dev 또는 hotfix/… 브랜치에서만 받는다 (#85, Git 규칙 1장·3장)
+# 브랜치 보호의 필수 체크(main-source)로 걸어 두면 다른 브랜치에서 온 PR 은 병합 버튼이 막힌다
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  main-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check head branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::main 으로는 이 저장소의 dev 또는 hotfix/… 브랜치만 PR 할 수 있습니다 (지금: $HEAD_REPO:$HEAD_REF)"
+            exit 1
+          fi
+          case "$HEAD_REF" in
+            dev|hotfix/*)
+              echo "허용된 브랜치입니다: $HEAD_REF"
+              ;;
+            *)
+              echo "::error::main 으로는 dev 또는 hotfix/… 브랜치만 PR 할 수 있습니다 (지금: $HEAD_REF). 작업 브랜치는 dev 로 PR 하세요"
+              exit 1
+              ;;
+          esac
