@@ -112,7 +112,7 @@ public class ParticipationService {
         if (memberId == null) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
-        TradingSeason season = seasonRepository.findById(seasonId)
+        TradingSeason season = seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         if (!season.isRunning() || season.getCurrentTurn() > LAST_JOIN_TURN) {
             throw new BusinessException(TradingErrorCode.JOIN_CLOSED);
