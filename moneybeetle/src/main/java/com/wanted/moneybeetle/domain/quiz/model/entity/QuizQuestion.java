@@ -42,6 +42,24 @@ public class QuizQuestion {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /* 강사가 새 문항을 만든다 (API 79·80). 개수·형식 검사는 서비스가 끝낸 뒤 부른다 */
+    public static QuizQuestion create(Long courseId, String quizType, String questionType,
+                                      String content, String explanation, int sortOrder) {
+        QuizQuestion question = new QuizQuestion();
+        question.courseId = courseId;
+        question.quizType = quizType;
+        question.questionType = questionType;
+        question.change(content, explanation, sortOrder);
+        return question;
+    }
+
+    /* 문제·해설·순서 바꾸기 (API 79·80). 응시·오답 기록이 이 문항 ID를 가리키므로 지우지 않고 고친다 */
+    public void change(String content, String explanation, int sortOrder) {
+        this.content = content;
+        this.explanation = explanation;
+        this.sortOrder = sortOrder;
+    }
+
     // TODO 공통 설정(SCM)의 BaseTimeEntity가 생기면 상속으로 바꾸기
     @PrePersist
     void onCreate() {

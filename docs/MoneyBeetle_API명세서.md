@@ -2151,6 +2151,16 @@ Header: Idempotency-Key: 4d8e...
 
 첫 번째는 이미 저장된 영상(`lessonId` 있음), 두 번째는 새 영상(`lessonId` 없음)이다.
 
+**저장 규칙** (#31)
+
+- 본인 강의만(남의 강의 `FORBIDDEN`, 삭제된 강의 `NOT_FOUND`). 검수 중이면 `COURSE_IN_REVIEW`. 허가된 강의의 영상을 바꾸면 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31).
+- `sortOrder`는 1부터 영상 개수까지 빠짐없이 한 번씩(예: 2개면 1, 2). 아니면 `INVALID_INPUT`.
+- `videoUrl`은 "영상 파일 올리기"가 돌려준 파일 키(`/uploads/….mp4`)만 받는다. 외부 링크는 `INVALID_INPUT`.
+- `lessonId`가 이 강의의 영상이 아니면 `LESSON_NOT_FOUND`, 같은 `lessonId`를 두 번 보내면 `INVALID_INPUT`.
+- 요청에 없는 기존 영상은 지운다. 단 시청 기록이 있거나 수강생의 "마지막으로 본 영상"이면 지우지 않고 `LESSON_IN_USE`(409).
+- 기존 영상의 순서를 바꿀 수 있다. 다만 영상 3개가 모두 남은 채로 서로 자리를 바꾸면 빈 자리가 없어서 `LESSON_ORDER_LOCKED`(409).
+- 영상 제목·요약글은 금칙어 검사(DP-20, `FORBIDDEN_WORD`). 영상 제목 100자, 요약글 2,000자(`SUMMARY_TOO_LONG`).
+
 **Response**
 
 ```json
@@ -2159,7 +2169,7 @@ Header: Idempotency-Key: 4d8e...
 
 요청 `lessons`와 같은 순서다: 첫 번째 영상은 기존 ID 20, 두 번째 새 영상은 새로 만든 ID 21.
 
-**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
+**Error**: `NO_LESSON`(0개), `TOO_MANY_LESSONS`(4개 이상), `SUMMARY_TOO_LONG`, `LESSON_NOT_FOUND`, `LESSON_IN_USE`, `LESSON_ORDER_LOCKED`, `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `INVALID_INPUT`, `IDEMPOTENCY_KEY_CONFLICT`, `FORBIDDEN`, `NOT_FOUND`
 
 **영상 파일 올리기** (#78의 부속 요청, API 번호는 늘리지 않는다)
 
@@ -2169,17 +2179,17 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-02, DP-33 |
-| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. |
+| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. 본인 강의만, 검수 중에는 불가(파일을 저장하기 전에 확인한다). |
 
 - Form: file=(mp4, 500MB 이하)
 
 ```json
-{ "videoUrl": "lesson/7-1.mp4" }
+{ "videoUrl": "/uploads/3f2a....mp4" }
 ```
 
 응답의 `videoUrl`은 **만료되지 않는 파일 키**(스토리지 안의 경로)이고, 서명 주소가 아니다. 서버는 업로드 때 이 키를 받아 두었다가, 위 "영상·요약글 저장" 요청에 담긴 같은 값을 `lesson.video_url`(DB)에 그대로 저장한다. 영상을 보여 주는 응답(API 62 등)의 `videoUrl`은 저장된 키로 **조회할 때마다 새로 발급한 짧게 만료되는 서명 주소**다(local 환경은 서버가 `/files/` + 키로 로컬 파일을 직접 내려 준다). 그래서 서명 주소를 DB에 저장하거나 저장 요청에 담지 않는다.
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 79. 테스트 퀴즈 저장
 
@@ -2189,7 +2199,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-04 |
-| 설명 | OX 5문제와 해설 일괄 저장. |
+| 설명 | OX 5문제와 해설 일괄 저장. `answer`는 `"O"` 또는 `"X"`. 정확히 5문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). 저장 방식은 아래 "퀴즈 저장 방식" 참고. |
 
 **Request**
 
@@ -2203,7 +2213,7 @@ Header: Idempotency-Key: 4d8e...
 { "count": 5 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `QUIZ_IN_USE`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 80. 퀴즈 저장
 
@@ -2213,7 +2223,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-05 |
-| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. |
+| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. `choices`는 정확히 4개(각 200자), `answerIndex`는 정답 보기 위치 0~3. 5~15문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). |
 
 **Request**
 
@@ -2227,7 +2237,9 @@ Header: Idempotency-Key: 4d8e...
 { "count": 10 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `QUIZ_IN_USE`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
+
+**퀴즈 저장 방식** (API 79·80 공통, #31): 응시 답안·오답노트가 문항·보기 ID를 가리키므로 통째로 지우고 새로 만들지 않는다. 같은 순서의 기존 문항은 문제·해설·보기·정답만 고치고(ID 유지), 남는 기존 문항은 지우고, 모자란 문항은 새로 만든다. 지울 문항에 푼 기록(퀴즈 답안·오답노트)이 있으면 지우지 않고 `QUIZ_IN_USE`(409).
 
 #### 81. 검수 요청
 

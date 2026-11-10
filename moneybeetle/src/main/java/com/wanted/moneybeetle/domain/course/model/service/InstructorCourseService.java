@@ -9,14 +9,21 @@ import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseEditDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseStatusDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonIdsDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.MyCourseItemDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.MyCourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ThumbnailDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.VideoUploadDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.CourseReview;
+import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.inquiry.model.service.InstructorInquiryService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizCountDTO;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSaveDTO;
+import com.wanted.moneybeetle.domain.quiz.model.service.InstructorQuizService;
 import com.wanted.moneybeetle.domain.quiz.model.service.QuizService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -25,11 +32,14 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -41,6 +51,7 @@ import org.springframework.web.multipart.MultipartFile;
 *   강의 생성·수정(허가 후 수정 시 재검수), 영상·요약글 저장, 검수 요청 조건 확인 (DP-34)
 *   - 내 강의 목록·생성·편집 정보·수정·삭제·썸네일 (API 72~77, #30)
 *   - 검수 요청 (API 81, #32)
+*   - 영상 파일 올리기·영상·요약글 저장, 테스트 퀴즈·퀴즈 저장 (API 78~80, #31)
 *   - 모든 작업은 본인 강의만 (남의 강의 403, 삭제된 강의 404)
 *  */
 @Service
@@ -50,6 +61,10 @@ public class InstructorCourseService {
 
     private static final Set<String> STATUSES = Set.of(
             Course.STATUS_DRAFT, Course.STATUS_REVIEW, Course.STATUS_APPROVED, Course.STATUS_REJECTED);
+    private static final int MAX_LESSONS = 3;               // 강의당 영상 1~3개 (SP-30, TCH-02)
+    private static final int SUMMARY_MAX_LENGTH = 2000;     // 요약글 2,000자 (DP-31)
+    private static final String VIDEO_KEY_PREFIX = "/uploads/";   // FileStorageService가 돌려주는 파일 키
+    private static final String VIDEO_EXT = ".mp4";
 
     private final CourseRepository courseRepository;
     private final CategoryRepository categoryRepository;
@@ -57,6 +72,7 @@ public class InstructorCourseService {
     private final LearningProgressRepository learningProgressRepository;
     private final CourseReviewRepository courseReviewRepository;
     private final QuizService quizService;                          // quiz 도메인은 Service로만
+    private final InstructorQuizService instructorQuizService;      // quiz 도메인 - 강사 퀴즈 저장
     private final InstructorInquiryService instructorInquiryService; // inquiry 도메인은 Service로만
     private final ForbiddenWordService forbiddenWordService;         // operation 도메인 (DBA②)
     private final FileStorageService fileStorageService;             // global 파일 저장 (SCM)
@@ -144,6 +160,77 @@ public class InstructorCourseService {
         }
     }
 
+    /* API 78 부속 "영상 파일 올리기": mp4 500MB 검사는 FileStorageService가 한다 (DP-33).
+     * 본인 강의·수정 가능 상태를 파일 저장 전에 확인한다 (남의 강의·검수 중이면 파일이 남지 않게) */
+    public VideoUploadDTO uploadVideo(Long instructorId, Long courseId, MultipartFile file) {
+        getMyCourse(instructorId, courseId).checkEditable();
+        try {
+            return new VideoUploadDTO(fileStorageService.saveVideo(file));
+        } catch (IOException e) {
+            throw new UncheckedIOException("영상 저장 실패", e);
+        }
+    }
+
+    /* API 78 영상·요약글 일괄 저장 (TCH-02·03, SP-30, DP-31).
+     * lessonId가 있으면 이 강의의 기존 영상을 고치고, 없으면 새로 만든다. 요청에 없는 기존 영상은 뺀다.
+     * 응답 lessonIds는 요청 순서와 같다. 같은 Idempotency-Key 재요청은 IdempotencyFilter가 처음 응답을 돌려준다 */
+    @Transactional
+    public LessonIdsDTO saveLessons(Long instructorId, Long courseId, LessonSaveDTO request) {
+        Course course = getMyCourseForUpdate(instructorId, courseId);
+        course.markContentChanged(LocalDateTime.now(clock));   // 검수 중이면 409, 허가된 강의면 다시 검수
+        List<LessonSaveDTO.LessonItem> items = request.lessons();
+        checkLessonItems(items);
+
+        Map<Long, Lesson> existing = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId).stream()
+                .collect(Collectors.toMap(Lesson::getLessonId, Function.identity()));
+        Set<Long> keptIds = new HashSet<>();
+        for (LessonSaveDTO.LessonItem item : items) {
+            if (item.lessonId() == null) {
+                continue;
+            }
+            if (!existing.containsKey(item.lessonId())) {
+                throw new BusinessException(CourseErrorCode.LESSON_NOT_FOUND);   // 남의 강의 영상 ID 포함
+            }
+            if (!keptIds.add(item.lessonId())) {
+                throw new BusinessException(CommonErrorCode.INVALID_INPUT);      // 같은 영상을 두 번
+            }
+        }
+
+        removeLessons(existing.values().stream().filter(lesson -> !keptIds.contains(lesson.getLessonId())).toList());
+        moveLessons(items, existing);
+
+        List<Long> lessonIds = new ArrayList<>();
+        for (LessonSaveDTO.LessonItem item : items) {
+            String summary = item.summary() == null ? null : item.summary().strip();
+            if (item.lessonId() != null) {
+                existing.get(item.lessonId()).change(item.title().strip(), item.videoUrl(),
+                        item.durationSeconds(), summary);
+                lessonIds.add(item.lessonId());
+            } else {
+                Lesson created = lessonRepository.save(Lesson.create(courseId, item.sortOrder(), item.title().strip(),
+                        item.videoUrl(), item.durationSeconds(), summary));
+                lessonIds.add(created.getLessonId());
+            }
+        }
+        return new LessonIdsDTO(lessonIds);
+    }
+
+    /* API 79 테스트 퀴즈 저장 (OX 5문제). 문항 저장은 quiz 도메인이 한다 */
+    @Transactional
+    public QuizCountDTO saveTestQuiz(Long instructorId, Long courseId, QuizSaveDTO request) {
+        Course course = getMyCourseForUpdate(instructorId, courseId);
+        course.markContentChanged(LocalDateTime.now(clock));
+        return instructorQuizService.saveTestQuiz(courseId, request);
+    }
+
+    /* API 80 퀴즈 저장 (4지선다 5~15문제) */
+    @Transactional
+    public QuizCountDTO saveQuiz(Long instructorId, Long courseId, QuizSaveDTO request) {
+        Course course = getMyCourseForUpdate(instructorId, courseId);
+        course.markContentChanged(LocalDateTime.now(clock));
+        return instructorQuizService.saveMainQuiz(courseId, request);
+    }
+
     /* API 81 검수 요청: 본인 강의 → 작성 중·반려 상태 → 영상 1개 이상 + 테스트 퀴즈 5 + 퀴즈 5~15 (DP-34) */
     @Transactional
     public CourseStatusDTO requestReview(Long instructorId, Long courseId) {
@@ -190,6 +277,93 @@ public class InstructorCourseService {
         if (!selectable) {
             throw new BusinessException(CourseErrorCode.CATEGORY_NOT_SELECTABLE);
         }
+    }
+
+    /* 영상 요청 검사: 개수 1~3, 순서는 1부터 빠짐없이 한 번씩, 영상은 우리가 올린 mp4 파일 키, 요약글 2,000자, 금칙어 */
+    private void checkLessonItems(List<LessonSaveDTO.LessonItem> items) {
+        if (items.isEmpty()) {
+            throw new BusinessException(CourseErrorCode.NO_LESSON);
+        }
+        if (items.size() > MAX_LESSONS) {
+            throw new BusinessException(CourseErrorCode.TOO_MANY_LESSONS);
+        }
+        Set<Integer> orders = new HashSet<>();
+        for (LessonSaveDTO.LessonItem item : items) {
+            if (item.sortOrder() < 1 || item.sortOrder() > items.size() || !orders.add(item.sortOrder())) {
+                throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+            }
+            if (!isVideoKey(item.videoUrl())) {
+                throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+            }
+            if (item.summary() != null && item.summary().strip().length() > SUMMARY_MAX_LENGTH) {
+                throw new BusinessException(CourseErrorCode.SUMMARY_TOO_LONG);
+            }
+            forbiddenWordService.check(item.title());
+            forbiddenWordService.check(item.summary());
+        }
+    }
+
+    /* 외부 주소가 아니라 "영상 파일 올리기"로 받은 파일 키인지 ("/uploads/....mp4", 경로 이동 없음) */
+    private boolean isVideoKey(String videoUrl) {
+        return videoUrl.startsWith(VIDEO_KEY_PREFIX) && videoUrl.endsWith(VIDEO_EXT) && !videoUrl.contains("..");
+    }
+
+    /* 요청에 없는 영상 빼기. 시청 기록·마지막 본 영상이 가리키면 지울 수 없다 (FK) */
+    private void removeLessons(List<Lesson> removed) {
+        if (removed.isEmpty()) {
+            return;
+        }
+        if (lessonRepository.countUsages(removed.stream().map(Lesson::getLessonId).toList()) > 0) {
+            throw new BusinessException(CourseErrorCode.LESSON_IN_USE);
+        }
+        lessonRepository.deleteAllInBatch(removed);
+    }
+
+    /* 남는 영상의 순서를 요청대로 옮긴다. (강의, 순서)가 유일하고 순서는 1~3만 되므로
+     * 비어 있는 자리로 하나씩 옮기고 바로 저장한다. 서로 자리를 바꿔야 하는데 빈 자리가 없으면(영상 3개) 막는다 */
+    private void moveLessons(List<LessonSaveDTO.LessonItem> items, Map<Long, Lesson> existing) {
+        Map<Lesson, Integer> pending = new HashMap<>();
+        Set<Integer> occupied = new HashSet<>();
+        for (LessonSaveDTO.LessonItem item : items) {
+            if (item.lessonId() == null) {
+                continue;
+            }
+            Lesson lesson = existing.get(item.lessonId());
+            occupied.add(lesson.getSortOrder());
+            if (lesson.getSortOrder() != item.sortOrder()) {
+                pending.put(lesson, item.sortOrder());
+            }
+        }
+        while (!pending.isEmpty()) {
+            Map.Entry<Lesson, Integer> movable = pending.entrySet().stream()
+                    .filter(entry -> !occupied.contains(entry.getValue()))
+                    .findFirst()
+                    .orElse(null);
+            Lesson lesson;
+            int target;
+            if (movable != null) {
+                lesson = movable.getKey();
+                target = movable.getValue();
+                pending.remove(lesson);
+            } else {
+                // 서로 자리를 바꾸는 경우: 한 영상을 빈 자리로 잠시 옮겨 둔다
+                lesson = pending.keySet().iterator().next();
+                target = freeSlot(occupied);
+            }
+            occupied.remove(lesson.getSortOrder());
+            lesson.changeOrder(target);
+            lessonRepository.saveAndFlush(lesson);
+            occupied.add(target);
+        }
+    }
+
+    private int freeSlot(Set<Integer> occupied) {
+        for (int slot = 1; slot <= MAX_LESSONS; slot++) {
+            if (!occupied.contains(slot)) {
+                return slot;
+            }
+        }
+        throw new BusinessException(CourseErrorCode.LESSON_ORDER_LOCKED);
     }
 
     /* 강의 글 금칙어 검사 (역할분담 §7: 문의·닉네임·강의 글) */
