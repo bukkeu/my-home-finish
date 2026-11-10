@@ -84,13 +84,14 @@ class AdminHousingPageRenderTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(html).contains("data-today=\"2026-11-10\"")
-                .contains("2026.11.10")
                 .contains("/js/admin-housing.js")
                 .contains("/css/admin-housing.css")
                 .contains("/js/common.js")
                 .contains("id=\"ah-form\"")
-                .contains("공고 관리").contains("신청 현황").contains("당첨 산정·발표")
-                .contains("mb-admin-side")                    // 관리자 사이드바 (공통 조각)
+                // 시안(AdminHousingManagement)의 왼쪽 모의 청약 관리 메뉴 4개와 돌아가기 링크
+                .contains("모의 청약 관리").contains("대시보드").contains("청약 공고 관리")
+                .contains("신청 현황").contains("당첨 결과 관리").contains("관리자 대시보드로")
+                .contains("data-mb-drawer")                   // 모바일에서 공통 햄버거로 열린다
                 .contains("가상 실습이며 실제 금융 거래가 아니에요");   // NFR-12 고지 (공통 조각)
     }
 }
