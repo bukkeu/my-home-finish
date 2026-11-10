@@ -28,4 +28,9 @@ public class HousingPageService {
         int unlockLevel = UnlockFeature.HOUSING.getDefaultLevel();
         return new HousingPageDTO(level, unlockLevel, level < unlockLevel, LocalDate.now(clock));
     }
+
+    // 관리자 운영 화면(#63)이 산정·발표 버튼을 켤지 정할 때 쓰는 "오늘" (서버와 같은 서울 날짜. 서버도 같은 기준으로 다시 막는다)
+    public LocalDate today() {
+        return LocalDate.now(clock);
+    }
 }
