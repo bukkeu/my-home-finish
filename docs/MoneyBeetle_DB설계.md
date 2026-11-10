@@ -204,6 +204,7 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `trade_order` | `idx_trade_order_1` | season_participant_id, turn_no | 참가자 거래 내역 |
 | `housing_complex` | `idx_housing_complex_1` | apply_start_date, apply_end_date | 청약 캘린더 기간 조회 |
 | `housing_application` | `idx_housing_application_1` | housing_complex_id, total_score | 단지별 가점순 산정 |
+| `housing_application` | `idx_housing_application_2` | applied_at | 접수번호 만들 때 오늘 신청 수 세기 (#87) |
 | `admin_log` | `idx_admin_log_1` | target_type, target_id | 대상별 작업 기록 |
 | `admin_log` | `idx_admin_log_2` | admin_id, created_at | 관리자별 기록 |
 | `admin_log` | `idx_admin_log_3` | created_at | 필터 없는 작업 기록 최신순 (#87) |

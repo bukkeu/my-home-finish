@@ -234,6 +234,7 @@ CREATE TABLE IF NOT EXISTS `housing_application` (
     UNIQUE KEY `uk_housing_application_receipt_no` (`receipt_no`),
     UNIQUE KEY `uk_housing_application_1` (`member_id`,`housing_complex_id`),
     KEY `idx_housing_application_1` (`housing_complex_id`,`total_score`),
+    KEY `idx_housing_application_2` (`applied_at`),
     CONSTRAINT `fk_housing_application_housing_complex_id` FOREIGN KEY (`housing_complex_id`) REFERENCES `housing_complex` (`housing_complex_id`),
     CONSTRAINT `fk_housing_application_member_id` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='청약 신청';
