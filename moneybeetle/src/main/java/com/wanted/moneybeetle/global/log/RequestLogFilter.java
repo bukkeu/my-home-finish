@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 *   - 응답 헤더 X-Request-Id 로도 돌려준다. 화면에서 오류를 신고할 때 이 ID 로 서버 로그를 찾을 수 있다
 *   - 처리되지 않은 예외가 밖으로 나가면 "GET … 500 12ms 예외=IOException" (WARN, 예외 메시지는 쓰지 않음)
 *   - 요청이 끝나면 한 줄 : "GET /api/v1/housing/complexes 200 12ms" (+ MDC 의 회원 ID). 콘솔에는 "[요청 ID|m=회원 ID] …" 로 찍힌다
-*   - 비밀값을 남기지 않는다 : 경로만 남기고 쿼리(?token= 등)·본문·파라미터 값은 쓰지 않는다
+*   - 비밀값을 남기지 않는다 : 경로만 남기고 쿼리(?token= 등)·경로 매개변수(;jsessionid= 등)·본문·파라미터 값은 쓰지 않는다
 *   - 보안 필터보다 먼저(가장 바깥에서) 돈다 → 로그인 처리·권한 거절 로그에도 요청 ID 가 붙는다
 *  */
 @Slf4j
@@ -44,6 +44,8 @@ public class RequestLogFilter extends OncePerRequestFilter {
 
     // 밖에서 보낸 요청 ID 는 영문·숫자·하이픈 36자까지만 받는다 (로그에 엉뚱한 글자가 섞이지 않게)
     private static final Pattern VALID_ID = Pattern.compile("[A-Za-z0-9-]{1,36}");
+    // 경로 매개변수 ";jsessionid=…" 같은 ";…" (다음 "/" 전까지)
+    private static final Pattern PATH_PARAMETER = Pattern.compile(";[^/]*");
     // 정적 파일은 요청 로그를 남기지 않는다 (화면 하나에 수십 줄이 생겨 읽기 어렵다)
     private static final List<String> SKIP_PREFIXES =
             List.of("/css/", "/js/", "/images/", "/uploads/", "/favicon", "/.well-known/");
@@ -63,7 +65,7 @@ public class RequestLogFilter extends OncePerRequestFilter {
             failure = e;                                                 // 기록만 하고 그대로 다시 던진다
             throw e;
         } finally {
-            String path = request.getRequestURI();                       // 쿼리 문자열은 포함하지 않는다
+            String path = loggablePath(request.getRequestURI());         // 쿼리 문자열은 포함하지 않는다
             if (!isStaticResource(path)) {
                 Long memberId = findMemberId(request);
                 if (memberId != null) {
@@ -89,6 +91,13 @@ public class RequestLogFilter extends OncePerRequestFilter {
             return incoming;
         }
         return UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    // 로그에 남길 경로 : 경로 매개변수(";" 부터 다음 "/" 전까지)를 지운다 (CWE-532)
+    //  "/api/v1/x;jsessionid=ABC123" → "/api/v1/x". 세션 ID 를 주소에 붙인 요청(URL 세션 추적)도 세션 ID 가 로그에 남지 않게 한다.
+    //  이 필터는 보안 필터보다 먼저 돌아, 방화벽이 ";" 주소를 거절하는 요청도 로그에 남기 때문에 여기서 지운다
+    static String loggablePath(String uri) {
+        return PATH_PARAMETER.matcher(uri).replaceAll("");
     }
 
     private boolean isStaticResource(String path) {

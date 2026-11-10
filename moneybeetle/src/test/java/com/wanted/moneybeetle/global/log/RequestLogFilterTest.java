@@ -159,4 +159,42 @@ class RequestLogFilterTest {
         assertThat(MDC.get(RequestLogFilter.MDC_REQUEST_ID)).isNull();                        // 예외 뒤에는 비워진다
         assertThat(MDC.get(RequestLogFilter.MDC_MEMBER_ID)).isNull();
     }
+
+    @Test
+    void 주소에_붙은_세션_ID_는_성공_로그에_남지_않는다() throws Exception {
+        // ;jsessionid 를 붙인 주소 (URL 세션 추적). 경로 나머지는 그대로 남긴다
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/test/echo;jsessionid=SECRETSESSION123");
+        new RequestLogFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> { });
+
+        assertThat(requestLines()).singleElement().satisfies(e -> {
+            assertThat(e.getLevel().toString()).isEqualTo("INFO");
+            assertThat(e.getFormattedMessage()).startsWith("GET /api/v1/test/echo 200 ")
+                    .doesNotContain("SECRETSESSION123", "jsessionid", ";");
+        });
+    }
+
+    @Test
+    void 주소에_붙은_세션_ID_는_실패_로그에도_남지_않는다() {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/test;jsessionid=SECRETSESSION123/echo;v=2");
+
+        assertThatThrownBy(() -> new RequestLogFilter().doFilter(request, new MockHttpServletResponse(),
+                (req, res) -> {
+                    throw new IllegalStateException("처리 실패");
+                })).isInstanceOf(IllegalStateException.class);
+
+        assertThat(requestLines()).singleElement().satisfies(e -> {
+            assertThat(e.getLevel().toString()).isEqualTo("WARN");
+            assertThat(e.getFormattedMessage()).startsWith("POST /api/v1/test/echo 500 ")
+                    .doesNotContain("SECRETSESSION123", "jsessionid", ";");
+        });
+    }
+
+    @Test
+    void 경로_매개변수만_지우고_나머지_경로는_그대로_둔다() {
+        assertThat(RequestLogFilter.loggablePath("/api/v1/housing/complexes/3;jsessionid=ABC"))
+                .isEqualTo("/api/v1/housing/complexes/3");
+        assertThat(RequestLogFilter.loggablePath("/a;x=1/b;JSESSIONID=Z/c")).isEqualTo("/a/b/c");
+        assertThat(RequestLogFilter.loggablePath("/api/v1/housing/complexes")).isEqualTo("/api/v1/housing/complexes");
+    }
 }

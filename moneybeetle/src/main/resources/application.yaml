@@ -76,7 +76,7 @@ info:
     description: 경제 학습 + 모의투자 + 모의 청약 (로컬 발표용)
 
 # 로그 (#84) : 요청마다 요청 ID(requestId)를 붙인다 (RequestLogFilter, 시스템 설계 "로그", EP-05)
-#  - 비밀번호·세션 ID·토큰은 남기지 않는다 : 요청 로그는 주소의 경로만 남기고(?token= 같은 쿼리는 뺀다),
+#  - 비밀번호·세션 ID·토큰은 남기지 않는다 : 요청 로그는 주소의 경로만 남기고(?token= 같은 쿼리와 ;jsessionid= 같은 경로 매개변수는 뺀다),
 #    요청 본문·파라미터 값은 로그에 쓰지 않는다. Hibernate 바인딩 값(TRACE)·spring.mvc.log-request-details 는 켜지 않는다
 logging:
   pattern:
