@@ -32,6 +32,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +57,7 @@ public class CourseService {
     private final LessonWatchRepository lessonWatchRepository;
     private final ScrapRepository scrapRepository;
     private final CourseReviewRepository courseReviewRepository;
+    private final Clock clock;                          // Asia/Seoul 공통 시계 (학습 완료 시각)
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -272,6 +275,28 @@ public class CourseService {
     public Map<Long, String> findCourseTitlesByInstructor(Long instructorId) {
         return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
                 .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
+    }
+
+    /* 퀴즈(quiz 도메인, API 41·42): 이 강의의 영상을 모두 끝까지 봤는지 (QST-02 "영상을 모두 본 뒤 퀴즈").
+     * 영상이 없는 강의는 퀴즈를 열지 않는다 */
+    public boolean hasWatchedAllLessons(Long memberId, Long courseId) {
+        List<Long> lessonIds = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId).stream()
+                .map(Lesson::getLessonId)
+                .toList();
+        if (lessonIds.isEmpty()) {
+            return false;
+        }
+        return lessonWatchRepository.countByMemberIdAndLessonIdInAndIsCompletedTrue(memberId, lessonIds)
+                == lessonIds.size();
+    }
+
+    /* 퀴즈(quiz 도메인, API 42): 퀴즈 통과 → 학습 완료 (SP-34, LRN-07).
+     * 이번에 처음 완료됐으면 true (보상은 이때만), 이미 완료였으면 false */
+    @Transactional
+    public boolean completeLearning(Long memberId, Long courseId) {
+        LearningProgress progress = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
+        return progress.complete(LocalDateTime.now(clock));
     }
 
     /* 이재성: 통합 검색 */

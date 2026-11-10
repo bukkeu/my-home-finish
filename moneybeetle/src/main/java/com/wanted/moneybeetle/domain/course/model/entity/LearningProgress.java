@@ -65,6 +65,16 @@ public class LearningProgress {
         return STATUS_COMPLETED.equals(status);
     }
 
+    /* 학습 완료 (퀴즈 최초 통과, SP-34·LRN-07). 이미 완료였으면 아무것도 바꾸지 않고 false → 보상은 최초 통과 때만 */
+    public boolean complete(LocalDateTime completedAt) {
+        if (isCompleted()) {
+            return false;
+        }
+        this.status = STATUS_COMPLETED;
+        this.completedAt = completedAt;
+        return true;
+    }
+
     // TODO 공통 설정(SCM)의 BaseTimeEntity가 생기면 상속으로 바꾸기
     @PrePersist
     void onCreate() {

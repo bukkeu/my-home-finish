@@ -1,7 +1,9 @@
 package com.wanted.moneybeetle.domain.quiz.controller;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizPaperDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizQuestionDTO;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSubmitDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.TestQuizResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.WrongNoteDTO;
@@ -15,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -59,11 +62,32 @@ public class QuizController {
         return ApiResponse.success(quizService.gradeTestQuiz(courseId, request));
     }
 
-    /* ===== 퀴즈 제출·채점 (#20) =====
-     * GET  /api/v1/courses/{courseId}/quiz
-     * POST /api/v1/courses/{courseId}/quiz/attempts
-     * GET  /api/v1/quiz-attempts/{attemptId}
-     */
+    /* ===== 퀴즈 제출·채점 (#20) ===== */
+
+    /* API 41. 퀴즈 문제 (영상을 모두 본 뒤, 정답 없이) */
+    @GetMapping("/api/v1/courses/{courseId}/quiz")
+    @ResponseBody
+    public ApiResponse<QuizPaperDTO> getQuiz(@AuthenticationPrincipal AuthDetails me, @PathVariable Long courseId) {
+        return ApiResponse.success(quizService.getQuiz(memberIdOf(me), courseId));
+    }
+
+    /* API 42. 퀴즈 제출·채점 → 201. 같은 Idempotency-Key 재요청은 IdempotencyFilter가 처음 결과를 돌려준다 */
+    @PostMapping("/api/v1/courses/{courseId}/quiz/attempts")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<QuizResultDTO>> submitQuiz(@AuthenticationPrincipal AuthDetails me,
+                                                                 @PathVariable Long courseId,
+                                                                 @Valid @RequestBody QuizSubmitDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(quizService.submitQuiz(memberIdOf(me), courseId, request)));
+    }
+
+    /* API 43. 퀴즈 결과 다시 보기 (본인 응시만) */
+    @GetMapping("/api/v1/quiz-attempts/{attemptId}")
+    @ResponseBody
+    public ApiResponse<QuizResultDTO> getQuizResult(@AuthenticationPrincipal AuthDetails me,
+                                                    @PathVariable Long attemptId) {
+        return ApiResponse.success(quizService.getQuizResult(memberIdOf(me), attemptId));
+    }
 
     /* ===== 오답노트 (#21) ===== */
 

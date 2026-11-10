@@ -1268,7 +1268,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-02, SP-35 |
-| 설명 | 4지선다 5~15문제. 영상을 모두 본 뒤 열린다. 정답은 보내지 않는다. |
+| 설명 | 4지선다 5~15문제. 이 강의의 영상을 모두 끝까지 본 뒤 열린다(lesson_watch.is_completed). 정답·해설은 보내지 않는다. passScore는 system_setting QUIZ_PASS_SCORE(없으면 70). |
 
 **Request**
 
@@ -1280,7 +1280,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "passScore": 70, "questions": [ { "questionId": 201, "content": "청약 가점 항목이 아닌 것은?", "choices": [ { "choiceId": 11, "content": "무주택 기간" }, { "choiceId": 12, "content": "연 소득" } ] } ] }
 ```
 
-**Error**: `QUIZ_LOCKED`
+**Error**: `QUIZ_LOCKED`(403), `COURSE_NOT_PUBLIC`, `NOT_FOUND`(퀴즈 문항 없음)
 
 #### 42. 퀴즈 제출·채점
 
@@ -1290,7 +1290,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-02~05, LRN-07, GRW-03~06, SP-34~36, NFR-06 |
-| 설명 | 서버에서 채점하고 오답을 오답노트에 저장한다. 최초 통과 때만 학습 완료 + 경험치·캐시 지급(레벨업 포함, 한 트랜잭션). 같은 요청은 한 번만 처리. |
+| 설명 | 서버에서 채점(점수 = 맞힌 수 / 문항 수 × 100, 소수점 이하 버림, passScore 이상 통과)하고 응시·답안을 저장한다. 틀린 문제는 오답노트에 저장(같은 문제는 한 번, 또 틀리면 마지막 오답만 갱신). 통과했고 처음 학습 완료일 때만 학습 완료 + 보상(COURSE_COMPLETE, 만점이면 QUIZ_PERFECT 추가, 원인 ID = 강의 ID, 레벨업 포함) — 모두 한 트랜잭션. 안 푼 문제·이 문항의 보기가 아닌 답은 오답. 같은 Idempotency-Key 재요청은 처음 결과를 그대로 돌려준다(IdempotencyFilter). |
 
 **Request**
 
@@ -1310,7 +1310,9 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`
+**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`, `IDEMPOTENCY_KEY_CONFLICT`, `COURSE_NOT_PUBLIC`, `NOT_FOUND`
+
+- 미통과·이미 완료한 강의면 `rewards`는 `{ "firstPass": false, "exp": 0, "cash": 0, "levelUp": null }`. 레벨이 오르지 않았으면 `levelUp`은 null.
 
 #### 43. 퀴즈 결과
 
@@ -1328,9 +1330,9 @@ Header: Idempotency-Key: 7c1e...
 
 **Response**
 
-- (퀴즈 제출 응답과 같은 구조)
+- 퀴즈 제출 응답과 같은 구조. 보상은 이미 지급돼서 `rewards`는 null. 결과는 문항 순서대로.
 
-**Error**: `FORBIDDEN`, `NOT_FOUND`
+**Error**: `FORBIDDEN`(남의 응시), `NOT_FOUND`
 
 #### 44. 오답노트
 
