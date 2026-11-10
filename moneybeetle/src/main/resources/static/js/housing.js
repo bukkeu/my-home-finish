@@ -143,8 +143,8 @@
 
   form.querySelectorAll('[data-amount]').forEach(function (chip) {
     chip.addEventListener('click', function () {
+      if (amountInput.value !== chip.dataset.amount) depositKey = null;   // 금액이 실제로 바뀔 때만 새 납입
       amountInput.value = chip.dataset.amount;
-      depositKey = null;
       showMsg('');
     });
   });
@@ -606,6 +606,8 @@
       e.preventDefault();
       var input = readScoreInput();
       if (!input) return;
+      var scoreSubmit = scoreForm.querySelector('button[type="submit"]');
+      scoreSubmit.disabled = true;                      // 연타로 같은 계산을 여러 번 보내지 않도록 (요청 중 비활성화)
       var seq = ++scoreSeq;
       MB.api(API + '/score-preview', { method: 'POST', body: input }).then(function (s) {
         if (seq !== scoreSeq) return;                   // 화면의 값과 다른 값으로 신청하지 않도록
@@ -614,6 +616,8 @@
       }).catch(function (err) {
         if (seq !== scoreSeq) return;
         MB.toast(err.message, 'error');
+      }).finally(function () {
+        scoreSubmit.disabled = false;
       });
     });
 
