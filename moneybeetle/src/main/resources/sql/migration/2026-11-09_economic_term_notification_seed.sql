@@ -1,6 +1,10 @@
 -- 이슈 #75: 경제 용어·날짜별 오늘의 용어·알림 샘플 시드 (이미 시드를 넣어 둔 DB용)
 -- 새로 만드는 DB 는 sample-data.sql 에 같은 값이 들어 있으므로 이 파일을 실행하지 않는다.
 -- 기존 시드가 있는 격리된 로컬 DB 에서만 실행한다 (SQL 이 로컬 DB 인지 판별하지는 않는다).
+-- 날짜·시각은 DB 세션 시간대가 아니라 한국 시간(+09:00) 기준이다. 서버·세션 시간대가 달라도 한국의 "오늘"에 맞춰 넣는다.
+SET @seed_now = CONVERT_TZ(NOW(), @@session.time_zone, '+09:00');
+SET @seed_today = DATE(@seed_now);
+
 -- 여러 번 실행해도 안전하다: 용어·일정은 이미 있으면 건너뛰고(INSERT IGNORE, 용어는 이름 기준), 알림은 샘플 행마다 같은 알림이 있는지 보고 없는 것만 넣는다.
 
 -- 용어는 번호를 정하지 않고 용어 이름으로 넣는다 (term 이 고유라서 이미 있는 이름은 건너뛴다).
@@ -27,7 +31,7 @@ DELETE FROM term_schedule
 WHERE show_date IN (
     SELECT d.show_date FROM (
         SELECT show_date FROM term_schedule
-        WHERE show_date IN (CURDATE(), CURDATE() + INTERVAL 1 DAY)
+        WHERE show_date IN (@seed_today, @seed_today + INTERVAL 1 DAY)
         GROUP BY show_date
         HAVING SUM(is_auto = 0) = 0 AND COUNT(*) < 5
     ) d
@@ -37,7 +41,7 @@ WHERE show_date IN (
 -- 날짜 단위로 통째로 넣거나 통째로 건너뛴다: 그 날짜에 일정이 하나라도 이미 있으면(관리자가 지정했거나 자동 선정으로 저장된 날) 그 날짜는 건드리지 않는다.
 -- 그래서 기존 일정과 일부만 겹쳐 5개가 아닌 4개짜리 날이 생기는 일이 없다 (INSERT IGNORE 는 겹치는 행만 건너뛴다).
 INSERT IGNORE INTO term_schedule (show_date, economic_term_id, sort_order, is_auto)
-SELECT CURDATE() + INTERVAL s.day_offset DAY, t.economic_term_id, s.sort_order, 0
+SELECT @seed_today + INTERVAL s.day_offset DAY, t.economic_term_id, s.sort_order, 0
 FROM (
     SELECT 0 AS day_offset, '복리' AS term, 1 AS sort_order
     UNION ALL SELECT 0, '실수령액', 2
@@ -52,7 +56,7 @@ FROM (
 ) s
 JOIN economic_term t ON t.term = s.term
 WHERE NOT EXISTS (
-    SELECT 1 FROM term_schedule x WHERE x.show_date = CURDATE() + INTERVAL s.day_offset DAY
+    SELECT 1 FROM term_schedule x WHERE x.show_date = @seed_today + INTERVAL s.day_offset DAY
 );
 
 -- 알림 샘플 (시드 회원 8 민지 4건, 강사 5번 1건).
@@ -62,19 +66,21 @@ WHERE NOT EXISTS (
 
 -- 이전 시드로 이미 들어간 문의 답변 알림은 없는 문의(/user/inquiry/1)를 가리키므로 이동 주소만 비운다 (읽음 상태는 그대로 둔다).
 -- 그러면 아래 INSERT 의 중복 검사(<=>)가 이 행을 같은 알림으로 보고 다시 넣지 않는다. 시드 회원(번호와 이메일이 모두 맞는 8번)만 건드린다.
+-- 1번 문의가 실제로 있으면 그 알림은 진짜 문의 답변 알림일 수 있어 이동 주소를 지우지 않는다 (문의 번호 보존). 1번 문의가 없을 때만 비운다.
 UPDATE notification n
 JOIN member m ON m.member_id = n.member_id AND m.email = 'minji@moneybeetle.local'
 SET n.link_url = NULL
-WHERE n.member_id = 8 AND n.type = 'INQUIRY_REPLY' AND n.title = '문의에 답변이 등록됐어요' AND n.link_url = '/user/inquiry/1';
+WHERE n.member_id = 8 AND n.type = 'INQUIRY_REPLY' AND n.title = '문의에 답변이 등록됐어요' AND n.link_url = '/user/inquiry/1'
+  AND NOT EXISTS (SELECT 1 FROM inquiry i WHERE i.inquiry_id = 1);
 
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at)
 SELECT v.member_id, v.type, v.title, v.link_url, v.is_read, v.created_at
 FROM (
-    SELECT 8 AS member_id, 'minji@moneybeetle.local' AS seed_email, 'INQUIRY_REPLY' AS type, '문의에 답변이 등록됐어요' AS title, NULL AS link_url, 0 AS is_read, NOW() - INTERVAL 5 MINUTE AS created_at
-    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, NOW() - INTERVAL 3 HOUR
-    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'HOUSING_RESULT', '머니숲 리버뷰 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, NOW() - INTERVAL 1 DAY
-    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, NOW() - INTERVAL 2 DAY
-    UNION ALL SELECT 5, 'minjae@moneybeetle.local', 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, NOW() - INTERVAL 1 HOUR
+    SELECT 8 AS member_id, 'minji@moneybeetle.local' AS seed_email, 'INQUIRY_REPLY' AS type, '문의에 답변이 등록됐어요' AS title, NULL AS link_url, 0 AS is_read, @seed_now - INTERVAL 5 MINUTE AS created_at
+    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, @seed_now - INTERVAL 3 HOUR
+    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'HOUSING_RESULT', '머니숲 리버뷰 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY
+    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, @seed_now - INTERVAL 2 DAY
+    UNION ALL SELECT 5, 'minjae@moneybeetle.local', 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, @seed_now - INTERVAL 1 HOUR
 ) v
 JOIN member m ON m.member_id = v.member_id AND m.email = v.seed_email
 WHERE NOT EXISTS (
