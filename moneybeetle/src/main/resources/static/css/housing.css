@@ -227,6 +227,34 @@
 .hs-done__icon { width: 48px; height: 48px; border-radius: 50%; background: var(--color-accent-400); display: grid; place-items: center; font-size: 22px; font-weight: 800; }
 .hs-done .hs-kv { text-align: left; }
 
+/* ---------- 내 신청 내역 · 당첨 결과 (3단계) ---------- */
+.hs-history { display: flex; flex-direction: column; gap: 12px; }
+.hs-app { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.hs-app__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hs-app__head strong { font-size: 18px; flex: 1 1 auto; min-width: 0; }
+.hs-app__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 0; font-size: 13px; }
+.hs-app__grid div { display: flex; flex-direction: column; gap: 2px; }
+.hs-app__grid dt { color: var(--color-neutral-700); }
+.hs-app__grid dd { margin: 0; font-weight: 700; }
+.hs-app .btn { align-self: flex-start; }
+.hs-app .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.hs-badge { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: var(--color-accent-100); }
+.hs-badge.is-WIN { background: var(--color-accent-400); }
+.hs-badge.is-LOSE { background: rgba(229, 72, 77, .12); color: var(--color-danger); }
+.hs-more { align-self: center; }
+
+.hs-result { padding: 32px 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; border-style: solid; }
+.hs-result.is-WIN { border-color: var(--color-accent-400); background: var(--color-accent-100); }
+.hs-result.is-LOSE { border-color: var(--color-divider); }
+.hs-result h2 { font-size: clamp(22px, 3vw, 30px); word-break: keep-all; }
+.hs-result p { margin: 0; color: var(--color-neutral-700); }
+.hs-result__kind { font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 999px; background: #fff; }
+.hs-result-stats { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); overflow: hidden; }
+.hs-result-stats div { padding: 18px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--color-divider); border-bottom: 1px solid var(--color-divider); margin: 0 -1px -1px 0; }
+.hs-result-stats dt { font-size: 12px; color: var(--color-neutral-700); }
+.hs-result-stats dd { margin: 0; font-size: 20px; font-weight: 800; }
+.hs-tips { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.6; }
+
 @media (max-width: 640px) {
   .hs-detail { grid-template-columns: 1fr; }
   .hs-detail__img { min-height: 140px; }

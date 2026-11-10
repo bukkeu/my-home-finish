@@ -368,9 +368,61 @@
         </th:block>
       </div>
 
-      <!--/* ===================== 내 신청 내역 (3단계에서 채운다) ===================== */-->
+      <!--/* ===================== 내 신청 내역 (API 70) · 당첨 결과 (API 71) ===================== */-->
       <div class="hs-panel" data-panel="history" hidden>
-        <div class="card hs-empty-card">내 신청 내역은 준비 중이에요.</div>
+
+        <!--/* Lv.12 미만 : 신청할 수 없으니 내역도 없다 (API 70 도 LEVEL_LOCKED) */-->
+        <section class="card hs-lock" th:if="${page.locked}">
+          <div class="hs-lock__head">
+            <span class="hs-lock__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </span>
+            <h2 th:text="|내 신청 내역은 Lv.${page.unlockLevel}부터 볼 수 있어요.|">내 신청 내역은 Lv.12부터 볼 수 있어요.</h2>
+          </div>
+          <p th:text="|지금은 Lv.${page.level}이에요. Lv.${page.unlockLevel}이 되면 단지에 신청하고 결과를 확인할 수 있어요.|">지금은 Lv.8이에요.</p>
+        </section>
+
+        <th:block th:unless="${page.locked}">
+          <!--/* 목록 */-->
+          <section class="hs-section" data-hview="list">
+            <div class="hs-section__head">
+              <div class="hs-head__title">
+                <h2>내 청약 신청 내역</h2>
+                <p class="hs-muted">신청할 때의 가점은 그대로 보관돼요. 결과는 당첨자 발표일 이후에 확인할 수 있어요.</p>
+              </div>
+            </div>
+            <div class="hs-history" data-list="history"></div>
+            <button type="button" class="btn btn-secondary hs-more" data-history-more hidden>더 보기</button>
+          </section>
+
+          <!--/* 결과 (발표 뒤에만. SP-75 : 당첨·낙첨 두 가지) */-->
+          <section class="hs-section" data-hview="result" hidden>
+            <button type="button" class="btn btn-ghost hs-back" data-hback>← 내 신청 내역</button>
+            <div class="card hs-result" data-r="card">
+              <span class="hs-result__kind" data-r="kind">-</span>
+              <h2 data-r="headline">-</h2>
+              <p data-r="name">-</p>
+            </div>
+            <dl class="card hs-result-stats">
+              <div><dt>나의 가점</dt><dd><span data-r="score">-</span>점</dd></div>
+              <div><dt>접수번호</dt><dd data-r="receipt">-</dd></div>
+              <div><dt>당첨자 발표</dt><dd data-r="announce">-</dd></div>
+            </dl>
+            <div class="card hs-box" data-r="lose" hidden>
+              <h3>다음 청약을 위한 안내</h3>
+              <ul class="hs-tips">
+                <li>당첨자는 가점 높은 순으로 정하고, 같으면 청약통장 납입 횟수가 많은 사람이 앞서요.</li>
+                <li>청약통장 납입 횟수가 쌓이면 청약통장 점수도 함께 올라가요.</li>
+                <li>모집 중인 다른 단지에도 신청해 보세요.</li>
+              </ul>
+              <div class="hs-actions">
+                <button type="button" class="btn btn-primary" data-go-account>청약통장 납입하기</button>
+                <button type="button" class="btn btn-secondary" data-go-tab="complexes">다른 단지 보기</button>
+              </div>
+            </div>
+            <p class="hs-muted hs-small">교육용 모의 청약 결과예요. 실제 청약·계약·주택 구매와는 관계없어요.</p>
+          </section>
+        </th:block>
       </div>
     </main>
 

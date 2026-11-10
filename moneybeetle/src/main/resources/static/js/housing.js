@@ -3,6 +3,8 @@
 *  templates/housing/housing.html 의 동작. 데이터는 모의 청약 API 로 불러온다 (MB.api, common.js)
 *  - 청약통장 : GET /api/v1/housing/account (65), POST /account/deposits (66, Idempotency-Key), GET /account/deposits (67)
 *  - 캘린더·모집 중 단지 : GET /api/v1/housing/complexes?month=yyyy-MM (63). Lv.12 미만이면 부르지 않고 흐린 예시만 그린다
+*  - 청약 단지 : 상세 (64), 가점 계산 (68), 신청 (69)
+*  - 내 신청 내역 : GET /applications/me (70), 결과 GET /applications/{id}/result (71, 발표 뒤에만)
 *  - 탭 : 청약 홈 / 청약 단지 / 내 신청 내역 (주소 끝 #complexes, #history 로 바로 열 수 있다)
 *  */
 (function () {
@@ -388,9 +390,13 @@
 
   // 탭으로 들어오면 목록부터 (Lv.12 미만이면 잠금 안내만 있다)
   window.HS.onTab = function (name) {
-    if (name !== 'complexes' || LOCKED) return;
-    view('list');
-    if (!cx.loaded) loadList();
+    if (LOCKED) return;
+    if (name === 'complexes') {
+      view('list');
+      if (!cx.loaded) loadList();
+    } else if (name === 'history') {
+      openHistory();                                     // 아래 3단계 (신청 직후에도 새로 받도록 매번 부른다)
+    }
   };
 
   function loadList() {
@@ -599,6 +605,119 @@
             if (err.code === 'NOT_IN_APPLY_PERIOD' || err.code === 'ALREADY_APPLIED') openDetail(c.complexId);
           })
           .finally(function () { applyBtn.disabled = false; });
+    });
+  }
+
+  // ---------- 내 신청 내역 (API 70) · 당첨 결과 (API 71) ----------
+  // 결과(result)는 관리자가 발표한 뒤에만 온다. 발표 전이면 null (SP-75, SUB-11). 당첨·낙첨 두 가지뿐이다
+  var hpanel = root.querySelector('[data-panel="history"]');
+  var hs = { page: 0, totalPages: 0, items: [] };
+  var HISTORY_SIZE = 10;
+
+  function hview(name) {
+    hpanel.querySelectorAll('[data-hview]').forEach(function (v) { v.hidden = v.dataset.hview !== name; });
+  }
+  function setR(name, text) {
+    hpanel.querySelector('[data-r="' + name + '"]').textContent = text;
+  }
+
+  function openHistory() {
+    hview('list');
+    loadHistory(0);
+  }
+
+  function loadHistory(page) {
+    return MB.api(API + '/applications/me?page=' + page + '&size=' + HISTORY_SIZE).then(function (data) {
+      var items = (data && data.items) || [];
+      hs.items = page === 0 ? items : hs.items.concat(items);
+      hs.page = data ? data.page : 0;
+      hs.totalPages = data ? data.totalPages : 0;
+      renderHistory();
+    }).catch(function (err) {
+      MB.toast(err.message, 'error');
+    });
+  }
+
+  function historyState(a) {                             // 목록 배지 · 버튼 문구
+    if (a.result === 'WIN') return { badge: '당첨', cls: 'is-WIN', canView: true, label: '결과 확인' };
+    if (a.result === 'LOSE') return { badge: '낙첨', cls: 'is-LOSE', canView: true, label: '결과 확인' };
+    var before = a.announceDate > iso(TODAY.y, TODAY.m, TODAY.d);
+    return before
+        ? { badge: '발표 전', cls: '', canView: false, label: dotted(a.announceDate) + ' 발표 예정이에요' }
+        : { badge: '발표 준비 중', cls: '', canView: false, label: '곧 결과가 발표돼요' };   // 발표일이 됐지만 관리자가 아직 발표 전
+  }
+
+  function renderHistory() {
+    var box = list('history');
+    box.replaceChildren();
+    if (!hs.items.length) {
+      var empty = el('div', 'card hs-empty-card');
+      empty.appendChild(el('strong', null, '아직 신청한 청약이 없어요'));
+      empty.appendChild(el('p', 'hs-muted', '모집 중인 단지를 둘러보고 첫 청약에 도전해 보세요.'));
+      var go = el('button', 'btn btn-primary', '청약 단지 보기');
+      go.type = 'button';
+      go.dataset.goTab = 'complexes';
+      empty.appendChild(go);
+      box.appendChild(empty);
+    }
+    hs.items.forEach(function (a) {
+      var st = historyState(a);
+      var card = el('article', 'card hs-app');
+      var head = el('div', 'hs-app__head');
+      head.appendChild(el('strong', null, a.complexName));
+      head.appendChild(el('span', 'hs-badge ' + st.cls, st.badge));
+      card.appendChild(head);
+
+      var grid = el('dl', 'hs-app__grid');
+      [['접수번호', a.receiptNo], ['신청 가점', a.totalScore + '점'], ['당첨자 발표', dotted(a.announceDate)]]
+          .forEach(function (kv) {
+            var d = el('div');
+            d.appendChild(el('dt', null, kv[0]));
+            d.appendChild(el('dd', null, kv[1]));
+            grid.appendChild(d);
+          });
+      card.appendChild(grid);
+
+      var btn = el('button', 'btn ' + (st.canView ? 'btn-primary' : 'btn-secondary'), st.label);
+      btn.type = 'button';
+      btn.disabled = !st.canView;
+      if (st.canView) btn.addEventListener('click', function () { openResult(a); });
+      card.appendChild(btn);
+      box.appendChild(card);
+    });
+    hpanel.querySelector('[data-history-more]').hidden = hs.page + 1 >= hs.totalPages;
+  }
+
+  function openResult(a) {
+    MB.api(API + '/applications/' + a.applicationId + '/result').then(function (r) {
+      var win = r.result === 'WIN';
+      var card = hpanel.querySelector('[data-r="card"]');
+      card.classList.toggle('is-WIN', win);
+      card.classList.toggle('is-LOSE', !win);
+      setR('kind', win ? '당첨' : '낙첨');
+      setR('headline', r.message);
+      setR('name', a.complexName);
+      setR('score', String(r.totalScore));
+      setR('receipt', a.receiptNo);
+      setR('announce', dotted(a.announceDate));
+      hpanel.querySelector('[data-r="lose"]').hidden = win;
+      hview('result');
+      root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).catch(function (err) {
+      MB.toast(err.message, 'error');
+      if (err.code === 'NOT_ANNOUNCED_YET') openHistory();
+    });
+  }
+
+  if (!LOCKED) {
+    hpanel.querySelector('[data-history-more]').addEventListener('click', function () {
+      loadHistory(hs.page + 1);
+    });
+    hpanel.querySelector('[data-hback]').addEventListener('click', function () { hview('list'); });
+    hpanel.querySelector('[data-go-account]').addEventListener('click', function () {
+      showTab('home');
+      var account = document.getElementById('hs-account');
+      if (account) account.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 

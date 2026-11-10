@@ -89,7 +89,9 @@ class HousingPageRenderTest {
                 .contains("mb-blur")
                 .contains("Lv.12부터 볼 수 있어요")
                 .contains("청약 단지는 Lv.12부터 볼 수 있어요.")
+                .contains("내 신청 내역은 Lv.12부터 볼 수 있어요.")
                 .doesNotContain("id=\"hs-score-form\"")
+                .doesNotContain("data-list=\"history\"")
                 .contains("data-locked=\"true\"");
     }
 
@@ -103,6 +105,9 @@ class HousingPageRenderTest {
                 .contains("id=\"hs-score-form\"")
                 .contains("가점 계산하고 신청하기")
                 .doesNotContain("청약 단지는 Lv.12부터 볼 수 있어요.")
+                .doesNotContain("내 신청 내역은 Lv.12부터 볼 수 있어요.")
+                .contains("data-list=\"history\"")
+                .contains("내 청약 신청 내역")
                 .contains("이용 가능");
     }
 
