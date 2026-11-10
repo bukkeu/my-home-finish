@@ -17,8 +17,10 @@ import com.wanted.moneybeetle.domain.trading.model.dto.SectorSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.entity.Sector;
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
+import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -343,5 +345,18 @@ class MarketAdminServiceTest {
 
         service.changeStock(1L, new StockSaveDTO(1L, "한빛반도체", 10_000, null, null, null, null));
         verify(seasonRepository, times(4)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
+    }
+
+    @Test
+    void 잠글_시즌이_있어도_분야를_등록한다() {
+        TradingSeason ready = TradingSeason.create("시즌 7", LocalDate.of(2026, 11, 16), 1L);
+        when(seasonRepository.findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY")))
+                .thenReturn(List.of(ready));
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createSector(new SectorSaveDTO("핀테크", 15, null));
+
+        verify(sectorRepository).saveAndFlush(any(Sector.class));
     }
 }
