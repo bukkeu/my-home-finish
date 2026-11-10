@@ -52,9 +52,11 @@
     if (token && csrfHeader) headers[csrfHeader.content] = token.content;
     return headers;
   }
-  function authenticate(email, password) {
+  function authenticate(email, password, next) {
+    var values = { email: email, password: password };
+    if (next) values.next = next;
     return fetch('/api/v1/auth/login', { method: 'POST', credentials: 'same-origin', headers: csrfHeaders(),
-      body: formBody({ email: email, password: password }) }).then(function (response) {
+      body: formBody(values) }).then(function (response) {
       return response.json().catch(function () { return {}; }).then(function (body) {
         if (!response.ok || body.success === false) return Promise.reject(body.error || { code: 'LOGIN_FAILED' });
         return body.data || body;
@@ -119,14 +121,13 @@
       var next = byId('login-next').value;
       if (!email || !password) return setMessage('login-message', '이메일과 비밀번호를 입력해 주세요.', false);
       setMessage('login-message', '로그인하고 있어요…', true);
-      fetch('/api/v1/auth/login', { method: 'POST', credentials: 'same-origin', headers: csrfHeaders(),
-        body: formBody({ email: email, password: password, next: next }) })
-        .then(function (response) { return response.json().catch(function () { return {}; }).then(function (body) {
-          if (!response.ok || body.success === false) return Promise.reject(body.error || { code: 'LOGIN_FAILED' });
-          return body.data || body;
-        }); })
-        .then(function (result) { window.location.assign(result.redirectUrl || '/user/home'); })
-        .catch(function (error) { setMessage('login-message', errorText(error), false); });
+      var button = loginForm.querySelector('button[type="submit"]');
+      // 요청 중에는 버튼을 막아 같은 로그인을 두 번 보내지 않는다 (실패하면 다시 누를 수 있다)
+      runButton(button, function () {
+        return authenticate(email, password, next)
+          .then(function (result) { button.dataset.locked = 'true'; window.location.assign(result.redirectUrl || '/user/home'); })
+          .catch(function (error) { setMessage('login-message', errorText(error), false); });
+      });
     });
   }
 
@@ -253,11 +254,14 @@
   }
 
   if (page === 'find-email') {
-    byId('find-email-form').addEventListener('submit', function (event) {
+    var findEmailForm = byId('find-email-form');
+    findEmailForm.addEventListener('submit', function (event) {
       event.preventDefault();
-      api('/api/v1/auth/find-email', { method: 'POST', body: { nickname: byId('find-nickname').value.trim(), birthDate: byId('find-birth').value } })
-        .then(function (result) { setMessage('find-email-message', '가입한 이메일은 ' + result.maskedEmail + ' 이에요.', true); })
-        .catch(function (error) { apiError(error, 'find-email-message'); });
+      runButton(findEmailForm.querySelector('button[type="submit"]'), function () {
+        return api('/api/v1/auth/find-email', { method: 'POST', body: { nickname: byId('find-nickname').value.trim(), birthDate: byId('find-birth').value } })
+          .then(function (result) { setMessage('find-email-message', '가입한 이메일은 ' + result.maskedEmail + ' 이에요.', true); })
+          .catch(function (error) { apiError(error, 'find-email-message'); });
+      });
     });
   }
 
@@ -268,18 +272,23 @@
     if (token) { requestForm.hidden = true; confirmForm.hidden = false; document.querySelector('#reset-title').textContent = '새 비밀번호를 설정해요'; }
     requestForm.addEventListener('submit', function (event) {
       event.preventDefault();
-      api('/api/v1/auth/password-reset/request', { method: 'POST', body: { email: byId('reset-email').value.trim() } })
-        .then(function () { setMessage('reset-request-message', '가입된 이메일이라면 재설정 링크를 보냈어요. 메일함을 확인해 주세요.', true); })
-        .catch(function (error) { apiError(error, 'reset-request-message'); });
+      runButton(requestForm.querySelector('button[type="submit"]'), function () {
+        return api('/api/v1/auth/password-reset/request', { method: 'POST', body: { email: byId('reset-email').value.trim() } })
+          .then(function () { setMessage('reset-request-message', '가입된 이메일이라면 재설정 링크를 보냈어요. 메일함을 확인해 주세요.', true); })
+          .catch(function (error) { apiError(error, 'reset-request-message'); });
+      });
     });
     confirmForm.addEventListener('submit', function (event) {
       event.preventDefault();
       var password = byId('reset-password').value;
       var confirm = byId('reset-password-confirm').value;
       if (password !== confirm) return setMessage('reset-confirm-message', messages.PASSWORD_MISMATCH, false);
-      api('/api/v1/auth/password-reset/confirm', { method: 'POST', body: { token: token, newPassword: password, newPasswordConfirm: confirm } })
-        .then(function () { window.location.assign('/login?passwordReset=complete'); })
-        .catch(function (error) { apiError(error, 'reset-confirm-message'); });
+      var confirmButton = confirmForm.querySelector('button[type="submit"]');
+      runButton(confirmButton, function () {
+        return api('/api/v1/auth/password-reset/confirm', { method: 'POST', body: { token: token, newPassword: password, newPasswordConfirm: confirm } })
+          .then(function () { confirmButton.dataset.locked = 'true'; window.location.assign('/login?passwordReset=complete'); })
+          .catch(function (error) { apiError(error, 'reset-confirm-message'); });
+      });
     });
   }
 
@@ -308,11 +317,14 @@
       if (!socialNicknameAvailable) return setMessage('social-signup-message', '닉네임 중복 확인을 해 주세요.', false);
       if (!byId('social-birth').value) return setMessage('social-signup-message', '생년월일을 입력해 주세요.', false);
       if (!selected.requiredOk || !selected.ids.length) return setMessage('social-signup-message', '필수 약관에 동의해 주세요.', false);
-      api('/api/v1/auth/oauth-signup', { method: 'POST', body: {
-        nickname: byId('social-nickname').value.trim(), birthDate: byId('social-birth').value,
-        gender: byId('social-gender').value || null, agreedTermsIds: selected.ids
-      } }).then(function () { window.location.assign('/user/home'); })
-        .catch(function (error) { apiError(error, 'social-signup-message'); });
+      var socialButton = byId('social-signup-form').querySelector('button[type="submit"]');
+      runButton(socialButton, function () {
+        return api('/api/v1/auth/oauth-signup', { method: 'POST', body: {
+          nickname: byId('social-nickname').value.trim(), birthDate: byId('social-birth').value,
+          gender: byId('social-gender').value || null, agreedTermsIds: selected.ids
+        } }).then(function () { socialButton.dataset.locked = 'true'; window.location.assign('/user/home'); })
+          .catch(function (error) { apiError(error, 'social-signup-message'); });
+      });
     });
   }
 
