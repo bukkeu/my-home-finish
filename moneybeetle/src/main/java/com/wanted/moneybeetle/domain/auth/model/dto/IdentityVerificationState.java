@@ -14,10 +14,11 @@ public class IdentityVerificationState implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String email;
-    private String codeHash;
-    private Instant codeExpiresAt;
-    private int failures;
-    private Instant verifiedUntil;
+    // verify 는 이 객체로 잠가 값을 바꾸지만, 가입 전 확인(requireVerified)은 잠그지 않고 읽는다. 바뀐 값이 바로 보이도록 volatile 로 둔다
+    private volatile String codeHash;
+    private volatile Instant codeExpiresAt;
+    private volatile int failures;
+    private volatile Instant verifiedUntil;
 
     private IdentityVerificationState(String email, String codeHash, Instant codeExpiresAt) {
         this.email = email;
@@ -52,7 +53,7 @@ public class IdentityVerificationState implements Serializable {
         return verifiedUntil != null && now.isBefore(verifiedUntil) && email.equals(normalizedEmail);
     }
 
-    /** 틀린 코드를 한 번 더 셌다. 세어진 횟수를 돌려준다 */
+    /** 틀린 코드를 한 번 더 센다. 세어진 횟수를 돌려준다. 호출하는 쪽이 이 객체로 잠근 상태에서 부른다 (IdentityVerificationService.verify) */
     public int recordFailure() {
         return ++failures;
     }

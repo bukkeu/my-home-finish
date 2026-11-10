@@ -88,22 +88,30 @@ public class IdentityVerificationService {
     /** 받은 코드가 맞으면 이 세션에서 그 이메일을 인증된 것으로 표시한다 (API 5) */
     public void verify(String rawEmail, String code, HttpSession session) {
         String email = SignupRules.normalizeEmail(rawEmail);
-        Instant now = clock.instant();
         IdentityVerificationState state = stateOf(session);
-        if (state == null || !state.getEmail().equals(email) || !state.isCodeActive(now)) {
-            // 코드를 받은 적이 없거나, 다른 이메일의 코드이거나, 5분이 지났다. 어느 쪽인지 구분해 알려 주지 않는다
-            throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);
+        if (state == null) {
+            throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);   // 코드를 받은 적이 없다
         }
-        if (!matches(state, email, code)) {
-            if (state.recordFailure() >= MAX_FAILURES) {
-                session.removeAttribute(SESSION_KEY);
+        // 같은 세션의 요청이 동시에 와도 한 번에 하나씩만 비교·횟수 증가·인증 완료를 한다. 이렇게 묶지 않으면 여러 요청이 모두 "아직 5번 안
+        // 틀렸다"고 보고 한꺼번에 코드를 대 볼 수 있어 시도 횟수 제한이 무의미해진다 (같은 세션이면 상태 객체가 하나라 이 객체로 잠근다)
+        synchronized (state) {
+            Instant now = clock.instant();
+            if (!state.getEmail().equals(email) || !state.isCodeActive(now) || state.getFailures() >= MAX_FAILURES) {
+                // 다른 이메일의 코드이거나, 5분이 지났거나, 이미 5번 틀렸다. 어느 쪽인지 구분해 알려 주지 않는다
+                // (제한에 걸린 뒤에 늦게 들어온 요청은 코드를 비교하지 않는다)
                 throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);
             }
-            session.setAttribute(SESSION_KEY, state);   // 틀린 횟수를 세션에 다시 저장한다 (세션 저장소가 복사본을 쓰는 경우 대비)
-            throw new BusinessException(MemberErrorCode.IDENTITY_CODE_INVALID);
+            if (!matches(state, email, code)) {
+                if (state.recordFailure() >= MAX_FAILURES) {
+                    session.removeAttribute(SESSION_KEY);
+                    throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);
+                }
+                session.setAttribute(SESSION_KEY, state);   // 틀린 횟수를 세션에 다시 저장한다 (세션 저장소가 복사본을 쓰는 경우 대비)
+                throw new BusinessException(MemberErrorCode.IDENTITY_CODE_INVALID);
+            }
+            state.completeVerification(now.plus(VERIFIED_TTL));
+            session.setAttribute(SESSION_KEY, state);
         }
-        state.completeVerification(now.plus(VERIFIED_TTL));
-        session.setAttribute(SESSION_KEY, state);
     }
 
     /** 가입 전에 호출한다. 이 세션에서 그 이메일이 인증돼 있지 않으면 IDENTITY_NOT_VERIFIED 로 막는다 (API 4) */
