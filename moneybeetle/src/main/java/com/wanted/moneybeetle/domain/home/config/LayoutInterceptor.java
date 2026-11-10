@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.home.config;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.home.model.service.LayoutService;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +43,12 @@ public class LayoutInterceptor implements HandlerInterceptor {
         }
         try {
             modelAndView.addObject(ATTRIBUTE, layoutService.getLayout(me.getMemberId()));
+        } catch (BusinessException e) {
+            // 예상한 경우(탈퇴·정지 계정 등): 오류 코드만 남기고 기본값으로 그린다
+            log.warn("공통 레이아웃 값을 만들지 못해 기본값으로 그려요: memberId={}, 오류 코드={}", me.getMemberId(), e.getErrorCode().getCode());
         } catch (RuntimeException e) {
-            log.warn("공통 레이아웃 값을 만들지 못해 기본값으로 그려요: memberId={}, 원인={}", me.getMemberId(), e.getClass().getSimpleName());
+            // 예상 밖의 오류(레벨표 이상, 코드 결함 등): 원인을 찾을 수 있게 스택 트레이스까지 남기고 화면은 기본값으로 그린다
+            log.error("공통 레이아웃 값을 만드는 중 예상하지 못한 오류가 나 기본값으로 그려요: memberId={}", me.getMemberId(), e);
         }
     }
 
