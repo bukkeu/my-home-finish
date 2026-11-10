@@ -136,12 +136,19 @@
   }
 
   // ---------- 납입 (API 66) ----------
+  // 결과를 모르는 납입(네트워크 끊김 등)을 다시 보낼 때는 같은 Idempotency-Key 를 쓴다 (DP-37).
+  // 금액을 고치면 새 납입이므로 키를 버린다. 성공했거나 결과가 분명한 실패면 다음 납입은 새 키로 보낸다
+  var depositKey = null;
+  var UNKNOWN_RESULT = ['NETWORK_ERROR', 'ERROR', 'DUPLICATE_REQUEST'];
+
   form.querySelectorAll('[data-amount]').forEach(function (chip) {
     chip.addEventListener('click', function () {
       amountInput.value = chip.dataset.amount;
+      depositKey = null;
       showMsg('');
     });
   });
+  amountInput.addEventListener('input', function () { depositKey = null; });
 
   function showMsg(text) {
     msg.textContent = text;
@@ -168,16 +175,19 @@
       return;
     }
     submitBtn.disabled = true;
+    if (!depositKey) depositKey = newKey();
     MB.api(API + '/account/deposits', {
       method: 'POST',
-      headers: { 'Idempotency-Key': newKey() },
+      headers: { 'Idempotency-Key': depositKey },
       body: { amount: Number(value) }
     }).then(function (r) {
+      depositKey = null;
       var extra = r.recognizedAmount < r.amount ? ' (인정 ' + fmt(r.recognizedAmount) + ')' : '';
       MB.toast(fmt(r.amount) + ' 캐시를 납입했어요' + extra + ' · ' + r.paidCount + '회차');
       amountInput.value = '';
       return Promise.all([loadAccount(), loadDeposits()]);
     }).catch(function (err) {
+      if (UNKNOWN_RESULT.indexOf(err.code) < 0) depositKey = null;   // 결과가 분명한 실패만 키를 버린다
       showMsg(err.message);
       MB.toast(err.message, 'error');
       submitBtn.disabled = false;
@@ -324,6 +334,7 @@
     return '접수 마감';
   }
 
+  var monthSeq = 0;                                     // 달을 빠르게 넘길 때 늦게 온 이전 달 응답을 버린다
   function loadMonth() {
     if (LOCKED) {                                       // 레벨이 모자라면 API 를 부르지 않는다 (서버도 LEVEL_LOCKED 로 막는다)
       state.complexes = [];
@@ -331,15 +342,26 @@
       return;
     }
     var month = state.year + '-' + String(state.month).padStart(2, '0');
+    var thisMonth = state.year === TODAY.y && state.month === TODAY.m;   // 이번 달이면 모집 중 단지도 채운다
+    var seq = ++monthSeq;
     MB.api(API + '/complexes?month=' + month).then(function (data) {
+      if (seq !== monthSeq) return;
       state.complexes = (data && data.items) || [];
       renderCalendar();
-      if (state.year === TODAY.y && state.month === TODAY.m) {
+      if (thisMonth) {
         renderOpenComplexes(state.complexes.filter(function (c) { return c.status === 'OPEN'; }));
       }
     }).catch(function (err) {
+      if (seq !== monthSeq) return;
       state.complexes = [];
       renderCalendar();
+      if (thisMonth) {                                  // "불러오는 중이에요…" 가 남지 않도록 실패를 알린다
+        var box = list('openComplexes');
+        var fail = el('div', 'card hs-empty-card');
+        fail.appendChild(el('strong', null, '모집 중인 단지를 불러오지 못했어요'));
+        fail.appendChild(el('p', 'hs-muted', err.message));
+        box.replaceChildren(fail);
+      }
       MB.toast(err.message, 'error');
     });
   }
@@ -399,14 +421,18 @@
     }
   };
 
+  var listSeq = 0;                                      // 달을 빠르게 넘길 때 늦게 온 이전 달 응답을 버린다
   function loadList() {
     bind('listTitle', cx.year + '년 ' + cx.month + '월');
     var month = cx.year + '-' + String(cx.month).padStart(2, '0');
+    var seq = ++listSeq;
     return MB.api(API + '/complexes?month=' + month).then(function (data) {
+      if (seq !== listSeq) return;
       cx.items = (data && data.items) || [];
       cx.loaded = true;
       renderList();
     }).catch(function (err) {
+      if (seq !== listSeq) return;
       cx.items = [];
       renderList();
       MB.toast(err.message, 'error');
@@ -520,6 +546,7 @@
 
   // ----- 가점 계산 (API 68) -----
   var scoreForm = document.getElementById('hs-score-form');
+  var scoreSeq = 0;                                      // 계산 중에 값을 바꾸면 이전 계산 응답은 버린다
 
   function openApply() {
     var c = cx.detail;
@@ -529,6 +556,7 @@
   }
 
   function resetScore() {
+    scoreSeq += 1;
     cx.input = null;
     panel.querySelector('[data-score]').hidden = true;
     panel.querySelector('[data-score-empty]').hidden = false;
@@ -574,10 +602,13 @@
       e.preventDefault();
       var input = readScoreInput();
       if (!input) return;
+      var seq = ++scoreSeq;
       MB.api(API + '/score-preview', { method: 'POST', body: input }).then(function (s) {
+        if (seq !== scoreSeq) return;                   // 화면의 값과 다른 값으로 신청하지 않도록
         cx.input = input;
         renderScore(s);
       }).catch(function (err) {
+        if (seq !== scoreSeq) return;
         MB.toast(err.message, 'error');
       });
     });
@@ -710,8 +741,10 @@
   }
 
   if (!LOCKED) {
-    hpanel.querySelector('[data-history-more]').addEventListener('click', function () {
-      loadHistory(hs.page + 1);
+    var moreBtn = hpanel.querySelector('[data-history-more]');
+    moreBtn.addEventListener('click', function () {
+      moreBtn.disabled = true;                          // 연타로 같은 쪽이 두 번 붙지 않도록 (요청 중 비활성화)
+      loadHistory(hs.page + 1).finally(function () { moreBtn.disabled = false; });
     });
     hpanel.querySelector('[data-hback]').addEventListener('click', function () { hview('list'); });
     hpanel.querySelector('[data-go-account]').addEventListener('click', function () {
