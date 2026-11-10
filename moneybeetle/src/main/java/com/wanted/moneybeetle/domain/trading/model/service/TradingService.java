@@ -6,6 +6,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   - #24 조회 (API 55~58) : 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료)의 현재 턴까지만 보여 준다.
 *     다음 턴 이후의 가격·뉴스는 미리 입력돼 있어도 응답에 넣지 않는다
 *   - 사용 안 함 분야·종목은 목록과 상세에 나오지 않는다 (사용 안 함 분야의 종목 상세도 NOT_FOUND)
+*   - #44·#193 관리자 : 다음 턴 점검(checkNextTurn), 대시보드 요약(getDashboardSummary, 역할분담 §7 연동 약속)
 *  */
 
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
@@ -19,10 +20,12 @@ import com.wanted.moneybeetle.domain.trading.model.dao.StockRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.TradeOrderRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository;
 import com.wanted.moneybeetle.domain.trading.model.dto.NewsDTO;
+import com.wanted.moneybeetle.domain.trading.model.dto.NextTurnCheckDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SectorStocksDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockDetailDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockListDTO;
+import com.wanted.moneybeetle.domain.trading.model.dto.TradingDashboardSummaryDTO;
 import com.wanted.moneybeetle.domain.trading.model.entity.Holding;
 import com.wanted.moneybeetle.domain.trading.model.entity.News;
 import com.wanted.moneybeetle.domain.trading.model.entity.NewsTag;
@@ -32,11 +35,15 @@ import com.wanted.moneybeetle.domain.trading.model.entity.StockPrice;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +74,7 @@ public class TradingService {
     private final SeasonParticipantRepository participantRepository;
     private final HoldingRepository holdingRepository;
     private final TradeOrderRepository orderRepository;
+    private final Clock clock;
 
     /** API 55 분야 목록 : 사용 중 분야를 정렬 순서대로, 분야마다 사용 중 종목 */
     public List<SectorStocksDTO> findSectors() {
@@ -197,5 +205,49 @@ public class TradingService {
         }
         return Comparator.comparing((Stock stock) -> sectorRank.get(stock.getSectorId()))
                 .thenComparing(Stock::getStockId);
+    }
+
+    /**
+     * 다음 턴 점검 (API 119, SP-59). 대시보드 요약(#193)도 이 계산을 그대로 쓴다.
+     * 다음 턴이 있고, 휴장이 아니고, 진행 중이고, 사용 중 종목이 있고 그 가격이 모두 있고, 뉴스가 1개 이상 있어야 ready
+     */
+    public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
+        boolean holiday = season.isHoliday();
+        if (season.isLastTurn()) {
+            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday);
+        }
+        int nextTurn = season.getCurrentTurn() + 1;
+        Set<Long> activeSectorIds = sectorRepository.findByIsActiveTrueOrderBySortOrderAscSectorIdAsc().stream()
+                .map(Sector::getSectorId).collect(Collectors.toSet());
+        List<Stock> stocks = stockRepository.findByIsActiveTrueOrderByStockIdAsc().stream()
+                .filter(stock -> activeSectorIds.contains(stock.getSectorId()))
+                .toList();
+        Set<Long> pricedStockIds = priceRepository.findByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn)
+                .stream().map(StockPrice::getStockId).collect(Collectors.toSet());
+        List<String> missingPrices = stocks.stream()
+                .filter(stock -> !pricedStockIds.contains(stock.getStockId()))
+                .map(Stock::getName)
+                .toList();
+        long newsCount = newsRepository.countByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn);
+        boolean ready = season.isRunning() && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0;
+        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday);
+    }
+
+    /**
+     * 관리자 대시보드(API 84)용 요약 (#193, 역할분담 §7 : 김예린 DashboardService 가 호출).
+     * 진행 중·휴장 중인 시즌 하나의 오늘 주문 수와 다음 턴 점검 결과. 그런 시즌이 없으면 비어 있다
+     */
+    public Optional<TradingDashboardSummaryDTO> getDashboardSummary() {
+        return seasonRepository.findFirstByStatusInOrderByStartDateDesc(
+                        List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
+                .map(season -> {
+                    LocalDate today = LocalDate.now(clock);
+                    long todayOrders = orderRepository.countOrdersBetween(season.getTradingSeasonId(),
+                            today.atStartOfDay(), today.plusDays(1).atStartOfDay());
+                    NextTurnCheckDTO check = checkNextTurn(season);
+                    return new TradingDashboardSummaryDTO(season.getTradingSeasonId(), todayOrders, check.ready(),
+                            new TradingDashboardSummaryDTO.Missing(check.missingPrices().size(),
+                                    check.nextTurn() != null && check.newsCount() == 0 ? 1 : 0));
+                });
     }
 }

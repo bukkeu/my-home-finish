@@ -1,6 +1,8 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.SeasonTurn;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
@@ -9,4 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface SeasonTurnRepository extends JpaRepository<SeasonTurn, Long> {
 
+    /** 시즌의 12턴 달력 (#44) */
+    List<SeasonTurn> findByTradingSeasonIdOrderByTurnNoAsc(Long tradingSeasonId);
+
+    Optional<SeasonTurn> findByTradingSeasonIdAndTurnNo(Long tradingSeasonId, int turnNo);
 }

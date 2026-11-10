@@ -3016,7 +3016,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-13, ADM-15 |
-| 설명 | 지난 턴/오늘/남은 턴/휴장일, 누가 언제 넘겼는지. |
+| 설명 | 지난 턴/지금 턴/남은 턴/휴장일, 누가 언제 넘겼는지. |
 
 **Request**
 
@@ -3025,8 +3025,16 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "turns": [ { "turnNo": 4, "tradeDate": "2026-11-05", "state": "DONE", "progressedAt": "2026-11-05T00:00:03", "progressedBy": "김운영" } ] }
+{ "seasonId": 7, "status": "RUNNING", "currentTurn": 5, "totalTurns": 12,
+  "turns": [ { "turnNo": 4, "tradeDate": "2026-11-05", "state": "DONE", "progressedAt": "2026-11-05T00:00:03", "progressedBy": "김운영" } ],
+  "holidays": ["2026-11-08", "2026-11-15"] }
 ```
+
+- `state`: `DONE`(지난 턴) · `CURRENT`(지금 턴) · `UPCOMING`(남은 턴). 아직 넘기지 않은 턴은 `progressedAt`·`progressedBy`가 `null`
+- `progressedBy`는 넘긴 관리자의 닉네임. 턴은 "그 턴으로 넘긴 때"를 기록한다 (4턴의 진행 기록 = 3턴 → 4턴으로 넘긴 때)
+- `holidays`: 시즌 기간 중 휴장일(일요일)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 119. 다음 턴 점검
 
@@ -3047,6 +3055,13 @@ email=admin@moneybeetle.kr&password=...
 ```json
 { "ready": false, "nextTurn": 6, "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
 ```
+
+- `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
+- `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
+- 마지막 턴이면 `nextTurn`이 `null`, `ready`는 `false`
+- 관리자 대시보드(84)의 `nextTurnReady`·`missing`도 같은 계산이다 (`TradingService.getDashboardSummary()`)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 120. 다음 턴 진행
 
@@ -3070,7 +3085,11 @@ email=admin@moneybeetle.kr&password=...
 { "currentTurn": 6 }
 ```
 
-**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`, `LAST_TURN_REACHED`(12턴 이후), `INVALID_STATUS_TRANSITION`(진행 중이 아닐 때)
+- `expectedCurrentTurn`은 화면이 보고 있던 현재 턴이다. 서버의 현재 턴과 다르면 `TURN_CONFLICT`(다른 관리자가 먼저 넘긴 경우)
+- 넘기면 그 턴의 `progressedAt`·`progressedBy`를 남기고 admin_log(`TURN_ADVANCE`, 변경 전·후 턴)에도 기록한다 (같은 트랜잭션)
+- 같은 시즌을 두 관리자가 동시에 넘기지 못하게 시즌 행을 잠그고 처리한다
+
+**Error**: `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 
 #### 121. 분야 목록
 
@@ -3749,6 +3768,7 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
+| 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
 | 강사·관리자 | `CSV_INVALID` | 400 | N행의 형식이 맞지 않아요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |

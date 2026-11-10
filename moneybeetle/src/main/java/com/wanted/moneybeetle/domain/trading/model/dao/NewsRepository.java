@@ -12,4 +12,7 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     /** 현재 턴까지 공개된 뉴스, 최근 턴부터 (#24) */
     List<News> findByTradingSeasonIdAndTurnNoLessThanEqualOrderByTurnNoDescNewsIdDesc(Long tradingSeasonId, int turnNo);
+
+    /** 그 턴에 입력된 뉴스 수 (다음 턴 점검, #44) */
+    long countByTradingSeasonIdAndTurnNo(Long tradingSeasonId, int turnNo);
 }

@@ -26,4 +26,14 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
 
         long getOrderCount();
     }
+
+    /** 시즌 안에서 주어진 시각 범위에 들어온 주문 수 (관리자 대시보드의 오늘 주문 수, #193) */
+    @Query("""
+            select count(o)
+            from TradeOrder o, SeasonParticipant p
+            where o.seasonParticipantId = p.seasonParticipantId and p.tradingSeasonId = :seasonId
+              and o.createdAt >= :from and o.createdAt < :to
+            """)
+    long countOrdersBetween(@Param("seasonId") Long tradingSeasonId, @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to);
 }

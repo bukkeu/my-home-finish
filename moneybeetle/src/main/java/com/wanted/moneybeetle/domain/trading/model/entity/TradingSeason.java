@@ -165,6 +165,12 @@ public class TradingSeason {
      * 휴장(HOLIDAY)에는 MARKET_HOLIDAY, 그 밖의 상태에서는 INVALID_STATUS_TRANSITION 으로 거절한다
      */
     public void advanceTurn() {
+        checkAdvanceable();
+        this.currentTurn++;
+    }
+
+    /** 지금 턴을 넘길 수 있는 상태인지 확인한다 (넘길 수 없으면 BusinessException). 가격·뉴스 준비 여부는 Service 가 확인한다 */
+    public void checkAdvanceable() {
         if (isHoliday()) {
             throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
         }
@@ -174,7 +180,6 @@ public class TradingSeason {
         if (isLastTurn()) {
             throw new BusinessException(TradingErrorCode.LAST_TURN_REACHED);
         }
-        this.currentTurn++;
     }
 
     /** 정산을 마쳤다고 기록한다. 정산 중(SETTLING)에만 */
