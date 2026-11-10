@@ -109,7 +109,7 @@ class ParticipationServiceTest {
         when(rewardService.getBalance(MEMBER_ID)).thenReturn(3_200_000L);
         SeasonParticipant previous = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
         previous.settle(1_620_000L, new BigDecimal("62.00"), 1_620_000L);
-        when(participantRepository.findFirstByMemberIdAndTradingSeasonIdNotOrderByJoinedAtDesc(MEMBER_ID, SEASON_ID))
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID))
                 .thenReturn(Optional.of(previous));
         when(participantRepository.saveAndFlush(any(SeasonParticipant.class))).thenAnswer(invocation -> {
             SeasonParticipant saved = invocation.getArgument(0);

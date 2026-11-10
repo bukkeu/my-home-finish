@@ -123,7 +123,7 @@ public class ParticipationService {
 
         long savedCash = rewardService.getBalance(memberId);
         long carryoverIn = participantRepository
-                .findFirstByMemberIdAndTradingSeasonIdNotOrderByJoinedAtDesc(memberId, seasonId)
+                .findPreviousParticipation(memberId, seasonId)
                 .map(SeasonParticipant::getCarryoverOut)
                 .orElse(0L);
         try {
