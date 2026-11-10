@@ -208,8 +208,10 @@
     // 전체 동의 버튼의 체크 표시는 약관이 모두 선택돼 있을 때만 켠다
     function syncAgreeAll() {
       var boxes = Array.from(terms.querySelectorAll('input[type="checkbox"]'));
+      var allChecked = boxes.length > 0 && boxes.every(function (box) { return box.checked; });
       var mark = byId('agree-all').querySelector('.auth-check');
-      if (mark) mark.classList.toggle('is-checked', boxes.length > 0 && boxes.every(function (box) { return box.checked; }));
+      if (mark) mark.classList.toggle('is-checked', allChecked);
+      byId('agree-all').setAttribute('aria-pressed', String(allChecked));   // 스크린 리더에도 전체 동의 상태를 알린다
     }
     terms.addEventListener('change', syncAgreeAll);
     byId('agree-all').addEventListener('click', function () {
