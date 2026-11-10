@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceStatusDTO;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
+import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
@@ -34,6 +35,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class GrowthControllerTest {
 
     private final AttendanceService attendanceService = mock(AttendanceService.class);
+    private final RewardService rewardService = mock(RewardService.class);
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -45,7 +47,7 @@ class GrowthControllerTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new GrowthController(attendanceService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new GrowthController(attendanceService, rewardService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))

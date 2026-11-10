@@ -861,7 +861,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
     { "cashHistoryId": 88, "historyType": "EARN", "title": "강의 완료 · 금리와 채권 가격", "amount": 3000, "balanceAfter": 12400, "createdAt": "2026-11-02T14:10:00" },
     { "cashHistoryId": 87, "historyType": "USE", "title": "청약통장 납입", "amount": -1000, "balanceAfter": 9400, "createdAt": "2026-11-02T09:00:00" }
   ],
-  "page": 0, "size": 20, "totalElements": 42
+  "page": 0, "size": 20, "totalElements": 42, "totalPages": 3
 }
 ```
 
@@ -885,7 +885,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 {
   "level": 8, "exp": 1120,
   "items": [ { "expHistoryId": 12, "sourceType": "COURSE_COMPLETE", "title": "금리와 채권 가격", "amount": 100, "levelAfter": 8, "createdAt": "2026-11-02T14:10:00" } ],
-  "page": 0, "size": 20, "totalElements": 12
+  "page": 0, "size": 20, "totalElements": 12, "totalPages": 1
 }
 ```
 
