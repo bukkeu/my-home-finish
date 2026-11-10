@@ -2155,7 +2155,7 @@ Header: Idempotency-Key: 4d8e...
 
 - 본인 강의만(남의 강의 `FORBIDDEN`, 삭제된 강의 `NOT_FOUND`). 검수 중이면 `COURSE_IN_REVIEW`. 허가된 강의의 영상을 바꾸면 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31).
 - `sortOrder`는 1부터 영상 개수까지 빠짐없이 한 번씩(예: 2개면 1, 2). 아니면 `INVALID_INPUT`.
-- `videoUrl`은 "영상 파일 올리기"가 돌려준 파일 키(`/uploads/….mp4`)만 받는다. 외부 링크는 `INVALID_INPUT`.
+- `videoUrl`은 "영상 파일 올리기"가 돌려준 파일 키(`/uploads/….mp4`)만 받고, 저장 폴더에 그 파일이 실제로 있어야 한다. 외부 링크·없는 파일은 `INVALID_INPUT`. 기존 영상(`lessonId` 있음)이 지금 저장된 키를 그대로 보내면 다시 올리지 않아도 통과한다.
 - `lessonId`가 이 강의의 영상이 아니면 `LESSON_NOT_FOUND`, 같은 `lessonId`를 두 번 보내면 `INVALID_INPUT`.
 - 요청에 없는 기존 영상은 지운다. 단 시청 기록이 있거나 수강생의 "마지막으로 본 영상"이면 지우지 않고 `LESSON_IN_USE`(409).
 - 기존 영상의 순서를 바꿀 수 있다. 다만 영상 3개가 모두 남은 채로 서로 자리를 바꾸면 빈 자리가 없어서 `LESSON_ORDER_LOCKED`(409).

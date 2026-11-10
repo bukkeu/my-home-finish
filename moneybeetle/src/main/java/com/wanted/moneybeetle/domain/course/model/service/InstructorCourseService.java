@@ -30,6 +30,9 @@ import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.file.FileStorageService;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,6 +45,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,6 +82,9 @@ public class InstructorCourseService {
     private final ForbiddenWordService forbiddenWordService;         // operation 도메인 (DBA②)
     private final FileStorageService fileStorageService;             // global 파일 저장 (SCM)
     private final Clock clock;                                       // Asia/Seoul 공통 시계
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;                                        // FileStorageService와 같은 저장 폴더 (영상 키 확인용)
 
     /* API 72 내 강의 목록: 검수 상태 포함, 수강생 수·답변 대기 문의 수·최근 반려 사유는 강의 여러 개를 한 번에 조회 */
     public MyCourseListDTO findMyCourses(Long instructorId, String status) {
@@ -200,6 +207,10 @@ public class InstructorCourseService {
             }
         }
 
+        for (LessonSaveDTO.LessonItem item : items) {
+            checkVideoKey(item, existing);
+        }
+
         removeLessons(existing.values().stream().filter(lesson -> !keptIds.contains(lesson.getLessonId())).toList());
         moveLessons(items, existing);
 
@@ -283,7 +294,7 @@ public class InstructorCourseService {
         }
     }
 
-    /* 영상 요청 검사: 개수 1~3, 순서는 1부터 빠짐없이 한 번씩, 영상은 우리가 올린 mp4 파일 키, 요약글 2,000자, 금칙어 */
+    /* 영상 요청 검사: 개수 1~3, 순서는 1부터 빠짐없이 한 번씩, 요약글 2,000자, 금칙어 (영상 키는 checkVideoKey) */
     private void checkLessonItems(List<LessonSaveDTO.LessonItem> items) {
         if (items.isEmpty()) {
             throw new BusinessException(CourseErrorCode.NO_LESSON);
@@ -296,9 +307,6 @@ public class InstructorCourseService {
             if (item.sortOrder() < 1 || item.sortOrder() > items.size() || !orders.add(item.sortOrder())) {
                 throw new BusinessException(CommonErrorCode.INVALID_INPUT);
             }
-            if (!isVideoKey(item.videoUrl())) {
-                throw new BusinessException(CommonErrorCode.INVALID_INPUT);
-            }
             if (item.summary() != null && item.summary().strip().length() > SUMMARY_MAX_LENGTH) {
                 throw new BusinessException(CourseErrorCode.SUMMARY_TOO_LONG);
             }
@@ -307,9 +315,26 @@ public class InstructorCourseService {
         }
     }
 
-    /* 외부 주소가 아니라 "영상 파일 올리기"로 받은 파일 키인지 ("/uploads/....mp4", 경로 이동 없음) */
-    private boolean isVideoKey(String videoUrl) {
-        return videoUrl.startsWith(VIDEO_KEY_PREFIX) && videoUrl.endsWith(VIDEO_EXT) && !videoUrl.contains("..");
+    /* 영상 키 확인: 기존 영상이 지금 저장된 키를 그대로 쓰면 통과(재업로드 없이 제목·요약글만 고칠 때).
+     * 새 키는 "영상 파일 올리기"로 받은 "/uploads/....mp4" 형식이고, 저장 폴더에 실제 파일이 있어야 한다 */
+    private void checkVideoKey(LessonSaveDTO.LessonItem item, Map<Long, Lesson> existing) {
+        String videoUrl = item.videoUrl();
+        if (item.lessonId() != null && videoUrl.equals(existing.get(item.lessonId()).getVideoUrl())) {
+            return;
+        }
+        if (!isUploadedVideo(videoUrl)) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+    }
+
+    /* "/uploads/<파일 이름>.mp4" 이고, 저장 폴더 안(경로 이동 없음)에 그 파일이 실제로 있는지 */
+    private boolean isUploadedVideo(String videoUrl) {
+        if (!videoUrl.startsWith(VIDEO_KEY_PREFIX) || !videoUrl.endsWith(VIDEO_EXT)) {
+            return false;
+        }
+        Path dir = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path file = dir.resolve(videoUrl.substring(VIDEO_KEY_PREFIX.length())).normalize();
+        return file.startsWith(dir) && Files.isRegularFile(file);
     }
 
     /* 요청에 없는 영상 빼기. 시청 기록·마지막 본 영상이 가리키면 지울 수 없다 (FK) */
