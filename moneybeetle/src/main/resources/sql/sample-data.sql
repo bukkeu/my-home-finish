@@ -366,7 +366,7 @@ INSERT INTO term_schedule (show_date, economic_term_id, sort_order, is_auto) VAL
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at) VALUES
 (8, 'INQUIRY_REPLY', '문의에 답변이 등록됐어요', NULL, 0, @seed_now - INTERVAL 5 MINUTE),
 (8, 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, @seed_now - INTERVAL 3 HOUR),
-(8, 'HOUSING_RESULT', '머니숲 리버뷰 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY),
+(8, 'HOUSING_RESULT', '새봄 국민주택 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY),
 (8, 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, @seed_now - INTERVAL 2 DAY),
 (5, 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, @seed_now - INTERVAL 1 HOUR);
 

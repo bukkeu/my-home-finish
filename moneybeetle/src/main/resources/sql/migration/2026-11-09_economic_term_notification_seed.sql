@@ -83,12 +83,20 @@ SET n.link_url = NULL
 WHERE n.member_id = 8 AND n.type = 'INQUIRY_REPLY' AND n.title = '문의에 답변이 등록됐어요' AND n.link_url = '/user/inquiry/1'
   AND NOT EXISTS (SELECT 1 FROM inquiry i WHERE i.inquiry_id = 1);
 
+-- 이전 시드로 이미 들어간 청약 결과 샘플 알림의 제목은 청약 시드에 없는 단지("머니숲 리버뷰")를 가리킨다. 시드에 있는 단지("새봄 국민주택", 오늘 발표)로 제목만 바꾼다.
+-- 그러면 아래 INSERT 의 중복 검사가 이 행을 같은 알림으로 보고 다시 넣지 않아, 청약 결과 알림이 두 건이 되지 않는다. 시드 회원(8번 + 시드 이메일)만 건드린다.
+UPDATE notification n
+JOIN member m ON m.member_id = n.member_id AND m.email = 'minji@moneybeetle.local'
+SET n.title = '새봄 국민주택 청약 결과가 발표됐어요'
+WHERE n.member_id = 8 AND n.type = 'HOUSING_RESULT' AND n.title = '머니숲 리버뷰 청약 결과가 발표됐어요'
+  AND n.link_url = '/user/demo-housing-subscription';
+
 INSERT INTO notification (member_id, type, title, link_url, is_read, created_at)
 SELECT v.member_id, v.type, v.title, v.link_url, v.is_read, v.created_at
 FROM (
     SELECT 8 AS member_id, 'minji@moneybeetle.local' AS seed_email, 'INQUIRY_REPLY' AS type, '문의에 답변이 등록됐어요' AS title, NULL AS link_url, 0 AS is_read, @seed_now - INTERVAL 5 MINUTE AS created_at
     UNION ALL SELECT 8, 'minji@moneybeetle.local', 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, @seed_now - INTERVAL 3 HOUR
-    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'HOUSING_RESULT', '머니숲 리버뷰 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY
+    UNION ALL SELECT 8, 'minji@moneybeetle.local', 'HOUSING_RESULT', '새봄 국민주택 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY
     UNION ALL SELECT 8, 'minji@moneybeetle.local', 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, @seed_now - INTERVAL 2 DAY
     UNION ALL SELECT 5, 'minjae@moneybeetle.local', 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, @seed_now - INTERVAL 1 HOUR
 ) v
