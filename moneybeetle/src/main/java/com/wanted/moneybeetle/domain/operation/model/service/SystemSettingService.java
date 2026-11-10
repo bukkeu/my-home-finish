@@ -11,6 +11,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.OptionalInt;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (관리자 운영)
 *   서비스 설정 조회·변경 (이슈 #39, API 111·112, NFR-13). 다른 도메인이 값을 읽는 메서드는 읽는 쪽 이슈에서 더한다.
 *   - findSettings : 모든 설정(키·값)을 돌려준다
+*   - findIntValue : 숫자 설정 하나를 읽는다 (퀴즈 통과 점수 QUIZ_PASS_SCORE, #20)
 *   - updateSetting : 값을 바꾸고, 실제로 바뀌었을 때만 admin_log(SETTING_UPDATE)에 변경 전·후를 남긴다 (같은 트랜잭션).
 *       키는 시드로 정해져 있어 없는 키는 NOT_FOUND(404). 지금 값이 숫자인 설정에 숫자가 아닌 값을 넣으면
 *       SETTING_VALUE_INVALID(400) 로 막는다 (해금 레벨·통과 점수를 읽는 쪽이 깨지지 않게).
@@ -40,6 +42,18 @@ public class SystemSettingService {
         return new SettingListDTO(systemSettingRepository.findAllByOrderBySystemSettingIdAsc().stream()
                 .map(SettingDTO::from)
                 .toList());
+    }
+
+    /**
+     * 숫자 설정 값을 읽는다 (다른 도메인용, 주석 머리의 "읽는 쪽 이슈에서 더한다"에 따라 퀴즈 제출 #20에서 추가).
+     * 키가 없거나 값이 정수가 아니면 빈 값 → 부르는 쪽이 기본값을 쓴다 (설정 오류로 핵심 기능이 멈추지 않게)
+     */
+    public OptionalInt findIntValue(String key) {
+        return systemSettingRepository.findBySettingKey(key)
+                .map(SystemSetting::getSettingValue)
+                .filter(SystemSettingService::isInteger)
+                .map(value -> OptionalInt.of(Integer.parseInt(value)))
+                .orElse(OptionalInt.empty());
     }
 
     @Transactional
