@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.quiz.model.entity.QuizChoice;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizQuestion;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -35,6 +36,7 @@ public class InstructorQuizService {
     private static final int MAIN_QUIZ_MAX = 15;        // 퀴즈 최대
     private static final int CHOICE_COUNT = 4;          // 4지선다
     private static final int CHOICE_MAX_LENGTH = 200;   // quiz_choice.content
+    private static final int EXPLANATION_MAX_BYTES = 65_535;   // quiz_question.explanation (MySQL TEXT, UTF-8 바이트)
     private static final List<String> OX = List.of("O", "X");
 
     private final QuizQuestionRepository quizQuestionRepository;
@@ -54,7 +56,7 @@ public class InstructorQuizService {
             if (answerIndex < 0) {
                 throw new BusinessException(CommonErrorCode.INVALID_INPUT);
             }
-            newQuestions.add(new NewQuestion(question.content().strip(), question.explanation().strip(),
+            newQuestions.add(new NewQuestion(question.content().strip(), explanationOf(question),
                     OX, answerIndex));
         }
         replaceQuestions(courseId, QuizQuestion.QUIZ_TYPE_TEST, QuizQuestion.QUESTION_TYPE_OX, newQuestions);
@@ -83,7 +85,7 @@ public class InstructorQuizService {
                 }
                 stripped.add(choice.strip());
             }
-            newQuestions.add(new NewQuestion(question.content().strip(), question.explanation().strip(),
+            newQuestions.add(new NewQuestion(question.content().strip(), explanationOf(question),
                     stripped, answerIndex));
         }
         replaceQuestions(courseId, QuizQuestion.QUIZ_TYPE_MAIN, QuizQuestion.QUESTION_TYPE_CHOICE, newQuestions);
@@ -91,6 +93,15 @@ public class InstructorQuizService {
     }
 
     /* ===== 내부 도우미 ===== */
+
+    /* 해설은 TEXT 칸이라 글자 수가 아니라 UTF-8 바이트(65,535)로 한도를 본다. 넘으면 DB 오류 대신 입력 오류 */
+    private String explanationOf(QuizSaveDTO.Question question) {
+        String explanation = question.explanation().strip();
+        if (explanation.getBytes(StandardCharsets.UTF_8).length > EXPLANATION_MAX_BYTES) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        return explanation;
+    }
 
     /* 이 강의·종류의 문항을 요청 내용으로 맞춘다.
      * 1) 같은 순서의 기존 문항은 내용만 고친다 (보기도 같은 순서면 고치고, 개수가 다르면 새로 만든다)

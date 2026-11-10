@@ -43,6 +43,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -161,7 +162,10 @@ public class InstructorCourseService {
     }
 
     /* API 78 부속 "영상 파일 올리기": mp4 500MB 검사는 FileStorageService가 한다 (DP-33).
-     * 본인 강의·수정 가능 상태를 파일 저장 전에 확인한다 (남의 강의·검수 중이면 파일이 남지 않게) */
+     * 본인 강의·수정 가능 상태를 파일 저장 전에 확인한다 (남의 강의·검수 중이면 파일이 남지 않게).
+     * 영상은 최대 500MB라 저장이 오래 걸리므로 트랜잭션 없이 실행해 업로드 중에 DB 연결을 붙잡지 않는다
+     * (강의 조회는 Repository 호출 한 번이라 그 자체 트랜잭션으로 충분하다) */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public VideoUploadDTO uploadVideo(Long instructorId, Long courseId, MultipartFile file) {
         getMyCourse(instructorId, courseId).checkEditable();
         try {
