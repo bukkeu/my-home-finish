@@ -1,5 +1,37 @@
-<!-- comment.
-    담당 : DBA ① 신아림 (#52, #53, 강의 상세·퀴즈)
-    원본 디자인 : UserLectureDetail.dc.html
-    경로 : /user/lecture-detail
--->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
+<head>
+    <th:block th:replace="~{fragments/layout/header :: headFragment('강의 상세')}"></th:block>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/course.css}">
+</head>
+<body>
+<!--/* comment.
+    담당 : DBA ① 신아림 (#52, 강의 상세·영상 시청)
+    원본 디자인 : UserLectureDetail.dc.html (화면설계 5.2.4)
+    경로 : /user/lecture-detail?courseId=
+    데이터 : GET /api/v1/courses/{courseId} (강의·영상·요약글·내 진행), GET /api/v1/categories (경로 표시),
+            GET /api/v1/courses/{courseId}/lessons/{lessonId} (영상 주소·이어보기 위치),
+            PUT .../progress (시청 위치 저장), POST·DELETE /api/v1/courses/{courseId}/scrap (스크랩)
+    - 이어보기: 마지막으로 본 영상을 마지막 위치부터 재생한다 (완료 조건)
+    - 시청 완료는 서버가 정한다(본 시간 90% 이상, #20). 화면은 저장 뒤 강의 정보를 다시 받아 목차에 표시한다
+    - 테스트 퀴즈·최종 퀴즈(#53)와 강의 문의 탭(#55)은 각 이슈에서 이 화면에 붙인다
+*/-->
+<div class="mb-shell">
+    <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('lectures')}"></th:block>
+    <div class="mb-content">
+        <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+        <main class="mb-main">
+            <div class="lec-detail" data-lec-detail>
+                <a class="lec-back" href="/user/lectures" data-lec-back>← 강의 목록</a>
+                <div data-lec-body aria-live="polite">
+                    <div class="lec-state">강의를 불러오는 중이에요…</div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/course-common.js}"></script>
+<script th:src="@{/js/course-detail.js}"></script>
+</body>
+</html>

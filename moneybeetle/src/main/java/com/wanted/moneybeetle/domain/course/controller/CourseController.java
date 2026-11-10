@@ -40,7 +40,7 @@ import java.util.List;
  *   PUT /api/v1/courses/{courseId}/lessons/{lessonId}/progress (이어보기)
  *   POST/DELETE /api/v1/courses/{courseId}/scrap
  *   GET /api/v1/members/me/watch-histories, /completed-courses, /scraps
- *   화면 : /user/lectures, /user/lecture-detail
+ *   화면 : /user/lectures (course/category), /user/lecture-detail (course/detail) - #52
  *   로그인 회원: @AuthenticationPrincipal AuthDetails (#132). 주소 단위 로그인 여부는 SecurityConfig가 정한다
  *   응답: 공통 형식 ApiResponse, 목록은 PageResponse { items, page, size, totalElements, totalPages } (API 명세서 1-3, #157)
  *  */
@@ -151,8 +151,20 @@ public class CourseController {
     }
 
     /* ===== 화면 (#52) =====
-     * GET /user/lectures, /user/lecture-detail → Thymeleaf 템플릿 반환
+     * 화면은 틀만 그리고, 데이터는 화면 스크립트(static/js/course-*.js)가 위 API로 받아 온다
      */
+
+    /* 강의 목록 화면: /user/lectures?cat=money|estate (화면설계 5.2.3) */
+    @GetMapping("/user/lectures")
+    public String lecturesPage() {
+        return "course/category";
+    }
+
+    /* 강의 상세·영상 시청 화면: /user/lecture-detail?courseId= (화면설계 5.2.4) */
+    @GetMapping("/user/lecture-detail")
+    public String lectureDetailPage() {
+        return "course/detail";
+    }
 
     /* page는 0 이상, size는 1~100 사이로 맞춘다 (API 명세서 1-3) */
     private Pageable toPageable(int page, int size, Sort sort) {
