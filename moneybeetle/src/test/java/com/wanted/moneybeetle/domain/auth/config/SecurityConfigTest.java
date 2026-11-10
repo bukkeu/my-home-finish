@@ -61,6 +61,16 @@ class SecurityConfigTest {
     }
 
     @Test
+    void 화면에_쓰는_정적_파일은_로그인_없이_열린다() throws Exception {
+        // 열려 있지 않으면 로그인 전 화면(/login)의 CSS·JS·로고가 /login 으로 리다이렉트돼 디자인이 나오지 않는다.
+        // 파일이 있으면 200, 이 테스트 앱에 파일이 없으면 404 만 허용한다. 그 밖의 상태(로그인 화면 리다이렉트 3xx, 401, 403 등)는 모두 실패
+        for (String path : new String[] {"/css/auth.css", "/js/auth.js", "/images/logo.png"}) {
+            int status = mockMvc.perform(get(path)).andReturn().getResponse().getStatus();
+            org.assertj.core.api.Assertions.assertThat(status).as(path).isIn(200, 404);
+        }
+    }
+
+    @Test
     void 로그인_안_하고_API를_부르면_401_JSON() throws Exception {
         mockMvc.perform(get("/api/v1/courses"))
                 .andExpect(status().isUnauthorized())

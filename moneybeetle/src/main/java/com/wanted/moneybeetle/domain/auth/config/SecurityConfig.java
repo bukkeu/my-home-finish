@@ -88,6 +88,8 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
+                    // 화면에 쓰는 정적 파일(CSS·JS·이미지): 로그인 전 화면(/login, /signup)도 그려야 하므로 누구나 (#230)
+                    auth.requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();
                     // 간편 로그인(구글·카카오, #9): 인증 시작·제공자가 돌려보내는 주소, 처음 온 사람의 추가 정보 화면
                     auth.requestMatchers("/oauth2/**", "/login/oauth2/**", "/signup/social").permitAll();
                     // 서버 상태 확인(#84) : health·info 만 누구나. 나머지 actuator 주소는 웹에 열지 않아(application.yaml) 로그인해도 404

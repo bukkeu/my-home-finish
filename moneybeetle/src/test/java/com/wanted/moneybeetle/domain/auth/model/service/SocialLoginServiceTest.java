@@ -81,6 +81,20 @@ class SocialLoginServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("isProviderAvailable: 등록된 제공자만 true 이고, 등록 안 된·지원하지 않는·null 제공자와 등록 정보가 없을 때는 false 다 (화면 버튼 기준, 예외 없음)")
+    void providerAvailabilityForPages() {
+        givenGoogleRegistered();
+
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("google")).isTrue();
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("kakao")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("naver")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable(null)).isFalse();
+
+        org.mockito.Mockito.when(clientRegistrations.getIfAvailable()).thenReturn(null);
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("google")).isFalse();
+    }
+
     /** 시간을 앞으로 보낼 수 있는 시계 */
     private static class ReauthClock extends java.time.Clock {
         private java.time.Instant now;

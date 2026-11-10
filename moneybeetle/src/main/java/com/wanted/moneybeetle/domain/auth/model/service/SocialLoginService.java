@@ -55,12 +55,20 @@ public class SocialLoginService implements SocialReauthVerifier {
     record Reauth(Long memberId, Instant expiresAt) implements Serializable {
     }
 
-    /** 간편 로그인을 시작할 수 있는 제공자인가 확인한다. 지원하지 않거나 키가 없어 등록되지 않은 제공자면 OAUTH_PROVIDER_UNAVAILABLE */
-    public void requireAvailableProvider(String provider) {
+    /**
+     * 간편 로그인을 시작할 수 있는 제공자인가 (지원하는 제공자이고 ID·시크릿이 있어 등록돼 있는가). 로그인·가입 화면이 버튼을 보일지 정할 때 쓴다.
+     * 화면과 API 8 이 같은 기준(등록 정보)을 쓰므로, 버튼이 보이는데 눌러서 실패하는 일이 없다.
+     */
+    public boolean isProviderAvailable(String provider) {
         ClientRegistrationRepository repository = clientRegistrations.getIfAvailable();
         boolean supported = SocialProfileExtractor.REGISTRATION_GOOGLE.equals(provider)
                 || SocialProfileExtractor.REGISTRATION_KAKAO.equals(provider);
-        if (repository == null || !supported || repository.findByRegistrationId(provider) == null) {
+        return repository != null && supported && repository.findByRegistrationId(provider) != null;
+    }
+
+    /** 간편 로그인을 시작할 수 있는 제공자인가 확인한다. 지원하지 않거나 키가 없어 등록되지 않은 제공자면 OAUTH_PROVIDER_UNAVAILABLE */
+    public void requireAvailableProvider(String provider) {
+        if (!isProviderAvailable(provider)) {
             throw new BusinessException(MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE);
         }
     }
