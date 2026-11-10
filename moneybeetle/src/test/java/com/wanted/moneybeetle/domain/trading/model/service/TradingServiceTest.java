@@ -78,7 +78,8 @@ class TradingServiceTest {
         holdingRepository = mock(HoldingRepository.class);
         orderRepository = mock(TradeOrderRepository.class);
         service = new TradingService(seasonRepository, sectorRepository, stockRepository, priceRepository,
-                newsRepository, newsTagRepository, participantRepository, holdingRepository, orderRepository);
+                newsRepository, newsTagRepository, participantRepository, holdingRepository, orderRepository,
+                java.time.Clock.fixed(java.time.Instant.parse("2026-11-05T03:00:00Z"), java.time.ZoneId.of("Asia/Seoul")));
     }
 
     /** 5턴 진행 중인 시즌 7 */
