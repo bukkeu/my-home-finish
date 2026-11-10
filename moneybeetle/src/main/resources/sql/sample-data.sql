@@ -904,14 +904,14 @@ INSERT INTO news_tag (news_id, sector_id, stock_id) VALUES
 -- ---------------------------------------------------------------------
 -- [서수영] 모의 청약 구역 (#74) ─ 프로토타입 moneybeetle-page/housing/store.js 기준
 -- ---------------------------------------------------------------------
--- 청약 단지·공고 7개. 등록한 관리자 = 1
+-- 청약 단지·공고 8개(8번은 #48 산정·발표 시연용). 등록한 관리자 = 1
 -- 날짜는 고정값 대신 "실행한 날(CURDATE())" 기준으로 둔다. 언제 시드를 넣어도 청약 캘린더에
 -- 모집 예정(UPCOMING)·모집 중(OPEN)·모집 마감(CLOSED)·발표 완료(ANNOUNCED) 네 단계가 모두 보이게 하기 위해서다.
 -- (화면의 상태는 status 컬럼이 아니라 오늘 날짜로 계산한다. status 는 관리자 발표 여부(ANNOUNCED)를 위해 쓰고, 나머지는 날짜와 맞춰 둔다)
 -- 청약 캘린더는 "공고일 <= 그 달 말일 그리고 발표일 >= 그 달 1일" 인 단지를 보여 준다 (API 63).
 -- 월초·월말에도 네 단계가 실행한 달에 걸리도록, 모집 예정 단지는 공고일을 오늘로, 발표 완료 단지 하나는 발표일을 오늘로 둔다
 -- 공고일 = 신청 시작일로 둔다 (프로토타입은 게시일·마감일만 있음). 단, 모집 예정 단지는 오늘 공고·3일 뒤 신청 시작
--- 프로토타입의 커트라인·단지 이미지는 테이블에 컬럼이 없어 넣지 않는다 (커트라인은 #48 가점표 결정 후, 이미지는 DB 설계 후)
+-- 프로토타입의 커트라인·단지 이미지는 테이블에 컬럼이 없어 넣지 않는다 (#48 에서 커트라인 대신 가점 순위 방식으로 확정, 이미지는 DB 설계 후)
 -- 시드 회원 1~8의 청약통장은 위 [DBA ②] 구역에 이미 있다 (잔액 0, 0회차)
 INSERT INTO housing_complex (housing_complex_id, name, location, area_type, sale_price, supply_units, supply_type,
                              notice_date, apply_start_date, apply_end_date, announce_date,
@@ -941,4 +941,26 @@ INSERT INTO housing_complex (housing_complex_id, name, location, area_type, sale
     'ANNOUNCED', CURDATE() - INTERVAL 2 DAY + INTERVAL 10 HOUR, CURDATE(), 1),
 (7, '푸른들 행복주택 2단지',  '서울 노원구 상계동',  '49㎡',  210000000,  80, '공공분양 일반공급',
     CURDATE() - INTERVAL 62 DAY, CURDATE() - INTERVAL 62 DAY, CURDATE() - INTERVAL 51 DAY, CURDATE() - INTERVAL 41 DAY,
-    'ANNOUNCED', NOW() - INTERVAL 43 DAY, NOW() - INTERVAL 41 DAY, 1);
+    'ANNOUNCED', NOW() - INTERVAL 43 DAY, NOW() - INTERVAL 41 DAY, 1),
+-- (#48) 산정·발표 시연용 : 모집 마감, 오늘 발표, 아직 산정 전, 2세대 → 관리자 화면에서 바로 산정 → 발표를 해 볼 수 있다
+(8, '비틀 시범 행복주택',     '서울 강서구 마곡동',  '59㎡',  300000000,   2, '공공분양 일반공급',
+    CURDATE() - INTERVAL 14 DAY, CURDATE() - INTERVAL 14 DAY, CURDATE() - INTERVAL 7 DAY, CURDATE(),
+    'CLOSED', NULL, NULL, 1);
+
+-- (#48) 8번 단지 신청자 4명 (산정·발표 시연용 데이터)
+-- 실제 신청은 Lv.12 이상·통장 납입이 필요하지만, 시연을 위해 강사 계정 2~5로 신청 기록만 넣는다.
+-- 신청 기록에는 신청 시점의 납입회차·점수가 저장되므로 통장(subscription_account)·납입 내역과 맞출 필요가 없다.
+-- 점수는 SP-71 점수표대로 계산한 값이다 (무주택 + 부양가족 + 통장 = 합계)
+-- 2세대라 산정하면 : 1위 박서연(42점, 36회) · 2위 오민재(42점, 24회) 당첨 ← 같은 42점이라 납입회차로 순위가 갈린다
+--                  3위 한지수(41점) · 4위 이도현(39점) 낙첨
+INSERT INTO housing_application (member_id, housing_complex_id, receipt_no, homeless_years, dependents,
+                                 paid_count_snapshot, homeless_score, dependent_score, account_score, total_score,
+                                 applied_at) VALUES
+(2, 8, CONCAT('MB-', DATE_FORMAT(CURDATE() - INTERVAL 12 DAY, '%y%m%d'), '-0001'), 10, 2, 36, 22, 15, 5, 42,
+    CURDATE() - INTERVAL 12 DAY + INTERVAL 10 HOUR),
+(3, 8, CONCAT('MB-', DATE_FORMAT(CURDATE() - INTERVAL 11 DAY, '%y%m%d'), '-0001'),  5, 3, 60, 12, 20, 7, 39,
+    CURDATE() - INTERVAL 11 DAY + INTERVAL 14 HOUR),
+(4, 8, CONCAT('MB-', DATE_FORMAT(CURDATE() - INTERVAL 10 DAY, '%y%m%d'), '-0001'), 10, 2, 24, 22, 15, 4, 41,
+    CURDATE() - INTERVAL 10 DAY + INTERVAL 9 HOUR),
+(5, 8, CONCAT('MB-', DATE_FORMAT(CURDATE() - INTERVAL 9 DAY,  '%y%m%d'), '-0001'),  8, 3, 24, 18, 20, 4, 42,
+    CURDATE() - INTERVAL 9 DAY + INTERVAL 11 HOUR);

@@ -60,6 +60,9 @@
 
 - 아래 상세 명세의 Response는 `data` 안의 내용만 적었습니다.
 - 입력값 오류는 `error.fields`에 `[{ "field": "nickname", "message": "이미 사용 중인 닉네임이에요" }]` 형태로 입력칸별 안내를 담습니다 (EP-01).
+  - 요청 본문 검증(`@Valid`) 실패는 400 `INVALID_INPUT` 이고 `fields`에 칸마다 한 줄씩 담습니다. 여러 칸을 비교하는 검사를 `isXxx()` 메서드에 붙이면 `field`는 그 이름(예: `isPasswordConfirmed()` → `passwordConfirmed`)이고, 클래스에 붙인 검사는 `field`가 `null` 입니다.
+  - 본문 JSON 형식 오류, 필수 파라미터 누락, 파라미터 타입 오류(예: `?page=abc`)도 400 `INVALID_INPUT` 이지만 `fields`는 `null` 입니다.
+  - 입력값 오류가 아닌 모든 실패 응답의 `fields`는 `null` 입니다 (#142).
 - `message`는 화면에 그대로 보여 줄 수 있는 문구입니다. 기술 용어와 상세 원인은 넣지 않습니다 (EP-05).
 
 ### 1-3 페이지네이션
@@ -573,7 +576,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-09, DP-12 |
-| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. |
+| 설명 | 메일의 토큰으로 새 비밀번호를 설정한다. 없는 토큰은 만료와 같게 `TOKEN_EXPIRED`로 답한다. 사용한 토큰은 매일 새벽(03:00 KST) 정리 작업이 지우므로(DP-12), 정리되기 전에 같은 링크를 다시 쓰면 `TOKEN_USED`, 정리된 뒤에는 없는 토큰과 같게 `TOKEN_EXPIRED`로 답한다. |
 
 **Request**
 
@@ -788,6 +791,11 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 }
 ```
 
+- `todayTerms` 는 오늘(KST) 지정된 용어 5개로, 같은 날에는 모든 사용자에게 같은 값이다(API 20과 같은 값, 사용 중인 용어가 5개 미만이면 있는 만큼, 하나도 없으면 빈 배열).
+- `continueCourse` 는 가장 최근에 본 진행 중 강의다. 이어서 볼 강의가 없으면 `null`이고, 강의는 있지만 그 강의에서 본 영상 기록이 없으면 `lessonId`·`lessonTitle`·`positionSeconds` 가 `null`이다. 마지막 영상은 최근 시청 기록 1,000건 안에서 찾는다.
+- `learning` 은 본 영상 수와 학습 완료한 강의 수다.
+- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다.
+
 #### 20. 오늘의 경제 용어
 
 | 항목 | 내용 |
@@ -907,11 +915,12 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | GRW-08 |
-| 설명 | 안 읽은 알림 수와 목록. |
+| 설명 | 안 읽은 알림 수와 목록. 최신순이다. 로그인한 회원 자신의 알림만 준다. |
 
 **Request**
 
 - Query: page=0&size=20
+    - `page` 기본값은 0이고 0 미만이면 0으로 본다. `size` 기본값은 20이고 1 미만이면 1, 50을 넘으면 50으로 맞춘다(최대 50).
 
 **Response**
 
@@ -1395,9 +1404,8 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-09, SP-40 |
-| 설명 | courseId가 있으면 그 강의 문의, 없으면 사이트 문의. 회원은 내 글만, 강사는 내 강의 글, 관리자는 전체가 보인다. |
+| 설명 | courseId가 있으면 그 강의 문의, 없으면 사이트 문의. 회원은 내 글만, 강사는 내 강의 글, 관리자는 전체가 보인다. 관리자가 아니면 숨긴 글은 목록에서 빠진다(상세는 안내 문구로 표시). |
 
-**Request**
 
 - Query: courseId=7&status=WAITING|ANSWERED&page=0&size=20
 
@@ -2223,9 +2231,9 @@ Header: Idempotency-Key: 4d8e...
 | --- | --- |
 | Endpoint | `/api/v1/instructor/courses/{courseId}/review-request` |
 | Method | `POST` |
-| 권한 | 강사 |
+| 권한 | 강사 (본인 강의) |
 | 관련 | TCH-07, DP-34 |
-| 설명 | 영상 1개 이상, 테스트 퀴즈 5문제, 퀴즈 5~15문제가 있어야 요청 가능. |
+| 설명 | 작성 중(DRAFT)·반려(REJECTED) 강의만 요청 가능(반려된 강의를 고쳐 다시 요청). 영상 1개 이상, 테스트 퀴즈 5문제, 퀴즈 5~15문제가 있어야 한다. 요청하면 REVIEW로 바뀌고 submitted_at을 기록. |
 
 **Request**
 
@@ -2237,7 +2245,7 @@ Header: Idempotency-Key: 4d8e...
 { "courseId": 7, "status": "REVIEW" }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`, `NO_LESSON`
+**Error**: `NO_LESSON`, `QUIZ_COUNT_INVALID`, `COURSE_NOT_REQUESTABLE`(검수 중·허가된 강의), `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 82. 내 강의 문의
 
@@ -2247,17 +2255,19 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-08 |
-| 설명 | 내 강의에 달린 문의. 답변 대기 글 먼저. |
+| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount는 필터와 상관없이 내 강의 전체의 답변 대기 수. |
 
 **Request**
 
-- Query: status=WAITING&courseId=
+- Query: status=WAITING&courseId=&page=0&size=20
 
 **Response**
 
 ```json
-{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ] }
+{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
+
+**Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
 
 ### 관리자
 
@@ -2316,13 +2326,17 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | 카테고리·소주제 트리(비활성 포함). |
+| 설명 | 카테고리 → 소주제 트리(비활성 포함). 단계 → 순서 → ID 순. 항목마다 isActive, courseCount(삭제되지 않은 강의 수). 소주제의 children은 빈 목록. |
 
-**Request**
+
 
 - 없음
 
 **Response**
+```json
+[ { "categoryId": 2, "name": "부동산", "depth": 1, "sortOrder": 1, "isActive": true, "courseCount": 0,
+    "children": [ { "categoryId": 22, "name": "전·월세", "depth": 2, "sortOrder": 2, "isActive": true, "courseCount": 3, "children": [] } ] } ]
+```
 
 - (카테고리 트리 + isActive, courseCount)
 
@@ -2334,7 +2348,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | parentId가 있으면 소주제. |
+| 설명 | parentId가 있으면 소주제(depth 2), 없으면 카테고리(depth 1). 2단계까지만(소주제 아래에는 등록 불가). 이름 30자, 순서 0 이상. |
 
 **Request**
 
@@ -2347,7 +2361,9 @@ email=admin@moneybeetle.kr&password=...
 ```json
 201 Created
 { "categoryId": 22 }
+**Error**: `CATEGORY_DEPTH_EXCEEDED`, `NOT_FOUND`(없는 parentId)
 ```
+
 
 #### 87. 카테고리 수정
 
@@ -2368,6 +2384,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+**Error**: `NOT_FOUND`
 
 #### 88. 카테고리 삭제
 
@@ -2377,7 +2394,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `DELETE` |
 | 권한 | 관리자 |
 | 관련 | ADM-02 |
-| 설명 | 강의가 연결돼 있으면 비활성으로 바꾼다. |
+| 설명 | 강의(삭제된 강의 포함)나 소주제가 연결돼 있으면 삭제하지 않고 비활성(is_active=FALSE)으로 바꾼다. 연결이 없으면 실제 삭제. 두 경우 모두 204. |
 
 **Request**
 
@@ -2387,7 +2404,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `CATEGORY_IN_USE`
+**Error**: `NOT_FOUND`, `CATEGORY_IN_USE`(삭제 확인 직후 강의가 동시에 연결된 경우. 다시 요청하면 비활성으로 처리)
 
 #### 89. 강의 목록(검수)
 
@@ -2433,8 +2450,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
-
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review·admin_log(action COURSE_APPROVE, 변경 전·후 상태) 기록. |
 
 - Path: courseId=9
 
@@ -2453,7 +2469,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
+|설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, admin_log(action COURSE_REJECT, 변경 전·후 상태·사유) 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
@@ -2599,7 +2615,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-05 |
-| 설명 | 월별 지정 현황. |
+| 설명 | 월별 지정 현황. 그 달의 모든 날을 돌려주고, 아직 정해지지 않은 날은 자동 선정될 결과를 미리 보여 준다(`isAuto: true`, 저장되지 않음). |
 
 **Request**
 
@@ -2619,7 +2635,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-05, SP-46~47 |
-| 설명 | 5개를 지정. 지난 날짜는 변경 불가, 용어가 5개 미만이면 저장 불가. |
+| 설명 | 5개를 지정. 지난 날짜는 변경 불가, 사용 중인 용어가 5개가 되기 전이거나 고른 용어가 5개 미만이면 저장 불가. |
 
 **Request**
 
@@ -2741,13 +2757,16 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-07 |
-| 설명 | 전체 문의(숨김·삭제 포함 필터). |
+| 설명 | 전체 문의(숨김·삭제 포함). 필터는 모두 선택: courseId(그 강의 문의만), status(WAITING·ANSWERED), hidden(true·false), deleted(true=삭제된 글만, false=삭제 안 된 글만). 숨긴 글도 원문 제목 그대로. 최신순. |
 
 **Request**
 
-- Query: status=&hidden=&courseId=&page=0&size=20
+- Query: courseId=&status=&hidden=&deleted=&page=0&size=20
 
 **Response**
+```json
+{ "items": [ { "inquiryId": 3, "courseId": 7, "category": null, "title": "...", "status": "WAITING", "writerId": 1, "writerNickname": "민지", "isHidden": true, "isDeleted": false, "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1 }
+```
 
 - (문의 목록 + isHidden, isDeleted)
 
@@ -2759,7 +2778,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-07, DP-22 |
-| 설명 | 숨긴 글은 사용자에게 안내 문구로 보인다. |
+| 설명 | 숨기면 hidden_by에 관리자 ID를 남기고, 사용자 목록(API 47)에서 빠지며 상세(API 49)는 “관리자에 의해 숨김 처리된 글이에요”로 보인다. 해제하면 hidden_by를 지운다. 삭제된 글은 NOT_FOUND. |
 
 **Request**
 
@@ -2770,6 +2789,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+**Error**: `NOT_FOUND`
 
 #### 108. 보상 규칙 조회
 
@@ -2819,7 +2839,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-30, SP-17, DP-43 |
-| 설명 | 사유 필수. 회수로 0 미만이 되면 거절. |
+| 설명 | 사유 필수(200자 이하). 금액은 1 이상 1,000,000,000(10억) 캐시 이하이고(SP-17), 회수로 0 미만이 되면 거절. |
 
 **Request**
 
@@ -2834,7 +2854,7 @@ email=admin@moneybeetle.kr&password=...
 { "cashHistoryId": 130, "balanceAfter": 14400 }
 ```
 
-**Error**: `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
+**Error**: `INVALID_AMOUNT`, `REASON_REQUIRED`, `NOT_ENOUGH_CASH`
 
 #### 111. 서비스 설정
 
@@ -2888,7 +2908,8 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: targetType=SEASON&targetId=7&page=0&size=50
+- Query (모두 선택): targetType=SEASON&targetId=7&adminId=1&from=2026-11-01&to=2026-11-05&page=0&size=50
+    - `from`·`to` 는 날짜(yyyy-MM-dd)이고 둘 다 그날을 포함한다. `size` 기본 50, 최대 100. 최신순.
 
 **Response**
 
@@ -3507,7 +3528,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-36 |
-| 설명 | 단지와 일정, 신청자 수. |
+| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수. 신청 시작일 최신순. |
 
 **Request**
 
@@ -3515,7 +3536,12 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (단지 목록 + applicants)
+```json
+{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3 } ] }
+```
+
+- `status`: `UPCOMING`(접수 전) · `OPEN`(접수 중) · `CLOSED`(마감, 발표 전) · `ANNOUNCED`(발표)
+- `applicants`가 1 이상이면 일정·공급 세대 수 수정(144)과 삭제(145)가 막힌다
 
 #### 143. 공고 등록
 
@@ -3540,6 +3566,12 @@ email=admin@moneybeetle.kr&password=...
 { "complexId": 1 }
 ```
 
+- 글자 칸은 비울 수 없고 `salePrice`·`supplyUnits`는 1 이상, 날짜 4개는 필수
+- 일정 순서: `noticeDate` ≤ `applyStartDate` ≤ `applyEndDate` ≤ `announceDate`
+- 등록한 관리자 번호(`created_by`)는 로그인 세션에서 정한다
+
+**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400)
+
 #### 144. 공고 수정
 
 | 항목 | 내용 |
@@ -3548,17 +3580,17 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-36, SP-76 |
-| 설명 | 신청자가 있으면 일정·공급 세대 수 수정 불가. |
+| 설명 | 신청자가 있으면 일정·공급 세대 수 수정 불가. 이름·위치·면적·분양가·공급 유형은 신청자가 있어도 수정 가능. |
 
 **Request**
 
-- (공고 등록과 같음)
+- (공고 등록과 같음, 입력 규칙도 같음)
 
 **Response**
 
 - 204 No Content
 
-**Error**: `COMPLEX_HAS_APPLICANTS`
+**Error**: `INVALID_COMPLEX_INPUT`(400), `INVALID_SCHEDULE`(400), `NOT_FOUND`(404, 없거나 삭제된 단지), `COMPLEX_HAS_APPLICANTS`(409), `ALREADY_COMPUTED`(409, 산정한 공고는 신청자가 없어도 일정·세대 수 변경 불가 — 신청이 다시 열리지 않게, #48)
 
 #### 145. 공고 삭제
 
@@ -3578,7 +3610,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `COMPLEX_HAS_APPLICANTS`
+**Error**: `NOT_FOUND`(404), `COMPLEX_HAS_APPLICANTS`(409)
 
 #### 146. 신청자 목록
 
@@ -3588,17 +3620,22 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-37 |
-| 설명 | 가점, 납입회차. |
+| 설명 | 단지 신청자와 신청 시점 가점·납입회차, 산정 결과. 산정 전에는 가점 높은 순 → 납입회차 많은 순 → 먼저 신청한 순, 산정 뒤에는 산정 순위 순. |
 
 **Request**
 
-- Query: sort=score
+- 없음 (정렬은 위 순서로 고정)
 
 **Response**
 
 ```json
-{ "items": [ { "applicationId": 40, "nickname": "민지", "totalScore": 24, "paidCount": 14, "result": null } ] }
+{ "items": [ { "applicationId": 40, "nickname": "민지", "receiptNo": "MB-261105-0001", "totalScore": 24, "paidCount": 14, "appliedAt": "2026-11-05T09:00:00", "result": null, "resultRank": null } ] }
 ```
+
+- `paidCount`: 신청 시점 납입회차(`paid_count_snapshot`)
+- `result`: `WIN` · `LOSE`, 산정 전 `null` / `resultRank`: 산정 순위(1부터, 낙첨자 포함), 산정 전 `null`
+
+**Error**: `NOT_FOUND`(404, 없거나 삭제된 단지)
 
 #### 147. 당첨자 산정
 
@@ -3608,7 +3645,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-38, SP-75 |
-| 설명 | 발표일 이후. 가점 → 납입회차 → 추첨 순으로 공급 세대 수만큼 당첨. |
+| 설명 | 신청 마감 다음 날부터 한 번만. 가점 → 납입회차 → 추첨 순으로 순위를 매겨 공급 세대 수만큼 `WIN`, 나머지 `LOSE`. 산정만으로는 회원에게 결과가 보이지 않는다(발표 148 뒤에 공개). |
 
 **Request**
 
@@ -3617,10 +3654,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "applicants": 1860, "winners": 120, "computedAt": "2026-11-17T09:00:00" }
+{ "applicants": 4, "winners": 2, "computedAt": "2026-11-11T09:00:00" }
 ```
 
-**Error**: `BEFORE_ANNOUNCE_DATE`, `ALREADY_COMPUTED`
+- 신청자가 공급 세대 수보다 적으면 모두 당첨(`winners` = `applicants`). 신청자가 0명이어도 산정 완료로 기록한다(`computed_at`)
+
+**Error**: `APPLY_NOT_CLOSED`(409, 신청 마감일까지), `ALREADY_COMPUTED`(409), `NOT_FOUND`(404)
 
 #### 148. 결과 발표
 
@@ -3630,7 +3669,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-39 |
-| 설명 | 산정 후 공개, 신청자에게 알림. |
+| 설명 | 산정한 뒤 발표일부터 한 번만. 단지 상태가 `ANNOUNCED` 가 되어 회원에게 결과가 보이고(API 71), 신청자 모두에게 알림(`HOUSING_RESULT`)을 보낸다. |
 
 **Request**
 
@@ -3639,10 +3678,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "announcedAt": "2026-11-17T10:00:00" }
+{ "announcedAt": "2026-11-17T10:00:00", "notified": 4 }
 ```
 
-**Error**: `NOT_COMPUTED`
+- `notified`: 알림을 보낸 신청자 수
+
+**Error**: `NOT_COMPUTED`(409), `BEFORE_ANNOUNCE_DATE`(409), `ALREADY_ANNOUNCED`(409), `NOT_FOUND`(404)
 
 ---
 
@@ -3661,6 +3702,7 @@ email=admin@moneybeetle.kr&password=...
 | 공통 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요 |
 | 공통 | `IDEMPOTENCY_KEY_TOO_LONG` | 400 | 요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요 |
 | 공통 | `FORBIDDEN_WORD` | 400 | 사용할 수 없는 표현이 들어 있어요 |
+| 공통 | `INVALID_INPUT` | 400 | 입력한 값을 다시 확인해 주세요 (입력칸별 안내는 `error.fields`) |
 | 공통 | `INTERNAL_ERROR` | 500 | 처리하지 못했어요. 내 정보는 바뀌지 않았어요 |
 | 회원 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호를 확인해 주세요 |
 | 회원 | `LOGIN_LOCKED` | 423 | 로그인 시도가 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
@@ -3700,6 +3742,14 @@ email=admin@moneybeetle.kr&password=...
 | 모의 청약 | `DEPOSIT_ABOVE_MAX` | 400 | 한 번에 최대 500,000 캐시까지 납입할 수 있어요 |
 | 모의 청약 | `NOT_ANNOUNCED_YET` | 403 | 발표는 ○월 ○일이에요 |
 | 모의 청약 | `INVALID_SCORE_INPUT` | 400 | 무주택 기간은 0~50년, 부양가족 수는 0~20명으로 입력해 주세요 |
+| 모의 청약 | `INVALID_COMPLEX_INPUT` | 400 | 단지 정보를 모두 입력해 주세요. 분양가와 공급 세대 수는 1 이상이에요 |
+| 모의 청약 | `INVALID_SCHEDULE` | 400 | 일정 순서가 맞지 않아요. 공고일 ≤ 신청 시작일 ≤ 신청 마감일 ≤ 발표일로 정해 주세요 |
+| 모의 청약 | `COMPLEX_HAS_APPLICANTS` | 409 | 신청자가 있는 공고는 일정·공급 세대 수를 바꾸거나 삭제할 수 없어요 |
+| 모의 청약 | `APPLY_NOT_CLOSED` | 409 | 신청이 마감된 뒤에 산정할 수 있어요 |
+| 모의 청약 | `ALREADY_COMPUTED` | 409 | 이미 산정한 공고예요 |
+| 모의 청약 | `NOT_COMPUTED` | 409 | 당첨자를 먼저 산정해 주세요 |
+| 모의 청약 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일부터 발표할 수 있어요 |
+| 모의 청약 | `ALREADY_ANNOUNCED` | 409 | 이미 발표한 공고예요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
