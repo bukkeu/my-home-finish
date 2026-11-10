@@ -977,7 +977,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, INV-06 |
-| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. |
+| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. 키워드는 앞뒤 공백을 빼고 비어 있으면 세 목록 모두 빈 결과. 강의는 보이는 강의(허가·공개·미삭제) 중 제목에 키워드가 들어간 것을 최근 강의부터, 종목은 모의투자 해금(Lv.8) 회원에게만 사용 중 분야·종목 중 이름에 키워드가 들어간 것(`stockId`, `name`, `sectorName`). 경제 용어는 경제 용어 담당 검색 메서드가 생기면 채운다(그전에는 빈 목록). 로그인 회원 번호는 세션에서 꺼내며, 로그인 정보가 없으면 종목은 빈 목록 (#15) |
 
 **Request**
 
@@ -3079,7 +3079,7 @@ email=admin@moneybeetle.kr&password=...
 { "currentTurn": 6 }
 ```
 
-**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`
+**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`, `LAST_TURN_REACHED`(12턴 이후), `INVALID_STATUS_TRANSITION`(진행 중이 아닐 때)
 
 #### 121. 분야 목록
 
@@ -3788,6 +3788,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
 | 모의투자 | `STALE_TURN_PRICE` | 409 | 가격이 바뀌었어요. 현재 가격을 확인해 주세요 |
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
+| 모의투자 | `LAST_TURN_REACHED` | 409 | 마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
 | 모의투자 | `NOT_SETTLED` | 409 | 정산을 먼저 해 주세요 |
