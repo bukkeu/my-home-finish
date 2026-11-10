@@ -128,9 +128,6 @@ public class SecurityConfig {
         if (clientRegistrations.getIfAvailable() != null) {
             http.oauth2Login(oauth -> {
                 oauth.loginPage("/login");
-                // 본인 확인용 다시 로그인에서만 제공자에게 로그인을 다시 요구한다 (일반 간편 로그인은 그대로)
-                oauth.authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(
-                        new ReauthAuthorizationRequestResolver(clientRegistrations.getIfAvailable())));
                 oauth.successHandler(oAuth2SuccessHandler);   // 가입한 사람은 로그인, 처음이면 추가 정보 화면으로
                 oauth.failureHandler(oAuth2FailHandler);      // 실패는 로그인 화면으로 (?oauthError=OAUTH_FAILED)
             });

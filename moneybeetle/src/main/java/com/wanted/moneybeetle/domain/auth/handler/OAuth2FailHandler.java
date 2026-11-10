@@ -33,7 +33,6 @@ public class OAuth2FailHandler implements AuthenticationFailureHandler {
                 ? oauth.getError().getErrorCode()
                 : exception.getClass().getSimpleName();
         log.warn("간편 로그인에 실패했어요: {}", reason);
-        socialLoginService.cancelReauth(request.getSession(false));   // 본인 확인을 하러 갔다가 취소·실패했으면 그 상태를 지운다
         response.sendRedirect(OAuth2SuccessHandler.LOGIN_ERROR_URL + MemberErrorCode.OAUTH_FAILED.getCode());
     }
 }
