@@ -334,34 +334,38 @@
     return '접수 마감';
   }
 
-  var monthSeq = 0;                                     // 달을 빠르게 넘길 때 늦게 온 이전 달 응답을 버린다
+  // 순번 두 개 : 캘린더는 "지금 보고 있는 달"의 최신 응답만, 모집 중 단지는 "이번 달" 요청 중 최신 응답만 쓴다.
+  // (이번 달 요청 중에 다른 달로 넘겨도 모집 중 단지는 이번 달 응답으로 채워져야 "불러오는 중"이 남지 않는다)
+  var monthSeq = 0;
+  var openSeq = 0;
   function loadMonth() {
     if (LOCKED) {                                       // 레벨이 모자라면 API 를 부르지 않는다 (서버도 LEVEL_LOCKED 로 막는다)
       state.complexes = [];
       renderCalendar();
-      return;
+      return Promise.resolve();
     }
     var month = state.year + '-' + String(state.month).padStart(2, '0');
     var thisMonth = state.year === TODAY.y && state.month === TODAY.m;   // 이번 달이면 모집 중 단지도 채운다
     var seq = ++monthSeq;
-    MB.api(API + '/complexes?month=' + month).then(function (data) {
-      if (seq !== monthSeq) return;
-      state.complexes = (data && data.items) || [];
-      renderCalendar();
-      if (thisMonth) {
-        renderOpenComplexes(state.complexes.filter(function (c) { return c.status === 'OPEN'; }));
+    var open = thisMonth ? ++openSeq : 0;
+    return MB.api(API + '/complexes?month=' + month).then(function (data) {
+      var items = (data && data.items) || [];
+      if (thisMonth && open === openSeq) {
+        renderOpenComplexes(items.filter(function (c) { return c.status === 'OPEN'; }));
       }
-    }).catch(function (err) {
       if (seq !== monthSeq) return;
-      state.complexes = [];
+      state.complexes = items;
       renderCalendar();
-      if (thisMonth) {                                  // "불러오는 중이에요…" 가 남지 않도록 실패를 알린다
-        var box = list('openComplexes');
+    }).catch(function (err) {
+      if (thisMonth && open === openSeq) {              // "불러오는 중이에요…" 가 남지 않도록 실패를 알린다
         var fail = el('div', 'card hs-empty-card');
         fail.appendChild(el('strong', null, '모집 중인 단지를 불러오지 못했어요'));
         fail.appendChild(el('p', 'hs-muted', err.message));
-        box.replaceChildren(fail);
+        list('openComplexes').replaceChildren(fail);
       }
+      if (seq !== monthSeq) return;
+      state.complexes = [];
+      renderCalendar();
       MB.toast(err.message, 'error');
     });
   }
