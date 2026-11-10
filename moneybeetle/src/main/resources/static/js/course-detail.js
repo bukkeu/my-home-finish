@@ -6,6 +6,7 @@
 *     · 테스트는 서버에 기록하지 않으므로(API 40) 푼 강의는 브라우저(localStorage mb-ox-done)에 남긴다.
 *       이미 영상을 본 강의(학습 기록이 있음)는 테스트를 다시 요구하지 않는다
 *     · 최종 퀴즈 잠금은 서버도 막는다(QUIZ_LOCKED). 퀴즈 화면은 course-quiz.js (window.MBLecQuiz)
+*   - 콘텐츠 탭: 영상 요약글 / 강의 문의(#55, inquiry-board.js 의 window.MBInquiry 를 이 강의로 연다)
 *   - 영상 재생: 처음 열면 마지막으로 본 영상(없으면 아직 안 본 첫 영상)을 고르고, 서버가 준 이어보기 위치부터 재생한다
 *   - 시청 위치 저장(API 33): 재생 중 15초마다, 일시정지·끝·화면을 떠날 때. 완료 여부는 서버가 본 시간으로 정한다(#20)
 *     → 끝까지 본 뒤에는 강의 정보를 다시 받아 목차·진도율을 서버 기준으로 갱신한다
@@ -311,11 +312,25 @@
     var next = lessons[idx + 1];
     var allDone = completedCount() === lessons.length;
     var summary = (state.current.summary || '').trim();
-    refs.content.replaceChildren(
-      h('div', { class: 'lec-content-tabs', role: 'tablist' }, [
-        h('button', { type: 'button', role: 'tab', 'aria-selected': 'true', text: '영상 요약글' })
-      ]),
-      h('div', { class: 'lec-summary', role: 'tabpanel' }, [
+    var hasInquiry = !!window.MBInquiry;
+    if (!hasInquiry) state.tab = 'summary';
+
+    function tab(key, label) {
+      return h('button', { type: 'button', role: 'tab', id: 'lec-tab-' + key, 'aria-selected': String(state.tab === key),
+        'aria-controls': 'lec-panel-' + key, text: label,
+        onclick: function () { if (state.tab !== key) { state.tab = key; renderContent(); } } });
+    }
+
+    var panel;
+    if (state.tab === 'inquiry') {
+      // 강의 문의 게시판은 한 번만 만들어 두고 탭을 오갈 때 그대로 다시 붙인다 (쓰던 글·펼친 문의 유지)
+      if (!refs.inquiry) {
+        refs.inquiry = h('div', { class: 'inq-board' });
+        window.MBInquiry.mount(refs.inquiry, { mode: 'course', courseId: courseId });
+      }
+      panel = h('div', { class: 'lec-summary', role: 'tabpanel', id: 'lec-panel-inquiry', 'aria-labelledby': 'lec-tab-inquiry' }, [refs.inquiry]);
+    } else {
+      panel = h('div', { class: 'lec-summary', role: 'tabpanel', id: 'lec-panel-summary', 'aria-labelledby': 'lec-tab-summary' }, [
         h('span', { class: 'lec-summary__title', text: '영상 ' + (idx + 1) + ' 요약' }),
         summary ? h('p', { class: 'lec-summary__body', text: summary }) : h('p', { class: 'lec-summary__body lec-muted', text: '이 영상에는 요약글이 없어요.' }),
         h('div', { class: 'lec-summary__actions' }, [
@@ -325,7 +340,15 @@
           !next && allDone ? h('span', { class: 'lec-meta', text: '영상을 모두 봤어요! 최종 퀴즈에서 70점 이상이면 학습 완료예요.' }) : null,
           !next && !allDone ? h('span', { class: 'lec-meta', text: '영상을 모두 끝까지 보면 최종 퀴즈가 열려요.' }) : null
         ])
-      ])
+      ]);
+    }
+
+    refs.content.replaceChildren(
+      h('div', { class: 'lec-content-tabs', role: 'tablist' }, [
+        tab('summary', '영상 요약글'),
+        hasInquiry ? tab('inquiry', '강의 문의') : null
+      ]),
+      panel
     );
   }
 
