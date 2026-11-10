@@ -27,4 +27,19 @@ public class QuizChoice {
     private String content;
     private boolean isCorrect;
     private int sortOrder;
+
+    /* 강사가 새 보기를 만든다 (API 79·80) */
+    public static QuizChoice create(Long quizQuestionId, String content, boolean isCorrect, int sortOrder) {
+        QuizChoice choice = new QuizChoice();
+        choice.quizQuestionId = quizQuestionId;
+        choice.sortOrder = sortOrder;
+        choice.change(content, isCorrect);
+        return choice;
+    }
+
+    /* 보기 내용·정답 바꾸기 (API 79·80). 답안·오답노트가 보기 ID를 가리키므로 지우지 않고 고친다 */
+    public void change(String content, boolean isCorrect) {
+        this.content = content;
+        this.isCorrect = isCorrect;
+    }
 }

@@ -26,4 +26,7 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
 
         long getOrderCount();
     }
+
+    /** 한 참가자의 거래 내역, 최근 거래부터 (관리자 참가자 상세 #45) */
+    List<TradeOrder> findBySeasonParticipantIdOrderByTradeOrderIdDesc(Long seasonParticipantId);
 }

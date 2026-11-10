@@ -60,7 +60,7 @@
 | `KAKAO_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
-| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결) | | `./uploads` | DP-32·33 |
+| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
 - 간편 로그인(#9)은 **실제 OAuth** 로 구현했습니다. 키(`GOOGLE_*`, `KAKAO_*`)가 없어도 서버는 뜨고, **키가 없는 제공자는 자동으로 꺼집니다**(`OAuthClientConfig`: 하나도 없으면 간편 로그인 전체가 꺼지고, 있으면 그 제공자만 켜집니다). 값이 비어 있는 채로 등록하지 않으므로 서버가 못 뜨는 일은 없습니다.
 - 키 발급과 등록 (각자 개인 테스트 앱):

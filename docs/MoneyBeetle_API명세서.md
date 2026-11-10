@@ -1045,7 +1045,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, INV-06 |
-| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. |
+| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. 키워드는 앞뒤 공백을 빼고 비어 있으면 세 목록 모두 빈 결과. 강의는 보이는 강의(허가·공개·미삭제) 중 제목에 키워드가 들어간 것을 최근 강의부터, 종목은 모의투자 해금(Lv.8) 회원에게만 사용 중 분야·종목 중 이름에 키워드가 들어간 것(`stockId`, `name`, `sectorName`). 경제 용어는 경제 용어 담당 검색 메서드가 생기면 채운다(그전에는 빈 목록). 로그인 회원 번호는 세션에서 꺼내며, 로그인 정보가 없으면 종목은 빈 목록 (#15) |
 
 **Request**
 
@@ -1172,7 +1172,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `PUT` |
 | 권한 | 회원 |
 | 관련 | LRN-05~06, SP-38 |
-| 설명 | 재생 중 주기적으로(예: 15초) 저장. 끝까지 보면 completed=true. |
+| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
 
 **Request**
 
@@ -1192,7 +1192,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-06 |
-| 설명 | 최근 본 영상 순. |
+| 설명 | 최근 본 영상 순. 마지막 시청 시각이 같으면 시청 기록 ID 역순으로 순서를 고정한다(페이지 경계 중복·누락 방지, #157). 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -1212,7 +1212,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-06~07 |
-| 설명 | 학습 완료한 강의. |
+| 설명 | 학습 완료한 강의. 완료 시각 최신순, 같으면 학습 기록 ID 역순(#157). 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -1338,7 +1338,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-02, SP-35 |
-| 설명 | 4지선다 5~15문제. 영상을 모두 본 뒤 열린다. 정답은 보내지 않는다. |
+| 설명 | 4지선다 5~15문제. 이 강의의 영상을 모두 끝까지 본 뒤 열린다(lesson_watch.is_completed). 정답·해설은 보내지 않는다. passScore는 system_setting QUIZ_PASS_SCORE(없거나 1~100 밖이면 70). |
 
 **Request**
 
@@ -1350,7 +1350,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "passScore": 70, "questions": [ { "questionId": 201, "content": "청약 가점 항목이 아닌 것은?", "choices": [ { "choiceId": 11, "content": "무주택 기간" }, { "choiceId": 12, "content": "연 소득" } ] } ] }
 ```
 
-**Error**: `QUIZ_LOCKED`
+**Error**: `QUIZ_LOCKED`(403), `COURSE_NOT_PUBLIC`, `NOT_FOUND`(퀴즈 문항 없음)
 
 #### 42. 퀴즈 제출·채점
 
@@ -1360,7 +1360,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-02~05, LRN-07, GRW-03~06, SP-34~36, NFR-06 |
-| 설명 | 서버에서 채점하고 오답을 오답노트에 저장한다. 최초 통과 때만 학습 완료 + 경험치·캐시 지급(레벨업 포함, 한 트랜잭션). 같은 요청은 한 번만 처리. |
+| 설명 | 서버에서 채점(점수 = 맞힌 수 / 문항 수 × 100, 소수점 이하 버림, passScore 이상 통과)하고 응시·답안을 저장한다. 틀린 문제는 오답노트에 저장(같은 문제는 한 번, 또 틀리면 마지막 오답만 갱신). 통과했고 처음 학습 완료일 때만 학습 완료 + 보상(COURSE_COMPLETE, 만점이면 QUIZ_PERFECT 추가, 원인 ID = 강의 ID, 레벨업 포함) — 모두 한 트랜잭션. 안 푼 문제·이 문항의 보기가 아닌 답은 오답. 같은 Idempotency-Key 재요청은 처음 결과를 그대로 돌려준다(IdempotencyFilter). |
 
 **Request**
 
@@ -1380,7 +1380,9 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`
+**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`, `IDEMPOTENCY_KEY_CONFLICT`, `COURSE_NOT_PUBLIC`, `NOT_FOUND`
+
+- 미통과·이미 완료한 강의면 `rewards`는 `{ "firstPass": false, "exp": 0, "cash": 0, "levelUp": null }`. 레벨이 오르지 않았으면 `levelUp`은 null.
 
 #### 43. 퀴즈 결과
 
@@ -1398,9 +1400,9 @@ Header: Idempotency-Key: 7c1e...
 
 **Response**
 
-- (퀴즈 제출 응답과 같은 구조)
+- 퀴즈 제출 응답과 같은 구조. 보상은 이미 지급돼서 `rewards`는 null. 결과는 문항 순서대로.
 
-**Error**: `FORBIDDEN`, `NOT_FOUND`
+**Error**: `FORBIDDEN`(남의 응시), `NOT_FOUND`
 
 #### 44. 오답노트
 
@@ -1816,23 +1818,27 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-16~18, SP-62 |
-| 설명 | 관리자가 공개한 뒤에만. type=ASSET(순자산) |
+| 설명 | 관리자가 공개한 뒤에만. type=ASSET(순자산, 기본) 또는 RETURN(수익률) |
 
 **Request**
 
-- Query: type=ASSET&page=0&size=10
+- Query: type=ASSET&page=0&size=10 (type 기본 ASSET, page 기본 0, size 기본 10·최대 50)
 
 **Response**
 
 ```json
 {
-  "seasonName": "시즌 6", "type": "ASSET",
+  "seasonName": "시즌 6", "type": "ASSET", "totalCount": 1240,
   "items": [ { "rank": 1, "nickname": "초록개미", "title": "내 집", "netAsset": 8920400, "returnRate": 42.8, "hasBadge": true } ],
   "me": { "rank": 23, "netAsset": 4610000, "returnRate": 6.5 }
 }
 ```
 
-**Error**: `RANKING_NOT_PUBLISHED`
+- `rank`는 정산 때 확정한 순위다 (SP-62). 동점은 같은 순위이고, 같은 순위 안에서는 참가한 순서다. `type`에 맞는 순위(순자산 순위 / 수익률 순위)로 정렬한다
+- `title`·`hasBadge`: 그 랭킹 종류에서 상위 3위 수상(뱃지·칭호)이 있으면 뱃지 이름과 `true`, 없으면 `null`과 `false`
+- `me`: 이 시즌에 참가해 정산된 회원 자신의 순위. 참가하지 않았거나 정산 전이면 `null`
+
+**Error**: `RANKING_NOT_PUBLISHED`(403, 공개 전), `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, type·page·size가 올바르지 않음)
 
 ### 모의 청약
 
@@ -2219,6 +2225,17 @@ Header: Idempotency-Key: 4d8e...
 
 첫 번째는 이미 저장된 영상(`lessonId` 있음), 두 번째는 새 영상(`lessonId` 없음)이다.
 
+**저장 규칙** (#31)
+
+- 본인 강의만(남의 강의 `FORBIDDEN`, 삭제된 강의 `NOT_FOUND`). 검수 중이면 `COURSE_IN_REVIEW`. 허가된 강의의 영상을 바꾸면 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31).
+- `sortOrder`는 1부터 영상 개수까지 빠짐없이 한 번씩(예: 2개면 1, 2). 아니면 `INVALID_INPUT`.
+- `videoUrl`은 "영상 파일 올리기"가 돌려준 파일 키(`/uploads/….mp4`)만 받고, 저장 폴더에 그 파일이 실제로 있어야 한다. 외부 링크·없는 파일은 `INVALID_INPUT`. 기존 영상(`lessonId` 있음)이 지금 저장된 키를 그대로 보내면 다시 올리지 않아도 통과한다.
+- `lessonId`가 이 강의의 영상이 아니면 `LESSON_NOT_FOUND`, 같은 `lessonId`를 두 번 보내면 `INVALID_INPUT`.
+- 요청에 없는 기존 영상은 지운다. 단 시청 기록이 있거나 수강생의 "마지막으로 본 영상"이면 지우지 않고 `LESSON_IN_USE`(409).
+- 기존 영상(`lessonId` 있음)의 `videoUrl`을 다른 파일로 바꾸면 예전 영상의 시청 기록이 새 영상에 적용되지 않게, 그 영상의 본 시간·완료와 이어보기 위치를 처음(0)으로 돌린다. 제목·요약글·순서만 바꾸면 시청 기록은 그대로다.
+- 기존 영상의 순서를 바꿀 수 있다. 다만 영상 3개가 모두 남은 채로 서로 자리를 바꾸면 빈 자리가 없어서 `LESSON_ORDER_LOCKED`(409).
+- 영상 제목·요약글은 금칙어 검사(DP-20, `FORBIDDEN_WORD`). 영상 제목 100자, 요약글 2,000자(`SUMMARY_TOO_LONG`).
+
 **Response**
 
 ```json
@@ -2227,7 +2244,7 @@ Header: Idempotency-Key: 4d8e...
 
 요청 `lessons`와 같은 순서다: 첫 번째 영상은 기존 ID 20, 두 번째 새 영상은 새로 만든 ID 21.
 
-**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
+**Error**: `NO_LESSON`(0개), `TOO_MANY_LESSONS`(4개 이상), `SUMMARY_TOO_LONG`, `LESSON_NOT_FOUND`, `LESSON_IN_USE`, `LESSON_ORDER_LOCKED`, `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `INVALID_INPUT`, `IDEMPOTENCY_KEY_CONFLICT`, `FORBIDDEN`, `NOT_FOUND`
 
 **영상 파일 올리기** (#78의 부속 요청, API 번호는 늘리지 않는다)
 
@@ -2237,17 +2254,17 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-02, DP-33 |
-| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. |
+| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. 본인 강의만, 검수 중에는 불가(파일을 저장하기 전에 확인한다). |
 
 - Form: file=(mp4, 500MB 이하)
 
 ```json
-{ "videoUrl": "lesson/7-1.mp4" }
+{ "videoUrl": "/uploads/3f2a....mp4" }
 ```
 
 응답의 `videoUrl`은 **만료되지 않는 파일 키**(스토리지 안의 경로)이고, 서명 주소가 아니다. 서버는 업로드 때 이 키를 받아 두었다가, 위 "영상·요약글 저장" 요청에 담긴 같은 값을 `lesson.video_url`(DB)에 그대로 저장한다. 영상을 보여 주는 응답(API 62 등)의 `videoUrl`은 저장된 키로 **조회할 때마다 새로 발급한 짧게 만료되는 서명 주소**다(local 환경은 서버가 `/files/` + 키로 로컬 파일을 직접 내려 준다). 그래서 서명 주소를 DB에 저장하거나 저장 요청에 담지 않는다.
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 79. 테스트 퀴즈 저장
 
@@ -2257,7 +2274,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-04 |
-| 설명 | OX 5문제와 해설 일괄 저장. |
+| 설명 | OX 5문제와 해설 일괄 저장. 문제 500자, 해설은 UTF-8 기준 65,535바이트까지(넘으면 `INVALID_INPUT`). `answer`는 `"O"` 또는 `"X"`. 정확히 5문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). 저장 방식은 아래 "퀴즈 저장 방식" 참고. |
 
 **Request**
 
@@ -2271,7 +2288,7 @@ Header: Idempotency-Key: 4d8e...
 { "count": 5 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 80. 퀴즈 저장
 
@@ -2281,7 +2298,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-05 |
-| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. |
+| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. 문제 500자, 해설은 UTF-8 기준 65,535바이트까지. `choices`는 정확히 4개(각 200자), `answerIndex`는 정답 보기 위치 0~3. 5~15문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). |
 
 **Request**
 
@@ -2295,7 +2312,9 @@ Header: Idempotency-Key: 4d8e...
 { "count": 10 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
+
+**퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
 #### 81. 검수 요청
 
@@ -2378,7 +2397,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-08 |
-| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. |
+| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `todayOrders`·`nextTurnReady`·`missing` 은 모의투자(trading) 조회 메서드가 공개되기 전까지 null 이다. |
 
 **Request**
 
@@ -3143,7 +3162,7 @@ email=admin@moneybeetle.kr&password=...
 { "currentTurn": 6 }
 ```
 
-**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`
+**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`, `LAST_TURN_REACHED`(12턴 이후), `INVALID_STATUS_TRANSITION`(진행 중이 아닐 때)
 
 #### 121. 분야 목록
 
@@ -3470,13 +3489,19 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: sort=netAsset&page=0&size=50
+- Query: sort=netAsset&page=0&size=50 (sort 기본 netAsset, page 기본 0, size 기본 50·최대 200)
+- `sort`: `netAsset`·`returnRate`·`investAmount`는 큰 순서, `joinedAt`은 먼저 참가한 순서. 같은 값이면 먼저 참가한 순서
 
 **Response**
 
 ```json
-{ "items": [ { "participantId": 120, "nickname": "민지", "level": 8, "investAmount": 4820000, "netAsset": 5134000, "returnRate": 6.5 } ] }
+{ "totalCount": 1240, "items": [ { "participantId": 120, "nickname": "민지", "level": 8, "investAmount": 4820000, "netAsset": 5134000, "returnRate": 6.5 } ] }
 ```
+
+- `netAsset`·`returnRate`는 저장된 값이 아니라 **지금** 보유 종목과 현재 턴 가격으로 계산한다 (SP-61: 순자산 = 현금 + 보유 평가금액, 수익률 = (순자산 − 투자 가능 금액) ÷ 투자 가능 금액, 소수 둘째 자리 반올림). 정산이 끝난 참가자는 확정한 값을 그대로 보여 준다
+- 보유 종목의 현재 턴 가격이 비어 있으면 평균 매수 단가로 평가한다
+
+**Error**: `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, sort·page·size가 올바르지 않음)
 
 #### 136. 참가자 상세
 
@@ -3494,7 +3519,19 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (holdings[], orders[])
+```json
+{
+  "participantId": 120, "seasonId": 7, "nickname": "민지", "level": 8,
+  "investAmount": 4820000, "cash": 500000, "netAsset": 5134000, "returnRate": 6.5,
+  "holdings": [ { "stockId": 1, "stockName": "한빛반도체", "quantity": 6, "avgPrice": 84500, "currentPrice": 96950, "evalAmount": 581700 } ],
+  "orders": [ { "orderId": 901, "turnNo": 5, "stockName": "한빛반도체", "orderType": "BUY", "quantity": 6, "price": 84500, "amount": 507000, "reason": "뉴스를 보고", "createdAt": "2026-11-05T10:00:00" } ]
+}
+```
+
+- `holdings`: 지금 수량이 있는 종목만 (다 판 종목은 빠진다). `currentPrice`는 현재 턴 가격, `evalAmount` = `quantity` × `currentPrice`
+- `orders`: 최근 거래부터. `reason`은 고른 매매 이유 이름 (없으면 `null`)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 137. 랭킹 미리보기
 
@@ -3508,11 +3545,14 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: type=ASSET
+- Query: type=ASSET&page=0&size=10 (type 기본 ASSET, size 최대 50)
 
 **Response**
 
-- (랭킹 응답과 같음)
+- 시즌 랭킹(62)과 같은 모양이다. 다만 공개 전의 임시 순위라서 지금 보유 종목과 현재 턴 가격으로 계산하고(SP-61), `title`은 `null`·`hasBadge`는 `false`, `me`는 없다(`null`). 동점은 같은 순위(1, 2, 2, 4 …)
+- 공개 여부와 상관없이 볼 수 있다. `/api/v1/admin/**`는 관리자만 호출할 수 있다
+
+**Error**: `NOT_FOUND`(404), `INVALID_INPUT`(400)
 
 #### 138. 정산 실행
 
@@ -3815,6 +3855,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
 | 모의투자 | `STALE_TURN_PRICE` | 409 | 가격이 바뀌었어요. 현재 가격을 확인해 주세요 |
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
+| 모의투자 | `LAST_TURN_REACHED` | 409 | 마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
 | 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
