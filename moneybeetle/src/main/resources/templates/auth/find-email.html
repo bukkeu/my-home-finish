@@ -1,10 +1,32 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head><th:block th:replace="~{fragments/layout/header :: headFragment('이메일 찾기')}"></th:block><link rel="stylesheet" th:href="@{/css/auth.css}"></head>
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('이메일 찾기')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
 <body class="auth-page" data-auth-page="find-email">
-<main class="auth-main"><a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
-    <section class="auth-card" aria-labelledby="find-email-title"><span class="auth-eyebrow">계정 찾기</span><h1 id="find-email-title">이메일을 찾아볼게요</h1><p class="auth-lead">가입할 때 입력한 닉네임과 생년월일을 입력해 주세요.</p>
-        <form id="find-email-form" class="auth-form" novalidate><label for="find-nickname">닉네임</label><input id="find-nickname" maxlength="12" required autocomplete="nickname"><label for="find-birth">생년월일</label><input id="find-birth" type="date" required autocomplete="bday"><p class="auth-message" id="find-email-message" role="status" aria-live="polite"></p><button class="auth-button auth-button--primary" type="submit">이메일 찾기</button></form>
-        <p class="auth-bottom"><a th:href="@{/login}">로그인으로 돌아가기</a></p>
-    </section>
-</main><th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block><script th:src="@{/js/auth.js}" defer></script></body></html>
+<main class="auth-main">
+  <div class="auth-top">
+    <a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+    <a class="auth-close" th:href="@{/}" aria-label="닫기"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+  </div>
+  <div class="auth-body">
+    <span class="auth-eyebrow">계정 찾기</span>
+    <h1 id="find-email-title">이메일 찾기</h1>
+    <p class="auth-lead">가입할 때 입력한 닉네임과 생년월일을 입력해 주세요.</p>
+    <form id="find-email-form" class="auth-form" aria-labelledby="find-email-title" novalidate>
+      <label for="find-nickname">닉네임</label>
+      <input id="find-nickname" maxlength="12" required autocomplete="nickname">
+      <label for="find-birth">생년월일</label>
+      <input id="find-birth" type="date" required autocomplete="bday">
+      <p class="auth-message" id="find-email-message" role="status" aria-live="polite"></p>
+      <button class="auth-button auth-button--primary" type="submit">이메일 찾기</button>
+    </form>
+    <p class="auth-bottom"><a th:href="@{/login}">로그인으로 돌아가기</a></p>
+  </div>
+</main>
+<div class="auth-footer"><b>안내</b><span>모든 투자·청약 화면은 가상 실습이며 실제 금융 거래가 아니에요</span></div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/auth.js}" defer></script>
+</body>
+</html>

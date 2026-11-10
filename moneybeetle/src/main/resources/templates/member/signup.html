@@ -1,64 +1,99 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments/layout/header :: headFragment('회원가입')}"></th:block>
-    <link rel="stylesheet" th:href="@{/css/auth.css}">
+  <th:block th:replace="~{fragments/layout/header :: headFragment('회원가입')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/auth.css}">
 </head>
 <body class="auth-page" data-auth-page="signup">
+<header class="auth-header">
+  <a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+  <a class="auth-close" th:href="@{/}" aria-label="닫기"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+</header>
 <main class="auth-main auth-main--signup">
-    <a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
-    <section class="auth-card auth-card--wide" aria-labelledby="signup-title">
-        <div class="auth-steps" aria-label="가입 진행 단계">
-            <span class="is-active" data-step-indicator="1">이메일 인증</span><span data-step-indicator="2">계정 정보</span><span data-step-indicator="3">약관 동의</span><span data-step-indicator="4">프로필</span>
+  <section class="auth-signup" aria-labelledby="signup-title">
+    <div class="auth-steps" aria-label="가입 진행 단계">
+      <span class="is-active" data-step-indicator="1">1 이메일</span>
+      <span data-step-indicator="2">2 비밀번호</span>
+      <span data-step-indicator="3">3 약관 동의</span>
+      <span data-step-indicator="4">4 내 정보</span>
+    </div>
+    <h1 id="signup-title">MoneyBeetle 계정 만들기</h1>
+    <p class="auth-sub">이미 계정이 있나요? <a th:href="@{/login}">로그인</a></p>
+
+    <div class="auth-panel" data-signup-step="1">
+      <label for="signup-email">먼저 이메일 주소를 입력해 주세요</label>
+      <div class="auth-inline">
+        <input id="signup-email" type="email" autocomplete="email" maxlength="100" required placeholder="beetle@example.com">
+        <button class="auth-button auth-button--secondary" id="request-code" type="button">인증번호 받기</button>
+      </div>
+      <p class="auth-hint">이 이메일이 아이디가 돼요. 인증번호는 5분 동안 유효하고, 다시 보내기는 60초 후에 할 수 있어요.</p>
+      <label for="signup-code">인증번호 6자리</label>
+      <div class="auth-inline">
+        <input id="signup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" disabled>
+        <button class="auth-button auth-button--secondary" id="verify-code" type="button" disabled>인증 확인</button>
+      </div>
+      <p class="auth-message" id="signup-email-message" role="status" aria-live="polite"></p>
+      <button class="auth-button auth-button--primary" id="signup-next-1" type="button" disabled>다음</button>
+      <div th:if="${googleOAuthEnabled} or ${kakaoOAuthEnabled}">
+        <div class="auth-divider">또는 간편하게 시작하기</div>
+        <div class="auth-social">
+          <a class="auth-button auth-button--google" th:if="${googleOAuthEnabled}" th:href="@{/api/v1/auth/oauth/google}"><svg width="26" height="26" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</a>
+          <a class="auth-button auth-button--kakao" th:if="${kakaoOAuthEnabled}" th:href="@{/api/v1/auth/oauth/kakao}"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="#191919" d="M12 3C6.48 3 2 6.54 2 10.9c0 2.83 1.88 5.3 4.7 6.7-.2.74-.75 2.7-.86 3.12-.13.52.19.51.4.37.17-.11 2.62-1.78 3.68-2.5.67.1 1.37.15 2.08.15 5.52 0 10-3.54 10-7.9S17.52 3 12 3z"/></svg>카카오로 계속하기</a>
         </div>
-        <h1 id="signup-title">머니비틀 회원가입</h1>
-        <p class="auth-lead">이메일 인증을 마친 뒤 가입 정보를 입력해 주세요.</p>
-        <div class="auth-panel" data-signup-step="1">
-            <label for="signup-email">이메일</label>
-            <div class="auth-inline"><input id="signup-email" type="email" autocomplete="email" maxlength="100" required placeholder="beetle@example.com"><button class="auth-button auth-button--secondary" id="request-code" type="button">인증번호 받기</button></div>
-            <p class="auth-hint">인증번호는 5분 동안 유효해요. 다시 보내기는 60초 후에 할 수 있어요.</p>
-            <label for="signup-code">인증번호 6자리</label>
-            <div class="auth-inline"><input id="signup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" disabled><button class="auth-button auth-button--secondary" id="verify-code" type="button" disabled>인증 확인</button></div>
-            <p class="auth-message" id="signup-email-message" role="status" aria-live="polite"></p>
-            <button class="auth-button auth-button--primary" id="signup-next-1" type="button" disabled>다음</button>
-            <div th:if="${googleOAuthEnabled} or ${kakaoOAuthEnabled}">
-                <div class="auth-divider"><span>또는 간편하게 시작하기</span></div>
-                <div class="auth-social">
-                    <a class="auth-button auth-button--google" th:if="${googleOAuthEnabled}" th:href="@{/api/v1/auth/oauth/google}"><span aria-hidden="true">G</span>Google로 계속하기</a>
-                    <a class="auth-button auth-button--kakao" th:if="${kakaoOAuthEnabled}" th:href="@{/api/v1/auth/oauth/kakao}"><span aria-hidden="true">●</span>카카오로 계속하기</a>
-                </div>
-            </div>
-        </div>
-        <div class="auth-panel" data-signup-step="2" hidden>
-            <label for="signup-password">비밀번호</label>
-            <div class="auth-password"><input id="signup-password" type="password" autocomplete="new-password" minlength="8" maxlength="20" placeholder="8~20자, 영문과 숫자 포함"><button type="button" data-password-toggle="signup-password">보기</button></div>
-            <p class="auth-hint">영문과 숫자를 함께 사용해 주세요.</p>
-            <label for="signup-password-confirm">비밀번호 확인</label>
-            <input id="signup-password-confirm" type="password" autocomplete="new-password" maxlength="20">
-            <p class="auth-message" id="signup-password-message" role="alert" aria-live="polite"></p>
-            <div class="auth-actions"><button class="auth-button auth-button--secondary" data-signup-back="1" type="button">이전</button><button class="auth-button auth-button--primary" id="signup-next-2" type="button">다음</button></div>
-        </div>
-        <div class="auth-panel" data-signup-step="3" hidden>
-            <div class="auth-terms-head"><h2>약관에 동의해 주세요</h2><button type="button" id="agree-all">전체 동의</button></div>
-            <div id="signup-terms" class="auth-terms"><p class="auth-hint">약관을 불러오는 중이에요.</p></div>
-            <p class="auth-message" id="signup-terms-message" role="alert" aria-live="polite"></p>
-            <div class="auth-actions"><button class="auth-button auth-button--secondary" data-signup-back="2" type="button">이전</button><button class="auth-button auth-button--primary" id="signup-next-3" type="button">다음</button></div>
-        </div>
-        <div class="auth-panel" data-signup-step="4" hidden>
-            <label for="signup-nickname">닉네임</label>
-            <div class="auth-inline"><input id="signup-nickname" maxlength="12" autocomplete="nickname" placeholder="2~12자, 한글·영문·숫자"><button class="auth-button auth-button--secondary" id="check-nickname" type="button">중복 확인</button></div>
-            <label for="signup-birth">생년월일</label>
-            <input id="signup-birth" type="date" autocomplete="bday">
-            <label for="signup-gender">성별 <span class="auth-optional">선택</span></label>
-            <select id="signup-gender"><option value="">선택 안 함</option><option value="FEMALE">여성</option><option value="MALE">남성</option></select>
-            <p class="auth-hint">가입하면 청약통장이 자동으로 만들어져요 (가상 실습용).</p>
-            <p class="auth-message" id="signup-profile-message" role="alert" aria-live="polite"></p>
-            <div class="auth-actions"><button class="auth-button auth-button--secondary" data-signup-back="3" type="button">이전</button><button class="auth-button auth-button--primary" id="signup-submit" type="button">가입 완료</button></div>
-        </div>
-        <p class="auth-bottom">이미 계정이 있나요? <a th:href="@{/login}">로그인</a></p>
-    </section>
+      </div>
+      <p class="auth-hint auth-center">다음 단계에서 <b>이용약관</b>과 <b>개인정보 처리방침</b>에<br>필수·선택으로 나눠 동의받아요</p>
+    </div>
+
+    <div class="auth-panel" data-signup-step="2" hidden>
+      <label for="signup-password">비밀번호를 만들어 주세요</label>
+      <div class="auth-password">
+        <input id="signup-password" type="password" autocomplete="new-password" minlength="8" maxlength="20" placeholder="8자 이상, 영문+숫자">
+        <button type="button" data-password-toggle="signup-password" aria-label="비밀번호 표시">보기</button>
+      </div>
+      <p class="auth-hint">8~20자, 영문과 숫자를 함께 써 주세요</p>
+      <label for="signup-password-confirm">비밀번호 확인</label>
+      <input id="signup-password-confirm" type="password" autocomplete="new-password" maxlength="20" placeholder="비밀번호 확인">
+      <p class="auth-message" id="signup-password-message" role="alert" aria-live="polite"></p>
+      <div class="auth-actions">
+        <button class="auth-button auth-button--primary" id="signup-next-2" type="button">다음</button>
+        <button class="auth-back" data-signup-back="1" type="button">이전 단계로</button>
+      </div>
+    </div>
+
+    <div class="auth-panel auth-panel--terms" data-signup-step="3" hidden>
+      <button class="auth-all" type="button" id="agree-all"><span class="auth-check" aria-hidden="true"></span>전체 동의</button>
+      <div id="signup-terms" class="auth-terms"><p class="auth-hint">약관을 불러오는 중이에요.</p></div>
+      <p class="auth-message" id="signup-terms-message" role="alert" aria-live="polite"></p>
+      <div class="auth-actions">
+        <button class="auth-button auth-button--primary" id="signup-next-3" type="button">다음</button>
+        <button class="auth-back" data-signup-back="2" type="button">이전 단계로</button>
+      </div>
+    </div>
+
+    <div class="auth-panel" data-signup-step="4" hidden>
+      <label for="signup-nickname">닉네임</label>
+      <div class="auth-inline">
+        <input id="signup-nickname" maxlength="12" autocomplete="nickname" placeholder="랭킹에 보여질 이름 (2~12자)">
+        <button class="auth-button auth-button--secondary" id="check-nickname" type="button">중복 확인</button>
+      </div>
+      <label for="signup-birth">생년월일</label>
+      <input id="signup-birth" type="date" autocomplete="bday">
+      <label for="signup-gender">성별 <span class="auth-optional">선택</span></label>
+      <select id="signup-gender">
+        <option value="">선택 안 함</option>
+        <option value="FEMALE">여성</option>
+        <option value="MALE">남성</option>
+      </select>
+      <p class="auth-hint">가입하면 청약통장이 자동으로 만들어져요 (가상 실습용).</p>
+      <p class="auth-message" id="signup-profile-message" role="alert" aria-live="polite"></p>
+      <div class="auth-actions">
+        <button class="auth-button auth-button--primary" id="signup-submit" type="button">가입 완료</button>
+        <button class="auth-back" data-signup-back="3" type="button">이전 단계로</button>
+      </div>
+    </div>
+  </section>
 </main>
-<footer class="auth-footer">가입하면 캐시와 경험치를 모으며 경제 공부를 이어갈 수 있어요.</footer>
+<div class="auth-footer"><b>안내</b><span>가입 후 청약통장이 자동으로 만들어져요 (가상 실습용)</span></div>
 <th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
 <script th:src="@{/js/auth.js}" defer></script>
 </body>

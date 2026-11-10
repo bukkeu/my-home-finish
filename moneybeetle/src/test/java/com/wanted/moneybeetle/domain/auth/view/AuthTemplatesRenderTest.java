@@ -110,10 +110,10 @@ class AuthTemplatesRenderTest {
     void loginSocialButtonsFollowProviderFlags() throws Exception {
         String none = render("/t/login");
         assertThat(none).doesNotContain("/api/v1/auth/oauth/google").doesNotContain("/api/v1/auth/oauth/kakao")
-                .doesNotContain("또는 간편 로그인").doesNotContain("auth-social");   // 빈 구분선·소셜 묶음도 없다
+                .doesNotContain("또는 간편하게 로그인").doesNotContain("auth-social");   // 빈 구분선·소셜 묶음도 없다
 
         String googleOnly = render("/t/login", "google", "true");
-        assertThat(googleOnly).contains("/api/v1/auth/oauth/google", "또는 간편 로그인").doesNotContain("/api/v1/auth/oauth/kakao");
+        assertThat(googleOnly).contains("/api/v1/auth/oauth/google", "또는 간편하게 로그인").doesNotContain("/api/v1/auth/oauth/kakao");
 
         String both = render("/t/login", "google", "true", "kakao", "true");
         assertThat(both).contains("/api/v1/auth/oauth/google", "/api/v1/auth/oauth/kakao");

@@ -6,12 +6,15 @@
 </head>
 <body class="auth-page" data-auth-page="social-signup">
 <main class="auth-main">
-  <a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
-  <section class="auth-card auth-card--wide" aria-labelledby="social-title">
+  <div class="auth-top">
+    <a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+    <a class="auth-close" th:href="@{/}" aria-label="닫기"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+  </div>
+  <div class="auth-body">
     <span class="auth-eyebrow">마지막 한 걸음</span>
     <h1 id="social-title">가입 정보를 입력해 주세요</h1>
     <p class="auth-lead">소셜 계정 확인이 끝났어요. 필요한 정보를 마저 입력하면 가입돼요.</p>
-    <form id="social-signup-form" class="auth-form" novalidate>
+    <form id="social-signup-form" class="auth-form" aria-labelledby="social-title" novalidate>
       <label for="social-provider">가입 방법</label>
       <input id="social-provider" readonly aria-readonly="true">
       <label for="social-email">이메일</label>
@@ -33,8 +36,9 @@
       <p class="auth-message" id="social-signup-message" role="alert" aria-live="polite"></p>
       <button class="auth-button auth-button--primary" type="submit">가입 완료</button>
     </form>
-  </section>
+  </div>
 </main>
+<div class="auth-footer"><b>안내</b><span>가입을 마치면 청약통장이 자동으로 만들어져요 (가상 실습용)</span></div>
 <th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
 <script th:src="@{/js/auth.js}" defer></script>
 </body>

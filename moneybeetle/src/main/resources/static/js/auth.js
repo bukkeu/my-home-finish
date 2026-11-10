@@ -205,10 +205,18 @@
       setMessage('signup-password-message', '', false); showStep(3);
     });
     document.querySelectorAll('[data-signup-back]').forEach(function (button) { button.addEventListener('click', function () { showStep(Number(button.dataset.signupBack)); }); });
+    // 전체 동의 버튼의 체크 표시는 약관이 모두 선택돼 있을 때만 켠다
+    function syncAgreeAll() {
+      var boxes = Array.from(terms.querySelectorAll('input[type="checkbox"]'));
+      var mark = byId('agree-all').querySelector('.auth-check');
+      if (mark) mark.classList.toggle('is-checked', boxes.length > 0 && boxes.every(function (box) { return box.checked; }));
+    }
+    terms.addEventListener('change', syncAgreeAll);
     byId('agree-all').addEventListener('click', function () {
       var boxes = terms.querySelectorAll('input[type="checkbox"]');
       var all = Array.from(boxes).every(function (box) { return box.checked; });
       boxes.forEach(function (box) { box.checked = !all; });
+      syncAgreeAll();
     });
     byId('signup-next-3').addEventListener('click', function () {
       var selected = selectedTerms(terms);
