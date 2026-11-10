@@ -2,8 +2,10 @@ package com.wanted.moneybeetle.domain.member.model.service;
 
 import com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
+import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.SocialSignupDTO;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,5 +38,18 @@ public class MemberSignupService {
         housingService.openAccount(result.getMemberId());
         identityVerificationService.clear(session);
         return result;
+    }
+
+    /**
+     * 간편 로그인(구글·카카오)으로 처음 온 사람의 가입 (API 8-2, 이슈 #9). 본인인증(이메일 코드)은 거치지 않는다:
+     * 제공자가 확인해 준 이메일을 쓰기 때문이다 (DP-44). 회원·간편 로그인 연결과 청약통장을 같은 트랜잭션에서 만들고,
+     * 로그인 처리에 쓸 회원 정보를 돌려준다.
+     */
+    @Transactional
+    public LoginMemberDTO signupSocial(SocialSignupDTO request, String email, String provider, String providerUserId) {
+        SignupResultDTO result = memberService.signupSocial(request, email, provider, providerUserId);
+        housingService.openAccount(result.getMemberId());
+        return memberService.findLoginMemberById(result.getMemberId())
+                .orElseThrow(() -> new IllegalStateException("방금 가입한 회원을 찾을 수 없습니다."));
     }
 }

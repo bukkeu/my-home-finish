@@ -111,6 +111,8 @@ class MemberSignupServiceTest {
     @MockitoBean
     private InstructorProfileRepository instructorProfileRepository;
     @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
+    @MockitoBean
     private PasswordEncoder passwordEncoder;
     @MockitoBean
     private ForbiddenWordService forbiddenWordService;

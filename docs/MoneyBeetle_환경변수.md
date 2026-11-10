@@ -62,7 +62,12 @@
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
 | `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결) | | `./uploads` | DP-32·33 |
 
-- 간편 로그인은 요구사항 우선순위가 **하**입니다. 구현 전에는 `GOOGLE_*`, `KAKAO_*`를 비워 둬도 됩니다. 단, 값이 비어 있는 채로 로그인 등록 설정을 켜면 서버가 뜨지 않을 수 있으므로, 구현할 때 "키가 없으면 해당 로그인을 끄는" 처리를 함께 넣습니다.
+- 간편 로그인(#9)은 **실제 OAuth** 로 구현했습니다. 키(`GOOGLE_*`, `KAKAO_*`)가 없어도 서버는 뜨고, **키가 없는 제공자는 자동으로 꺼집니다**(`OAuthClientConfig`: 하나도 없으면 간편 로그인 전체가 꺼지고, 있으면 그 제공자만 켜집니다). 값이 비어 있는 채로 등록하지 않으므로 서버가 못 뜨는 일은 없습니다.
+- 키 발급과 등록 (각자 개인 테스트 앱):
+  - 구글: Google Cloud 콘솔 → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹 애플리케이션). 승인된 리디렉션 URI 에 `http://localhost:8080/login/oauth2/code/google` 를 등록합니다. 범위는 `profile`, `email` 입니다.
+  - 카카오: 카카오 개발자 콘솔 → 앱 → 카카오 로그인 활성화, Redirect URI 에 `http://localhost:8080/login/oauth2/code/kakao` 를 등록, 동의 항목에서 닉네임(`profile_nickname`)과 카카오계정 이메일(`account_email`)을 켜고(이메일은 필수 동의), 보안 → Client Secret 을 발급해 활성화합니다.
+  - 포트나 주소가 다르면 `{주소}/login/oauth2/code/{google|kakao}` 로 등록합니다. 받은 값은 `.env` 에만 넣고 코드·깃에는 올리지 않습니다.
+  - 제공자가 이메일을 주지 않거나 확인되지 않은 이메일이면 그 로그인은 막힙니다(`OAUTH_FAILED`). 카카오는 이메일이 "유효하고 인증됨"인 계정만 통과합니다.
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
 - `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다.
 
@@ -125,7 +130,7 @@ MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM=no-reply@moneybeetle.local
 
-# 간편 로그인 (우선순위 하) - 기능 구현 시
+# 간편 로그인 (#9). 키가 없는 제공자는 꺼진다 (비워 둬도 서버는 뜬다)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 KAKAO_CLIENT_ID=

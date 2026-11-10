@@ -123,6 +123,8 @@
 | 6 | `POST` | `/api/v1/auth/login` | 로그인 | 비회원 | USR-06, DP-10~11, GRW-01 |
 | 7 | `POST` | `/api/v1/auth/logout` | 로그아웃 | 회원 | USR-06 |
 | 8 | `GET` | `/api/v1/auth/oauth/{provider}` | 간편 로그인 시작 | 비회원 | USR-07, DP-13 |
+| 8-1 | `GET` | `/api/v1/auth/oauth-signup` | 간편 로그인 가입 정보 확인 | 비회원 | USR-07, DP-13 |
+| 8-2 | `POST` | `/api/v1/auth/oauth-signup` | 간편 로그인 가입 완료 | 비회원 | USR-07, DP-13 |
 | 9 | `POST` | `/api/v1/auth/find-email` | 아이디(이메일) 찾기 | 비회원 | USR-08 |
 | 10 | `POST` | `/api/v1/auth/password-reset/request` | 비밀번호 재설정 요청 | 비회원 | USR-09, DP-12 |
 | 11 | `POST` | `/api/v1/auth/password-reset/confirm` | 비밀번호 재설정 | 비회원 | USR-09, DP-12 |
@@ -537,17 +539,60 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 비회원 |
 | 관련 | USR-07, DP-13 |
-| 설명 | 구글·카카오 인증 화면으로 보낸다. provider = google |
+| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. |
 
 **Request**
 
-- Path: provider=kakao
+- Path: provider=google | kakao
 
 **Response**
 
-- 302 Found → 제공자 로그인 화면
+- 302 Found → `/oauth2/authorization/{provider}` → 제공자 로그인 화면
 
-**Error**: `OAUTH_FAILED`
+**Error**: `OAUTH_PROVIDER_UNAVAILABLE`
+
+#### 8-1. 간편 로그인 가입 정보 확인
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/oauth-signup` |
+| Method | `GET` |
+| 권한 | 비회원 (간편 로그인으로 처음 온 세션) |
+| 관련 | USR-07, DP-13 |
+| 설명 | 간편 로그인으로 처음 온 사람의 제공자 정보를 돌려준다. 가입 화면(`/signup/social`)이 이메일·이름을 미리 채우는 용도이며, 제공자 쪽 사용자 ID 는 주지 않는다. 정보는 HTTP 세션에 담겨 있고(세션 만료 30분), 없으면 `OAUTH_SESSION_EXPIRED`. |
+
+**Response**
+
+```json
+{ "provider": "GOOGLE", "email": "minji@gmail.com", "nickname": "민지" }
+```
+
+**Error**: `OAUTH_SESSION_EXPIRED`
+
+#### 8-2. 간편 로그인 가입 완료
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/oauth-signup` |
+| Method | `POST` |
+| 권한 | 비회원 (간편 로그인으로 처음 온 세션) |
+| 관련 | USR-07, DP-13, SUB-04 |
+| 설명 | 나머지 가입 정보를 받아 가입하고 **바로 로그인 상태**로 만든다. 이메일은 요청으로 받지 않고 세션에 담긴, 제공자가 확인한 값을 쓴다. 비밀번호는 없다(간편 로그인으로만 쓰는 계정, `password_hash` NULL). 본인인증(이메일 코드, API 5)은 거치지 않고 인증 완료(`is_identity_verified`)로 저장한다(DP-44). 닉네임·생년월일·약관 규칙은 API 4 와 같고, 회원·약관 동의·간편 로그인 연결(`social_account`)과 청약통장이 한 트랜잭션으로 저장된다. 가입이 거절되면(닉네임 중복 등) 세션 정보는 남아 고쳐서 다시 보낼 수 있다. |
+
+**Request**
+
+```json
+{ "nickname": "민지", "birthDate": "1999-04-12", "gender": "FEMALE", "agreedTermsIds": [1, 2, 3] }
+```
+
+**Response**
+
+```json
+201 Created
+{ "memberId": 1, "nickname": "민지" }
+```
+
+**Error**: `OAUTH_SESSION_EXPIRED`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`, `OAUTH_FAILED`(같은 제공자 계정이 동시에 가입)
 
 #### 9. 아이디(이메일) 찾기
 
@@ -3754,6 +3799,8 @@ email=admin@moneybeetle.kr&password=...
 | 회원 | `IDENTITY_CODE_TOO_SOON` | 429 | 인증번호는 1분에 한 번만 받을 수 있어요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `IDENTITY_MAIL_UNAVAILABLE` | 503 | 지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `OAUTH_FAILED` | 502 | 간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요 |
+| 회원 | `OAUTH_PROVIDER_UNAVAILABLE` | 503 | 지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요 |
+| 회원 | `OAUTH_SESSION_EXPIRED` | 400 | 간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요 |
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |

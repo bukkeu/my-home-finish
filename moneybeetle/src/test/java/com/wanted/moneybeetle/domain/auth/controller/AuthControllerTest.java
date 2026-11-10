@@ -36,11 +36,19 @@ class AuthControllerTest {
     private final AccountService accountService = mock(AccountService.class);
     private final PasswordResetService passwordResetService = mock(PasswordResetService.class);
     private final IdentityVerificationService identityVerificationService = mock(IdentityVerificationService.class);
+    private final com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService socialLoginService =
+            mock(com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService.class);
+    private final com.wanted.moneybeetle.domain.auth.handler.AuthSessionWriter authSessionWriter =
+            mock(com.wanted.moneybeetle.domain.auth.handler.AuthSessionWriter.class);
+    @SuppressWarnings("unchecked")
+    private final org.springframework.beans.factory.ObjectProvider<org.springframework.security.oauth2.client.registration.ClientRegistrationRepository>
+            clientRegistrations = mock(org.springframework.beans.factory.ObjectProvider.class);
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(accountService, passwordResetService, identityVerificationService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(accountService, passwordResetService, identityVerificationService,
+                socialLoginService, authSessionWriter, clientRegistrations))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
                 .build();
@@ -165,5 +173,107 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(identityVerificationService, never()).verify(any(), any(), any());
+    }
+
+    // ---- 간편 로그인 (#9, API 8·8-1·8-2) ----
+
+    private void enableProviders() {
+        org.springframework.security.oauth2.client.registration.ClientRegistration google =
+                org.springframework.security.config.oauth2.client.CommonOAuth2Provider.GOOGLE.getBuilder("google")
+                        .clientId("id").clientSecret("secret").build();
+        when(clientRegistrations.getIfAvailable()).thenReturn(
+                new org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository(google));
+    }
+
+    @Test
+    @DisplayName("키가 있는 제공자로 간편 로그인을 시작하면 Spring Security 의 인증 시작 주소로 302")
+    void startOAuth() throws Exception {
+        enableProviders();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google"))
+                .andExpect(status().isFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Location", "/oauth2/authorization/google"));
+    }
+
+    @Test
+    @DisplayName("키가 없는 제공자·알 수 없는 제공자·등록 정보가 아예 없는 경우는 503 OAUTH_PROVIDER_UNAVAILABLE")
+    void startOAuthUnavailable() throws Exception {
+        enableProviders();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/kakao"))   // 카카오 키가 없다
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error.code").value("OAUTH_PROVIDER_UNAVAILABLE"));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/naver"))
+                .andExpect(status().isServiceUnavailable());
+
+        when(clientRegistrations.getIfAvailable()).thenReturn(null);   // 키가 하나도 없어 등록 정보가 없다
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error.code").value("OAUTH_PROVIDER_UNAVAILABLE"));
+    }
+
+    @Test
+    @DisplayName("처음 온 사람의 제공자 정보를 돌려준다 (제공자·이메일·이름)")
+    void oauthSignupInfo() throws Exception {
+        when(socialLoginService.getPending(any())).thenReturn(
+                new com.wanted.moneybeetle.domain.auth.model.dto.SocialProfile("GOOGLE", "g-1", "minji@gmail.com", "민지"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth-signup"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.provider").value("GOOGLE"))
+                .andExpect(jsonPath("$.data.email").value("minji@gmail.com"))
+                .andExpect(jsonPath("$.data.nickname").value("민지"))
+                .andExpect(jsonPath("$.data.providerUserId").doesNotExist());   // 제공자 쪽 사용자 ID 는 화면에 주지 않는다
+    }
+
+    @Test
+    @DisplayName("세션에 가입 정보가 없으면 400 OAUTH_SESSION_EXPIRED")
+    void oauthSignupInfoExpired() throws Exception {
+        when(socialLoginService.getPending(any())).thenThrow(new BusinessException(MemberErrorCode.OAUTH_SESSION_EXPIRED));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth-signup"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("OAUTH_SESSION_EXPIRED"));
+    }
+
+    @Test
+    @DisplayName("가입 정보를 보내면 201 로 가입하고 바로 로그인 상태를 만든다")
+    void oauthSignup() throws Exception {
+        com.wanted.moneybeetle.domain.member.model.entity.Member member =
+                com.wanted.moneybeetle.domain.member.model.entity.Member.signupSocial("minji@gmail.com", "민지",
+                        LocalDate.of(1999, 4, 12), "FEMALE", LocalDate.of(2026, 11, 10));
+        org.springframework.test.util.ReflectionTestUtils.setField(member, "memberId", 42L);
+        when(socialLoginService.completeSignup(any(), any())).thenReturn(
+                com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO.from(member, "MEMBER"));
+
+        mockMvc.perform(post("/api/v1/auth/oauth-signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"민지\",\"birthDate\":\"1999-04-12\",\"gender\":\"FEMALE\",\"agreedTermsIds\":[1,2]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.memberId").value(42))
+                .andExpect(jsonPath("$.data.nickname").value("민지"));
+
+        verify(authSessionWriter).signIn(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("가입이 거절되면(닉네임 중복 등) 로그인 상태를 만들지 않는다")
+    void oauthSignupRejected() throws Exception {
+        when(socialLoginService.completeSignup(any(), any())).thenThrow(new BusinessException(MemberErrorCode.NICKNAME_DUPLICATED));
+
+        mockMvc.perform(post("/api/v1/auth/oauth-signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"민지\",\"birthDate\":\"1999-04-12\",\"agreedTermsIds\":[1]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("NICKNAME_DUPLICATED"));
+
+        verify(authSessionWriter, never()).signIn(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("입력 형식이 틀린 가입 정보는 서비스를 부르지 않고 400")
+    void oauthSignupInvalidBody() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/oauth-signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"!\",\"agreedTermsIds\":[]}"))
+                .andExpect(status().isBadRequest());
+
+        verify(socialLoginService, never()).completeSignup(any(), any());
     }
 }

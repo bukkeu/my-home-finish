@@ -156,6 +156,23 @@ public class Member {
         return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, birthDate, gender);
     }
 
+    /**
+     * 간편 로그인(구글·카카오)으로 가입한다 (이슈 #9). 비밀번호는 없고(NULL) 제공자가 확인해 준 이메일을 쓰므로 본인인증을 마친 것으로 둔다.
+     * 레벨 1·경험치 0·캐시 0으로 시작하는 것은 일반 가입과 같다.
+     *
+     * @param today 가입 연령 계산 기준일 (KST 오늘)
+     */
+    public static Member signupSocial(String email, String nickname, LocalDate birthDate, String gender, LocalDate today) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null && SignupRules.isAtLeastMinAge(birthDate, today), "만 14세 이상만 가입할 수 있습니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        Member member = new Member(SignupRules.normalizeEmail(email), null, nickname, birthDate, gender);
+        member.completeIdentityVerification();
+        return member;
+    }
+
     /** 가입 중 본인인증(이메일 코드)을 마쳤다고 기록한다 (결과값만 저장한다, DB설계 member.is_identity_verified) */
     public void completeIdentityVerification() {
         this.identityVerified = true;

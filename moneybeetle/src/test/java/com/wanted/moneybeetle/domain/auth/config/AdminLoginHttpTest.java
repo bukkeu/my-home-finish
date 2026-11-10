@@ -90,6 +90,11 @@ class AdminLoginHttpTest {
     private MemberRepository memberRepository;
     @MockitoBean
     private InstructorProfileRepository instructorProfileRepository;
+    /** 간편 로그인(#9): MemberService 가 쓰는 연결 저장소, SecurityConfig 의 OAuth 성공 처리 핸들러가 쓰는 서비스. 이 테스트는 이메일 로그인만 본다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService socialLoginService;
     @MockitoBean
     private TermsRepository termsRepository;
     @MockitoBean
