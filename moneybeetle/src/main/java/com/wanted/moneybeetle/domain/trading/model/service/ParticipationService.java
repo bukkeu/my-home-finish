@@ -121,11 +121,17 @@ public class ParticipationService {
             throw new BusinessException(TradingErrorCode.ALREADY_JOINED);
         }
 
-        long savedCash = rewardService.getBalance(memberId);
+        // 이월금은 이전 시즌 정산 때 정해진다(SP-63). 정산 전 값(0)으로 투자 가능 금액을 확정하면 이후 바꿀 수 없으므로 거절한다
         long carryoverIn = participantRepository
                 .findPreviousParticipation(memberId, seasonId)
-                .map(SeasonParticipant::getCarryoverOut)
+                .map(previous -> {
+                    if (!previous.isSettled()) {
+                        throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+                    }
+                    return previous.getCarryoverOut();
+                })
                 .orElse(0L);
+        long savedCash = rewardService.getBalance(memberId);
         try {
             SeasonParticipant participant = participantRepository.saveAndFlush(
                     SeasonParticipant.create(seasonId, memberId, savedCash, carryoverIn));

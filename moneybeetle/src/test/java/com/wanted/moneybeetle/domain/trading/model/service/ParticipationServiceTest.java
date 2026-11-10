@@ -139,6 +139,19 @@ class ParticipationServiceTest {
     }
 
     @Test
+    void 이전_시즌이_정산_전이면_PREVIOUS_SEASON_NOT_SETTLED이고_참가_기록을_만들지_않는다() {
+        season(1);
+        SeasonParticipant unsettled = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID)).thenReturn(Optional.of(unsettled));
+
+        assertThatThrownBy(() -> service.join(SEASON_ID, MEMBER_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+        verify(participantRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(rewardService);
+    }
+
+    @Test
     void 이미_참가했으면_ALREADY_JOINED() {
         season(1);
         when(participantRepository.existsByTradingSeasonIdAndMemberId(SEASON_ID, MEMBER_ID)).thenReturn(true);
