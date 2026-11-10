@@ -1,0 +1,141 @@
+/* comment.
+*   담당 : DBA ② 김예린 (#51, 사용자 홈 화면)
+*   moneybeetle-page/UserHome-vr1·vr2 의 인라인 스타일을 클래스로 옮긴 것이다. 색·글꼴·.btn·.tag·.card 는 common.css 를 쓴다.
+*   원본 디자인 시스템의 청사진 카드(.blueprint, .corner)와 카드 글자(.card-kicker …)는 이 화면에서만 써서 .hm 안에 둔다.
+*  */
+
+.hm { display: flex; flex-direction: column; gap: 48px; box-sizing: border-box; }
+.hm [hidden] { display: none !important; }
+.hm h1, .hm h2 { font-family: var(--font-heading); font-weight: 800; }
+.hm-status { margin: 0; color: var(--color-neutral-700); font-size: 15px; }
+.hm-status:empty { display: none; }
+.hm-first, .hm-return { display: flex; flex-direction: column; gap: 56px; }
+.hm-return { gap: 48px; }
+.hm-empty { margin: 0; padding: 20px 0; color: var(--color-neutral-700); font-size: 14px; }
+
+/* ---------- 구역 ---------- */
+.hm-sec { display: flex; flex-direction: column; gap: 16px; }
+.hm-sec--tight { gap: 0; }
+.hm-sec h1 { margin: 0; font-size: 42px; }
+.hm-sec h2 { margin: 0; font-size: 28px; }
+.hm-sec__head { display: flex; align-items: baseline; gap: 12px; }
+.hm-sec__sub { color: var(--color-neutral-700); font-size: 14px; white-space: nowrap; }
+.hm-sec__space { flex: 1; }
+.hm-sec__head a { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.hm-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 20px; align-items: stretch; }
+
+/* ---------- 카드 (청사진 틀) ---------- */
+.hm .card { display: flex; flex-direction: column; gap: 8px; padding: 20px; }
+.hm .blueprint { position: relative; border: 1px solid var(--color-divider); border-radius: 0; overflow: visible; }
+.hm .blueprint > .corner { position: absolute; width: 11px; height: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+.hm .blueprint > .corner::before, .hm .blueprint > .corner::after { content: ""; position: absolute; background: currentColor; }
+.hm .blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+.hm .blueprint > .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
+.hm .blueprint > .corner.tl { top: -6px; left: -6px; }
+.hm .blueprint > .corner.tr { top: -6px; right: -6px; }
+.hm .blueprint > .corner.bl { bottom: -6px; left: -6px; }
+.hm .blueprint > .corner.br { bottom: -6px; right: -6px; }
+.hm .card-kicker { color: var(--color-accent-700); font-size: 10px; letter-spacing: .1em; }
+.hm .card-title { font-family: var(--font-heading); font-weight: 800; font-size: 22px; line-height: 1.2; }
+.hm .card-body { flex: 1; margin: 0; font-size: 13px; opacity: .8; }
+.hm .card-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: color-mix(in srgb, var(--color-text) 50%, transparent); }
+
+/* ---------- 처음 방문: 환영 ---------- */
+.hm-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; align-items: center; overflow: hidden;
+  padding: clamp(28px, 4vw, 56px); border: 1.5px dashed var(--color-divider); border-radius: 24px; background: linear-gradient(180deg, #F7FAF3 0%, #EAF7D8 100%); }
+.hm-hero__text { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.hm-hero__tag { align-self: flex-start; padding: 5px 12px; font-size: 13px; }
+.hm-hero h1 { margin: 0; font-size: clamp(30px, 3.6vw, 46px); line-height: 1.25; word-break: keep-all; }
+.hm-hero p { margin: 0; color: var(--color-neutral-700); font-size: clamp(15px, 1.3vw, 18px); line-height: 1.65; word-break: keep-all; }
+.hm-hero__cta { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 56px; margin-top: 8px; padding: 0 28px; border-radius: 999px; background: #263B1A; color: #fff; font-size: 17px; font-weight: 700; text-decoration: none; }
+.hm-hero__cta:hover { background: #355225; color: #fff; }
+.hm-hero__img { display: flex; justify-content: center; align-items: flex-end; min-width: 0; }
+.hm-hero__img img { display: block; width: min(100%, 280px); height: auto; }
+
+/* 관심 주제 */
+.hm-topic { display: flex; flex-direction: column; gap: 20px; margin-top: clamp(0px, 4vw, 40px); scroll-margin-top: 96px; }
+.hm-topic__head { display: flex; flex-direction: column; gap: 8px; }
+.hm-topic__head h2 { margin: 0; font-size: 28px; }
+.hm-topic__head p { margin: 0; color: var(--color-neutral-700); font-size: 15px; }
+.hm-topic__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: clamp(16px, 2vw, 28px); width: 100%; }
+.hm-pick { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: clamp(28px, 3.4vw, 44px) 20px; border: 1.5px solid var(--color-divider); border-radius: 16px; background: #fff;
+  color: var(--color-text); font: inherit; text-align: center; cursor: pointer; transition: transform .18s ease; }
+.hm-pick:hover { transform: translateY(-2px); }
+.hm-pick[aria-pressed="true"] { border: 2px solid #9fe870; }
+.hm-pick__check { position: absolute; top: 14px; right: 14px; display: none; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #9fe870; color: #263B1A; }
+.hm-pick[aria-pressed="true"] .hm-pick__check { display: grid; }
+.hm-pick__icon { display: grid; place-items: center; flex: none; width: clamp(84px, 9vw, 112px); aspect-ratio: 1 / 1; border-radius: 50%; background: var(--ib); color: #263B1A; }
+.hm-pick__icon svg { width: 46%; height: 46%; }
+.hm-pick strong { font-size: clamp(20px, 2vw, 24px); font-weight: 800; }
+.hm-pick > span:last-child { color: var(--color-neutral-700); font-size: 14px; }
+.hm-topic__note { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 20px; border-radius: 14px; background: #EAF7D8; }
+.hm-topic__note > span { flex: 1; min-width: 220px; font-size: 15px; font-weight: 600; word-break: keep-all; }
+.hm-topic__note .btn { text-decoration: none; }
+
+/* 지금 시작하기 좋은 강의 */
+.hm-starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 20px; }
+.hm-course { display: flex; flex-direction: column; overflow: hidden; border: 1.5px solid var(--color-divider); border-radius: 16px; background: #fff; color: var(--color-text); text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease; }
+.hm-course:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(38, 59, 26, .10); }
+.hm-course__thumb { position: relative; display: block; aspect-ratio: 354 / 108; background: var(--bg); }
+.hm-course__thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hm-course__icon { position: absolute; inset: 0; display: grid; place-items: center; }
+.hm-course__icon > span { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #fff; color: #263B1A; }
+.hm-course__count { position: absolute; right: 12px; bottom: 10px; padding: 4px 10px; border-radius: 8px; background: rgba(38, 59, 26, .82); color: #fff; font-size: 13px; font-weight: 700; }
+.hm-course__body { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; }
+.hm-course__body strong { font-size: 17px; font-weight: 700; }
+.hm-course__body span { color: var(--color-neutral-700); font-size: 13px; }
+
+/* ---------- 이력이 있을 때 ---------- */
+.hm-continue { min-height: 190px; padding: 18px; gap: 10px; flex: 1; }
+.hm-continue__video { position: relative; display: block; flex: 1; min-height: 140px; overflow: hidden; border-radius: 12px; background: #263B1A; color: #fff; text-decoration: none; }
+.hm-continue__video:hover { filter: brightness(1.08); }
+.hm-continue__tag { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 999px; background: #9fe870; color: #263B1A; font-size: 12px; font-weight: 800; }
+.hm-continue__play { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #263B1A; }
+.hm-continue__time { position: absolute; right: 12px; bottom: 14px; font-size: 12px; font-weight: 700; }
+.hm-continue .card-title { font-size: 20px; }
+.hm-continue .card-body { flex: none; }
+.hm-continue__empty { display: flex; flex-direction: column; justify-content: center; gap: 12px; flex: 1; }
+.hm-continue__empty .btn { align-self: flex-start; text-decoration: none; }
+
+.hm-history { display: flex; flex-direction: column; border-top: 1px solid var(--color-divider); }
+.hm-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 14px 4px; border-bottom: 1px solid var(--color-divider); color: inherit; text-decoration: none; }
+.hm-row:hover { background: var(--color-surface); }
+.hm-row__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hm-row__text strong { font-size: 15px; font-weight: 600; }
+.hm-row__text span, .hm-row__date { color: var(--color-neutral-700); font-size: 12px; }
+.hm-row .tag { padding: 3px 10px; border: 0; border-radius: 999px; font-size: 12px; background: var(--color-accent-100); color: var(--color-accent-700); }
+.hm-row .tag.is-done { background: var(--color-accent-400); }
+
+.hm-cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+.hm-cat { display: flex; flex-direction: column; gap: 8px; }
+.hm-cat h6 { margin: 0; color: var(--color-accent-700); font-size: 14px; font-weight: 800; }
+.hm-cat__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hm-cat__chips .btn { text-decoration: none; }
+
+/* ---------- 트레이닝 ---------- */
+.hm-train { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.hm-card { position: relative; min-height: 160px; }
+.hm-card__go { align-self: flex-start; text-decoration: none; }
+.hm-card__lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 0; background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(5px); color: var(--color-text); font: inherit; text-align: center; cursor: pointer; }
+.hm-card__lock-title { font-size: 14px; font-weight: 500; }
+.hm-card__lock-sub { color: var(--color-neutral-700); font-size: 12px; }
+
+/* 잠금 안내 */
+.hm-lockdlg { align-items: center; gap: 14px; width: min(400px, 100%); padding: 28px; text-align: center; }
+.hm-lockdlg__title { font-size: 20px; font-weight: 800; }
+.hm-lockdlg__sub { color: var(--color-neutral-700); font-size: 14px; word-break: keep-all; }
+.hm-lockdlg__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.hm-lockdlg__actions .btn { text-decoration: none; }
+
+@media (max-width: 760px) {
+  .hm { gap: 36px; }
+  .hm-hero { grid-template-columns: 1fr; }
+  .hm-hero__img { order: -1; }
+  .hm-sec h1 { font-size: 30px; }
+  .hm-sec h2, .hm-topic__head h2 { font-size: 22px; }
+  .hm-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .hm-row__date { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .hm-pick, .hm-course { transition: none; } .hm-pick:hover, .hm-course:hover { transform: none; } }

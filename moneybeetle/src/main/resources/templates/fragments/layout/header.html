@@ -70,7 +70,7 @@
                 <input type="search" name="q" placeholder="강의·종목을 검색해 보세요" autocomplete="off" aria-label="통합 검색">
             </label>
         </form>
-        <!--/* 용어 5개 팝업은 홈 화면 이슈(#51)에서 data-mb-words 에 연결한다 */-->
+        <!--/* 용어 5개 팝업: static/js/words.js 가 data-mb-words 버튼에 연결한다 (#51) */-->
         <button type="button" class="btn btn-secondary mb-words" data-mb-words>오늘의 경제단어</button>
         <span class="tag mb-cash" title="보유 캐시">
             <img th:src="@{/images/cash-coin.png}" alt="캐시"><span th:text="${#numbers.formatInteger(cash, 0, 'COMMA')}">0</span>
@@ -99,6 +99,7 @@
     <script th:src="@{/js/common.js}"></script>
     <script th:src="@{/js/drawer.js}"></script>
     <script th:src="@{/js/notify.js}"></script>
+    <script th:src="@{/js/words.js}"></script>
 </th:block>
 </body>
 </html>

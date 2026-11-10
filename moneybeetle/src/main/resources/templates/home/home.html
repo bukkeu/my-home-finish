@@ -1,5 +1,156 @@
-<!-- comment.
-    담당 : DBA ② 김예린 (#51, 사용자 홈 화면)
-    원본 디자인 : UserHome.dc.html
-    경로 : /user/home
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : DBA ② 김예린 (#51, 사용자 홈 화면)
+  원본 디자인 : moneybeetle-page/UserHome-vr1.dc.html (학습 이력이 없을 때), UserHome-vr2.dc.html (학습 이력이 있을 때)
+  경로 : /user/home
+  Model : layout (LayoutDTO, 공통 ControllerAdvice) - 닉네임·레벨·칭호. 없으면(null) 기본값으로 그려진다.
+  데이터 : static/js/home.js 가 API 로 불러온다
+      GET /api/v1/home (API 19)                          오늘의 용어·이어서 볼 강의·학습 수·트레이닝 해금
+      GET /api/v1/members/me/watch-histories (API 34)    학습 기록 (이력이 있을 때)
+      GET /api/v1/categories (API 29)                    강의 카테고리 칩
+      GET /api/v1/courses (API 30)                       처음 방문일 때 "지금 시작하기 좋은 강의"
+  이력이 없으면(본 영상 0개, 이어서 볼 강의 없음) 환영 화면(vr1)을, 있으면 이어서 듣기·학습 기록(vr2)을 보인다.
+  "오늘의 경제단어" 팝업은 헤더 버튼(data-mb-words)이 열고, 이 화면에서는 오늘 하루 숨기지 않았으면 처음에 자동으로 열린다 (static/js/words.js).
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('홈')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/home.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('home')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+
+    <main class="mb-main hm" id="hm" data-mb-home
+          th:attr="data-level=${layout != null ? layout.level : 1}, data-tier=${layout != null ? layout.tierName : '고시원'}">
+
+      <p class="hm-status" id="hm-status" role="status" aria-live="polite">홈을 불러오고 있어요…</p>
+
+      <!--/* ===================== 처음 방문 (vr1) ===================== */-->
+      <div class="hm-first" id="hm-first" hidden>
+        <section class="hm-hero">
+          <div class="hm-hero__text">
+            <span class="tag tag-accent hm-hero__tag">첫 방문을 환영해요</span>
+            <h1><span th:text="${layout != null ? layout.nickname : '회원'}">회원</span>님, Money Beetle에<br>오신 걸 환영해요!</h1>
+            <p>돈의 기본부터 내 집 마련까지.<br>지금 나에게 맞는 학습을 시작해보세요.</p>
+            <a class="hm-hero__cta" href="#hm-topic" id="hm-go-topic">내 학습 로드맵 만들기
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></a>
+          </div>
+          <div class="hm-hero__img"><img th:src="@{/images/beetle-mascot.png}" alt="머니비틀 캐릭터"></div>
+        </section>
+
+        <section class="hm-topic" id="hm-topic">
+          <div class="hm-topic__head">
+            <h2><span th:text="${layout != null ? layout.nickname : '회원'}">회원</span>님, 어떤 주제로 시작하고 싶으신가요?</h2>
+            <p>관심 있는 분야를 선택하면, 맞춤 강의를 추천해드려요.</p>
+          </div>
+          <div class="hm-topic__grid" role="group" aria-label="관심 주제">
+            <button type="button" class="hm-pick" data-topic="money" aria-pressed="false">
+              <span class="hm-pick__check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <span class="hm-pick__icon" style="--ib:#EAF7D8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14a6 3 0 1 0 12 0a6 3 0 1 0-12 0"/><path d="M3 8a6 3 0 1 0 12 0a6 3 0 1 0-12 0"/><path d="M3 8v4c0 1.66 2.69 3 6 3"/><path d="M9 14v4c0 1.66 2.69 3 6 3s6-1.34 6-3v-4"/></svg></span>
+              <strong>돈 굴리기</strong><span>(소비·저축·투자)</span>
+            </button>
+            <button type="button" class="hm-pick" data-topic="estate" aria-pressed="false">
+              <span class="hm-pick__check" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <span class="hm-pick__icon" style="--ib:#FBEBC0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>
+              <strong>부동산</strong><span>(청약·대출·내 집 마련)</span>
+            </button>
+          </div>
+          <div class="hm-topic__note" id="hm-topic-note" hidden>
+            <span id="hm-topic-text"></span>
+            <a class="btn btn-primary" id="hm-topic-cta" th:href="@{/user/lectures}">강의 보기</a>
+          </div>
+        </section>
+
+        <section class="hm-sec">
+          <div class="hm-sec__head"><h2>지금 시작하기 좋은 강의</h2><span class="hm-sec__space"></span><a th:href="@{/user/lectures}">전체 보기</a></div>
+          <div class="hm-starters" id="hm-starters"><p class="hm-empty">강의를 불러오고 있어요…</p></div>
+        </section>
+      </div>
+
+      <!--/* ===================== 학습 이력이 있을 때 (vr2) ===================== */-->
+      <div class="hm-return" id="hm-return" hidden>
+        <section class="hm-sec hm-sec--tight">
+          <h1><span th:text="${layout != null ? layout.nickname : '회원'}">회원</span>님, 오늘도 한 걸음</h1>
+        </section>
+
+        <div class="hm-pair">
+          <section class="hm-sec">
+            <h2>이어서 듣기</h2>
+            <div class="card blueprint hm-continue" id="hm-continue">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            </div>
+          </section>
+
+          <section class="hm-sec">
+            <div class="hm-sec__head">
+              <h2>학습 기록</h2>
+              <span class="hm-sec__sub">학습 완료 <span id="hm-done">0</span>강</span>
+              <span class="hm-sec__space"></span>
+              <a th:href="@{/user/my-page(tab='learning')}">전체 보기</a>
+            </div>
+            <div class="hm-history" id="hm-history"><p class="hm-empty">학습 기록을 불러오고 있어요…</p></div>
+          </section>
+        </div>
+
+        <section class="hm-sec">
+          <h2>강의 카테고리</h2>
+          <div class="hm-cats" id="hm-cats"></div>
+        </section>
+      </div>
+
+      <!--/* ===================== 트레이닝 (두 화면 공통) ===================== */-->
+      <section class="hm-sec" id="hm-training" hidden>
+        <h2>트레이닝</h2>
+        <div class="hm-train">
+          <div class="card blueprint hm-card" data-train="trading" data-name="모의 투자">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <span class="card-kicker">모의 투자</span>
+            <div class="card-title">모은 캐시 + 이월금으로 시작</div>
+            <p class="card-body">시즌마다 12턴을 진행해요. 시즌이 끝나면 순자산·수익률 랭킹이 공개돼요.</p>
+            <span class="card-meta">첫 턴이 끝나기 전까지 참가할 수 있어요</span>
+            <a class="btn btn-primary hm-card__go" th:href="@{/user/demo-trading}" data-go hidden>모의투자 하러 가기 →</a>
+            <button type="button" class="hm-card__lock" data-lock hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <span class="hm-card__lock-title" data-lock-title></span>
+              <span class="hm-card__lock-sub" data-lock-sub></span>
+            </button>
+          </div>
+          <div class="card blueprint hm-card" data-train="housing" data-name="모의 청약">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <span class="card-kicker">모의 청약</span>
+            <div class="card-title">청약통장을 모으고 분양에 도전</div>
+            <p class="card-body">접수 중인 공고를 보고 청약통장에 납입하면서 가점을 계산해 신청해요.</p>
+            <span class="card-meta">가점 계산기 · 내 신청 내역 · 당첨자 발표</span>
+            <a class="btn btn-primary hm-card__go" th:href="@{/user/demo-housing-subscription}" data-go hidden>모의 청약 하러 가기 →</a>
+            <button type="button" class="hm-card__lock" data-lock hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <span class="hm-card__lock-title" data-lock-title></span>
+              <span class="hm-card__lock-sub" data-lock-sub></span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!--/* 잠긴 트레이닝을 눌렀을 때 */-->
+    <div class="mb-dialog-backdrop" id="hm-lock-dialog" hidden>
+      <div class="mb-dialog hm-lockdlg" role="dialog" aria-modal="true" aria-labelledby="hm-lock-title">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span class="hm-lockdlg__title" id="hm-lock-title"></span>
+        <span class="hm-lockdlg__sub" id="hm-lock-sub"></span>
+        <div class="hm-lockdlg__actions">
+          <button type="button" class="btn btn-secondary" data-close>닫기</button>
+          <a class="btn btn-primary" th:href="@{/user/lectures}">강의 들으러 가기</a>
+          <a class="btn btn-secondary" id="hm-lock-peek" th:href="@{/user/demo-housing-subscription}" hidden>미리 둘러보기</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/home.js}" defer></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+/* comment.
+*   담당 : DBA ② 김예린 (#51, 서비스 소개 메인)
+*   moneybeetle-page/Main.dc.html 의 인라인 스타일을 클래스로 옮긴 것이다. 색·글꼴 토큰과 .btn 은 common.css 를 쓴다.
+*   로드맵이 그려지는 움직임은 .road.is-shown 이 붙으면 시작한다 (static/js/landing.js).
+*  */
+
+body.landing { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+.landing a { color: var(--color-text); }
+
+/* ---------- 위쪽 줄 ---------- */
+.landing__top { display: flex; align-items: center; gap: 40px; padding: 28px clamp(20px, 6vw, 120px); }
+.landing__logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.landing__logo img { display: block; width: auto; height: 44px; }
+.landing__space { flex: 1; }
+.landing__login { font-size: 18px; font-weight: 500; text-decoration: none; }
+.landing__signup { padding: 16px 30px; border-radius: 999px; background: #9fe870; font-size: 18px; font-weight: 700; text-decoration: none; }
+.landing__signup:hover { background: #8fd85f; }
+
+/* ---------- 소개 ---------- */
+.intro { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px 24px 0; text-align: center; }
+.intro__points { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 36px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 17px; font-weight: 700; }
+.intro__points li { display: flex; align-items: center; gap: 10px; }
+.intro__dot { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #EAF7D8; }
+.intro__dot--won { font-size: 15px; }
+.intro__title { margin: 36px 0 0; font-weight: 700; font-size: clamp(55px, 10.5vw, 130px); line-height: .98; letter-spacing: -.04em; text-wrap: balance; }
+.intro__lead { max-width: 680px; margin: 44px 0 0; color: #687161; font-size: clamp(18px, 1.6vw, 26px); line-height: 1.7; text-wrap: balance; }
+.intro__cta { margin-top: 52px; padding: 30px 64px; border-radius: 999px; background: #9fe870; font-size: 26px; font-weight: 700; text-decoration: none; }
+.intro__cta:hover { background: #8fd85f; }
+.intro__cta:active { background: #7fc84f; }
+
+/* 레벨별 집 계단 */
+.steps { display: flex; align-items: flex-end; gap: 26px; width: 100%; max-width: min(1600px, 100%); margin-top: 20px; }
+.step { flex: 1; min-width: 0; height: var(--h); padding: 26px 8px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 28px 28px 0 0; background: var(--bg); box-sizing: border-box; }
+.step__house { display: block; flex: none; align-self: center; width: clamp(110px, 11vw, 190px); height: auto; margin: calc(-26px - clamp(90px, 9vw, 156px)) 0 6px; }
+.step__name { font-weight: 800; font-size: clamp(16px, 1.7vw, 26px); }
+.step__lv { color: var(--sub); font-weight: 600; font-size: clamp(11px, 1.1vw, 16px); text-wrap: balance; }
+
+/* ---------- 내 집까지 가는 길 ---------- */
+.road { display: flex; flex-direction: column; align-items: center; padding: clamp(72px, 9vw, 128px) clamp(20px, 6vw, 120px) clamp(72px, 8vw, 112px); background: #fff; text-align: center; }
+.road h2 { margin: 0; font-weight: 700; font-size: clamp(36px, 5.4vw, 68px); letter-spacing: -.035em; line-height: 1.05; }
+.road__sub { margin: 20px 0 0; color: #687161; font-size: clamp(16px, 1.5vw, 22px); }
+
+/* 넓은 화면: 구불구불한 길 위에 역 */
+.road__wide { position: relative; width: 100%; max-width: 1100px; aspect-ratio: 1000 / 760; margin-top: clamp(56px, 6vw, 88px); }
+.road__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.road__rail { stroke-dasharray: 1 1.02; stroke-dashoffset: 1; transition: stroke-dashoffset var(--dur) linear var(--del); }
+.road.is-shown .road__rail { stroke-dashoffset: 0; }
+.station { position: absolute; left: var(--x); top: var(--y); width: 0; height: 0; }
+.station__in { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 14px;
+  transform: translate(-50%, calc(var(--size) / -2)) scale(.6); opacity: 0;
+  transition: opacity .35s ease var(--d), transform .55s cubic-bezier(.34, 1.56, .64, 1) var(--d); }
+.road.is-shown .station__in { transform: translate(-50%, calc(var(--size) / -2)) scale(1); opacity: 1; }
+.station__icon { position: relative; display: grid; place-items: center; width: var(--size); height: var(--size); border-radius: 50%; background: var(--bg); color: #263B1A;
+  box-shadow: inset 0 0 0 1.5px var(--ring), 0 0 0 8px #fff; }
+.station__icon img { display: block; width: 78%; height: auto; }
+.station__n { position: absolute; top: -2px; right: -2px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #263B1A; color: #fff; font-size: 13px; font-weight: 800; }
+.station__text { display: flex; flex-direction: column; align-items: center; gap: 4px; white-space: nowrap; }
+.station__text strong { font-size: clamp(16px, 1.7vw, 21px); font-weight: 800; }
+.station__text span { color: #687161; font-size: clamp(13px, 1.3vw, 16px); }
+
+/* 좁은 화면: 세로 목록 */
+.lane { display: none; position: relative; width: 100%; max-width: 420px; margin-top: 48px; flex-direction: column; gap: 22px; text-align: left; }
+.lane__track { position: absolute; left: 28px; top: 32px; bottom: 32px; width: 8px; border-radius: 4px; overflow: hidden; background: #F5FBEE; box-shadow: inset 0 0 0 1px #D5E1CC; }
+.lane__fill { display: block; width: 100%; height: 100%; border-radius: 4px; background: linear-gradient(180deg, #EAF7D8 0%, #B9EF8E 33%, #B9EF8E 50%, #9fe870 67%, #9fe870 83%, #F2C14E 100%);
+  box-shadow: inset 0 0 0 1px #C9DDB8; clip-path: inset(0 0 100% 0); transition: clip-path 2.4s cubic-bezier(.45, .05, .35, 1); }
+.road.is-shown .lane__fill { clip-path: inset(0 0 0 0); }
+.lane__item { display: flex; flex-direction: column; gap: 12px; opacity: 0; transform: translateY(14px); transition: opacity .35s ease var(--d), transform .45s ease var(--d); }
+.road.is-shown .lane__item { opacity: 1; transform: none; }
+.lane__goal { align-self: flex-start; margin-left: 76px; padding: 5px 12px; border-radius: 999px; background: #263B1A; color: #9fe870; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+.lane__row { position: relative; display: flex; align-items: center; gap: 14px; }
+.lane__icon { position: relative; flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--bg); color: #263B1A; box-shadow: inset 0 0 0 1.5px var(--ring), 0 0 0 6px #fff; }
+.lane__icon img { display: block; width: 78%; height: auto; }
+.lane__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lane__text strong { font-size: 17px; font-weight: 800; }
+.lane__text span { color: #687161; font-size: 14px; }
+
+@media (max-width: 759px) {
+  .road__wide { display: none; }
+  .lane { display: flex; }
+  .landing__top { gap: 16px; }
+  .landing__signup { padding: 12px 20px; font-size: 16px; }
+  .intro__cta { padding: 22px 40px; font-size: 22px; }
+  .steps { gap: 8px; }
+}
+
+/* 안내 띠 */
+.landing__notice { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px; padding: 22px 20px; background: #263B1A; color: #fff; font-size: clamp(14px, 1.5vw, 22px); text-align: center; }
+.landing__notice b { padding: 4px 10px; border-radius: 6px; background: #9fe870; color: #263B1A; font-size: .85em; font-weight: 700; }
+
+/* 움직임 줄이기: 처음부터 다 그려진 모습으로 보인다 */
+@media (prefers-reduced-motion: reduce) {
+  .road__rail, .station__in, .lane__fill, .lane__item { transition: none !important; }
+  .road__rail { stroke-dashoffset: 0; }
+  .station__in { transform: translate(-50%, calc(var(--size) / -2)) scale(1); opacity: 1; }
+  .lane__fill { clip-path: inset(0 0 0 0); }
+  .lane__item { opacity: 1; transform: none; }
+}
