@@ -20,7 +20,6 @@ import com.wanted.moneybeetle.domain.trading.model.service.PriceAdminService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -79,9 +78,7 @@ public class AdminMarketController {
     @PostMapping(value = "/seasons/{seasonId}/prices/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<PriceSaveResultDTO> importPrices(@PathVariable Long seasonId,
             @RequestParam("file") MultipartFile file) throws IOException {
-        try (InputStream csv = file.getInputStream()) {   // 성공·실패 모두 스트림을 닫는다
-            return ApiResponse.success(priceAdminService.importCsv(seasonId, csv));
-        }
+        return ApiResponse.success(priceAdminService.importCsv(seasonId, file.getInputStream()));
     }
 
     // API 121 분야 목록
