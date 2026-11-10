@@ -122,6 +122,11 @@ class RankingServiceTest {
         assertThat(ranking.items().get(1).hasBadge()).isFalse();
         assertThat(ranking.items().get(1).title()).isNull();
         assertThat(ranking.me()).isEqualTo(new RankingDTO.Me(2, 5_000_000L, new BigDecimal("10.00")));
+
+        // 정렬은 "순위 순, 같은 순위 안에서는 참가 순" 요구사항의 핵심이라 조회에 넘긴 정렬 기준을 직접 확인한다
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(participantRepository).findByTradingSeasonIdAndAssetRankIsNotNull(eq(SEASON_ID), pageable.capture());
+        assertThat(pageable.getValue().getSort().toString()).isEqualTo("assetRank: ASC,seasonParticipantId: ASC");
     }
 
     @Test

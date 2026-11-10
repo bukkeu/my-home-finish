@@ -68,7 +68,8 @@ public class RankingService {
         Map<Long, String> nicknames = memberService.findNicknames(memberIds);
         Map<Long, RankingAward> awards = memberIds.isEmpty() ? Map.of()
                 : awardRepository.findByTradingSeasonIdAndRankingTypeAndMemberIdIn(seasonId, rankingType, memberIds)
-                        .stream().collect(Collectors.toMap(RankingAward::getMemberId, Function.identity()));
+                        .stream().collect(Collectors.toMap(RankingAward::getMemberId, Function.identity(),
+                                (first, second) -> first));   // 시즌·회원·종류당 1건이 DB 유니크 키로 보장되지만, 어긋나도 랭킹 화면이 500 으로 깨지지 않게 한다
 
         List<RankingDTO.Item> items = rows.getContent().stream()
                 .map(row -> {
