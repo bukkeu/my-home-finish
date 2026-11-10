@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,12 +15,13 @@ import lombok.NoArgsConstructor;
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
  *   테이블 lesson (영상 + 요약글, 강의당 1~3개)
+ *   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#157)
  *  */
 @Entity
 @Table(name = "lesson")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Lesson {
+public class Lesson extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
