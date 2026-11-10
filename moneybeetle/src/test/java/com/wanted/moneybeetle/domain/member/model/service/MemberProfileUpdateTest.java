@@ -52,7 +52,7 @@ class MemberProfileUpdateTest {
         Clock clock = Clock.fixed(Instant.parse("2026-11-08T00:00:00Z"), ZoneId.of("Asia/Seoul"));
         memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), forbiddenWordService,
-                clock, mock(InstructorProfileRepository.class));
+                clock, mock(InstructorProfileRepository.class), mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class));
 
         member = Member.signup("minji@gmail.com", "hash", "민지", LocalDate.of(1999, 4, 12), "FEMALE",
                 LocalDate.of(2026, 11, 8));

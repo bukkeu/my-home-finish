@@ -96,14 +96,41 @@ class MemberAccountControllerTest {
                         .content("{\"password\":\"beetle1234\"}"))
                 .andExpect(status().isNoContent());
 
-        verify(accountService).withdraw(7L, "beetle1234");
+        verify(accountService).withdraw(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq("beetle1234"), org.mockito.ArgumentMatchers.any());
         assertTrue(session.isInvalid());
+    }
+
+    @Test
+    @DisplayName("간편 로그인 회원은 본문 없이 탈퇴를 요청한다 (비밀번호 없이 서비스가 본인 확인 여부를 본다)")
+    void withdrawWithoutBody() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(delete("/api/v1/members/me").session(session))
+                .andExpect(status().isNoContent());
+
+        verify(accountService).withdraw(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any());
+        assertTrue(session.isInvalid());
+    }
+
+    @Test
+    @DisplayName("간편 로그인 회원이 다시 로그인으로 본인 확인을 하지 않았으면 SOCIAL_REAUTH_REQUIRED 이고 세션을 끝내지 않는다")
+    void withdrawRequiresReauth() throws Exception {
+        doThrow(new BusinessException(MemberErrorCode.SOCIAL_REAUTH_REQUIRED)).when(accountService)
+                .withdraw(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any());
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(delete("/api/v1/members/me").session(session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("SOCIAL_REAUTH_REQUIRED"));
+
+        assertTrue(!session.isInvalid());
     }
 
     @Test
     @DisplayName("탈퇴 때 비밀번호가 틀리면 세션을 끝내지 않는다")
     void wrongPasswordKeepsSession() throws Exception {
-        doThrow(new BusinessException(MemberErrorCode.PASSWORD_WRONG)).when(accountService).withdraw(7L, "bad");
+        doThrow(new BusinessException(MemberErrorCode.PASSWORD_WRONG)).when(accountService)
+                .withdraw(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq("bad"), org.mockito.ArgumentMatchers.any());
         MockHttpSession session = new MockHttpSession();
 
         mockMvc.perform(delete("/api/v1/members/me").session(session).contentType(MediaType.APPLICATION_JSON)
