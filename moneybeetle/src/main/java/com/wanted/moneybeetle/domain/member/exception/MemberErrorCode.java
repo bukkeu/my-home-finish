@@ -41,7 +41,8 @@ public enum MemberErrorCode implements ErrorCode {
     IDENTITY_CODE_INVALID("IDENTITY_CODE_INVALID", HttpStatus.BAD_REQUEST, "인증번호가 맞지 않아요. 다시 확인해 주세요."),
     IDENTITY_CODE_EXPIRED("IDENTITY_CODE_EXPIRED", HttpStatus.BAD_REQUEST, "인증번호가 만료되었거나 너무 많이 틀렸어요. 인증번호를 다시 받아 주세요."),
     IDENTITY_CODE_TOO_SOON("IDENTITY_CODE_TOO_SOON", HttpStatus.TOO_MANY_REQUESTS, "인증번호는 1분에 한 번만 받을 수 있어요. 잠시 뒤에 다시 시도해 주세요."),
-    IDENTITY_MAIL_UNAVAILABLE("IDENTITY_MAIL_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요.");
+    IDENTITY_MAIL_UNAVAILABLE("IDENTITY_MAIL_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요."),
+    IDENTITY_REQUEST_LIMITED("IDENTITY_REQUEST_LIMITED", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.");
 
     private final String code;
     private final HttpStatus status;

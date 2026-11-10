@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 *   - 진행 상태(코드 해시·만료·틀린 횟수·인증 완료 표시)는 HTTP 세션에 담는다. DB 테이블은 만들지 않는다.
 *     그래서 가입 화면을 연 브라우저(세션)에서 인증해야 그 세션의 가입(API 4)이 통과한다.
 *   - 코드는 SecureRandom 6자리, 5분 안에 쓴다. 5번 틀리면 그 코드는 버리고 다시 받게 한다.
+*   - 접속 주소(IP) 하나는 1분에 10번까지만 코드를 요청할 수 있다. 이메일을 바꿔 가며 여러 주소로 메일을 보내게 하는 것을 막는다.
+*     주소는 요청의 접속 주소(getRemoteAddr)만 쓴다. 프록시 뒤에서는 모든 요청이 프록시 주소로 보이므로, 배포할 때 프록시를 믿는 설정과 함께 다시 정한다.
 *   - 같은 이메일로는 60초에 한 번만 코드를 보낸다. 세션을 새로 만들어도 이 제한은 서버가 이메일 기준으로 지키므로
 *     남의 이메일로 메일을 마구 보내는 일을 막는다. (서버를 다시 켜면 이 기록은 지워진다.)
 *   - 이미 가입된 이메일은 코드를 보내지 않는다 (이메일 중복 확인 API 2 로 이미 알 수 있는 정보다).
@@ -42,6 +44,9 @@ public class IdentityVerificationService {
     static final Duration RESEND_INTERVAL = Duration.ofSeconds(60);
     static final Duration VERIFIED_TTL = Duration.ofMinutes(30);
     static final int MAX_FAILURES = 5;
+    /** 접속 주소 하나가 1분(IP_WINDOW)에 코드를 요청할 수 있는 횟수. 한 노트북에서 시연해도 넉넉한 값이다 */
+    static final int IP_LIMIT = 10;
+    static final Duration IP_WINDOW = Duration.ofMinutes(1);
     private static final int COOLDOWN_PRUNE_SIZE = 1000;
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -50,6 +55,8 @@ public class IdentityVerificationService {
     private final Clock clock;
     /** 이메일별로 마지막에 코드를 보낸 시각 (세션과 상관없이 60초 제한을 지키려는 기록) */
     private final Map<String, Instant> lastSentAt = new ConcurrentHashMap<>();
+    /** 접속 주소별로 최근 IP_WINDOW 안에 요청한 시각들 (서버 메모리. 서버를 다시 켜면 지워진다) */
+    private final Map<String, java.util.Deque<Instant>> requestsByIp = new ConcurrentHashMap<>();
 
     public IdentityVerificationService(MemberService memberService, IdentityVerificationMailer mailer, Clock clock) {
         this.memberService = memberService;
@@ -57,8 +64,17 @@ public class IdentityVerificationService {
         this.clock = clock;
     }
 
-    /** 인증 코드를 메일로 보낸다 (API 5-1). 이전에 받은 코드는 쓸 수 없게 된다 */
-    public void requestCode(String rawEmail, HttpSession session) {
+    /**
+     * 인증 코드를 메일로 보낸다 (API 5-1). 이전에 받은 코드는 쓸 수 없게 된다.
+     *
+     * @param clientIp 요청한 쪽의 주소. 컨트롤러가 요청의 접속 주소(getRemoteAddr)를 넘긴다. X-Forwarded-For 같은 헤더는 값을 마음대로 적을 수 있어 쓰지 않는다
+     */
+    public void requestCode(String rawEmail, String clientIp, HttpSession session) {
+        Instant now = clock.instant();
+        // 이메일을 바꿔 가며 보내는 요청(남의 주소 여러 곳으로 메일을 보내게 하는 것)을 막으려고, DB 를 보기 전에 접속 주소별 횟수부터 센다
+        if (!reserveIpSlot(clientIp, now)) {
+            throw new BusinessException(MemberErrorCode.IDENTITY_REQUEST_LIMITED);
+        }
         String email = SignupRules.normalizeEmail(rawEmail);
         if (!SignupRules.isValidEmail(rawEmail) || !SignupRules.isValidEmail(email)) {
             throw new BusinessException(MemberErrorCode.EMAIL_INVALID);
@@ -67,7 +83,6 @@ public class IdentityVerificationService {
             throw new BusinessException(MemberErrorCode.EMAIL_DUPLICATED);
         }
 
-        Instant now = clock.instant();
         if (!reserveSendSlot(email, now)) {
             throw new BusinessException(MemberErrorCode.IDENTITY_CODE_TOO_SOON);
         }
@@ -125,6 +140,27 @@ public class IdentityVerificationService {
     /** 가입이 끝났다. 인증 표시를 지워 같은 인증으로 다른 이메일을 가입시키지 못하게 한다 */
     public void clear(HttpSession session) {
         session.removeAttribute(SESSION_KEY);
+    }
+
+    /** 이 접속 주소가 최근 IP_WINDOW 안에 IP_LIMIT 번 미만 요청했으면 이번 요청을 기록하고 true. 주소를 알 수 없으면 하나의 묶음("unknown")으로 센다 */
+    private boolean reserveIpSlot(String clientIp, Instant now) {
+        String key = clientIp == null || clientIp.isBlank() ? "unknown" : clientIp;
+        if (requestsByIp.size() > COOLDOWN_PRUNE_SIZE) {
+            requestsByIp.values().removeIf(times -> times.isEmpty() || !now.isBefore(times.peekLast().plus(IP_WINDOW)));   // 오래된 기록을 지운다
+        }
+        boolean[] reserved = {false};
+        requestsByIp.compute(key, (ip, times) -> {
+            java.util.Deque<Instant> recent = times == null ? new java.util.ArrayDeque<>() : times;
+            while (!recent.isEmpty() && !now.isBefore(recent.peekFirst().plus(IP_WINDOW))) {
+                recent.pollFirst();
+            }
+            if (recent.size() < IP_LIMIT) {
+                recent.addLast(now);
+                reserved[0] = true;
+            }
+            return recent;
+        });
+        return reserved[0];
     }
 
     /** 같은 이메일로 60초 안에 보낸 적이 없으면 지금 보낸 것으로 기록하고 true */

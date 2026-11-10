@@ -8,6 +8,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.FindEmailDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MaskedEmailDTO;
 import com.wanted.moneybeetle.domain.member.model.service.AccountService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,8 +56,8 @@ public class AuthController {
     // API 5-1. 본인인증 코드 요청 (이메일로 6자리 코드를 보낸다)
     @PostMapping("/api/v1/auth/identity-verification/request")
     public ResponseEntity<Void> requestIdentityCode(@Valid @RequestBody IdentityVerificationDTO.CodeRequest request,
-                                                    HttpSession session) {
-        identityVerificationService.requestCode(request.getEmail(), session);
+                                                    HttpServletRequest httpRequest, HttpSession session) {
+        identityVerificationService.requestCode(request.getEmail(), httpRequest.getRemoteAddr(), session);
         return ResponseEntity.accepted().build();
     }
 

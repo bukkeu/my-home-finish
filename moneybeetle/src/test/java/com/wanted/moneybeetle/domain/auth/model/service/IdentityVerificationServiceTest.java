@@ -33,6 +33,7 @@ import org.springframework.mock.web.MockHttpSession;
 class IdentityVerificationServiceTest {
 
     private static final String EMAIL = "minji@gmail.com";
+    private static final String IP = "203.0.113.7";
 
     private final MemberService memberService = mock(MemberService.class);
     private final IdentityVerificationMailer mailer = mock(IdentityVerificationMailer.class);
@@ -56,7 +57,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("코드를 요청하면 6자리 숫자를 메일로 보내고, 세션에는 코드 원문 없이 해시만 둔다")
     void requestSendsSixDigitCode() {
-        service.requestCode("Minji@Gmail.com", session);   // 대소문자는 정규화해 소문자로 보낸다
+        service.requestCode("Minji@Gmail.com", IP, session);   // 대소문자는 정규화해 소문자로 보낸다
 
         String code = sentCode();
         assertThat(code).matches("\\d{6}");
@@ -69,7 +70,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("이메일 형식이 틀리면 EMAIL_INVALID 이고 메일을 보내지 않는다")
     void invalidEmail() {
-        assertThatThrownBy(() -> service.requestCode("not-an-email", session))
+        assertThatThrownBy(() -> service.requestCode("not-an-email", IP, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.EMAIL_INVALID));
         verify(mailer, never()).send(anyString(), anyString());
     }
@@ -79,7 +80,7 @@ class IdentityVerificationServiceTest {
     void duplicatedEmail() {
         when(memberService.isEmailAvailable(anyString())).thenReturn(AvailabilityDTO.of(false));
 
-        assertThatThrownBy(() -> service.requestCode(EMAIL, session))
+        assertThatThrownBy(() -> service.requestCode(EMAIL, IP, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.EMAIL_DUPLICATED));
         verify(mailer, never()).send(anyString(), anyString());
     }
@@ -87,23 +88,61 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("같은 이메일로 60초 안에 다시 요청하면 IDENTITY_CODE_TOO_SOON, 60초가 지나면 다시 보낸다")
     void resendInterval() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
 
         clock.advance(Duration.ofSeconds(59));
-        assertThatThrownBy(() -> service.requestCode(EMAIL, session))
+        assertThatThrownBy(() -> service.requestCode(EMAIL, IP, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_CODE_TOO_SOON));
 
         clock.advance(Duration.ofSeconds(1));
-        assertThatCode(() -> service.requestCode(EMAIL, session)).doesNotThrowAnyException();
+        assertThatCode(() -> service.requestCode(EMAIL, IP, session)).doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("세션을 바꿔도 같은 이메일의 60초 제한은 그대로 지켜진다 (남의 이메일로 메일을 마구 보내는 일을 막는다)")
     void resendIntervalAppliesAcrossSessions() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
 
-        assertThatThrownBy(() -> service.requestCode(EMAIL, new MockHttpSession()))
+        assertThatThrownBy(() -> service.requestCode(EMAIL, IP, new MockHttpSession()))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_CODE_TOO_SOON));
+    }
+
+    @Test
+    @DisplayName("한 접속 주소가 이메일을 바꿔 가며 1분에 10번을 넘게 요청하면 IDENTITY_REQUEST_LIMITED 이고, 메일도 보내지 않고 DB 도 보지 않는다")
+    void ipLimit() {
+        for (int i = 0; i < IdentityVerificationService.IP_LIMIT; i++) {
+            service.requestCode("user" + i + "@gmail.com", IP, new MockHttpSession());
+        }
+        org.mockito.Mockito.clearInvocations(memberService, mailer);
+
+        assertThatThrownBy(() -> service.requestCode("another@gmail.com", IP, new MockHttpSession()))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_REQUEST_LIMITED));
+        verify(mailer, never()).send(anyString(), anyString());
+        verify(memberService, never()).isEmailAvailable(anyString());
+    }
+
+    @Test
+    @DisplayName("접속 주소 제한은 주소마다 따로 세고, 1분이 지나면 다시 요청할 수 있다")
+    void ipLimitIsPerAddressAndExpires() {
+        for (int i = 0; i < IdentityVerificationService.IP_LIMIT; i++) {
+            service.requestCode("user" + i + "@gmail.com", IP, new MockHttpSession());
+        }
+
+        assertThatCode(() -> service.requestCode("other-ip@gmail.com", "198.51.100.9", new MockHttpSession())).doesNotThrowAnyException();   // 다른 주소는 그대로
+
+        clock.advance(IdentityVerificationService.IP_WINDOW);
+        assertThatCode(() -> service.requestCode("later@gmail.com", IP, new MockHttpSession())).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("접속 주소를 알 수 없으면(null·공백) 하나의 묶음으로 세어 같은 제한을 받는다")
+    void unknownIpIsLimitedTogether() {
+        for (int i = 0; i < IdentityVerificationService.IP_LIMIT; i++) {
+            service.requestCode("user" + i + "@gmail.com", i % 2 == 0 ? null : " ", new MockHttpSession());
+        }
+
+        assertThatThrownBy(() -> service.requestCode("another@gmail.com", null, new MockHttpSession()))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_REQUEST_LIMITED));
     }
 
     @Test
@@ -111,18 +150,18 @@ class IdentityVerificationServiceTest {
     void mailQueueFull() {
         doThrow(new TaskRejectedException("full")).when(mailer).send(anyString(), anyString());
 
-        assertThatThrownBy(() -> service.requestCode(EMAIL, session))
+        assertThatThrownBy(() -> service.requestCode(EMAIL, IP, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_MAIL_UNAVAILABLE));
         assertThat(session.getAttribute(IdentityVerificationService.SESSION_KEY)).isNull();
 
         org.mockito.Mockito.reset(mailer);   // 대기열이 비었다
-        assertThatCode(() -> service.requestCode(EMAIL, session)).doesNotThrowAnyException();
+        assertThatCode(() -> service.requestCode(EMAIL, IP, session)).doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("맞는 코드를 넣으면 인증된 것으로 표시되고, 가입 전 확인(requireVerified)을 통과한다")
     void verifyWithCorrectCode() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
 
         service.verify(EMAIL, sentCode(), session);
 
@@ -132,7 +171,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("틀린 코드는 IDENTITY_CODE_INVALID 이고, 그 뒤 맞는 코드로 인증할 수 있다")
     void wrongCodeThenCorrect() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         String code = sentCode();
         String wrong = code.equals("000000") ? "111111" : "000000";
 
@@ -145,7 +184,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("5번 틀리면 그 코드는 버려져 맞는 코드를 넣어도 IDENTITY_CODE_EXPIRED 이고 다시 받아야 한다")
     void tooManyFailures() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         String code = sentCode();
         String wrong = code.equals("000000") ? "111111" : "000000";
 
@@ -163,7 +202,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("5분이 지난 코드는 IDENTITY_CODE_EXPIRED")
     void codeExpires() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         String code = sentCode();
 
         clock.advance(IdentityVerificationService.CODE_TTL);
@@ -178,7 +217,7 @@ class IdentityVerificationServiceTest {
         assertThatThrownBy(() -> service.verify(EMAIL, "123456", session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_CODE_EXPIRED));
 
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         String code = sentCode();
         assertThatThrownBy(() -> service.verify("other@gmail.com", code, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_CODE_EXPIRED));
@@ -190,7 +229,7 @@ class IdentityVerificationServiceTest {
         assertThatThrownBy(() -> service.requireVerified(EMAIL, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_NOT_VERIFIED));
 
-        service.requestCode(EMAIL, session);   // 코드만 받고 아직 인증하지 않았다
+        service.requestCode(EMAIL, IP, session);   // 코드만 받고 아직 인증하지 않았다
         assertThatThrownBy(() -> service.requireVerified(EMAIL, session))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_NOT_VERIFIED));
 
@@ -202,7 +241,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("인증 표시는 30분이 지나면 쓸 수 없고, 가입이 끝나 clear 하면 지워진다")
     void verifiedExpiresAndClears() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         service.verify(EMAIL, sentCode(), session);
 
         clock.advance(IdentityVerificationService.VERIFIED_TTL);
@@ -220,13 +259,13 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("코드를 다시 요청하면 이전에 받은 코드는 쓸 수 없다")
     void newCodeReplacesOld() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         ArgumentCaptor<String> codes = forClass(String.class);
         verify(mailer).send(eq(EMAIL), codes.capture());
         String first = codes.getValue();
 
         clock.advance(IdentityVerificationService.RESEND_INTERVAL);
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         ArgumentCaptor<String> all = forClass(String.class);
         verify(mailer, org.mockito.Mockito.times(2)).send(eq(EMAIL), all.capture());
         String second = all.getAllValues().get(1);
@@ -241,7 +280,7 @@ class IdentityVerificationServiceTest {
     @Test
     @DisplayName("이미 5번 틀린 상태를 먼저 읽고 들어온 늦은 요청은 맞는 코드여도 비교하지 않고 IDENTITY_CODE_EXPIRED (제한 확인이 비교보다 앞선다)")
     void limitIsCheckedBeforeComparing() {
-        service.requestCode(EMAIL, session);
+        service.requestCode(EMAIL, IP, session);
         String code = sentCode();
         var state = (com.wanted.moneybeetle.domain.auth.model.dto.IdentityVerificationState)
                 session.getAttribute(IdentityVerificationService.SESSION_KEY);
@@ -269,7 +308,7 @@ class IdentityVerificationServiceTest {
         org.mockito.Mockito.doAnswer(call -> store.remove((String) call.getArgument(0)))
                 .when(shared).removeAttribute(anyString());
 
-        service.requestCode(EMAIL, shared);
+        service.requestCode(EMAIL, IP, shared);
         String code = sentCode();
         String wrong = code.equals("000000") ? "111111" : "000000";
 

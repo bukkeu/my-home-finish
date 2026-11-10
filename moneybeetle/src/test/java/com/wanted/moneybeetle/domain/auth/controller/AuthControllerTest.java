@@ -109,19 +109,31 @@ class AuthControllerTest {
                         .content("{\"email\":\"minji@gmail.com\"}"))
                 .andExpect(status().isAccepted());
 
-        verify(identityVerificationService).requestCode(Mockito.eq("minji@gmail.com"), any());
+        verify(identityVerificationService).requestCode(Mockito.eq("minji@gmail.com"), Mockito.eq("127.0.0.1"), any());
     }
 
     @Test
     @DisplayName("코드를 너무 자주 요청하면 429 IDENTITY_CODE_TOO_SOON")
     void requestIdentityCodeTooSoon() throws Exception {
         Mockito.doThrow(new BusinessException(MemberErrorCode.IDENTITY_CODE_TOO_SOON))
-                .when(identityVerificationService).requestCode(any(), any());
+                .when(identityVerificationService).requestCode(any(), any(), any());
 
         mockMvc.perform(post("/api/v1/auth/identity-verification/request").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"minji@gmail.com\"}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.error.code").value("IDENTITY_CODE_TOO_SOON"));
+    }
+
+    @Test
+    @DisplayName("접속 주소별 요청 한도를 넘으면 429 IDENTITY_REQUEST_LIMITED")
+    void requestIdentityCodeIpLimited() throws Exception {
+        Mockito.doThrow(new BusinessException(MemberErrorCode.IDENTITY_REQUEST_LIMITED))
+                .when(identityVerificationService).requestCode(any(), any(), any());
+
+        mockMvc.perform(post("/api/v1/auth/identity-verification/request").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"minji@gmail.com\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("IDENTITY_REQUEST_LIMITED"));
     }
 
     @Test
@@ -131,7 +143,7 @@ class AuthControllerTest {
                         .content("{\"email\":\"not-an-email\"}"))
                 .andExpect(status().isBadRequest());
 
-        verify(identityVerificationService, never()).requestCode(any(), any());
+        verify(identityVerificationService, never()).requestCode(any(), any(), any());
     }
 
     @Test
