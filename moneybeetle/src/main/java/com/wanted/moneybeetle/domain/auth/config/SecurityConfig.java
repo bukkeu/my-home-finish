@@ -86,8 +86,10 @@ public class SecurityConfig {
         // 같은 제공자가 위·아래 두 인증 관리자에 모두 들어가 로그인 한 번에 실패가 두 번 기록된다 (LoginHttpTest 가 이를 확인한다)
 
         http.authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
+                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login", "/instructor/signup",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
+                    // 화면 꾸밈 파일(css·js·이미지): 로그인 전 화면(강사 로그인·가입 등, #59)도 스타일과 스크립트가 있어야 동작한다
+                    auth.requestMatchers("/css/**", "/js/**", "/images/**").permitAll();
                     // 간편 로그인(구글·카카오, #9): 인증 시작·제공자가 돌려보내는 주소, 처음 온 사람의 추가 정보 화면
                     auth.requestMatchers("/oauth2/**", "/login/oauth2/**", "/signup/social").permitAll();
                     // 서버 상태 확인(#84) : health·info 만 누구나. 나머지 actuator 주소는 웹에 열지 않아(application.yaml) 로그인해도 404

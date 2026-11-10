@@ -3,6 +3,8 @@
 *   문의 게시판 그리기 (window.MBInquiry). 두 곳에서 같이 쓴다
 *   - 사이트 문의 게시판 /user/inquiry          : mount(box, { mode: 'site', openId })
 *   - 강의 상세의 '강의 문의' 탭 (#52 화면)     : mount(box, { mode: 'course', courseId })
+*   - 강사 센터 Q&A 관리 (#59)                  : mount(box, { mode: 'instructor', openId })
+*     → 강사 문의함 API 82 로 내 강의의 문의만 받고, 펼쳐서 답변을 남긴다(API 52). 문의 작성 버튼은 없다
 *   API : GET·POST /api/v1/inquiries, GET·PATCH·DELETE /api/v1/inquiries/{id}, POST /{id}/replies (API 47~52)
 *   - 볼 수 있는 사람은 작성자, 그 강의의 강사, 관리자 (서버가 정한다, SP-40). 그래서 공개/비공개 선택은 두지 않는다
 *   - 수정은 작성자만, 답변이 달리기 전에만 (INQUIRY_ALREADY_ANSWERED). 삭제는 작성자만 (화면에서는 한 번 더 확인)
@@ -81,6 +83,7 @@
   function mount(box, options) {
     var opts = options || {};
     var isCourse = opts.mode === 'course';
+    var isInstructor = opts.mode === 'instructor';
     var st = { items: [], tab: 'all', writing: false, openId: opts.openId || null, details: {}, deleted: {}, meId: null, loading: true, error: null };   // deleted: 이 화면에서 지운 문의 ID (늦게 온 상세 응답을 버린다)
 
     var uid = 'inq' + (++boardSeq);
@@ -93,10 +96,12 @@
 
     fill(box, 
       h('div', { class: 'inq-top' }, [
-        h('p', { class: 'inq-note', text: isCourse
-          ? '이 강의에 대해 궁금한 점을 강사에게 남겨 주세요. 작성자·강사·관리자만 볼 수 있어요.'
-          : '강의나 서비스를 이용하다 궁금한 점을 남겨 주세요. 작성자와 관리자만 볼 수 있고, 관리자가 확인한 뒤 답변을 드려요.' }),
-        h('button', { type: 'button', class: 'btn btn-primary', text: '문의 작성', onclick: function () { st.writing = !st.writing; drawForm(); } })
+        h('p', { class: 'inq-note', text: isInstructor
+          ? '내 강의에 달린 수강생 문의예요. 답변 대기 글이 먼저 보여요. 펼쳐서 답변을 남기면 수강생에게 알림이 가요.'
+          : isCourse
+            ? '이 강의에 대해 궁금한 점을 강사에게 남겨 주세요. 작성자·강사·관리자만 볼 수 있어요.'
+            : '강의나 서비스를 이용하다 궁금한 점을 남겨 주세요. 작성자와 관리자만 볼 수 있고, 관리자가 확인한 뒤 답변을 드려요.' }),
+        isInstructor ? null : h('button', { type: 'button', class: 'btn btn-primary', text: '문의 작성', onclick: function () { st.writing = !st.writing; drawForm(); } })
       ]),
       els.form, els.extra, els.tabs, els.list
     );
@@ -104,6 +109,7 @@
     /* ---------- 불러오기 ---------- */
 
     function listUrl(page) {
+      if (isInstructor) return '/api/v1/instructor/inquiries?page=' + page + '&size=' + PAGE_SIZE;   // 답변 대기 먼저, 그다음 최신순
       return '/api/v1/inquiries?' + (isCourse ? 'courseId=' + opts.courseId + '&' : '') + 'page=' + page + '&size=' + PAGE_SIZE;
     }
 
@@ -201,7 +207,7 @@
       var rows = shownItems();
       if (!rows.length) {
         fill(els.list, h('div', { class: 'inq-state', text: st.items.length ? '해당하는 문의가 없어요.'
-          : (isCourse ? '아직 남긴 강의 문의가 없어요.' : '아직 남긴 문의가 없어요.') }));
+          : (isInstructor ? '아직 내 강의에 달린 문의가 없어요.' : isCourse ? '아직 남긴 강의 문의가 없어요.' : '아직 남긴 문의가 없어요.') }));
       } else {
         fill(els.list, rows.map(renderRow));
       }
@@ -221,7 +227,7 @@
           h('span', { class: 'inq-status inq-status--' + String(item.status).toLowerCase(), text: STATUS[item.status] || item.status }),
           h('span', { class: 'inq-row__text' }, [
             h('strong', { class: 'inq-row__title', text: item.title }),
-            h('span', { class: 'inq-meta', text: [item.category, item.writerNickname, date(item.createdAt)].filter(Boolean).join(' · ') })
+            h('span', { class: 'inq-meta', text: [item.courseTitle, item.category, item.writerNickname, date(item.createdAt)].filter(Boolean).join(' · ') })
           ]),
           h('span', { class: 'inq-row__caret', 'aria-hidden': 'true', text: open ? '▴' : '▾' })
         ]),
