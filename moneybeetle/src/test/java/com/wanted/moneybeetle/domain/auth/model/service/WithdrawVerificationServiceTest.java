@@ -211,6 +211,33 @@ class WithdrawVerificationServiceTest {
         service.requestCode(7L, session);                            // 보낸 적 없는 요청은 제한에 걸리지 않는다
     }
 
+    @Test
+    @DisplayName("같은 세션으로 동시에 탈퇴 확인을 쓰려 해도 성공은 정확히 한 번이다")
+    void concurrentConsumeSucceedsOnce() throws Exception {
+        service.requestCode(7L, session);
+        service.verify(7L, sentCode(), session);
+        int threads = 8;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Future<Boolean>> results = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            results.add(pool.submit(() -> {
+                start.await();
+                return service.consumeVerified(7L, session);
+            }));
+        }
+        start.countDown();
+        int successes = 0;
+        for (java.util.concurrent.Future<Boolean> result : results) {
+            if (result.get(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                successes++;
+            }
+        }
+        pool.shutdown();
+
+        assertThat(successes).isEqualTo(1);
+    }
+
     /** 시간을 앞으로 보낼 수 있는 시계 */
     private static final class MutableClock extends Clock {
         private Instant now;

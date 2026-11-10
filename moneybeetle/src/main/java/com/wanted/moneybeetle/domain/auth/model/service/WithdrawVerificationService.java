@@ -114,8 +114,9 @@ public class WithdrawVerificationService implements WithdrawVerifier {
                 .map(member -> SignupRules.normalizeEmail(member.getEmail()))
                 .orElse(null);
         synchronized (state) {
-            // 확인을 마친 이메일이 이 회원의 이메일이고 아직 유효할 때만 한 번 쓴다
-            if (email == null || !state.isVerifiedFor(email, clock.instant())) {
+            // 확인을 마친 이메일이 이 회원의 이메일이고 아직 유효할 때만 한 번 쓴다.
+            // 같은 세션의 동시 요청이 같은 상태를 먼저 읽었어도 먼저 쓴 요청이 세션에서 지웠으면 나중 요청은 쓸 수 없다 (성공은 정확히 한 번)
+            if (session.getAttribute(SESSION_KEY) != state || email == null || !state.isVerifiedFor(email, clock.instant())) {
                 return false;
             }
             session.removeAttribute(SESSION_KEY);
