@@ -195,6 +195,54 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("로그인한 회원이 purpose=reauth 로 시작하면 본인 확인을 시작하고 같은 인증 시작 주소로 302")
+    void startOAuthReauth() throws Exception {
+        com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails me = new com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails(
+                com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO.from(
+                        reauthMember(), com.wanted.moneybeetle.domain.member.model.entity.Member.ROLE_MEMBER));
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(me, null, me.getAuthorities()));
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google?purpose=reauth"))
+                    .andExpect(status().isFound())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Location", "/oauth2/authorization/google"));
+
+            verify(socialLoginService).beginReauth(org.mockito.ArgumentMatchers.eq(7L), any());
+            verify(socialLoginService, never()).cancelReauth(any());
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("로그인하지 않은 채 purpose=reauth 로 시작하면 401 이고 본인 확인을 시작하지 않는다")
+    void startOAuthReauthRequiresLogin() throws Exception {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google?purpose=reauth"))
+                .andExpect(status().isUnauthorized());
+
+        verify(socialLoginService, never()).beginReauth(any(), any());
+    }
+
+    @Test
+    @DisplayName("일반 간편 로그인을 시작하면 남아 있던 본인 확인 상태를 지운다")
+    void startOAuthClearsPendingReauth() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google"))
+                .andExpect(status().isFound());
+
+        verify(socialLoginService).cancelReauth(any());
+        verify(socialLoginService, never()).beginReauth(any(), any());
+    }
+
+    private static com.wanted.moneybeetle.domain.member.model.entity.Member reauthMember() {
+        com.wanted.moneybeetle.domain.member.model.entity.Member member = com.wanted.moneybeetle.domain.member.model.entity.Member.signupSocial(
+                "minji@gmail.com", "민지", java.time.LocalDate.of(1999, 4, 12), "FEMALE", java.time.LocalDate.of(2026, 11, 10));
+        org.springframework.test.util.ReflectionTestUtils.setField(member, "memberId", 7L);
+        return member;
+    }
+
+    @Test
     @DisplayName("서비스가 제공자를 쓸 수 없다고 하면 503 OAUTH_PROVIDER_UNAVAILABLE 이고 인증 시작 주소로 보내지 않는다")
     void startOAuthUnavailable() throws Exception {
         org.mockito.Mockito.doThrow(new com.wanted.moneybeetle.global.exception.BusinessException(

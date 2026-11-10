@@ -1,9 +1,11 @@
 package com.wanted.moneybeetle.domain.auth.handler;
 
+import com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService;
 import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -19,7 +21,10 @@ import org.springframework.stereotype.Component;
 *  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class OAuth2FailHandler implements AuthenticationFailureHandler {
+
+    private final SocialLoginService socialLoginService;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
@@ -28,6 +33,7 @@ public class OAuth2FailHandler implements AuthenticationFailureHandler {
                 ? oauth.getError().getErrorCode()
                 : exception.getClass().getSimpleName();
         log.warn("간편 로그인에 실패했어요: {}", reason);
+        socialLoginService.cancelReauth(request.getSession(false));   // 본인 확인을 하러 갔다가 취소·실패했으면 그 상태를 지운다
         response.sendRedirect(OAuth2SuccessHandler.LOGIN_ERROR_URL + MemberErrorCode.OAUTH_FAILED.getCode());
     }
 }
