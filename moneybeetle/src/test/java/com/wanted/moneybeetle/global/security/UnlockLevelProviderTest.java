@@ -6,17 +6,14 @@ import org.junit.jupiter.api.Test;
 import java.util.OptionalInt;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /* comment.
 *   담당 : SCM (공통 기반·보안)
 *   UnlockLevelProvider 확인 (#223)
 *   - 모의 청약 : 운영 설정(UNLOCK_LEVEL_HOUSING) 값을 쓴다. 없거나 정수가 아니면(빈 값) 또는 1 미만이면 기본 Lv.12
-*   - 모의투자 : 아직 설정을 읽지 않고 기본 Lv.8 (시즌 해금 레벨과의 기준을 정한 뒤 바꾼다)
+*   - 모의투자 : 운영 설정(UNLOCK_LEVEL_TRADING) 값을 쓴다. 없으면 기본 Lv.8 (시즌과 상관없음, 팀 결정 2026-11-10)
 *  */
 class UnlockLevelProviderTest {
 
@@ -47,8 +44,11 @@ class UnlockLevelProviderTest {
     }
 
     @Test
-    void 모의투자는_설정을_읽지_않고_기본값() {
+    void 모의투자도_운영_설정_값을_쓰고_없으면_기본_Lv8() {
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(6));
+        assertThat(provider.getLevel(UnlockFeature.TRADING)).isEqualTo(6);
+
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.empty());
         assertThat(provider.getLevel(UnlockFeature.TRADING)).isEqualTo(8);
-        verify(systemSettingService, never()).findIntValue(any());
     }
 }

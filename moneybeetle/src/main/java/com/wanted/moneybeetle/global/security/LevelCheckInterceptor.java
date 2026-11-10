@@ -18,7 +18,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 *   레벨 해금 확인 (SP-24, INV-01, SUB-01) - 레벨이 모자라면 LEVEL_LOCKED (403)
 *   - 현재 레벨 : 로그인 회원 번호로 GrowthService.getLevel(memberId) 를 불러 매번 DB 에서 확인한다 (역할분담 §7)
 *   - 기준 레벨 : @RequireLevel 의 UnlockFeature 를 UnlockLevelProvider 로 읽는다
-*                 (모의 청약은 운영 설정 값, 모의투자는 아직 기본값 #223. 화면도 같은 Provider 를 써서 기준이 같다)
+*                 (모의투자·모의 청약 모두 운영 설정 값 #223. 화면도 같은 Provider 를 써서 기준이 같다)
 *  */
 @Component
 @RequiredArgsConstructor

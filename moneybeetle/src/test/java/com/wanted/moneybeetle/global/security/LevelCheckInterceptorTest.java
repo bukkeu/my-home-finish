@@ -133,12 +133,15 @@ class LevelCheckInterceptorTest {
     }
 
     @Test
-    void 모의투자는_아직_운영_설정을_읽지_않고_기본_Lv8() throws Exception {
+    void 관리자가_모의투자_해금_레벨을_10으로_바꾸면_Lv10_부터_통과() throws Exception {
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(10));
         HandlerMethod home = handler(new TradingController(), "home");
-        when(growthService.getLevel(MEMBER_ID)).thenReturn(8);
 
+        when(growthService.getLevel(MEMBER_ID)).thenReturn(9);
+        assertLocked(home);
+
+        when(growthService.getLevel(MEMBER_ID)).thenReturn(10);
         assertThat(interceptor.preHandle(request, response, home)).isTrue();
-        verify(systemSettingService, never()).findIntValue(any());
     }
 
     @Test
