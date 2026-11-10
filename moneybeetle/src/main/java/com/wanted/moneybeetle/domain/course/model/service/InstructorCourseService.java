@@ -31,6 +31,7 @@ import com.wanted.moneybeetle.global.file.FileStorageService;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Clock;
@@ -333,8 +334,12 @@ public class InstructorCourseService {
             return false;
         }
         Path dir = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path file = dir.resolve(videoUrl.substring(VIDEO_KEY_PREFIX.length())).normalize();
-        return file.startsWith(dir) && Files.isRegularFile(file);
+        try {
+            Path file = dir.resolve(videoUrl.substring(VIDEO_KEY_PREFIX.length())).normalize();
+            return file.startsWith(dir) && Files.isRegularFile(file);
+        } catch (InvalidPathException e) {
+            return false;                       // 경로에 쓸 수 없는 문자(예: \u0000)가 든 키 → INVALID_INPUT
+        }
     }
 
     /* 요청에 없는 영상 빼기. 시청 기록·마지막 본 영상이 가리키면 지울 수 없다 (FK) */
