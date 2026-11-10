@@ -19,6 +19,14 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     /** 사용자에게 보이는 시즌 : 주어진 상태(진행 중·휴장 중·정산 중·종료) 중 시작일이 가장 최근인 것 (#24) */
     Optional<TradingSeason> findFirstByStatusInOrderByStartDateDesc(List<String> statuses);
 
+    /**
+     * 주문할 때 보는 시즌 : 위와 같은 시즌을 공유 잠금(FOR SHARE)으로 읽는다 (#208).
+     * 주문끼리는 서로 막지 않고, 턴 넘기기·상태 변경(FOR UPDATE)과는 차례로 처리돼
+     * 장 마감 직전 주문이 이미 넘어간 턴의 가격으로 체결되지 않는다
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    Optional<TradingSeason> findFirstForShareByStatusInOrderByStartDateDesc(List<String> statuses);
+
     /** 관리자 시즌 목록 : 최근 시작한 시즌부터 */
     List<TradingSeason> findAllByOrderByStartDateDesc();
 

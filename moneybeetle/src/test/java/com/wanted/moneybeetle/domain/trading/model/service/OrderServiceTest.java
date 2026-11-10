@@ -95,6 +95,7 @@ class OrderServiceTest {
             season.advanceTurn();
         }
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
+        when(seasonRepository.findFirstForShareByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
 
         participant = SeasonParticipant.create(SEASON_ID, MEMBER_ID, 1_000_000, 0);
@@ -255,13 +256,13 @@ class OrderServiceTest {
 
     @Test
     void 첫_턴이_시작되기_전이거나_보이는_시즌이_없으면_NO_RUNNING_SEASON() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
+        when(seasonRepository.findFirstForShareByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
 
         assertRejected(order("BUY", 1, 5, REASON_ID), TradingErrorCode.NO_RUNNING_SEASON);
 
         TradingSeason notStarted = TradingSeason.create("시즌 8", LocalDate.of(2026, 11, 16), 1L);
         notStarted.changeStatus(TradingSeason.STATUS_RUNNING);
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(notStarted));
+        when(seasonRepository.findFirstForShareByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(notStarted));
 
         assertRejected(order("BUY", 1, 0, REASON_ID), TradingErrorCode.NO_RUNNING_SEASON);
     }
@@ -403,6 +404,17 @@ class OrderServiceTest {
         assertThatThrownBy(() -> serviceAt("2026-11-05T21:00:00").placeOrder(MEMBER_ID, order("SELL", 1, 5, REASON_ID)))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_CLOSED));
+    }
+
+    @Test
+    void 일요일에는_상태가_진행_중이어도_장_시간_안_주문을_MARKET_HOLIDAY_로_거절한다() {
+        // 2026-11-08 은 일요일. 관리자가 상태를 휴장으로 바꾸지 않았어도 거래되지 않는다
+        long cashBefore = participant.getCash();
+        assertThatThrownBy(() -> serviceAt("2026-11-08T12:00:00").placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_HOLIDAY));
+        assertThat(participant.getCash()).isEqualTo(cashBefore);
+        verify(orderRepository, never()).save(any());
     }
 
     @Test

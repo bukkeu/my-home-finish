@@ -11,13 +11,16 @@ import static org.mockito.Mockito.when;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.SectorRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.StockRepository;
+import com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository;
 import com.wanted.moneybeetle.domain.trading.model.dto.AdminStockDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SectorSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.entity.Sector;
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
+import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,14 +38,14 @@ class MarketAdminServiceTest {
 
     private SectorRepository sectorRepository;
     private StockRepository stockRepository;
-    private com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository seasonRepository;
+    private TradingSeasonRepository seasonRepository;
     private MarketAdminService service;
 
     @BeforeEach
     void setUp() {
         sectorRepository = mock(SectorRepository.class);
         stockRepository = mock(StockRepository.class);
-        seasonRepository = org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository.class);
+        seasonRepository = mock(TradingSeasonRepository.class);
         service = new MarketAdminService(sectorRepository, stockRepository, seasonRepository);
     }
 
@@ -322,18 +325,18 @@ class MarketAdminServiceTest {
 
     // ===== 턴 진행과 같은 시즌 행 잠금 =====
 
-    private com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason runningSeason() {
-        var season = com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.create("시즌 7",
-                java.time.LocalDate.of(2026, 11, 2), 1L);
+    private TradingSeason runningSeason() {
+        var season = TradingSeason.create("시즌 7",
+                LocalDate.of(2026, 11, 2), 1L);
         ReflectionTestUtils.setField(season, "tradingSeasonId", 7L);
-        season.changeStatus(com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.STATUS_RUNNING);
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
         return season;
     }
 
     @Test
     void 진행_중인_시즌이_있으면_분야_종목_변경이_그_시즌_행을_잠근다() {
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any()))
-                .thenReturn(java.util.Optional.of(runningSeason()));
+                .thenReturn(Optional.of(runningSeason()));
         when(sectorRepository.existsByName("핀테크")).thenReturn(false);
         when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -344,7 +347,7 @@ class MarketAdminServiceTest {
 
     @Test
     void 진행_중인_시즌이_없으면_잠그지_않는다() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any())).thenReturn(java.util.Optional.empty());
+        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any())).thenReturn(Optional.empty());
         when(sectorRepository.existsByName("핀테크")).thenReturn(false);
         when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

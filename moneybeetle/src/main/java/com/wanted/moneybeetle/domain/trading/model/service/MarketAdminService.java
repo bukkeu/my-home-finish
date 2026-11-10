@@ -165,6 +165,7 @@ public class MarketAdminService {
     private void lockRunningSeason() {
         seasonRepository.findFirstByStatusInOrderByStartDateDesc(
                         List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
+                // 돌려받은 값은 쓰지 않는다. 그 시즌 행에 턴 넘기기와 같은 잠금을 거는 것만이 목적이다
                 .ifPresent(season -> seasonRepository.findByIdForUpdate(season.getTradingSeasonId()));
     }
 

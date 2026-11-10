@@ -24,6 +24,7 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -163,13 +164,21 @@ public class OrderService {
                 .orElseThrow(() -> new BusinessException(TradingErrorCode.REASON_REQUIRED));
     }
 
-    /** 지금 주문할 수 있는 시즌 : 진행 중이고, 화면이 본 턴이 현재 턴이어야 한다 */
+    /**
+     * 지금 주문할 수 있는 시즌 : 진행 중이고, 화면이 본 턴이 현재 턴이어야 한다.
+     * 시즌 행을 공유 잠금으로 읽은 뒤 시각·턴을 확인한다. 턴 넘기기가 먼저 잠갔으면 그 커밋을 기다렸다가
+     * 넘어간 턴과 지금 시각으로 다시 판단하므로, 19:59 에 들어온 주문이 20:00 에 넘어간 턴에 지난 가격으로 체결되지 않는다
+     */
     private TradingSeason getOrderableSeason(int requestedTurn) {
-        TradingSeason season = getVisibleSeason();
+        TradingSeason season = seasonRepository
+                .findFirstForShareByStatusInOrderByStartDateDesc(TradingService.VISIBLE_STATUSES)
+                .orElseThrow(() -> new BusinessException(TradingErrorCode.NO_RUNNING_SEASON));
         if (season.isSettlingOrEnded()) {
             throw new BusinessException(TradingErrorCode.SEASON_CLOSED);
         }
-        if (season.isHoliday()) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        // 상태를 휴장으로 바꾸지 않았어도 일요일은 휴장이다 (턴 점검과 같은 기준, SP-58)
+        if (season.isHoliday() || now.getDayOfWeek() == DayOfWeek.SUNDAY) {
             throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
         }
         if (season.getCurrentTurn() < 1) {
@@ -177,7 +186,7 @@ public class OrderService {
             throw new BusinessException(TradingErrorCode.NO_RUNNING_SEASON);
         }
         // 정규장 08:00~20:00 밖에는 주문을 받지 않는다 (#208, SP-58)
-        if (!MarketHours.isOpen(LocalDateTime.now(clock))) {
+        if (!MarketHours.isOpen(now)) {
             throw new BusinessException(TradingErrorCode.MARKET_CLOSED);
         }
         if (requestedTurn != season.getCurrentTurn()) {

@@ -165,7 +165,7 @@ class SeasonAdminServiceTest {
     @Test
     void 설정과_상태를_바꾼다() {
         TradingSeason season = savedSeason(7L, "시즌 7");
-        when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
         service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), null, 9));
         service.changeStatus(7L, new SeasonStatusDTO("RUNNING"));
@@ -180,7 +180,7 @@ class SeasonAdminServiceTest {
         TradingSeason season = savedSeason(7L, "시즌 7");
         season.changeStatus(TradingSeason.STATUS_RUNNING);
         season.changeStatus(TradingSeason.STATUS_SETTLING);
-        when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
         assertThatThrownBy(() -> service.changeSetting(7L,
                 new SeasonSettingDTO(new BigDecimal("80.00"), null, 9)))
@@ -190,7 +190,7 @@ class SeasonAdminServiceTest {
 
     @Test
     void 없는_시즌의_상태를_바꾸면_NOT_FOUND() {
-        when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.changeStatus(99L, new SeasonStatusDTO("RUNNING")))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -214,7 +214,7 @@ class SeasonAdminServiceTest {
     @Test
     void 이전_시즌이_정산_전이면_새_시즌을_진행_중으로_바꿀_수_없다() {
         TradingSeason next = savedSeason(8L, "시즌 8");
-        when(seasonRepository.findById(8L)).thenReturn(Optional.of(next));
+        when(seasonRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(next));
         when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
                 .thenReturn(Optional.of(previousSeason(false)));
 
@@ -227,13 +227,13 @@ class SeasonAdminServiceTest {
     @Test
     void 이전_시즌이_정산을_마치고_끝났거나_없으면_새_시즌을_시작할_수_있다() {
         TradingSeason first = savedSeason(8L, "시즌 8");
-        when(seasonRepository.findById(8L)).thenReturn(Optional.of(first));
+        when(seasonRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(first));
         when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY)).thenReturn(Optional.empty());
         service.changeStatus(8L, new SeasonStatusDTO("RUNNING"));
         assertThat(first.isRunning()).isTrue();
 
         TradingSeason second = savedSeason(9L, "시즌 9");
-        when(seasonRepository.findById(9L)).thenReturn(Optional.of(second));
+        when(seasonRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(second));
         when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
                 .thenReturn(Optional.of(previousSeason(true)));
         service.changeStatus(9L, new SeasonStatusDTO("RUNNING"));
@@ -244,7 +244,7 @@ class SeasonAdminServiceTest {
     void 이전_시즌_확인은_시작할_때만_하고_진행_중_시즌의_다른_변경은_막지_않는다() {
         TradingSeason running = savedSeason(8L, "시즌 8");
         running.changeStatus(TradingSeason.STATUS_RUNNING);
-        when(seasonRepository.findById(8L)).thenReturn(Optional.of(running));
+        when(seasonRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(running));
         when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
                 .thenReturn(Optional.of(previousSeason(false)));
 
