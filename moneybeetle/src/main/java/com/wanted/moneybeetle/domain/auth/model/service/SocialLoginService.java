@@ -111,6 +111,11 @@ public class SocialLoginService implements SocialReauthVerifier {
         }
     }
 
+    /** 세션에 본인 확인을 하러 간 상태가 있는가 (유효 시간은 보지 않는다. 제공자에게 다시 로그인을 요구하는 쪽에서 쓰며, 만료는 completeReauth 가 막는다) */
+    public static boolean hasPendingReauth(HttpSession session) {
+        return session != null && session.getAttribute(REAUTH_PENDING_KEY) instanceof Reauth;
+    }
+
     /** 이 세션이 본인 확인을 하러 간 상태인가 (제공자에서 돌아온 로그인을 일반 로그인이 아니라 본인 확인으로 처리해야 하는지) */
     public boolean isReauthPending(HttpSession session) {
         return session != null && session.getAttribute(REAUTH_PENDING_KEY) instanceof Reauth pending
