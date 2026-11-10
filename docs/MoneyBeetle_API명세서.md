@@ -3388,13 +3388,19 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: sort=netAsset&page=0&size=50
+- Query: sort=netAsset&page=0&size=50 (sort 기본 netAsset, page 기본 0, size 기본 50·최대 200)
+- `sort`: `netAsset`·`returnRate`·`investAmount`는 큰 순서, `joinedAt`은 먼저 참가한 순서. 같은 값이면 먼저 참가한 순서
 
 **Response**
 
 ```json
-{ "items": [ { "participantId": 120, "nickname": "민지", "level": 8, "investAmount": 4820000, "netAsset": 5134000, "returnRate": 6.5 } ] }
+{ "totalCount": 1240, "items": [ { "participantId": 120, "nickname": "민지", "level": 8, "investAmount": 4820000, "netAsset": 5134000, "returnRate": 6.5 } ] }
 ```
+
+- `netAsset`·`returnRate`는 저장된 값이 아니라 **지금** 보유 종목과 현재 턴 가격으로 계산한다 (SP-61: 순자산 = 현금 + 보유 평가금액, 수익률 = (순자산 − 투자 가능 금액) ÷ 투자 가능 금액, 소수 둘째 자리 반올림). 정산이 끝난 참가자는 확정한 값을 그대로 보여 준다
+- 보유 종목의 현재 턴 가격이 비어 있으면 평균 매수 단가로 평가한다
+
+**Error**: `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, sort·page·size가 올바르지 않음)
 
 #### 136. 참가자 상세
 
@@ -3412,7 +3418,19 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (holdings[], orders[])
+```json
+{
+  "participantId": 120, "seasonId": 7, "nickname": "민지", "level": 8,
+  "investAmount": 4820000, "cash": 500000, "netAsset": 5134000, "returnRate": 6.5,
+  "holdings": [ { "stockId": 1, "stockName": "한빛반도체", "quantity": 6, "avgPrice": 84500, "currentPrice": 96950, "evalAmount": 581700 } ],
+  "orders": [ { "orderId": 901, "turnNo": 5, "stockName": "한빛반도체", "orderType": "BUY", "quantity": 6, "price": 84500, "amount": 507000, "reason": "뉴스를 보고", "createdAt": "2026-11-05T10:00:00" } ]
+}
+```
+
+- `holdings`: 지금 수량이 있는 종목만 (다 판 종목은 빠진다). `currentPrice`는 현재 턴 가격, `evalAmount` = `quantity` × `currentPrice`
+- `orders`: 최근 거래부터. `reason`은 고른 매매 이유 이름 (없으면 `null`)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 137. 랭킹 미리보기
 
@@ -3426,11 +3444,14 @@ email=admin@moneybeetle.kr&password=...
 
 **Request**
 
-- Query: type=ASSET
+- Query: type=ASSET&page=0&size=10 (type 기본 ASSET, size 최대 50)
 
 **Response**
 
-- (랭킹 응답과 같음)
+- 시즌 랭킹(62)과 같은 모양이다. 다만 공개 전의 임시 순위라서 지금 보유 종목과 현재 턴 가격으로 계산하고(SP-61), `title`은 `null`·`hasBadge`는 `false`, `me`는 없다(`null`). 동점은 같은 순위(1, 2, 2, 4 …)
+- 공개 여부와 상관없이 볼 수 있다. `/api/v1/admin/**`는 관리자만 호출할 수 있다
+
+**Error**: `NOT_FOUND`(404), `INVALID_INPUT`(400)
 
 #### 138. 정산 실행
 
