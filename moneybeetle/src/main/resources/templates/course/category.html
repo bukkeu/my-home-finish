@@ -1,65 +1,65 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
 <head>
-    <th:block th:replace="~{fragments/layout/header :: headFragment('강의')}"></th:block>
-    <link rel="stylesheet" type="text/css" th:href="@{/css/course.css}">
+  <th:block th:replace="~{fragments/layout/header :: headFragment('강의')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/course.css}">
 </head>
 <body>
 <!--/* comment.
-    담당 : DBA ① 신아림 (#52, 강의 목록)
-    원본 디자인 : UserLectureCategory.dc.html (화면설계 5.2.3)
-    경로 : /user/lectures?cat=money|estate (없으면 첫 카테고리)
-    데이터 : GET /api/v1/categories (카테고리·소주제), GET /api/v1/courses?categoryId= (허가·공개 강의, 내 학습 상태·진행률)
-    - 상위 탭으로 카테고리 전환, 소주제 칩으로 필터(첫 칩 '전체'), 검색어로 제목·강사·소주제 필터
-    - 카드형/목록형 보기는 브라우저 저장소(mb-lecture-view)에 저장해 카테고리를 바꿔도 유지
-    - 강의를 누르면 /user/lecture-detail?courseId= 로 이동
+  담당 : DBA ① 신아림 (#52, 강의 목록)
+  원본 디자인 : UserLectureCategory.dc.html (화면설계 5.2.3)
+  경로 : /user/lectures?cat=money|estate (없으면 첫 카테고리)
+  데이터 : GET /api/v1/categories (카테고리·소주제), GET /api/v1/courses?categoryId= (허가·공개 강의, 내 학습 상태·진행률)
+  - 상위 탭으로 카테고리 전환, 소주제 칩으로 필터(첫 칩 '전체'), 검색어로 제목·강사·소주제 필터
+  - 카드형/목록형 보기는 브라우저 저장소(mb-lecture-view)에 저장해 카테고리를 바꿔도 유지
+  - 강의를 누르면 /user/lecture-detail?courseId= 로 이동
 */-->
 <div class="mb-shell">
-    <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('lectures')}"></th:block>
-    <div class="mb-content">
-        <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
-        <main class="mb-main">
-            <div class="lec-main" data-lec-category>
-                <section class="lec-hero">
-                    <div class="lec-hero__text">
-                        <nav class="lec-tabs" aria-label="카테고리" data-lec-tabs></nav>
-                        <span class="lec-crumb">강의 › <span data-lec-cat-name>강의</span></span>
-                        <h1 data-lec-cat-name>강의</h1>
-                        <p data-lec-cat-desc></p>
-                    </div>
-                    <div class="lec-done" aria-live="polite">
-                        <div class="lec-done__row">
-                            <span class="lec-done__label">학습 완료</span>
-                            <span class="lec-done__num"><b data-lec-done>0</b> / <span data-lec-total>0</span>강</span>
-                        </div>
-                        <div class="lec-bar"><span data-lec-done-bar></span></div>
-                    </div>
-                </section>
-
-                <div class="lec-toolbar">
-                    <nav class="lec-chips" aria-label="소주제 필터" data-lec-chips></nav>
-                    <div class="lec-tools">
-                        <div class="lec-tools__row">
-                            <input type="search" class="lec-filter" placeholder="제목·강사·소주제로 찾기" aria-label="강의 찾기" data-lec-q>
-                            <div class="lec-view" role="group" aria-label="보기 방식">
-                                <button type="button" aria-label="카드형" title="카드형" data-lec-view="grid">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
-                                </button>
-                                <button type="button" aria-label="목록형" title="목록형" data-lec-view="list">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <span class="lec-count">강의 <span data-lec-shown>0</span>개</span>
-                    </div>
-                </div>
-
-                <div class="lec-sections" data-lec-sections aria-live="polite">
-                    <div class="lec-state">강의를 불러오는 중이에요…</div>
-                </div>
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('lectures')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+    <main class="mb-main">
+      <div class="lec-main" data-lec-category>
+        <section class="lec-hero">
+          <div class="lec-hero__text">
+            <nav class="lec-tabs" aria-label="카테고리" data-lec-tabs></nav>
+            <span class="lec-crumb">강의 › <span data-lec-cat-name>강의</span></span>
+            <h1 data-lec-cat-name>강의</h1>
+            <p data-lec-cat-desc></p>
+          </div>
+          <div class="lec-done" aria-live="polite">
+            <div class="lec-done__row">
+              <span class="lec-done__label">학습 완료</span>
+              <span class="lec-done__num"><b data-lec-done>0</b> / <span data-lec-total>0</span>강</span>
             </div>
-        </main>
-    </div>
+            <div class="lec-bar"><span data-lec-done-bar></span></div>
+          </div>
+        </section>
+
+        <div class="lec-toolbar">
+          <nav class="lec-chips" aria-label="소주제 필터" data-lec-chips></nav>
+          <div class="lec-tools">
+            <div class="lec-tools__row">
+              <input type="search" class="lec-filter" placeholder="제목·강사·소주제로 찾기" aria-label="강의 찾기" data-lec-q>
+              <div class="lec-view" role="group" aria-label="보기 방식">
+                <button type="button" aria-label="카드형" title="카드형" data-lec-view="grid">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+                </button>
+                <button type="button" aria-label="목록형" title="목록형" data-lec-view="list">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path></svg>
+                </button>
+              </div>
+            </div>
+            <span class="lec-count">강의 <span data-lec-shown>0</span>개</span>
+          </div>
+        </div>
+
+        <div class="lec-sections" data-lec-sections aria-live="polite">
+          <div class="lec-state">강의를 불러오는 중이에요…</div>
+        </div>
+      </div>
+    </main>
+  </div>
 </div>
 <th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
 <script th:src="@{/js/course-common.js}"></script>

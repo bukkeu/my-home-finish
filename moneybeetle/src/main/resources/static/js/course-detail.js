@@ -18,9 +18,10 @@
 
   var state = {
     course: null, path: null, current: null, play: null, tab: 'summary', tocOpen: false,
-    watchedMax: 0, lastSavedAt: 0, saving: false, refreshed: false
+    watchedMax: 0, lastSavedAt: 0, pendingSaves: 0, refreshed: false
   };
   var video = null;
+  var saveQueue = Promise.resolve();   // 시청 위치 저장 요청을 보낸 순서대로 처리하기 위한 줄
 
   if (!courseId) {
     body.replaceChildren(h('div', { class: 'lec-state', text: '강의를 찾을 수 없어요. 강의 목록에서 다시 골라 주세요.' }));
@@ -49,7 +50,7 @@
   function findPath(categories, subId) {
     for (var i = 0; i < categories.length; i++) {
       var sub = (categories[i].children || []).find(function (s) { return s.categoryId === subId; });
-      if (sub) return { top: categories[i], sub: sub, href: '/user/lectures?' + (i < 2 ? 'cat=' + ['money', 'estate'][i] : 'categoryId=' + categories[i].categoryId) };
+      if (sub) return { top: categories[i], sub: sub, href: '/user/lectures?categoryId=' + categories[i].categoryId };
     }
     return null;
   }
@@ -149,7 +150,7 @@
           var isNow = state.current && state.current.lessonId === l.lessonId;
           return h('button', { type: 'button', class: 'lec-step' + (l.isCompleted ? ' lec-step--done' : ''),
             'aria-current': isNow ? 'step' : null,
-            onclick: function () { if (!isNow) { saveProgress(false); openLesson(l, false); } } }, [
+            onclick: function () { if (!isNow) { saveProgress(false, { force: true }); openLesson(l, false); } } }, [
             h('span', { class: 'lec-step__mark', text: l.isCompleted ? '✓' : String(i + 1) }),
             h('span', { class: 'lec-step__text' }, [
               h('span', { class: 'lec-step__title', text: l.title }),
@@ -191,9 +192,9 @@
       ]),
       h('div', { class: 'lec-now__nav' }, [
         h('button', { type: 'button', class: 'btn btn-secondary', disabled: !prev, text: '‹ 이전',
-          onclick: function () { if (prev) { saveProgress(false); openLesson(prev, false); } } }),
+          onclick: function () { if (prev) { saveProgress(false, { force: true }); openLesson(prev, false); } } }),
         h('button', { type: 'button', class: 'btn btn-secondary', disabled: !next, text: '다음 ›',
-          onclick: function () { if (next) { saveProgress(false); openLesson(next, false); } } })
+          onclick: function () { if (next) { saveProgress(false, { force: true }); openLesson(next, false); } } })
       ])
     );
     renderContent();
@@ -214,7 +215,7 @@
         summary ? h('p', { class: 'lec-summary__body', text: summary }) : h('p', { class: 'lec-summary__body lec-muted', text: '이 영상에는 요약글이 없어요.' }),
         h('div', { class: 'lec-summary__actions' }, [
           next ? h('button', { type: 'button', class: 'btn btn-primary', text: '다음 영상 보기',
-            onclick: function () { saveProgress(false); openLesson(next, false); } }) : null,
+            onclick: function () { saveProgress(false, { force: true }); openLesson(next, false); } }) : null,
           !next && allDone ? h('span', { class: 'lec-meta', text: '영상을 모두 봤어요! 최종 퀴즈에서 70점 이상이면 학습 완료예요.' }) : null,
           !next && !allDone ? h('span', { class: 'lec-meta', text: '영상을 모두 끝까지 보면 최종 퀴즈가 열려요.' }) : null
         ])
@@ -254,7 +255,7 @@
       state.watchedMax = Math.max(state.watchedMax, Math.floor(video.currentTime));
       if (!video.paused && Date.now() - state.lastSavedAt >= SAVE_EVERY_MS) saveProgress(false);
     });
-    video.addEventListener('pause', function () { if (!video.ended) saveProgress(false); });
+    video.addEventListener('pause', function () { if (!video.ended) saveProgress(false, { force: true }); });
     video.addEventListener('ended', function () {
       state.watchedMax = Math.max(state.watchedMax, Math.floor(video.duration || 0));
       saveProgress(true).then(refreshCourse);
@@ -271,17 +272,32 @@
     );
   }
 
-  /* 시청 위치 저장 (API 33). 완료 여부는 서버가 본 시간으로 정하므로 completed 는 참고값이다 */
-  function saveProgress(ended, keepalive) {
-    if (!video || !state.current || (state.saving && !keepalive && !ended)) return Promise.resolve();
-    var lessonId = state.current.lessonId;
-    var position = ended ? Math.floor(video.duration || 0) : Math.floor(video.currentTime || 0);
+  /* 시청 위치 저장 (API 33). 완료 여부는 서버가 본 시간으로 정하므로 completed 는 참고값이다
+   * - 요청은 saveQueue 로 한 줄로 세워 보낸 순서대로 서버에 도착하게 한다.
+   *   그래서 끝까지 본 뒤의 저장(ended)이 먼저 보낸 주기 저장에 덮이지 않는다
+   * - 위치는 지금 재생 위치(currentTime)를 그대로 보낸다. 되감은 위치도 이어보기 위치로 남는다
+   * - 15초마다 하는 주기 저장만 앞 요청이 남아 있으면 건너뛴다. 일시정지·영상 전환(force)·종료·페이지 이탈은 건너뛰지 않는다
+   * - 저장할 값은 부른 순간에 정해 둔다 (줄을 서는 사이 다른 영상으로 바뀌어도 원래 영상 위치가 간다)
+   * - 페이지를 떠날 때(keepalive)는 기다릴 시간이 없어 줄을 서지 않고 바로 보낸다 */
+  function saveProgress(ended, options) {
+    var opts = options || {};
+    if (!video || !state.current) return Promise.resolve();
+    if (state.pendingSaves > 0 && !ended && !opts.force && !opts.keepalive) return Promise.resolve();
+    var url = '/api/v1/courses/' + courseId + '/lessons/' + state.current.lessonId + '/progress';
+    var payload = {
+      positionSeconds: ended ? Math.floor(video.duration || 0) : Math.floor(video.currentTime || 0),
+      watchedSeconds: state.watchedMax,
+      completed: !!ended
+    };
     state.lastSavedAt = Date.now();
-    state.saving = true;
-    return MB.api('/api/v1/courses/' + courseId + '/lessons/' + lessonId + '/progress', {
-      method: 'PUT', keepalive: !!keepalive,
-      body: { positionSeconds: position, watchedSeconds: state.watchedMax, completed: !!ended }
-    }).catch(function () { /* 다음 저장 때 다시 보낸다 */ }).then(function () { state.saving = false; });
+    state.pendingSaves += 1;
+    function send() {
+      return MB.api(url, { method: 'PUT', keepalive: !!opts.keepalive, body: payload })
+        .catch(function () { /* 다음 저장 때 다시 보낸다 */ });
+    }
+    var request = opts.keepalive ? send() : saveQueue.then(send);
+    if (!opts.keepalive) saveQueue = request;
+    return request.then(function () { state.pendingSaves -= 1; });
   }
 
   /* ---------- 스크랩 ---------- */
@@ -302,9 +318,9 @@
   }
 
   // 다른 화면으로 가거나 탭을 닫을 때 마지막 위치를 남긴다 (keepalive 로 페이지가 닫혀도 요청이 끝까지 간다)
-  window.addEventListener('pagehide', function () { if (video && !video.ended) saveProgress(false, true); });
+  window.addEventListener('pagehide', function () { if (video && !video.ended) saveProgress(false, { keepalive: true }); });
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden' && video && !video.paused) saveProgress(false, true);
+    if (document.visibilityState === 'hidden' && video && !video.paused) saveProgress(false, { keepalive: true });
   });
 
   load();
