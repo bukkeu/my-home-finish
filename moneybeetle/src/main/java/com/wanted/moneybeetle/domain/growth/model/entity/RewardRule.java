@@ -32,6 +32,20 @@ public class RewardRule {
     public static final String ATTENDANCE_STREAK = "ATTENDANCE_STREAK";
     /** 출석 경험치 기본값 (SP-22, #205). 연속 일수 구간에 따라 AttendanceService 가 배수(1~5)를 곱해 10~50 XP 를 준다 */
     public static final String ATTENDANCE_DAILY = "ATTENDANCE_DAILY";
+    /** 시즌 랭킹 1·2·3위 보상 (SP-64, #10). 순자산·수익률 랭킹 각각의 순위에 같은 규칙을 쓰고, 두 랭킹에 모두 들면 두 번 받는다 */
+    public static final String RANKING_RANK_1 = "RANKING_RANK_1";
+    public static final String RANKING_RANK_2 = "RANKING_RANK_2";
+    public static final String RANKING_RANK_3 = "RANKING_RANK_3";
+
+    /** 순위(1~3)에 맞는 랭킹 보상 규칙 코드. 1~3 이 아니면 IllegalArgumentException */
+    public static String rankingRuleCode(int rank) {
+        return switch (rank) {
+            case 1 -> RANKING_RANK_1;
+            case 2 -> RANKING_RANK_2;
+            case 3 -> RANKING_RANK_3;
+            default -> throw new IllegalArgumentException("랭킹 보상은 1~3위만 있습니다: " + rank);
+        };
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

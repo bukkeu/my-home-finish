@@ -46,6 +46,7 @@ public class CashHistoryDTO {
             case CashHistory.SOURCE_LEVEL_UP -> "레벨업 보상";
             case CashHistory.SOURCE_SEASON_JOIN -> "모의투자 시즌 참가";
             case CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT -> "청약통장 납입";
+            case CashHistory.SOURCE_RANKING -> "시즌 랭킹 보상";
             case CashHistory.SOURCE_ADMIN -> history.getReason() == null ? "관리자 조정" : "관리자 조정 · " + history.getReason();
             default -> history.getSourceType();
         };

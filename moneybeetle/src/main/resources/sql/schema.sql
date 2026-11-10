@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS `cash_history` (
                                               `cash_history_id` bigint NOT NULL AUTO_INCREMENT COMMENT '내역 ID',
                                               `member_id` bigint NOT NULL COMMENT '회원',
                                               `history_type` varchar(20) NOT NULL COMMENT 'EARN / USE / ADMIN_GIVE / ADMIN_TAKE',
-    `source_type` varchar(30) NOT NULL COMMENT 'ATTENDANCE / COURSE_COMPLETE / LEVEL_UP / SEASON_JOIN / SUBSCRIPTION_DEPOSIT / ADMIN',
+    `source_type` varchar(30) NOT NULL COMMENT 'ATTENDANCE / COURSE_COMPLETE / LEVEL_UP / SEASON_JOIN / SUBSCRIPTION_DEPOSIT / RANKING / ADMIN',
     `source_id` bigint DEFAULT NULL COMMENT '원인 데이터 ID (출석 ID, 강의 ID, 레벨 등)',
     `reward_rule_id` bigint DEFAULT NULL COMMENT '적용한 보상 규칙',
     `amount` bigint NOT NULL COMMENT '변동 금액 (사용·회수는 음수)',

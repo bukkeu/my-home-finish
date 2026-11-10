@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (성장·캐시·레벨)
 *   다른 도메인이 부르는 보상 창구 (역할분담 문서 §7 연동 약속)
 *   - grant(memberId, ruleCode, sourceId)             : 경험치·캐시 지급   [호출: 신아림 학습 완료·퀴즈, 출석]
+*   - grantRankingReward(memberId, rank, awardId)     : 시즌 랭킹 1~3위 캐시 지급 (SP-64) [호출: 이재성 랭킹 공개]
 *   - spendCash(memberId, sourceType, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]
 *   - adjustByAdmin(adminId, memberId, give, amt, why): 관리자 수동 지급·회수 [호출: growth.CashAdjustService, 이슈 #39]
 *   - getBalance(memberId)                            : 캐시 잔액 조회
@@ -62,7 +63,10 @@ public class RewardService {
     /** 보상 규칙 코드 -> 캐시 이력의 원인 종류. 여기에 없는 규칙은 캐시를 줄 수 없다 */
     private static final Map<String, String> CASH_SOURCE_BY_RULE = Map.of(
             RewardRule.COURSE_COMPLETE, CashHistory.SOURCE_COURSE_COMPLETE,
-            RewardRule.ATTENDANCE_STREAK, CashHistory.SOURCE_ATTENDANCE);
+            RewardRule.ATTENDANCE_STREAK, CashHistory.SOURCE_ATTENDANCE,
+            RewardRule.RANKING_RANK_1, CashHistory.SOURCE_RANKING,
+            RewardRule.RANKING_RANK_2, CashHistory.SOURCE_RANKING,
+            RewardRule.RANKING_RANK_3, CashHistory.SOURCE_RANKING);
 
     /** 출석 경험치(ATTENDANCE_DAILY)가 하루에 받을 수 있는 최대 XP (SP-22). 규칙의 기본값을 바꿔도 이 값을 넘지 않는다 */
     public static final int ATTENDANCE_DAILY_EXP_CAP = 50;
@@ -213,6 +217,20 @@ public class RewardService {
             scaled = Math.min(scaled, ATTENDANCE_DAILY_EXP_CAP);
         }
         return (int) Math.min(scaled, Integer.MAX_VALUE);
+    }
+
+    /**
+     * 시즌 랭킹 상위 3위 보상 캐시를 지급한다 (SP-64, #10). 랭킹을 공개할 때 순위별로 부른다 [호출: 이재성 랭킹 공개].
+     * 순자산·수익률 랭킹 각각의 수상 기록(ranking_award)마다 한 번씩 부르고, 원인 ID 는 그 수상 기록의 ID 다.
+     * 한 회원이 두 랭킹에 모두 들면 수상 기록이 두 개라 두 번 받고, 같은 수상 기록으로 다시 불러도 한 번만 지급된다
+     * ({@link RewardResultDTO#isAlreadyGranted()}). 금액은 규칙(RANKING_RANK_1~3)에서 읽고, 규칙이 없거나 꺼져 있으면 REWARD_RULE_NOT_FOUND 다.
+     *
+     * @param rank            순위 (1~3). 그 밖의 값은 IllegalArgumentException
+     * @param rankingAwardId  수상 기록 ID (ranking_award.ranking_award_id)
+     */
+    @Transactional
+    public RewardResultDTO grantRankingReward(Long memberId, int rank, Long rankingAwardId) {
+        return grant(memberId, RewardRule.rankingRuleCode(rank), rankingAwardId);
     }
 
     /**
