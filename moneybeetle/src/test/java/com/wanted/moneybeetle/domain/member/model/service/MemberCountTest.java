@@ -28,7 +28,8 @@ class MemberCountTest {
         MemberService memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), mock(ForbiddenWordService.class),
                 Clock.fixed(Instant.parse("2026-11-09T00:00:00Z"), ZoneId.of("Asia/Seoul")),
-                mock(InstructorProfileRepository.class));
+                mock(InstructorProfileRepository.class),
+                mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class));
 
         var count = memberService.countMembers();
 

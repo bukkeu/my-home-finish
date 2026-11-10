@@ -60,7 +60,7 @@ public class TradingService {
      * 정산 중·종료에도 시세·뉴스를 계속 보여 준다. 정산 중에는 주문만 막힌다(SEASON_CLOSED, SP-58)
      * 준비 중(READY) 시즌은 보이지 않고, 새 시즌이 진행 중이 되면 시작일이 더 늦은 그 시즌이 보인다
      */
-    private static final List<String> VISIBLE_STATUSES = List.of(TradingSeason.STATUS_RUNNING,
+    public static final List<String> VISIBLE_STATUSES = List.of(TradingSeason.STATUS_RUNNING,
             TradingSeason.STATUS_HOLIDAY, TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED);
     /** 시세 정렬 : 인기순 (이번 시즌 거래 수가 많은 순) */
     public static final String SORT_POPULAR = "popular";

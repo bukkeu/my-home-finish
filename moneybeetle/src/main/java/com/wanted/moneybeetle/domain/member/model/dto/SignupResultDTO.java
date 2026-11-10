@@ -18,6 +18,11 @@ public class SignupResultDTO {
         this.nickname = nickname;
     }
 
+    /** 이미 저장된 회원의 번호·닉네임으로 만든다 (간편 로그인 가입 응답, API 8-2) */
+    public static SignupResultDTO of(Long memberId, String nickname) {
+        return new SignupResultDTO(memberId, nickname);
+    }
+
     public static SignupResultDTO from(Member member) {
         return new SignupResultDTO(member.getMemberId(), member.getNickname());
     }
