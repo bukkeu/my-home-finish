@@ -78,4 +78,20 @@ class SeasonParticipantRepositoryTest {
                 .get().extracting(SeasonParticipant::getCarryoverOut).isEqualTo(1_620_000L);
         assertThat(participantRepository.findPreviousParticipation(MEMBER_ID, first.getTradingSeasonId())).isEmpty();
     }
+
+    @Test
+    @DisplayName("시작일이 같은 시즌이면 시즌 번호가 바로 앞선 참가 기록을 선택한다")
+    void picksPreviousSeasonNumberWhenStartDatesMatch() {
+        LocalDate start = LocalDate.of(2026, 10, 1);
+        TradingSeason first = season("1기", start);
+        TradingSeason second = season("2기", start);
+        TradingSeason third = season("3기", start);
+        participate(first, MEMBER_ID, 1_100_000L);
+        participate(second, MEMBER_ID, 1_620_000L);
+
+        assertThat(participantRepository.findPreviousParticipation(MEMBER_ID, third.getTradingSeasonId()))
+                .get().extracting(SeasonParticipant::getCarryoverOut)
+                .isEqualTo(1_620_000L);
+    }
+
 }
