@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 *   담당 : DBA ② (회원·인증)
 *   구글·카카오 간편 로그인 설정 (USR-07, 이슈 #9, 환경변수 문서 간편 로그인)
 *   - 클라이언트 ID·시크릿은 환경변수(GOOGLE_CLIENT_ID/SECRET, KAKAO_CLIENT_ID/SECRET)로만 받는다. 코드·application.yaml 에 값을 쓰지 않는다.
-*   - **키가 없는 제공자는 등록하지 않는다.** 둘 다 없으면 이 설정 전체가 꺼지고(ClientRegistrationRepository 빈이 없음) SecurityConfig 도
+*   - **ID 와 시크릿이 모두 있는 제공자만 등록한다. 하나라도 비어 있으면 그 제공자는 등록하지 않는다.** 둘 다 없으면 이 설정 전체가 꺼지고(ClientRegistrationRepository 빈이 없음) SecurityConfig 도
 *     OAuth 로그인을 켜지 않아서 서버는 그대로 뜬다. 값이 비어 있는 채로 등록하면 서버가 뜨지 않기 때문이다 (환경변수 문서 간편 로그인).
 *   - 구글은 OIDC(openid)를 쓰지 않고 scope profile·email 로 사용자 정보 주소(userinfo)에서 sub·email·email_verified·name 을 받는다.
 *   - 카카오는 스프링이 기본 제공하지 않는 제공자라 주소를 직접 적는다. scope: profile_nickname, account_email. 사용자 ID 속성은 id.
@@ -30,17 +30,18 @@ public class OAuthClientConfig {
     private static final String REDIRECT_URI = "{baseUrl}/login/oauth2/code/{registrationId}";
 
     @Bean
-    @ConditionalOnExpression("!'${GOOGLE_CLIENT_ID:}'.isBlank() or !'${KAKAO_CLIENT_ID:}'.isBlank()")
+    @ConditionalOnExpression("(!'${GOOGLE_CLIENT_ID:}'.isBlank() and !'${GOOGLE_CLIENT_SECRET:}'.isBlank())"
+            + " or (!'${KAKAO_CLIENT_ID:}'.isBlank() and !'${KAKAO_CLIENT_SECRET:}'.isBlank())")
     public ClientRegistrationRepository clientRegistrationRepository(
             @Value("${GOOGLE_CLIENT_ID:}") String googleId,
             @Value("${GOOGLE_CLIENT_SECRET:}") String googleSecret,
             @Value("${KAKAO_CLIENT_ID:}") String kakaoId,
             @Value("${KAKAO_CLIENT_SECRET:}") String kakaoSecret) {
         List<ClientRegistration> registrations = new ArrayList<>();
-        if (!googleId.isBlank()) {
+        if (!googleId.isBlank() && !googleSecret.isBlank()) {
             registrations.add(google(googleId, googleSecret));
         }
-        if (!kakaoId.isBlank()) {
+        if (!kakaoId.isBlank() && !kakaoSecret.isBlank()) {
             registrations.add(kakao(kakaoId, kakaoSecret));
         }
         return new InMemoryClientRegistrationRepository(registrations);

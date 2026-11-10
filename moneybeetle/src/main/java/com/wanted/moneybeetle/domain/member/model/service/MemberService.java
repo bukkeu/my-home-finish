@@ -202,6 +202,10 @@ public class MemberService {
     public int purgeWithdrawnMembers(LocalDateTime now, int batchSize) {
         LocalDateTime cutoff = now.minusDays(Member.PERSONAL_INFO_RETENTION_DAYS);
         List<Member> targets = memberRepository.findPurgeTargets(cutoff, PageRequest.of(0, batchSize));
+        if (!targets.isEmpty()) {
+            // 간편 로그인 연결(제공자 계정 ID)도 개인정보라 같은 트랜잭션에서 함께 지운다
+            socialAccountRepository.deleteByMemberIdIn(targets.stream().map(Member::getMemberId).toList());
+        }
         targets.forEach(Member::purgePersonalInfo);
         return targets.size();
     }

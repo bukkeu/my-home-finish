@@ -40,15 +40,12 @@ class AuthControllerTest {
             mock(com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService.class);
     private final com.wanted.moneybeetle.domain.auth.handler.AuthSessionWriter authSessionWriter =
             mock(com.wanted.moneybeetle.domain.auth.handler.AuthSessionWriter.class);
-    @SuppressWarnings("unchecked")
-    private final org.springframework.beans.factory.ObjectProvider<org.springframework.security.oauth2.client.registration.ClientRegistrationRepository>
-            clientRegistrations = mock(org.springframework.beans.factory.ObjectProvider.class);
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(accountService, passwordResetService, identityVerificationService,
-                socialLoginService, authSessionWriter, clientRegistrations))
+                socialLoginService, authSessionWriter))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
                 .build();
@@ -189,36 +186,22 @@ class AuthControllerTest {
 
     // ---- 간편 로그인 (#9, API 8·8-1·8-2) ----
 
-    private void enableProviders() {
-        org.springframework.security.oauth2.client.registration.ClientRegistration google =
-                org.springframework.security.config.oauth2.client.CommonOAuth2Provider.GOOGLE.getBuilder("google")
-                        .clientId("id").clientSecret("secret").build();
-        when(clientRegistrations.getIfAvailable()).thenReturn(
-                new org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository(google));
-    }
-
     @Test
     @DisplayName("키가 있는 제공자로 간편 로그인을 시작하면 Spring Security 의 인증 시작 주소로 302")
     void startOAuth() throws Exception {
-        enableProviders();
-
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google"))
                 .andExpect(status().isFound())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Location", "/oauth2/authorization/google"));
     }
 
     @Test
-    @DisplayName("키가 없는 제공자·알 수 없는 제공자·등록 정보가 아예 없는 경우는 503 OAUTH_PROVIDER_UNAVAILABLE")
+    @DisplayName("서비스가 제공자를 쓸 수 없다고 하면 503 OAUTH_PROVIDER_UNAVAILABLE 이고 인증 시작 주소로 보내지 않는다")
     void startOAuthUnavailable() throws Exception {
-        enableProviders();
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/kakao"))   // 카카오 키가 없다
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.error.code").value("OAUTH_PROVIDER_UNAVAILABLE"));
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/naver"))
-                .andExpect(status().isServiceUnavailable());
+        org.mockito.Mockito.doThrow(new com.wanted.moneybeetle.global.exception.BusinessException(
+                        com.wanted.moneybeetle.domain.member.exception.MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE))
+                .when(socialLoginService).requireAvailableProvider("kakao");
 
-        when(clientRegistrations.getIfAvailable()).thenReturn(null);   // 키가 하나도 없어 등록 정보가 없다
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/google"))
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/kakao"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error.code").value("OAUTH_PROVIDER_UNAVAILABLE"));
     }

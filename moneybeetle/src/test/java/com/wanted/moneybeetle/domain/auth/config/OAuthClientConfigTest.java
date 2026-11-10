@@ -31,6 +31,18 @@ class OAuthClientConfigTest {
     }
 
     @Test
+    @DisplayName("ID 만 있고 시크릿이 없거나 공백이면 그 제공자는 등록하지 않는다")
+    void secretMissingOrBlankIsIgnored() {
+        runner.withPropertyValues("GOOGLE_CLIENT_ID=g", "KAKAO_CLIENT_ID=k", "KAKAO_CLIENT_SECRET= ")
+                .run(context -> assertThat(context).doesNotHaveBean(ClientRegistrationRepository.class));
+        runner.withPropertyValues("GOOGLE_CLIENT_ID=g", "KAKAO_CLIENT_ID=k", "KAKAO_CLIENT_SECRET=ks").run(context -> {
+            ClientRegistrationRepository repository = context.getBean(ClientRegistrationRepository.class);
+            assertThat(repository.findByRegistrationId("google")).isNull();   // 구글은 시크릿이 없다
+            assertThat(repository.findByRegistrationId("kakao")).isNotNull();
+        });
+    }
+
+    @Test
     @DisplayName("구글 키만 있으면 구글만 등록한다 (scope profile·email, 사용자 ID 속성 sub)")
     void googleOnly() {
         runner.withPropertyValues("GOOGLE_CLIENT_ID=google-id", "GOOGLE_CLIENT_SECRET=google-secret").run(context -> {

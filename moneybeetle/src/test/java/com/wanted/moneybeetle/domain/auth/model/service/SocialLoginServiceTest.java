@@ -37,13 +37,47 @@ class SocialLoginServiceTest {
     private final MemberSignupService memberSignupService = mock(MemberSignupService.class);
     private final AuthService authService = mock(AuthService.class);
     private final MockHttpSession session = new MockHttpSession();
+    @SuppressWarnings("unchecked")
+    private final org.springframework.beans.factory.ObjectProvider<org.springframework.security.oauth2.client.registration.ClientRegistrationRepository>
+            clientRegistrations = mock(org.springframework.beans.factory.ObjectProvider.class);
     private SocialLoginService service;
 
     private final SocialProfile profile = new SocialProfile("GOOGLE", "g-1", "Minji@Gmail.com", "민지");
 
     @BeforeEach
     void setUp() {
-        service = new SocialLoginService(memberService, memberSignupService, authService);
+        service = new SocialLoginService(memberService, memberSignupService, authService, clientRegistrations);
+    }
+
+    private void givenGoogleRegistered() {
+        org.springframework.security.oauth2.client.registration.ClientRegistration google =
+                org.springframework.security.config.oauth2.client.CommonOAuth2Provider.GOOGLE.getBuilder("google")
+                        .clientId("id").clientSecret("secret").build();
+        org.mockito.Mockito.when(clientRegistrations.getIfAvailable()).thenReturn(
+                new org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository(google));
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("등록된 제공자(구글)는 통과한다")
+    void registeredProviderPasses() {
+        givenGoogleRegistered();
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> service.requireAvailableProvider("google")).doesNotThrowAnyException();
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("키가 없어 등록되지 않은 제공자·지원하지 않는 제공자·등록 정보가 아예 없으면 OAUTH_PROVIDER_UNAVAILABLE")
+    void unavailableProviders() {
+        givenGoogleRegistered();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("kakao"))   // 카카오 키가 없다
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> org.assertj.core.api.Assertions.assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("naver"))
+                .isInstanceOf(BusinessException.class);
+
+        org.mockito.Mockito.when(clientRegistrations.getIfAvailable()).thenReturn(null);   // 키가 하나도 없어 등록 정보가 없다
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("google"))
+                .isInstanceOf(BusinessException.class);
     }
 
     private static LoginMemberDTO loginMember(String status) {

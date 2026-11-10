@@ -11,6 +11,8 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.servlet.http.HttpSession;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.stereotype.Service;
 
 /* comment.
@@ -35,6 +37,17 @@ public class SocialLoginService {
     private final MemberService memberService;
     private final MemberSignupService memberSignupService;
     private final AuthService authService;
+    private final ObjectProvider<ClientRegistrationRepository> clientRegistrations;
+
+    /** 간편 로그인을 시작할 수 있는 제공자인가 확인한다. 지원하지 않거나 키가 없어 등록되지 않은 제공자면 OAUTH_PROVIDER_UNAVAILABLE */
+    public void requireAvailableProvider(String provider) {
+        ClientRegistrationRepository repository = clientRegistrations.getIfAvailable();
+        boolean supported = SocialProfileExtractor.REGISTRATION_GOOGLE.equals(provider)
+                || SocialProfileExtractor.REGISTRATION_KAKAO.equals(provider);
+        if (repository == null || !supported || repository.findByRegistrationId(provider) == null) {
+            throw new BusinessException(MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE);
+        }
+    }
 
     /** 로그인 결과: 로그인된 회원, 또는 가입이 더 필요함(member 가 null) */
     public record Result(LoginMemberDTO member) {

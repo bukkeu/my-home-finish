@@ -22,10 +22,8 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import java.net.URI;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,8 +47,6 @@ public class AuthController {
     private final IdentityVerificationService identityVerificationService;
     private final SocialLoginService socialLoginService;
     private final AuthSessionWriter authSessionWriter;
-    /** 구글·카카오 키가 없으면 비어 있다. 이 경우 간편 로그인은 시작할 수 없다 */
-    private final ObjectProvider<ClientRegistrationRepository> clientRegistrations;
 
     // API 9. 아이디(이메일) 찾기
     @PostMapping("/api/v1/auth/find-email")
@@ -91,10 +87,7 @@ public class AuthController {
     // API 8. 간편 로그인 시작: 제공자(구글·카카오) 로그인 화면으로 보낸다. 키가 없는 제공자는 OAUTH_PROVIDER_UNAVAILABLE
     @GetMapping("/api/v1/auth/oauth/{provider}")
     public ResponseEntity<Void> startOAuth(@PathVariable String provider) {
-        ClientRegistrationRepository repository = clientRegistrations.getIfAvailable();
-        if (repository == null || !isSupported(provider) || repository.findByRegistrationId(provider) == null) {
-            throw new BusinessException(MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE);
-        }
+        socialLoginService.requireAvailableProvider(provider);
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create("/oauth2/authorization/" + provider)).build();
     }
 
@@ -114,10 +107,6 @@ public class AuthController {
         authSessionWriter.signIn(httpRequest, httpResponse, member);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(SignupResultDTO.of(member.getMemberId(), member.getNickname())));
-    }
-
-    private static boolean isSupported(String provider) {
-        return "google".equals(provider) || "kakao".equals(provider);
     }
 
     /** API 8-1 응답 { provider, email, nickname } */

@@ -62,7 +62,7 @@
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
 | `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
-- 간편 로그인(#9)은 **실제 OAuth** 로 구현했습니다. 키(`GOOGLE_*`, `KAKAO_*`)가 없어도 서버는 뜨고, **키가 없는 제공자는 자동으로 꺼집니다**(`OAuthClientConfig`: 하나도 없으면 간편 로그인 전체가 꺼지고, 있으면 그 제공자만 켜집니다). 값이 비어 있는 채로 등록하지 않으므로 서버가 못 뜨는 일은 없습니다.
+- 간편 로그인(#9)은 **실제 OAuth** 로 구현했습니다. 키(`GOOGLE_*`, `KAKAO_*`)가 없어도 서버는 뜨고, **ID 와 시크릿이 모두 있는 제공자만 켜지고, 하나라도 비어 있으면 그 제공자는 꺼집니다**(`OAuthClientConfig`: 켜진 제공자가 하나도 없으면 간편 로그인 전체가 꺼지고, 있으면 그 제공자만 켜집니다). 값이 비어 있는 채로 등록하지 않으므로 서버가 못 뜨는 일은 없습니다.
 - 키 발급과 등록 (각자 개인 테스트 앱):
   - 구글: Google Cloud 콘솔 → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹 애플리케이션). 승인된 리디렉션 URI 에 `http://localhost:8080/login/oauth2/code/google` 를 등록합니다. 범위는 `profile`, `email` 입니다.
   - 카카오: 카카오 개발자 콘솔 → 앱 → 카카오 로그인 활성화, Redirect URI 에 `http://localhost:8080/login/oauth2/code/kakao` 를 등록, 동의 항목에서 닉네임(`profile_nickname`)과 카카오계정 이메일(`account_email`)을 켜고(이메일은 필수 동의), 보안 → Client Secret 을 발급해 활성화합니다.
