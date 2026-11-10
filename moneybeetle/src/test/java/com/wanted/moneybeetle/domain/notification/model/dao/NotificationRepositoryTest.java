@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.notification.model.dao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
-import com.wanted.moneybeetle.MoneyBeetleApplication;
+import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

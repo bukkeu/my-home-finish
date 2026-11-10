@@ -2,7 +2,6 @@ package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.StockPrice;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /* comment.
@@ -20,7 +19,4 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, Long> {
     /** 한 종목의 1턴부터 주어진 턴까지 가격 흐름 (#24 종목 상세) */
     List<StockPrice> findByTradingSeasonIdAndStockIdAndTurnNoLessThanEqualOrderByTurnNoAsc(
             Long tradingSeasonId, Long stockId, int turnNo);
-
-    /** 시즌의 모든 가격 (시즌 통계의 급락 턴 판단 #46) */
-    List<StockPrice> findByTradingSeasonId(Long tradingSeasonId);
 }

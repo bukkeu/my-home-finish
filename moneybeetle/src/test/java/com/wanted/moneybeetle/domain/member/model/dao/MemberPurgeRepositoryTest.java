@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
-import com.wanted.moneybeetle.MoneyBeetleApplication;
+import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;

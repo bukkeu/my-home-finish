@@ -7,7 +7,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.PasswordResetTokenRepository;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
-import com.wanted.moneybeetle.MoneyBeetleApplication;
+import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.Clock;
 import java.time.Instant;

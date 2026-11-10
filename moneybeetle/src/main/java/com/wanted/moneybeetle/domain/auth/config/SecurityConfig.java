@@ -81,8 +81,6 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
-                    // 서버 상태 확인(#84) : health·info 만 누구나. 나머지 actuator 주소는 웹에 열지 않아(application.yaml) 로그인해도 404
-                    auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
                     auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
                     // ⑥ 승인된 강사만 INSTRUCTOR 권한을 받도록 하는 것은 로그인(AuthService, 김예린 #6)에서 확인
                     auth.requestMatchers("/instructor/**", "/api/v1/instructor/**").hasAuthority("INSTRUCTOR");

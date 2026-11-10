@@ -8,10 +8,8 @@ import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,17 +48,6 @@ public class InstructorInquiryService {
 
         return InstructorInquiryListDTO.of(waitingCount, PageResponse.from(page.map(inquiry ->
                 InstructorInquiryItemDTO.of(inquiry, courseTitles.get(inquiry.getCourseId())))));
-    }
-
-    /* 강사 내 강의 목록(API 72, course 도메인에서 호출): 강의별 답변 대기 문의 수. 없는 강의는 결과에 없음 */
-    public Map<Long, Long> countWaitingByCourse(Collection<Long> courseIds) {
-        if (courseIds.isEmpty()) {
-            return Map.of();
-        }
-        return inquiryRepository.countByCourse(courseIds, Inquiry.STATUS_WAITING).stream()
-                .collect(Collectors.toMap(
-                        InquiryRepository.CourseWaitingCount::getCourseId,
-                        InquiryRepository.CourseWaitingCount::getWaiting));
     }
 
     private boolean isKnownStatus(String status) {

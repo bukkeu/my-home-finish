@@ -94,7 +94,7 @@ public class AdminCourseService {
     /* API 91 허가 = 허가 + 공개. course_review·admin_log 기록 */
     @Transactional
     public CourseReviewResultDTO approve(Long adminId, Long courseId) {
-        Course course = getCourseForUpdate(courseId);
+        Course course = getCourseOrThrow(courseId);
         Map<String, Object> before = stateOf(course);
 
         course.approve(LocalDateTime.now(clock));
@@ -110,7 +110,7 @@ public class AdminCourseService {
             throw new BusinessException(CourseErrorCode.REASON_REQUIRED);
         }
         String trimmedReason = reason.strip();
-        Course course = getCourseForUpdate(courseId);
+        Course course = getCourseOrThrow(courseId);
         Map<String, Object> before = stateOf(course);
 
         course.reject();
@@ -124,13 +124,13 @@ public class AdminCourseService {
     /* API 93 공개·비공개 (허가된 강의만, Course.changeVisibility가 확인) */
     @Transactional
     public void changeVisibility(Long courseId, boolean isPublic) {
-        getCourseForUpdate(courseId).changeVisibility(isPublic);
+        getCourseOrThrow(courseId).changeVisibility(isPublic);
     }
 
     /* API 94 삭제. 학습 기록이 있으면 삭제하지 않고 비공개만 하라고 안내 (SP-32) */
     @Transactional
     public void delete(Long courseId) {
-        Course course = getCourseForUpdate(courseId);
+        Course course = getCourseOrThrow(courseId);
         if (learningProgressRepository.existsByCourseId(courseId)) {
             throw new BusinessException(CourseErrorCode.COURSE_HAS_LEARNERS);
         }
@@ -141,14 +141,6 @@ public class AdminCourseService {
 
     private Course getCourseOrThrow(Long courseId) {
         return courseRepository.findById(courseId)
-                .filter(course -> !course.isDeleted())
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
-    }
-
-    /* 허가·반려·공개 전환·삭제용: 행 잠금으로 읽는다. 강사의 수정·검수 요청과 순서대로 처리돼서
-     * 검사한 상태와 저장하는 상태가 어긋나지 않는다 (#30, InstructorCourseService와 같은 규칙) */
-    private Course getCourseForUpdate(Long courseId) {
-        return courseRepository.findByIdForUpdate(courseId)
                 .filter(course -> !course.isDeleted())
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }

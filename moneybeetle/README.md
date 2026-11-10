@@ -60,8 +60,6 @@ cp .env.example .env
 
 `.env`는 Git에 올리지 않습니다. IntelliJ를 사용하는 경우 Run/Debug Configurations의 Environment variables에 같은 값을 직접 설정해도 됩니다.
 
-IntelliJ 실행 설정의 **Main class는 `com.wanted.moneybeetle.MoneyBeetleApplication`**입니다(#114에서 `global.config`에서 루트 패키지로 옮겼다). 예전 경로(`com.wanted.moneybeetle.global.config.MoneyBeetleApplication`)로 된 실행 설정은 Main class를 다시 골라 주세요.
-
 ### 3. 서버 실행
 
 PowerShell:
@@ -99,9 +97,8 @@ Git Bash:
 
 ```
 com.wanted.moneybeetle
-├─ MoneyBeetleApplication  시작 클래스 (루트 패키지라 아래를 모두 스캔, #114)
 ├─ global                  공통
-│  ├─ config               JpaConfig, TimeConfig, WebConfig, IndexController
+│  ├─ config               MoneyBeetleApplication, ContextConfig, JpaConfig, WebConfig, IndexController
 │  ├─ common               ApiResponse, PageResponse, BaseTimeEntity
 │  ├─ exception            ErrorCode, CommonErrorCode, BusinessException, GlobalExceptionHandler
 │  ├─ security             RequireLevel, LevelCheckInterceptor(레벨 해금 확인), IdempotencyFilter(중복 요청 방지)

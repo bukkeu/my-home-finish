@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.wanted.moneybeetle.domain.term.model.entity.EconomicTerm;
 import com.wanted.moneybeetle.domain.term.model.entity.TermSchedule;
-import com.wanted.moneybeetle.MoneyBeetleApplication;
+import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
