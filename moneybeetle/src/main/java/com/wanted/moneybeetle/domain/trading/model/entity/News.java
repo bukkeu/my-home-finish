@@ -66,4 +66,14 @@ public class News {
         this.content = content;
         this.adminMemo = adminMemo;
     }
+
+    /** 공개 턴을 옮긴다. 아직 공개 전인 뉴스만 옮길 수 있는지는 NewsAdminService 가 확인한다 (#43) */
+    public void changeTurnNo(int turnNo) {
+        this.turnNo = turnNo;
+    }
+
+    /** 지난 턴(현재 턴 이하)에 공개된 뉴스인지 (SP-60, ADM-27) */
+    public boolean isPublishedBy(int currentTurn) {
+        return this.turnNo <= currentTurn;
+    }
 }
