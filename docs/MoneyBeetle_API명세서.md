@@ -1748,23 +1748,27 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-16~18, SP-62 |
-| 설명 | 관리자가 공개한 뒤에만. type=ASSET(순자산) |
+| 설명 | 관리자가 공개한 뒤에만. type=ASSET(순자산, 기본) 또는 RETURN(수익률) |
 
 **Request**
 
-- Query: type=ASSET&page=0&size=10
+- Query: type=ASSET&page=0&size=10 (type 기본 ASSET, page 기본 0, size 기본 10·최대 50)
 
 **Response**
 
 ```json
 {
-  "seasonName": "시즌 6", "type": "ASSET",
+  "seasonName": "시즌 6", "type": "ASSET", "totalCount": 1240,
   "items": [ { "rank": 1, "nickname": "초록개미", "title": "내 집", "netAsset": 8920400, "returnRate": 42.8, "hasBadge": true } ],
   "me": { "rank": 23, "netAsset": 4610000, "returnRate": 6.5 }
 }
 ```
 
-**Error**: `RANKING_NOT_PUBLISHED`
+- `rank`는 정산 때 확정한 순위다 (SP-62). 동점은 같은 순위이고, 같은 순위 안에서는 참가한 순서다. `type`에 맞는 순위(순자산 순위 / 수익률 순위)로 정렬한다
+- `title`·`hasBadge`: 그 랭킹 종류에서 상위 3위 수상(뱃지·칭호)이 있으면 뱃지 이름과 `true`, 없으면 `null`과 `false`
+- `me`: 이 시즌에 참가해 정산된 회원 자신의 순위. 참가하지 않았거나 정산 전이면 `null`
+
+**Error**: `RANKING_NOT_PUBLISHED`(403, 공개 전), `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, type·page·size가 올바르지 않음)
 
 ### 모의 청약
 
