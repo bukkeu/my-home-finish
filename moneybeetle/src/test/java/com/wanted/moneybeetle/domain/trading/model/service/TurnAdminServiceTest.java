@@ -77,7 +77,6 @@ class TurnAdminServiceTest {
             turns.add(SeasonTurn.create(SEASON_ID, i + 1, dates.get(i)));
         }
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
-        when(seasonRepository.findFirstByOrderByTradingSeasonIdAsc()).thenReturn(Optional.of(season));
         when(seasonRepository.findByIdForUpdate(SEASON_ID)).thenReturn(Optional.of(season));
         when(turnRepository.findByTradingSeasonIdOrderByTurnNoAsc(SEASON_ID)).thenReturn(turns);
         when(turnRepository.findByTradingSeasonIdAndTurnNo(eq(SEASON_ID), anyInt())).thenAnswer(
@@ -130,7 +129,6 @@ class TurnAdminServiceTest {
         assertThat(season.getCurrentTurn()).isEqualTo(1);
         assertThat(turns.get(0).getProgressedBy()).isEqualTo(ADMIN_ID);
         assertThat(turns.get(0).getProgressedAt()).isEqualTo(LocalDateTime.of(2026, 11, 6, 0, 0));
-        verify(seasonRepository).findFirstByOrderByTradingSeasonIdAsc();
         verify(adminLogService).record(ADMIN_ID, "TURN_ADVANCE", "SEASON", SEASON_ID, "{\"before\":0,\"after\":1}");
     }
 

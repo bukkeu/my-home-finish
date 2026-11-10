@@ -1,17 +1,23 @@
 /* comment.
-*   담당 : DBA ① 신아림 (#52, 강의 상세·영상 시청 /user/lecture-detail?courseId=)
-*   - 강의 정보·목차(영상별 시청 완료)·진도율·스크랩 버튼
+*   담당 : DBA ① 신아림 (#52 강의 상세·영상 시청, #53 테스트 퀴즈·최종 퀴즈 /user/lecture-detail?courseId=)
+*   - 강의 정보·목차(시청 전 테스트 → 영상 → 최종 퀴즈)·진도율·스크랩 버튼
+*   - 학습 순서 잠금(화면설계 5.2.4, NFR-09): 테스트(OX)를 풀어야 영상이, 영상을 모두 봐야 최종 퀴즈가 열린다.
+*     잠긴 단계는 목차에서 흐리게 보이고 누르면 먼저 할 일을 알려 준다
+*     · 테스트는 서버에 기록하지 않으므로(API 40) 푼 강의는 브라우저(localStorage mb-ox-done)에 남긴다.
+*       이미 영상을 본 강의(학습 기록이 있음)는 테스트를 다시 요구하지 않는다
+*     · 최종 퀴즈 잠금은 서버도 막는다(QUIZ_LOCKED). 퀴즈 화면은 course-quiz.js (window.MBLecQuiz)
 *   - 영상 재생: 처음 열면 마지막으로 본 영상(없으면 아직 안 본 첫 영상)을 고르고, 서버가 준 이어보기 위치부터 재생한다
 *   - 시청 위치 저장(API 33): 재생 중 15초마다, 일시정지·끝·화면을 떠날 때. 완료 여부는 서버가 본 시간으로 정한다(#20)
 *     → 끝까지 본 뒤에는 강의 정보를 다시 받아 목차·진도율을 서버 기준으로 갱신한다
 *  */
 (function () {
   var root = document.querySelector('[data-lec-detail]');
-  if (!root || !window.MB || !window.MBLec) return;
+  if (!root || !window.MB || !window.MBLec || !window.MBLecQuiz) return;
   var L = window.MBLec;
   var h = L.h;
 
   var SAVE_EVERY_MS = 15000;
+  var OX_KEY = 'mb-ox-done';   // 시청 전 테스트를 마친 강의 ID 목록 (브라우저 저장소)
   var MAX_STEP = 2;           // timeupdate 사이 이만큼(초)보다 크게 뛰면 건너뛰기로 본다 (2배속까지는 재생으로 인정)
   var courseId = Number(new URLSearchParams(location.search).get('courseId'));
   var body = root.querySelector('[data-lec-body]');
@@ -19,6 +25,7 @@
 
   var state = {
     course: null, path: null, current: null, play: null, tab: 'summary', tocOpen: false,
+    view: 'lesson', oxDone: false,   // view: 'ox'(시청 전 테스트) | 'lesson'(영상) | 'quiz'(최종 퀴즈)
     watched: 0, lastTime: 0, played: false, lastSavedAt: 0, pendingSaves: 0, refreshed: false
   };
   var video = null;
@@ -41,8 +48,9 @@
       state.course = res[0];
       state.path = findPath(res[1] || [], state.course.categoryId);
       state.current = pickStartLesson(state.course);
+      state.oxDone = isOxDone();
       render();
-      if (state.current) openLesson(state.current, true);
+      showView(state.oxDone ? 'lesson' : 'ox', true);
     }).catch(function (err) {
       body.replaceChildren(L.errorBox(err, load));
     });
@@ -65,13 +73,39 @@
         || lessons[0] || null;
   }
 
+  /* 시청 전 테스트를 마쳤는지: 이 브라우저에서 푼 적이 있거나, 이미 영상을 보기 시작한 강의 */
+  function isOxDone() {
+    var c = state.course;
+    if (c.progressStatus || completedCount() > 0) return true;
+    try { return (JSON.parse(localStorage.getItem(OX_KEY) || '[]') || []).indexOf(courseId) >= 0; } catch (e) { return false; }
+  }
+
+  function markOxDone() {
+    state.oxDone = true;
+    try {
+      var done = JSON.parse(localStorage.getItem(OX_KEY) || '[]') || [];
+      if (done.indexOf(courseId) < 0) localStorage.setItem(OX_KEY, JSON.stringify(done.concat(courseId).slice(-200)));
+    } catch (e) { /* 저장소가 막혀 있어도 이번 화면에서는 열린다 */ }
+    renderSide();
+  }
+
+  function leftLessons() {
+    return (state.course.lessons || []).length - completedCount();
+  }
+
+  function backHref() {
+    return state.path ? state.path.href : '/user/lectures';
+  }
+
   /* 저장 뒤 강의 정보만 다시 받아 목차·진도율을 서버 기준으로 바꾼다 (재생 중인 영상은 그대로) */
   function refreshCourse() {
     return MB.api('/api/v1/courses/' + courseId).then(function (course) {
       state.course = course;
-      state.current = course.lessons.find(function (l) { return l.lessonId === state.current.lessonId; }) || state.current;
+      if (state.current) {
+        state.current = course.lessons.find(function (l) { return l.lessonId === state.current.lessonId; }) || state.current;
+      }
       renderSide();
-      renderNow();
+      if (state.view === 'lesson') renderNow();
     }).catch(function () { /* 다음 저장 때 다시 맞춰진다 */ });
   }
 
@@ -94,6 +128,7 @@
     refs.now = h('div', { class: 'lec-now' });
     refs.playerBox = h('div');
     refs.content = h('div');
+    refs.main = h('div', { class: 'lec-panel' });
 
     var head = h('section', { class: 'lec-head' }, [
       h('div', { class: 'lec-head__text' }, [
@@ -109,14 +144,62 @@
       h('div', { class: 'lec-head__side' }, [refs.scrap, refs.progress])
     ]);
 
-    var main = lessons.length
-      ? h('div', { class: 'lec-panel' }, [refs.now, refs.playerBox, refs.content])
-      : h('div', { class: 'lec-panel' }, [h('div', { class: 'lec-state', text: '아직 등록된 영상이 없어요.' })]);
-
-    body.replaceChildren(head, h('div', { class: 'lec-layout' }, [main, refs.side]));
+    body.replaceChildren(head, h('div', { class: 'lec-layout' }, [refs.main, refs.side]));
     renderScrap();
     renderSide();
-    renderNow();
+  }
+
+  /* 가운데 학습 영역을 바꾼다: 시청 전 테스트 / 영상 / 최종 퀴즈 */
+  function showView(view, first) {
+    if (state.view === 'lesson' && view !== 'lesson') leaveLesson();
+    state.view = view;
+    if (view === 'ox') {
+      var oxBox = h('div', { class: 'lec-quiz' });
+      refs.main.replaceChildren(oxBox);
+      MBLecQuiz.renderTest(oxBox, { courseId: courseId, onUnlocked: markOxDone, onGoLessons: function () { showView('lesson'); } });
+    } else if (view === 'quiz') {
+      var quizBox = h('div', { class: 'lec-quiz' });
+      refs.main.replaceChildren(quizBox);
+      MBLecQuiz.renderQuiz(quizBox, { courseId: courseId, leftLessons: leftLessons, backHref: backHref,
+        onGoLessons: goFirstUnwatched, onResult: function () { refreshCourse(); } });
+    } else if (!state.current) {
+      refs.main.replaceChildren(h('div', { class: 'lec-state', text: '아직 등록된 영상이 없어요.' }));
+    } else {
+      refs.main.replaceChildren(refs.now, refs.playerBox, refs.content);
+      openLesson(state.current, first);
+    }
+    renderSide();
+    if (!first) refs.main.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* 아직 시청 완료가 아닌 첫 영상으로 */
+  function goFirstUnwatched() {
+    var lesson = (state.course.lessons || []).find(function (l) { return !l.isCompleted; });
+    if (lesson) state.current = lesson;
+    showView('lesson');
+  }
+
+  /* 영상 화면을 떠날 때: 지금 위치를 저장하고 재생을 멈춘다 (멈춤 이벤트가 다시 저장하지 않게 videoLessonId 를 비운다) */
+  function leaveLesson() {
+    if (!video) return;
+    saveProgress(false, { force: true });
+    videoLessonId = null;
+    video.pause();
+  }
+
+  /* 목차·버튼에서 영상을 고를 때 */
+  function pickLesson(lesson) {
+    if (!state.oxDone) { MB.toast('시청 전 테스트(OX)를 먼저 풀면 영상이 열려요.'); return; }
+    if (state.view !== 'lesson') { state.current = lesson; showView('lesson'); return; }
+    if (state.current && state.current.lessonId === lesson.lessonId) return;
+    saveProgress(false, { force: true });
+    openLesson(lesson, false);
+  }
+
+  function pickQuiz() {
+    if (!state.oxDone) { MB.toast('시청 전 테스트(OX)를 먼저 풀어 주세요.'); return; }
+    if (leftLessons() > 0) { MB.toast('영상을 모두 끝까지 보면 최종 퀴즈가 열려요.'); return; }
+    if (state.view !== 'quiz') showView('quiz');
   }
 
   function completedCount() {
@@ -144,29 +227,49 @@
       onclick: function () { state.tocOpen = !state.tocOpen; renderSide(); } });
     refs.side.classList.toggle('is-open', state.tocOpen);
 
+    var quizLocked = !state.oxDone || leftLessons() > 0;
+    var completed = c.progressStatus === 'COMPLETED';
+
+    function step(opts) {
+      return h('button', { type: 'button', class: 'lec-step' + (opts.done ? ' lec-step--done' : '') + (opts.locked ? ' lec-step--locked' : ''),
+        'aria-current': opts.now ? 'step' : null, 'aria-disabled': opts.locked ? 'true' : null, onclick: opts.onclick }, [
+        h('span', { class: 'lec-step__mark', text: opts.done ? '✓' : opts.locked ? '🔒' : opts.mark }),
+        h('span', { class: 'lec-step__text' }, [
+          h('span', { class: 'lec-step__title', text: opts.title }),
+          h('span', { class: 'lec-step__sub', text: opts.sub })
+        ])
+      ]);
+    }
+
+    var list = [
+      h('div', { class: 'lec-toc__group', text: '시청 전 테스트' }),
+      step({ mark: 'OX', title: 'OX 테스트', done: state.oxDone, now: state.view === 'ox',
+        sub: state.oxDone ? '완료 · 다시 풀 수 있어요' : '불이익 없음 · 풀면 영상이 열려요', onclick: function () { if (state.view !== 'ox') showView('ox'); } }),
+      h('div', { class: 'lec-toc__group', text: '영상 ' + lessons.length + '개' })
+    ].concat(lessons.map(function (l, i) {
+      var isNow = state.view === 'lesson' && state.current && state.current.lessonId === l.lessonId;
+      return step({ mark: String(i + 1), title: l.title, done: l.isCompleted, locked: !state.oxDone, now: isNow,
+        sub: !state.oxDone ? '잠김 · 테스트를 먼저 풀어요'
+          : L.minutes(l.durationSeconds) + (l.isCompleted ? ' · 시청 완료' : isNow ? ' · 보는 중' : ''),
+        onclick: function () { pickLesson(l); } });
+    })).concat([
+      h('div', { class: 'lec-toc__group', text: '최종 퀴즈' }),
+      step({ mark: 'Q', title: '4지선다 퀴즈', done: completed, locked: quizLocked, now: state.view === 'quiz',
+        sub: completed ? '통과 · 다시 풀 수 있어요' : quizLocked ? '잠김 · 영상을 모두 보면 열려요' : '70점 이상이면 통과',
+        onclick: pickQuiz }),
+      h('div', { class: 'lec-goal' }, [
+        h('span', { class: 'lec-step__mark', text: completed ? '✓' : '★' }),
+        h('span', { class: 'lec-step__text' }, [
+          h('span', { class: 'lec-step__title', text: '학습 완료' }),
+          h('span', { class: 'lec-step__sub', text: '영상을 모두 보고 퀴즈 70점 이상' })
+        ])
+      ])
+    ]);
+
     refs.side.replaceChildren(
       h('div', { class: 'lec-toc__head' }, [h('h3', { text: '강의 목차' }), h('span', { class: 'lec-meta', text: done + ' / ' + lessons.length }), toggle]),
       h('div', { class: 'lec-bar lec-bar--thin' }, [h('span', { style: 'width:' + pct + '%' })]),
-      h('div', { class: 'lec-toc__list' }, [h('div', { class: 'lec-toc__group', text: '영상 ' + lessons.length + '개' })]
-        .concat(lessons.map(function (l, i) {
-          var isNow = state.current && state.current.lessonId === l.lessonId;
-          return h('button', { type: 'button', class: 'lec-step' + (l.isCompleted ? ' lec-step--done' : ''),
-            'aria-current': isNow ? 'step' : null,
-            onclick: function () { if (!isNow) { saveProgress(false, { force: true }); openLesson(l, false); } } }, [
-            h('span', { class: 'lec-step__mark', text: l.isCompleted ? '✓' : String(i + 1) }),
-            h('span', { class: 'lec-step__text' }, [
-              h('span', { class: 'lec-step__title', text: l.title }),
-              h('span', { class: 'lec-step__sub', text: L.minutes(l.durationSeconds) + (l.isCompleted ? ' · 시청 완료' : isNow ? ' · 보는 중' : '') })
-            ])
-          ]);
-        }))
-        .concat([h('div', { class: 'lec-goal' }, [
-          h('span', { class: 'lec-step__mark', text: c.progressStatus === 'COMPLETED' ? '✓' : '★' }),
-          h('span', { class: 'lec-step__text' }, [
-            h('span', { class: 'lec-step__title', text: '학습 완료' }),
-            h('span', { class: 'lec-step__sub', text: '영상을 모두 보고 퀴즈 70점 이상' })
-          ])
-        ])]))
+      h('div', { class: 'lec-toc__list' }, list)
     );
   }
 
@@ -194,9 +297,9 @@
       ]),
       h('div', { class: 'lec-now__nav' }, [
         h('button', { type: 'button', class: 'btn btn-secondary', disabled: !prev, text: '‹ 이전',
-          onclick: function () { if (prev) { saveProgress(false, { force: true }); openLesson(prev, false); } } }),
+          onclick: function () { if (prev) pickLesson(prev); } }),
         h('button', { type: 'button', class: 'btn btn-secondary', disabled: !next, text: '다음 ›',
-          onclick: function () { if (next) { saveProgress(false, { force: true }); openLesson(next, false); } } })
+          onclick: function () { if (next) pickLesson(next); } })
       ])
     );
     renderContent();
@@ -217,7 +320,8 @@
         summary ? h('p', { class: 'lec-summary__body', text: summary }) : h('p', { class: 'lec-summary__body lec-muted', text: '이 영상에는 요약글이 없어요.' }),
         h('div', { class: 'lec-summary__actions' }, [
           next ? h('button', { type: 'button', class: 'btn btn-primary', text: '다음 영상 보기',
-            onclick: function () { saveProgress(false, { force: true }); openLesson(next, false); } }) : null,
+            onclick: function () { pickLesson(next); } }) : null,
+          !next && allDone ? h('button', { type: 'button', class: 'btn btn-primary', text: '최종 퀴즈 풀기', onclick: pickQuiz }) : null,
           !next && allDone ? h('span', { class: 'lec-meta', text: '영상을 모두 봤어요! 최종 퀴즈에서 70점 이상이면 학습 완료예요.' }) : null,
           !next && !allDone ? h('span', { class: 'lec-meta', text: '영상을 모두 끝까지 보면 최종 퀴즈가 열려요.' }) : null
         ])
