@@ -1104,7 +1104,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `PUT` |
 | 권한 | 회원 |
 | 관련 | LRN-05~06, SP-38 |
-| 설명 | 재생 중 주기적으로(예: 15초) 저장. 끝까지 보면 completed=true. |
+| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
 
 **Request**
 
@@ -1124,7 +1124,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-06 |
-| 설명 | 최근 본 영상 순. |
+| 설명 | 최근 본 영상 순. 마지막 시청 시각이 같으면 시청 기록 ID 역순으로 순서를 고정한다(페이지 경계 중복·누락 방지, #157). 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -1144,7 +1144,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-06~07 |
-| 설명 | 학습 완료한 강의. |
+| 설명 | 학습 완료한 강의. 완료 시각 최신순, 같으면 학습 기록 ID 역순(#157). 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -1270,7 +1270,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-02, SP-35 |
-| 설명 | 4지선다 5~15문제. 영상을 모두 본 뒤 열린다. 정답은 보내지 않는다. |
+| 설명 | 4지선다 5~15문제. 이 강의의 영상을 모두 끝까지 본 뒤 열린다(lesson_watch.is_completed). 정답·해설은 보내지 않는다. passScore는 system_setting QUIZ_PASS_SCORE(없거나 1~100 밖이면 70). |
 
 **Request**
 
@@ -1282,7 +1282,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "passScore": 70, "questions": [ { "questionId": 201, "content": "청약 가점 항목이 아닌 것은?", "choices": [ { "choiceId": 11, "content": "무주택 기간" }, { "choiceId": 12, "content": "연 소득" } ] } ] }
 ```
 
-**Error**: `QUIZ_LOCKED`
+**Error**: `QUIZ_LOCKED`(403), `COURSE_NOT_PUBLIC`, `NOT_FOUND`(퀴즈 문항 없음)
 
 #### 42. 퀴즈 제출·채점
 
@@ -1292,7 +1292,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-02~05, LRN-07, GRW-03~06, SP-34~36, NFR-06 |
-| 설명 | 서버에서 채점하고 오답을 오답노트에 저장한다. 최초 통과 때만 학습 완료 + 경험치·캐시 지급(레벨업 포함, 한 트랜잭션). 같은 요청은 한 번만 처리. |
+| 설명 | 서버에서 채점(점수 = 맞힌 수 / 문항 수 × 100, 소수점 이하 버림, passScore 이상 통과)하고 응시·답안을 저장한다. 틀린 문제는 오답노트에 저장(같은 문제는 한 번, 또 틀리면 마지막 오답만 갱신). 통과했고 처음 학습 완료일 때만 학습 완료 + 보상(COURSE_COMPLETE, 만점이면 QUIZ_PERFECT 추가, 원인 ID = 강의 ID, 레벨업 포함) — 모두 한 트랜잭션. 안 푼 문제·이 문항의 보기가 아닌 답은 오답. 같은 Idempotency-Key 재요청은 처음 결과를 그대로 돌려준다(IdempotencyFilter). |
 
 **Request**
 
@@ -1312,7 +1312,9 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`
+**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`, `IDEMPOTENCY_KEY_CONFLICT`, `COURSE_NOT_PUBLIC`, `NOT_FOUND`
+
+- 미통과·이미 완료한 강의면 `rewards`는 `{ "firstPass": false, "exp": 0, "cash": 0, "levelUp": null }`. 레벨이 오르지 않았으면 `levelUp`은 null.
 
 #### 43. 퀴즈 결과
 
@@ -1330,9 +1332,9 @@ Header: Idempotency-Key: 7c1e...
 
 **Response**
 
-- (퀴즈 제출 응답과 같은 구조)
+- 퀴즈 제출 응답과 같은 구조. 보상은 이미 지급돼서 `rewards`는 null. 결과는 문항 순서대로.
 
-**Error**: `FORBIDDEN`, `NOT_FOUND`
+**Error**: `FORBIDDEN`(남의 응시), `NOT_FOUND`
 
 #### 44. 오답노트
 
@@ -2155,6 +2157,17 @@ Header: Idempotency-Key: 4d8e...
 
 첫 번째는 이미 저장된 영상(`lessonId` 있음), 두 번째는 새 영상(`lessonId` 없음)이다.
 
+**저장 규칙** (#31)
+
+- 본인 강의만(남의 강의 `FORBIDDEN`, 삭제된 강의 `NOT_FOUND`). 검수 중이면 `COURSE_IN_REVIEW`. 허가된 강의의 영상을 바꾸면 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31).
+- `sortOrder`는 1부터 영상 개수까지 빠짐없이 한 번씩(예: 2개면 1, 2). 아니면 `INVALID_INPUT`.
+- `videoUrl`은 "영상 파일 올리기"가 돌려준 파일 키(`/uploads/….mp4`)만 받고, 저장 폴더에 그 파일이 실제로 있어야 한다. 외부 링크·없는 파일은 `INVALID_INPUT`. 기존 영상(`lessonId` 있음)이 지금 저장된 키를 그대로 보내면 다시 올리지 않아도 통과한다.
+- `lessonId`가 이 강의의 영상이 아니면 `LESSON_NOT_FOUND`, 같은 `lessonId`를 두 번 보내면 `INVALID_INPUT`.
+- 요청에 없는 기존 영상은 지운다. 단 시청 기록이 있거나 수강생의 "마지막으로 본 영상"이면 지우지 않고 `LESSON_IN_USE`(409).
+- 기존 영상(`lessonId` 있음)의 `videoUrl`을 다른 파일로 바꾸면 예전 영상의 시청 기록이 새 영상에 적용되지 않게, 그 영상의 본 시간·완료와 이어보기 위치를 처음(0)으로 돌린다. 제목·요약글·순서만 바꾸면 시청 기록은 그대로다.
+- 기존 영상의 순서를 바꿀 수 있다. 다만 영상 3개가 모두 남은 채로 서로 자리를 바꾸면 빈 자리가 없어서 `LESSON_ORDER_LOCKED`(409).
+- 영상 제목·요약글은 금칙어 검사(DP-20, `FORBIDDEN_WORD`). 영상 제목 100자, 요약글 2,000자(`SUMMARY_TOO_LONG`).
+
 **Response**
 
 ```json
@@ -2163,7 +2176,7 @@ Header: Idempotency-Key: 4d8e...
 
 요청 `lessons`와 같은 순서다: 첫 번째 영상은 기존 ID 20, 두 번째 새 영상은 새로 만든 ID 21.
 
-**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
+**Error**: `NO_LESSON`(0개), `TOO_MANY_LESSONS`(4개 이상), `SUMMARY_TOO_LONG`, `LESSON_NOT_FOUND`, `LESSON_IN_USE`, `LESSON_ORDER_LOCKED`, `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `INVALID_INPUT`, `IDEMPOTENCY_KEY_CONFLICT`, `FORBIDDEN`, `NOT_FOUND`
 
 **영상 파일 올리기** (#78의 부속 요청, API 번호는 늘리지 않는다)
 
@@ -2173,17 +2186,17 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-02, DP-33 |
-| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. |
+| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. 본인 강의만, 검수 중에는 불가(파일을 저장하기 전에 확인한다). |
 
 - Form: file=(mp4, 500MB 이하)
 
 ```json
-{ "videoUrl": "lesson/7-1.mp4" }
+{ "videoUrl": "/uploads/3f2a....mp4" }
 ```
 
 응답의 `videoUrl`은 **만료되지 않는 파일 키**(스토리지 안의 경로)이고, 서명 주소가 아니다. 서버는 업로드 때 이 키를 받아 두었다가, 위 "영상·요약글 저장" 요청에 담긴 같은 값을 `lesson.video_url`(DB)에 그대로 저장한다. 영상을 보여 주는 응답(API 62 등)의 `videoUrl`은 저장된 키로 **조회할 때마다 새로 발급한 짧게 만료되는 서명 주소**다(local 환경은 서버가 `/files/` + 키로 로컬 파일을 직접 내려 준다). 그래서 서명 주소를 DB에 저장하거나 저장 요청에 담지 않는다.
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 79. 테스트 퀴즈 저장
 
@@ -2193,7 +2206,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-04 |
-| 설명 | OX 5문제와 해설 일괄 저장. |
+| 설명 | OX 5문제와 해설 일괄 저장. 문제 500자, 해설은 UTF-8 기준 65,535바이트까지(넘으면 `INVALID_INPUT`). `answer`는 `"O"` 또는 `"X"`. 정확히 5문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). 저장 방식은 아래 "퀴즈 저장 방식" 참고. |
 
 **Request**
 
@@ -2207,7 +2220,7 @@ Header: Idempotency-Key: 4d8e...
 { "count": 5 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 80. 퀴즈 저장
 
@@ -2217,7 +2230,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-05 |
-| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. |
+| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. 문제 500자, 해설은 UTF-8 기준 65,535바이트까지. `choices`는 정확히 4개(각 200자), `answerIndex`는 정답 보기 위치 0~3. 5~15문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). |
 
 **Request**
 
@@ -2231,7 +2244,9 @@ Header: Idempotency-Key: 4d8e...
 { "count": 10 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
+
+**퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
 #### 81. 검수 요청
 
@@ -2314,7 +2329,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-08 |
-| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. |
+| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `todayOrders`·`nextTurnReady`·`missing` 은 모의투자(trading) 조회 메서드가 공개되기 전까지 null 이다. |
 
 **Request**
 
@@ -2666,7 +2681,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 역할·상태·키워드 검색. |
+| 설명 | 역할·상태·키워드 검색(#37). 키워드의 `%`·`_`는 글자 그대로 찾는다. 관리자 계정은 빼고, role(MEMBER·INSTRUCTOR)·status(ACTIVE·SUSPENDED·WITHDRAWN)·keyword(닉네임·이메일 일부) 모두 선택, 모르는 값은 필터 없이. 최근 가입 순, 기본 20개(최대 50). 목록 응답 형식(1-3). `role`은 회원 정보상 역할이라 승인 전 강사도 INSTRUCTOR로 보인다. |
 
 **Request**
 
@@ -2686,7 +2701,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-06, DP-43 |
-| 설명 | 정지 시 사유 필수. |
+| 설명 | 정지 시 사유 필수(200자). status는 ACTIVE·SUSPENDED만. 정지하면 로그인할 수 없고(`ACCOUNT_SUSPENDED`), 이미 로그인한 세션도 다음 요청에서 끊긴다. 해제하면 정지 사유를 지운다. 관리자·탈퇴 계정은 바꿀 수 없다. 같은 상태로 바꾸면 아무것도 하지 않는다. admin_log 기록(MEMBER_SUSPEND·MEMBER_ACTIVATE). |
 
 **Request**
 
@@ -2698,7 +2713,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
 
 #### 103. 강사 권한 부여·회수
 
@@ -2708,7 +2723,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-07 |
-| 설명 | INSTRUCTOR ↔︎ MEMBER. |
+| 설명 | INSTRUCTOR ↔︎ MEMBER. INSTRUCTOR로 바꾸면 강사 정보를 승인(없으면 닉네임을 표시 이름으로 만들어 승인)해서 다음 로그인부터 강사 권한이 생긴다(SP-07). MEMBER로 바꾸면 강사 정보를 회수(REVOKED)한다(만든 강의는 남고 강사 화면·API만 막힘). 회수하면 이미 로그인해 둔 강사 세션도 다음 요청에서 끊기고(다시 로그인하면 MEMBER), 부여는 기존 세션을 건드리지 않아 다음 로그인부터 적용된다. 관리자·탈퇴 계정은 바꿀 수 없다. admin_log 기록(MEMBER_ROLE_CHANGE). |
 
 **Request**
 
@@ -2720,6 +2735,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
+
 #### 104. 강사 가입 신청 목록
 
 | 항목 | 내용 |
@@ -2728,7 +2745,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인 대기 강사. |
+| 설명 | 승인 대기 강사. status(PENDING·APPROVED·REVOKED, 기본 PENDING), 탈퇴 회원 제외, 신청 순, 기본 20개(최대 50). 실제로 강사 가입을 신청한(API 12) 강사만 나오고, 관리자가 직접 권한을 준 강사(API 103)는 빠진다. `createdAt`은 신청 시각(instructor_profile.applied_at), 그 순서로 정렬. 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -2748,7 +2765,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인하면 role=INSTRUCTOR. 거절은 /reject. |
+| 설명 | 승인 대기(PENDING) 신청만 승인. 승인하면 강사 정보 APPROVED(승인 관리자·시각 기록) + role=INSTRUCTOR → 다음 로그인부터 강사 권한(SP-07). admin_log 기록(INSTRUCTOR_APPROVE). 거절(/reject)은 아직 없다(필요하면 후속 이슈). |
 
 **Request**
 
@@ -2757,6 +2774,8 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+
+**Error**: `APPLICATION_NOT_FOUND`(404), `APPLICATION_NOT_PENDING`(409), `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`
 
 #### 106. 문의 게시판 관리
 
@@ -3025,7 +3044,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-13, ADM-15 |
-| 설명 | 지난 턴/오늘/남은 턴/휴장일, 누가 언제 넘겼는지. |
+| 설명 | 지난 턴/지금 턴/남은 턴/휴장일, 누가 언제 넘겼는지. |
 
 **Request**
 
@@ -3034,8 +3053,16 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "turns": [ { "turnNo": 4, "tradeDate": "2026-11-05", "state": "DONE", "progressedAt": "2026-11-05T00:00:03", "progressedBy": "김운영" } ] }
+{ "seasonId": 7, "status": "RUNNING", "currentTurn": 5, "totalTurns": 12,
+  "turns": [ { "turnNo": 4, "tradeDate": "2026-11-05", "state": "DONE", "progressedAt": "2026-11-05T00:00:03", "progressedBy": "김운영" } ],
+  "holidays": ["2026-11-08", "2026-11-15"] }
 ```
+
+- `state`: `DONE`(지난 턴) · `CURRENT`(지금 턴) · `UPCOMING`(남은 턴). 아직 넘기지 않은 턴은 `progressedAt`·`progressedBy`가 `null`
+- `progressedBy`는 넘긴 관리자의 닉네임. 턴은 "그 턴으로 넘긴 때"를 기록한다 (4턴의 진행 기록 = 3턴 → 4턴으로 넘긴 때)
+- `holidays`: 시즌 기간 중 휴장일(일요일)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 119. 다음 턴 점검
 
@@ -3054,8 +3081,17 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "ready": false, "nextTurn": 6, "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
+{ "ready": false, "nextTurn": 6, "nextTradeDate": "2026-11-07", "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
 ```
+
+- `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
+- `nextTradeDate`: 다음 턴의 예정 거래일(턴 달력의 `tradeDate`와 같다). 마지막 턴이면 `null`. 서버는 예정일 전에도 턴을 넘기게 두고(SP-59 관리자 버튼), **예정일이 오늘보다 뒤이면 화면이 "N턴 예정일은 M/D예요. 지금 넘길까요?" 확인을 받는다** (SP-50 하루 1턴 실수 방지)
+- `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
+- 휴장일 : 시즌 상태가 `HOLIDAY`이거나, 상태와 상관없이 **서울 기준 오늘이 일요일**이면 `isHoliday: true`, `ready: false`다 (SP-50, 휴장일에는 턴이 잠긴다)
+- 마지막 턴이면 `nextTurn`이 `null`, `ready`는 `false`
+- 관리자 대시보드(84)의 `nextTurnReady`·`missing`도 같은 계산이다 (`TradingService.getDashboardSummary()`)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 120. 다음 턴 진행
 
@@ -3079,7 +3115,13 @@ email=admin@moneybeetle.kr&password=...
 { "currentTurn": 6 }
 ```
 
-**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`, `LAST_TURN_REACHED`(12턴 이후), `INVALID_STATUS_TRANSITION`(진행 중이 아닐 때)
+- `expectedCurrentTurn`은 화면이 보고 있던 현재 턴이다. 서버의 현재 턴과 다르면 `TURN_CONFLICT`(다른 관리자가 먼저 넘긴 경우)
+- 넘기면 그 턴의 `progressedAt`·`progressedBy`를 남기고 admin_log(`TURN_ADVANCE`, 변경 전·후 턴)에도 기록한다 (같은 트랜잭션)
+- 같은 시즌을 두 관리자가 동시에 넘기지 못하게 시즌 행을 잠그고 처리한다
+- 휴장일(시즌 상태 `HOLIDAY` 또는 서울 기준 일요일)에는 점검 실패보다 먼저 `MARKET_HOLIDAY`로 거절한다
+- 뉴스 등록·수정·삭제와 분야·종목 변경도 같은 시즌 행 잠금을 잡고 처리해, 점검 직후 끼어들어 뉴스·가격이 빠진 채 턴이 넘어가지 않게 한다
+
+**Error**: `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 
 #### 121. 분야 목록
 
@@ -3817,6 +3859,7 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
+| 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
 | 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
 | 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |

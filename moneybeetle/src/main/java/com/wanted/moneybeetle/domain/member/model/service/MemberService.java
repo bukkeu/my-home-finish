@@ -8,6 +8,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.MemberCountDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
@@ -176,9 +177,14 @@ public class MemberService {
     }
 
     /**
-     * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
-     * 없는 회원이면 false 다.
+     * 관리자 대시보드용 회원 수 (operation.DashboardService 전용, #33). 학습자(MEMBER) 기준이고, total 에는 탈퇴한 회원도 들어 있다.
+     * 강사·관리자는 세지 않는다.
      */
+    public MemberCountDTO countMembers() {
+        return new MemberCountDTO(memberRepository.countByRole(Member.ROLE_MEMBER),
+                memberRepository.countByRoleAndStatus(Member.ROLE_MEMBER, Member.STATUS_WITHDRAWN));
+    }
+
     /**
      * 탈퇴한 지 PERSONAL_INFO_RETENTION_DAYS 일이 지난 회원의 개인정보를 지운다 (예약 작업 MemberCleanupJob 전용, #66, DP-06).
      * 한 번에 batchSize 명까지만 처리하고 처리한 수를 돌려준다. 돌려준 수가 batchSize 면 아직 남았을 수 있어 다시 부른다.
@@ -192,8 +198,23 @@ public class MemberService {
         return targets.size();
     }
 
+    /**
+     * 정상(ACTIVE) 계정인가 (auth.ActiveMemberFilter 용). 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막으려고 요청마다 확인한다 (SP-06).
+     * 없는 회원이면 false 다.
+     */
     public boolean isActiveMember(Long memberId) {
         return memberRepository.findById(memberId).map(Member::isActive).orElse(false);
+    }
+
+    /**
+     * INSTRUCTOR 권한으로 로그인해 둔 회원의 강사 권한이 지금은 없는가 (auth.ActiveMemberFilter 가 INSTRUCTOR 세션에만 부른다, #37 CodeRabbit 지적).
+     * 관리자가 강사 권한을 회수(API 103)하면 true → 이미 열린 세션도 다음 요청에서 끊긴다.
+     * 권한 부여는 세션을 건드리지 않아 다음 로그인부터 적용된다 (SP-07). 없는 회원이면 true.
+     */
+    public boolean isInstructorRevoked(Long memberId) {
+        return memberRepository.findById(memberId)
+                .map(member -> !Member.ROLE_INSTRUCTOR.equals(grantedRole(member)))
+                .orElse(true);
     }
 
     /** 회원 테이블의 role 이 INSTRUCTOR 여도 승인된 강사일 때만 INSTRUCTOR 권한을 준다 */

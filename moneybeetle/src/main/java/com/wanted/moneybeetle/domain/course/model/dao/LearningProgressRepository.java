@@ -27,7 +27,7 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
             where p.courseId = c.courseId
               and p.memberId = :memberId and p.status = :progressStatus
               and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
-            order by p.completedAt desc
+            order by p.completedAt desc, p.learningProgressId desc
             """,
             countQuery = """
             select count(p) from LearningProgress p, Course c

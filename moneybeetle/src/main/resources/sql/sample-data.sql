@@ -24,12 +24,13 @@ INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role,
 (8, 'minji@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '민지', '1999-04-12', 'MEMBER', 'ACTIVE', 8, 1250, 12000);
 
 -- 강사 정보: 모두 승인 상태 (승인 관리자 = 1)
-INSERT INTO instructor_profile (member_id, display_name, field, approval_status, approved_by, approved_at) VALUES
-(2, '박서연', '예적금·청약', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(3, '이도현', '국내 주식·ETF', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(4, '한지수', '월급 관리', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(5, '오민재', '소비·위험 관리', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(6, '정하린', '미국 주식·분산 투자', 'APPROVED', 1, '2026-11-01 10:00:00');
+-- 시드 강사는 모두 강사 가입 신청(applied_at) 후 관리자 승인을 받은 것으로 둔다 (#37)
+INSERT INTO instructor_profile (member_id, display_name, field, approval_status, approved_by, approved_at, applied_at) VALUES
+(2, '박서연', '예적금·청약', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(3, '이도현', '국내 주식·ETF', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(4, '한지수', '월급 관리', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(5, '오민재', '소비·위험 관리', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(6, '정하린', '미국 주식·분산 투자', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00');
 
 -- 약관 (가입 화면용)
 INSERT INTO terms (terms_id, title, content, is_required, version, effective_at) VALUES
@@ -105,35 +106,37 @@ INSERT INTO course_review (course_id, admin_id, result, reason) VALUES
 (19, 1, 'APPROVED', NULL),
 (17, 1, 'REJECTED', '퀴즈 해설이 비어 있어요. 보완 후 다시 요청해 주세요.');
 
--- 영상·요약글: 영상은 파일 업로드로 확정(#30). 지금은 로컬 업로드 폴더 기준 예시 경로
+-- 영상·요약글: 영상은 파일 업로드로 확정(#30).
+-- 시연용 샘플 영상 3개(30초, moneybeetle/uploads/videos/sample-1~3.mp4)를 영상 순서대로 함께 쓴다 (#73).
+-- 길이(duration_seconds)를 실제 파일 길이 30초에 맞춰서, 영상 완료(본 시간 90% 이상)·퀴즈 열기·통과까지 바로 시연할 수 있다.
 INSERT INTO lesson (course_id, sort_order, title, video_url, duration_seconds, summary) VALUES
-(1, 1, '왜 통장을 나눠야 할까', '/uploads/videos/course-1-1.mp4', 420, '왜 통장을 나눠야 할까 영상의 요약글이에요. (시드 예시)'),
-(1, 2, '통장 3개 만드는 순서', '/uploads/videos/course-1-2.mp4', 540, '통장 3개 만드는 순서 영상의 요약글이에요. (시드 예시)'),
-(2, 1, '비상금이 필요한 순간', '/uploads/videos/course-2-1.mp4', 360, '비상금이 필요한 순간 영상의 요약글이에요. (시드 예시)'),
-(2, 2, '내 비상금 목표 정하기', '/uploads/videos/course-2-2.mp4', 480, '내 비상금 목표 정하기 영상의 요약글이에요. (시드 예시)'),
-(3, 1, '고정비 찾아내기', '/uploads/videos/course-3-1.mp4', 400, '고정비 찾아내기 영상의 요약글이에요. (시드 예시)'),
-(4, 1, '예금과 적금의 기본', '/uploads/videos/course-4-1.mp4', 480, '예금과 적금의 기본 영상의 요약글이에요. (시드 예시)'),
-(4, 2, '단리와 복리', '/uploads/videos/course-4-2.mp4', 600, '단리와 복리 영상의 요약글이에요. (시드 예시)'),
-(4, 3, '이자에 붙는 세금', '/uploads/videos/course-4-3.mp4', 420, '이자에 붙는 세금 영상의 요약글이에요. (시드 예시)'),
-(5, 1, '적금 이자 계산법', '/uploads/videos/course-5-1.mp4', 540, '적금 이자 계산법 영상의 요약글이에요. (시드 예시)'),
-(6, 1, '중도해지 이율', '/uploads/videos/course-6-1.mp4', 450, '중도해지 이율 영상의 요약글이에요. (시드 예시)'),
-(7, 1, '정책 적금이란', '/uploads/videos/course-7-1.mp4', 500, '정책 적금이란 영상의 요약글이에요. (시드 예시)'),
-(8, 1, '주식의 뜻', '/uploads/videos/course-8-1.mp4', 420, '주식의 뜻 영상의 요약글이에요. (시드 예시)'),
-(8, 2, '주가가 움직이는 이유', '/uploads/videos/course-8-2.mp4', 560, '주가가 움직이는 이유 영상의 요약글이에요. (시드 예시)'),
-(9, 1, '증권 계좌 만들기', '/uploads/videos/course-9-1.mp4', 380, '증권 계좌 만들기 영상의 요약글이에요. (시드 예시)'),
-(9, 2, '매수·매도 주문', '/uploads/videos/course-9-2.mp4', 520, '매수·매도 주문 영상의 요약글이에요. (시드 예시)'),
-(10, 1, '해외 주식 주문', '/uploads/videos/course-10-1.mp4', 500, '해외 주식 주문 영상의 요약글이에요. (시드 예시)'),
-(11, 1, '환율과 수익', '/uploads/videos/course-11-1.mp4', 460, '환율과 수익 영상의 요약글이에요. (시드 예시)'),
-(11, 2, '해외 주식 세금', '/uploads/videos/course-11-2.mp4', 520, '해외 주식 세금 영상의 요약글이에요. (시드 예시)'),
-(12, 1, 'ETF란', '/uploads/videos/course-12-1.mp4', 480, 'ETF란 영상의 요약글이에요. (시드 예시)'),
-(12, 2, '펀드와 채권', '/uploads/videos/course-12-2.mp4', 540, '펀드와 채권 영상의 요약글이에요. (시드 예시)'),
-(13, 1, '분산 투자의 원리', '/uploads/videos/course-13-1.mp4', 500, '분산 투자의 원리 영상의 요약글이에요. (시드 예시)'),
-(14, 1, '코인의 변동성', '/uploads/videos/course-14-1.mp4', 450, '코인의 변동성 영상의 요약글이에요. (시드 예시)'),
-(15, 1, '청약통장이 뭐예요?', '/uploads/videos/course-15-1.mp4', 480, '청약통장이 뭐예요? 영상의 요약글이에요. (시드 예시)'),
-(15, 2, '가점은 어떻게 계산할까', '/uploads/videos/course-15-2.mp4', 840, '가점은 어떻게 계산할까 영상의 요약글이에요. (시드 예시)'),
-(16, 1, '배당이란', '/uploads/videos/course-16-1.mp4', 400, '배당이란 영상의 요약글이에요. (시드 예시)'),
-(17, 1, '리딩방과 원금 보장', '/uploads/videos/course-17-1.mp4', 420, '리딩방과 원금 보장 영상의 요약글이에요. (시드 예시)'),
-(19, 1, '금리 비교 기준', '/uploads/videos/course-19-1.mp4', 400, '금리 비교 기준 영상의 요약글이에요. (시드 예시)');
+(1, 1, '왜 통장을 나눠야 할까', '/uploads/videos/sample-1.mp4', 30, '왜 통장을 나눠야 할까 영상의 요약글이에요. (시드 예시)'),
+(1, 2, '통장 3개 만드는 순서', '/uploads/videos/sample-2.mp4', 30, '통장 3개 만드는 순서 영상의 요약글이에요. (시드 예시)'),
+(2, 1, '비상금이 필요한 순간', '/uploads/videos/sample-1.mp4', 30, '비상금이 필요한 순간 영상의 요약글이에요. (시드 예시)'),
+(2, 2, '내 비상금 목표 정하기', '/uploads/videos/sample-2.mp4', 30, '내 비상금 목표 정하기 영상의 요약글이에요. (시드 예시)'),
+(3, 1, '고정비 찾아내기', '/uploads/videos/sample-1.mp4', 30, '고정비 찾아내기 영상의 요약글이에요. (시드 예시)'),
+(4, 1, '예금과 적금의 기본', '/uploads/videos/sample-1.mp4', 30, '예금과 적금의 기본 영상의 요약글이에요. (시드 예시)'),
+(4, 2, '단리와 복리', '/uploads/videos/sample-2.mp4', 30, '단리와 복리 영상의 요약글이에요. (시드 예시)'),
+(4, 3, '이자에 붙는 세금', '/uploads/videos/sample-3.mp4', 30, '이자에 붙는 세금 영상의 요약글이에요. (시드 예시)'),
+(5, 1, '적금 이자 계산법', '/uploads/videos/sample-1.mp4', 30, '적금 이자 계산법 영상의 요약글이에요. (시드 예시)'),
+(6, 1, '중도해지 이율', '/uploads/videos/sample-1.mp4', 30, '중도해지 이율 영상의 요약글이에요. (시드 예시)'),
+(7, 1, '정책 적금이란', '/uploads/videos/sample-1.mp4', 30, '정책 적금이란 영상의 요약글이에요. (시드 예시)'),
+(8, 1, '주식의 뜻', '/uploads/videos/sample-1.mp4', 30, '주식의 뜻 영상의 요약글이에요. (시드 예시)'),
+(8, 2, '주가가 움직이는 이유', '/uploads/videos/sample-2.mp4', 30, '주가가 움직이는 이유 영상의 요약글이에요. (시드 예시)'),
+(9, 1, '증권 계좌 만들기', '/uploads/videos/sample-1.mp4', 30, '증권 계좌 만들기 영상의 요약글이에요. (시드 예시)'),
+(9, 2, '매수·매도 주문', '/uploads/videos/sample-2.mp4', 30, '매수·매도 주문 영상의 요약글이에요. (시드 예시)'),
+(10, 1, '해외 주식 주문', '/uploads/videos/sample-1.mp4', 30, '해외 주식 주문 영상의 요약글이에요. (시드 예시)'),
+(11, 1, '환율과 수익', '/uploads/videos/sample-1.mp4', 30, '환율과 수익 영상의 요약글이에요. (시드 예시)'),
+(11, 2, '해외 주식 세금', '/uploads/videos/sample-2.mp4', 30, '해외 주식 세금 영상의 요약글이에요. (시드 예시)'),
+(12, 1, 'ETF란', '/uploads/videos/sample-1.mp4', 30, 'ETF란 영상의 요약글이에요. (시드 예시)'),
+(12, 2, '펀드와 채권', '/uploads/videos/sample-2.mp4', 30, '펀드와 채권 영상의 요약글이에요. (시드 예시)'),
+(13, 1, '분산 투자의 원리', '/uploads/videos/sample-1.mp4', 30, '분산 투자의 원리 영상의 요약글이에요. (시드 예시)'),
+(14, 1, '코인의 변동성', '/uploads/videos/sample-1.mp4', 30, '코인의 변동성 영상의 요약글이에요. (시드 예시)'),
+(15, 1, '청약통장이 뭐예요?', '/uploads/videos/sample-1.mp4', 30, '청약통장이 뭐예요? 영상의 요약글이에요. (시드 예시)'),
+(15, 2, '가점은 어떻게 계산할까', '/uploads/videos/sample-2.mp4', 30, '가점은 어떻게 계산할까 영상의 요약글이에요. (시드 예시)'),
+(16, 1, '배당이란', '/uploads/videos/sample-1.mp4', 30, '배당이란 영상의 요약글이에요. (시드 예시)'),
+(17, 1, '리딩방과 원금 보장', '/uploads/videos/sample-1.mp4', 30, '리딩방과 원금 보장 영상의 요약글이에요. (시드 예시)'),
+(19, 1, '금리 비교 기준', '/uploads/videos/sample-1.mp4', 30, '금리 비교 기준 영상의 요약글이에요. (시드 예시)');
 
 -- 퀴즈: 강의 4(예금과 적금), 15(청약통장)에만 전체 문항을 넣었다 (테스트 퀴즈 OX 5 + 퀴즈 4지선다 10)
 -- 나머지 강의의 퀴즈는 강사 화면(#30)이 완성되면 강사가 채운다
@@ -274,7 +277,7 @@ INSERT INTO quiz_choice (quiz_question_id, content, is_correct, sort_order) VALU
 -- 학습자 8(민지)의 학습 기록: 홈 '이어서 볼 강의'와 vr1/vr2 분기 확인용
 INSERT INTO learning_progress (member_id, course_id, status, last_lesson_id, last_position_seconds, completed_at) VALUES
 (8, 4, 'COMPLETED', NULL, 0, '2026-11-04 21:00:00'),
-(8, 15, 'IN_PROGRESS', NULL, 312, NULL);
+(8, 15, 'IN_PROGRESS', NULL, 12, NULL);   -- 영상 2의 12초 지점 (샘플 영상 30초, #73)
 UPDATE learning_progress lp
 JOIN lesson l ON l.course_id = lp.course_id AND l.sort_order = 2
 SET lp.last_lesson_id = l.lesson_id

@@ -4,9 +4,14 @@ import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseEditDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseStatusDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonIdsDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.LessonSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.MyCourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ThumbnailDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.VideoUploadDTO;
 import com.wanted.moneybeetle.domain.course.model.service.InstructorCourseService;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizCountDTO;
+import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSaveDTO;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -33,7 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 *   GET/POST /api/v1/instructor/courses, GET/PUT/DELETE /api/v1/instructor/courses/{courseId}
 *   POST /thumbnail, PUT /lessons, PUT /test-quiz, PUT /quiz, POST /review-request
 *   화면 : /instructor/dashboard, /instructor/course-create
-*   - 현재: 72~77 (#30), 81 검수 요청 (#32). 영상·요약글·퀴즈 저장(78~80)은 #31에서 추가
+*   - 72~77 (#30), 78~80 영상·요약글·퀴즈 저장 + 영상 파일 올리기 (#31), 81 검수 요청 (#32)
 *   - 권한: SecurityConfig가 /api/v1/instructor/** 를 승인된 강사(INSTRUCTOR)만 허용. 본인 강의 확인은 서비스가 한다
 *  */
 @RestController
@@ -86,6 +91,38 @@ public class InstructorCourseController {
                                                      @PathVariable Long courseId,
                                                      @RequestPart("file") MultipartFile file) {
         return ApiResponse.success(instructorCourseService.changeThumbnail(memberIdOf(me), courseId, file));
+    }
+
+    /* API 78 부속 "영상 파일 올리기" (multipart/form-data, 필드 이름 file, mp4 500MB) */
+    @PostMapping(value = "/{courseId}/lessons/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<VideoUploadDTO> uploadVideo(@AuthenticationPrincipal AuthDetails me,
+                                                   @PathVariable Long courseId,
+                                                   @RequestPart("file") MultipartFile file) {
+        return ApiResponse.success(instructorCourseService.uploadVideo(memberIdOf(me), courseId, file));
+    }
+
+    /* API 78 영상·요약글 일괄 저장 (Idempotency-Key 헤더, IdempotencyFilter) */
+    @PutMapping("/{courseId}/lessons")
+    public ApiResponse<LessonIdsDTO> saveLessons(@AuthenticationPrincipal AuthDetails me,
+                                                 @PathVariable Long courseId,
+                                                 @Valid @RequestBody LessonSaveDTO request) {
+        return ApiResponse.success(instructorCourseService.saveLessons(memberIdOf(me), courseId, request));
+    }
+
+    /* API 79 테스트 퀴즈 저장 (OX 5문제) */
+    @PutMapping("/{courseId}/test-quiz")
+    public ApiResponse<QuizCountDTO> saveTestQuiz(@AuthenticationPrincipal AuthDetails me,
+                                                  @PathVariable Long courseId,
+                                                  @Valid @RequestBody QuizSaveDTO request) {
+        return ApiResponse.success(instructorCourseService.saveTestQuiz(memberIdOf(me), courseId, request));
+    }
+
+    /* API 80 퀴즈 저장 (4지선다 5~15문제) */
+    @PutMapping("/{courseId}/quiz")
+    public ApiResponse<QuizCountDTO> saveQuiz(@AuthenticationPrincipal AuthDetails me,
+                                              @PathVariable Long courseId,
+                                              @Valid @RequestBody QuizSaveDTO request) {
+        return ApiResponse.success(instructorCourseService.saveQuiz(memberIdOf(me), courseId, request));
     }
 
     /* API 81 검수 요청 */

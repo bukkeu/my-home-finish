@@ -16,6 +16,7 @@
   - **구조 변경**(컬럼·제약·기본값): `sql/migration/`에 `ALTER` 파일을 추가하고(기존 DB용), 새 DB용으로 `schema.sql`에도 같은 변경을 반영합니다. 둘 다 DBA가 같은 PR에서 고칩니다.
   - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
   - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
+- **강의 영상 시드**(#73, 회원·강의·퀴즈 구역): 시드 영상 27개는 저장소에 넣어 둔 시연용 샘플 영상 3개(`moneybeetle/uploads/videos/sample-1~3.mp4`, 각 30초)를 영상 순서(`sort_order`)대로 함께 쓴다(1번째 영상 → `sample-1.mp4`). `lesson.duration_seconds`는 실제 파일 길이와 같은 30초라서, 영상 완료(서버가 인정한 본 시간 90% 이상, #20) → 퀴즈 열기 → 통과까지 바로 시연할 수 있다(퀴즈가 있는 강의 4·15번). 시드 회원 8(민지)의 이어보기 위치(`learning_progress.last_position_seconds`)는 영상 길이를 넘지 않게 12초로 둔다. 이미 시드를 넣어 둔 DB는 `sql/migration/2026-11-10_lesson_sample_video.sql`을 실행한다: 예전 시드 경로(`/uploads/videos/course-?-?.mp4`)인 영상만 샘플 영상·30초로 바꾸고(강사가 올린 영상은 그대로), 이어보기 위치가 영상 길이를 넘으면 영상 길이로 줄인다(여러 번 실행해도 결과가 같다). 서버는 `moneybeetle` 폴더 기준 기본 저장 폴더(`./uploads`)로 실행해야 샘플 영상이 재생된다.
 - **모의투자 시드**(#72): 분야 15개, 종목 30개(기업정보 포함), 매매 이유 6개, 시즌 1개(시즌 7, 12턴 중 현재 5턴, 이월 100%·상한 없음), 턴 12개, 가격 360행(12턴 전부), 뉴스 25개와 태그. 6~12턴 가격은 미래 턴이라 조회 API(#24)는 현재 턴까지만 보여 준다. 날짜는 고정값이라 현재 턴은 `current_turn`으로만 판단한다. 참가자·보유·거래 내역은 넣지 않는다.
 - **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 8개(모집 중 3, 모집 예정 1, 모집 마감 2, 발표 완료 2. 등록 관리자 1). 8번 `비틀 시범 행복주택`은 #48 산정·발표 시연용(모집 마감, 오늘 발표, 산정 전, 2세대)이고 신청자 4명(시드 회원 2~5, 점수는 SP-71대로 계산한 값)을 함께 넣는다. 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인은 쓰지 않고(#48 가점 순위 방식 확정), 단지 이미지는 컬럼이 없어 넣지 않는다. 납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 청약 신청은 신청 시점 점수를 저장하므로 8번 단지 시연용만 넣는다. 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
 - **경제 용어·알림 시드**(#75, `[DBA ②] 성장·알림·경제 용어 구역`): `economic_term` 12개(관리자 화면 프로토타입의 용어 전부, 번호 순서 = 등록 순서), `term_schedule` 10행(실행한 날(한국 시간 기준) = 1~5번, 다음 날 = 6~10번, 관리자 직접 지정), `notification` 5건(회원 8 민지 4건 중 읽지 않은 3건, 강사 5 반려 알림 1건. 종류 UNLOCK · INQUIRY_REPLY · HOUSING_RESULT · RANKING · COURSE_REJECTED, 제목·이동 주소는 알림을 보내는 코드와 같은 형식, 문의 시드가 없어 INQUIRY_REPLY 의 이동 주소는 NULL). 그 밖의 날은 오늘의 용어가 처음 조회될 때 자동 선정되어 저장된다. 이미 시드를 넣어 둔 DB 는 `sql/migration/2026-11-09_economic_term_notification_seed.sql` 을 실행한다(여러 번 실행해도 안전).
@@ -191,6 +192,7 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `cash_history` | `idx_cash_history_1` | member_id, created_at | 캐시 내역 최신순 |
 | `exp_history` | `idx_exp_history_1` | member_id, created_at | 경험치 내역 최신순 |
 | `course` | `idx_course_1` | category_id, status, is_public | 카테고리별 공개 강의 목록 |
+| `course` | `idx_course_2` | status, submitted_at | 관리자 강의 목록 상태 필터 + 검수 요청 최신순 (#87) |
 | `quiz_question` | `idx_quiz_question_1` | course_id, quiz_type, sort_order | 강의별 테스트 퀴즈·퀴즈 문항 조회 |
 | `learning_progress` | `idx_learning_progress_1` | member_id, status | 학습 완료 목록 |
 | `lesson_watch` | `idx_lesson_watch_1` | member_id, last_watched_at | 시청 기록 최신순 |
@@ -202,8 +204,26 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `trade_order` | `idx_trade_order_1` | season_participant_id, turn_no | 참가자 거래 내역 |
 | `housing_complex` | `idx_housing_complex_1` | apply_start_date, apply_end_date | 청약 캘린더 기간 조회 |
 | `housing_application` | `idx_housing_application_1` | housing_complex_id, total_score | 단지별 가점순 산정 |
+| `housing_application` | `idx_housing_application_2` | applied_at | 접수번호 만들 때 오늘 신청 수 세기 (#87) |
 | `admin_log` | `idx_admin_log_1` | target_type, target_id | 대상별 작업 기록 |
 | `admin_log` | `idx_admin_log_2` | admin_id, created_at | 관리자별 기록 |
+| `admin_log` | `idx_admin_log_3` | created_at | 필터 없는 작업 기록 최신순 (#87) |
+| `member` | `idx_member_1` | role, status | 관리자 대시보드 회원·강사 수, 회원·강사 목록 필터 (#87) |
+| `member` | `idx_member_2` | status, withdrawn_at | 탈퇴 회원 개인정보 정리 대상 (#87) |
+
+**인덱스·쿼리 점검 (#87, 신아림 구역: 회원·강의·문의·운영)**: 시드 + 회원 3만·강의 5천·작업 기록 5만 행으로 주요 조회의 `EXPLAIN`을 확인했다. 기존 DB는 `sql/migration/2026-11-10_index_review_member_course_admin_log.sql`을 실행한다(여러 번 실행해도 안전).
+
+| 조회 | 점검 전 | 조치 후 |
+| --- | --- | --- |
+| 회원·강사 수 집계 (`countByRoleAndStatus`) | 전체 스캔 3만 행 | `idx_member_1` ref, 인덱스만 읽음 |
+| 탈퇴 회원 정리 대상 (`findPurgeTargets`) | PK 순서로 훑으며 거름 | `idx_member_2` range |
+| 관리자 강의 목록 상태 필터 (`searchForAdmin`) | 전체 스캔 + filesort | `idx_course_2` ref, filesort 없음 |
+| 관리자 작업 기록 최신순 (`AdminLogRepository.search`, 필터 없음) | 전체 스캔 5만 행 + filesort | `idx_admin_log_3` 역순으로 21행만 읽음 |
+| 강의 목록·이어서 볼 강의의 영상 수 | 강의마다 `count` 쿼리 (N+1) | `CourseRepository.countLessonsByCourseIds`로 한 번에 |
+| 시청 기록·카테고리 강의 목록·문의 하루 한도·내 문의·강의별 문의 | 기존 인덱스 사용 (`idx_lesson_watch_1`, `idx_course_1`, `idx_inquiry_1·2`) | 변경 없음 |
+
+- 그대로 둔 것: 공개 강의 전체 조회(`findByStatusAndIsPublicTrueAndDeletedAtIsNull`, 홈)는 허가 강의가 대부분이라 결과가 곧 전체에 가까워 옵티마이저가 전체 스캔을 고른다. 강의 제목 검색(`LIKE '%키워드%'`)은 앞이 `%`라 B-Tree 인덱스를 쓸 수 없다(강의 수가 수백 개 규모라 현재는 문제없음, 커지면 FULLTEXT ngram 검토).
+- 지운 인덱스: 없음. FK 인덱스는 MySQL이 FK에 필요로 해서 남기고, 다른 인덱스는 모두 쓰는 조회가 있다.
 
 **중복 방지 UNIQUE (복합)**
 
@@ -284,6 +304,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `approval_status` | VARCHAR(20) | N | - | PENDING | PENDING / APPROVED / REVOKED |
 | `approved_by` | BIGINT | Y | FK → member.member_id | - | 승인한 관리자 |
 | `approved_at` | DATETIME | Y | - | - | 승인 일시 |
+| `applied_at` | DATETIME | Y | - | - | 강사 가입 신청 일시 (API 12). 관리자가 직접 권한을 준 강사(API 103)는 NULL이라 신청 목록(API 104)에 나오지 않는다 (#37). 기존 DB는 `sql/migration/2026-11-10_instructor_profile_applied_at.sql` |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
 
@@ -456,7 +477,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `exp_history_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 내역 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE(member_id, source_type, source_id) | - | 회원 |
-| `source_type` | VARCHAR(30) | N | UNIQUE(member_id, source_type, source_id) | - | COURSE_COMPLETE / QUIZ_PERFECT |
+| `source_type` | VARCHAR(30) | N | UNIQUE(member_id, source_type, source_id) | - | COURSE_COMPLETE / QUIZ_PERFECT / ATTENDANCE |
 | `source_id` | BIGINT | N | UNIQUE(member_id, source_type, source_id) | - | 원인 강의 ID |
 | `reward_rule_id` | BIGINT | Y | FK → reward_rule.reward_rule_id | - | 적용한 보상 규칙 |
 | `amount` | INT | N | - | - | 지급 경험치 |
@@ -534,7 +555,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `course_id` | BIGINT | N | FK → course.course_id, UNIQUE(course_id, sort_order) | - | 강의 |
 | `sort_order` | TINYINT | N | UNIQUE(course_id, sort_order), CHECK BETWEEN 1 AND 3 | - | 영상 순서 1~3 |
 | `title` | VARCHAR(100) | N | - | - | 영상 제목 |
-| `video_url` | VARCHAR(500) | N | - | - | 영상 주소 (업로드/외부 링크 미정) |
+| `video_url` | VARCHAR(500) | N | - | - | 영상 파일 키 (`/uploads/….mp4`, 파일 업로드 방식 확정 DP-33. 시드는 샘플 영상 `/uploads/videos/sample-1~3.mp4`, #73) |
 | `duration_seconds` | INT | N | - | 0 | 재생 시간(초) |
 | `summary` | TEXT | Y | - | - | 영상 요약글 (2,000자 이내) |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -550,7 +571,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `quiz_question_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 문항 ID |
 | `course_id` | BIGINT | N | FK → course.course_id | - | 강의 |
-| `quiz_type` | VARCHAR(10) | N | - | - | TEST 테스트 퀴즈 / MAIN 퀴즈 |
+| `quiz_type` | VARCHAR(10) | N | - | - | TEST 테스트 퀴즈 / MAIN 퀴즈 / TEST_OLD·MAIN_OLD 보관한 문항 (푼 기록이 있는 문항을 강사가 바꾸거나 빼면 수정·삭제 대신 보관. 퀴즈·검수·편집 목록에서는 빠지고 오답노트·응시 결과는 수정 전 내용을 계속 가리킴, #31) |
 | `question_type` | VARCHAR(10) | N | - | - | OX / CHOICE |
 | `content` | VARCHAR(500) | N | - | - | 문제 |
 | `explanation` | TEXT | N | - | - | 해설 |
@@ -1041,7 +1062,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `admin_log_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 기록 ID |
 | `admin_id` | BIGINT | N | FK → member.member_id | - | 작업한 관리자 |
-| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE |
+| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE. 회원·강사 관리(#37, target_type MEMBER): MEMBER_SUSPEND / MEMBER_ACTIVATE / MEMBER_ROLE_CHANGE / INSTRUCTOR_APPROVE |
 | `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE, HOUSING_COMPLEX …) |
 | `target_id` | BIGINT | Y | - | - | 대상 ID |
 | `detail` | JSON | Y | - | - | 변경 전·후 값 |
