@@ -10,6 +10,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 *  */
 public interface NewsRepository extends JpaRepository<News, Long> {
 
+    /** 관리자 뉴스 목록 : 시즌 전체, 턴 순서 (#43) */
+    List<News> findByTradingSeasonIdOrderByTurnNoAscNewsIdAsc(Long tradingSeasonId);
+
+    /** 관리자 뉴스 목록 : 한 턴만 (#43) */
+    List<News> findByTradingSeasonIdAndTurnNoOrderByNewsIdAsc(Long tradingSeasonId, int turnNo);
+
     /** 현재 턴까지 공개된 뉴스, 최근 턴부터 (#24) */
     List<News> findByTradingSeasonIdAndTurnNoLessThanEqualOrderByTurnNoDescNewsIdDesc(Long tradingSeasonId, int turnNo);
 }
