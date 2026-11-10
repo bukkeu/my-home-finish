@@ -193,7 +193,7 @@ class TurnAdminServiceTest {
     @Test
     void 이전_시즌_정산_전에는_점검보다_먼저_PREVIOUS_SEASON_NOT_SETTLED_로_거절한다() {
         when(tradingService.checkNextTurn(season))
-                .thenReturn(new NextTurnCheckDTO(false, 1, List.of("모아모빌리티"), 0, false, false, true));
+                .thenReturn(new NextTurnCheckDTO(false, 1, null, List.of("모아모빌리티"), 0, false, false, true));
 
         assertThatThrownBy(() -> service.advanceTurn(SEASON_ID, 0, ADMIN_ID))
                 .isInstanceOfSatisfying(BusinessException.class,
@@ -205,7 +205,7 @@ class TurnAdminServiceTest {
     @Test
     void 장이_열려_있으면_MARKET_STILL_OPEN_이고_넘기지_않는다() {
         when(tradingService.checkNextTurn(season))
-                .thenReturn(new NextTurnCheckDTO(false, 1, List.of(), 1, false, true, false));
+                .thenReturn(new NextTurnCheckDTO(false, 1, null, List.of(), 1, false, true, false));
 
         assertThatThrownBy(() -> service.advanceTurn(SEASON_ID, 0, ADMIN_ID))
                 .isInstanceOfSatisfying(BusinessException.class,
