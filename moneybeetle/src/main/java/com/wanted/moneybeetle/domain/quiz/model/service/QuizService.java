@@ -262,9 +262,11 @@ public class QuizService {
         return questions;
     }
 
-    /* 통과 점수: 관리자가 바꿀 수 있는 설정 값 (system_setting QUIZ_PASS_SCORE, NFR-13). 없으면 70 */
+    /* 통과 점수: 관리자가 바꿀 수 있는 설정 값 (system_setting QUIZ_PASS_SCORE, NFR-13).
+     * 없거나 1~100 밖이면 70 (0 이하면 누구나 통과, 100 초과면 아무도 통과 못 하는 설정 실수 방지) */
     private int passScore() {
-        return systemSettingService.findIntValue(PASS_SCORE_KEY).orElse(DEFAULT_PASS_SCORE);
+        int score = systemSettingService.findIntValue(PASS_SCORE_KEY).orElse(DEFAULT_PASS_SCORE);
+        return (score >= 1 && score <= 100) ? score : DEFAULT_PASS_SCORE;
     }
 
     /* 응시별 문항 답안 저장 (안 풀었거나 이 문항의 보기가 아니면 고른 보기는 null로 남긴다) */
