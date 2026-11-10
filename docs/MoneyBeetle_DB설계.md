@@ -304,6 +304,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `approval_status` | VARCHAR(20) | N | - | PENDING | PENDING / APPROVED / REVOKED |
 | `approved_by` | BIGINT | Y | FK → member.member_id | - | 승인한 관리자 |
 | `approved_at` | DATETIME | Y | - | - | 승인 일시 |
+| `applied_at` | DATETIME | Y | - | - | 강사 가입 신청 일시 (API 12). 관리자가 직접 권한을 준 강사(API 103)는 NULL이라 신청 목록(API 104)에 나오지 않는다 (#37). 기존 DB는 `sql/migration/2026-11-10_instructor_profile_applied_at.sql` |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 | `updated_at` | DATETIME | N | - | 현재 시각 (수정 시 갱신) | 수정 일시 |
 
@@ -1061,7 +1062,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `admin_log_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 기록 ID |
 | `admin_id` | BIGINT | N | FK → member.member_id | - | 작업한 관리자 |
-| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE |
+| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE. 회원·강사 관리(#37, target_type MEMBER): MEMBER_SUSPEND / MEMBER_ACTIVATE / MEMBER_ROLE_CHANGE / INSTRUCTOR_APPROVE |
 | `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE, HOUSING_COMPLEX …) |
 | `target_id` | BIGINT | Y | - | - | 대상 ID |
 | `detail` | JSON | Y | - | - | 변경 전·후 값 |
