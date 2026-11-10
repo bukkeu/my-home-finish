@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.SeasonParticipant;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
