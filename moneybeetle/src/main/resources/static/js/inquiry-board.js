@@ -29,6 +29,7 @@
     el.replaceChildren.apply(el, nodes);
   }
 
+  var boardSeq = 0;      // 한 화면에 게시판이 여러 개여도 탭·목록 id 가 겹치지 않게
   var meRequest = null;   // 내 회원 ID (수정·삭제 버튼을 내 글에만 보이려고). 한 번만 받는다
   function loadMe() {
     if (!meRequest) {
@@ -82,10 +83,11 @@
     var isCourse = opts.mode === 'course';
     var st = { items: [], tab: 'all', writing: false, openId: opts.openId || null, details: {}, meId: null, loading: true, error: null };
 
+    var uid = 'inq' + (++boardSeq);
     var els = {
       form: h('div'),
       tabs: h('div', { class: 'inq-tabs', role: 'tablist', 'aria-label': '답변 상태' }),
-      list: h('div', { class: 'inq-list', 'aria-live': 'polite' }),
+      list: h('div', { class: 'inq-list', id: uid + '-list', role: 'tabpanel', 'aria-live': 'polite' }),
       extra: h('div')
     };
 
@@ -150,6 +152,7 @@
         MB.api('/api/v1/inquiries', { method: 'POST', body: body }).then(function (res) {
           MB.toast('문의를 등록했어요. 답변이 달리면 알림으로 알려 드려요.');
           st.writing = false;
+          st.tab = 'all';   // 다른 탭(답변 완료 등)을 보던 중이어도 새 문의가 보이게
           st.openId = res && res.inquiryId;
           drawForm();
           load();
@@ -182,8 +185,9 @@
     function drawList() {
       fill(els.tabs, TABS.map(function (t) {
         var count = t[0] === 'all' ? st.items.length : st.items.filter(function (i) { return i.status === t[0]; }).length;
-        return h('button', { type: 'button', role: 'tab', class: 'inq-tab', 'aria-selected': String(st.tab === t[0]),
-          onclick: function () { st.tab = t[0]; drawList(); } }, [t[1], h('span', { class: 'inq-tab__n', text: String(count) })]);
+        return h('button', { type: 'button', role: 'tab', class: 'inq-tab', id: uid + '-tab-' + t[0], 'aria-controls': uid + '-list',
+          'aria-selected': String(st.tab === t[0]), 'data-inq-tab': t[0],
+          onclick: function () { st.tab = t[0]; drawList(); refocus('[data-inq-tab="' + t[0] + '"]'); } }, [t[1], h('span', { class: 'inq-tab__n', text: String(count) })]);
       }));
 
       if (st.loading) { fill(els.list, h('div', { class: 'inq-state', text: '문의를 불러오는 중이에요…' })); return; }
@@ -212,6 +216,7 @@
       if (open) fillDetail(detailBox, item.inquiryId);
       return h('article', { class: 'inq-row' + (open ? ' is-open' : '') }, [
         h('button', { type: 'button', class: 'inq-row__head', 'aria-expanded': String(open), 'aria-controls': 'inq-detail-' + item.inquiryId,
+          'data-inq-row': String(item.inquiryId),
           onclick: function () { toggle(item.inquiryId); } }, [
           h('span', { class: 'inq-status inq-status--' + String(item.status).toLowerCase(), text: STATUS[item.status] || item.status }),
           h('span', { class: 'inq-row__text' }, [
@@ -241,9 +246,16 @@
       ]);
     }
 
+    /* 목록을 새로 그리면 누른 버튼이 사라지므로, 새로 그린 같은 버튼으로 키보드 포커스를 돌려 놓는다 */
+    function refocus(selector) {
+      var el = box.querySelector(selector);
+      if (el) el.focus();
+    }
+
     function toggle(id) {
       st.openId = st.openId === id ? null : id;
       drawList();
+      refocus('[data-inq-row="' + id + '"]');
     }
 
     function openDetail(id, scroll) {
