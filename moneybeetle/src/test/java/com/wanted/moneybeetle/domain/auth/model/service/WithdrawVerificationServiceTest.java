@@ -238,6 +238,42 @@ class WithdrawVerificationServiceTest {
         assertThat(successes).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("확인을 쓰는 요청과 새 코드를 받는 요청이 동시에 와도, 새로 받은 코드의 상태는 지워지지 않는다")
+    void consumeNeverWipesNewlyIssuedCode() throws Exception {
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 300; round++) {
+                MockHttpSession roundSession = new MockHttpSession();
+                clock.advance(WithdrawVerificationService.RESEND_INTERVAL);
+                service.requestCode(7L, roundSession);
+                org.mockito.ArgumentCaptor<String> codes = forClass(String.class);
+                verify(mailer, org.mockito.Mockito.atLeastOnce()).send(eq(EMAIL), codes.capture());
+                service.verify(7L, codes.getValue(), roundSession);
+                clock.advance(WithdrawVerificationService.RESEND_INTERVAL);
+
+                java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+                java.util.concurrent.Future<Boolean> consume = pool.submit(() -> {
+                    start.await();
+                    return service.consumeVerified(7L, roundSession);
+                });
+                java.util.concurrent.Future<?> request = pool.submit(() -> {
+                    start.await();
+                    service.requestCode(7L, roundSession);
+                    return null;
+                });
+                start.countDown();
+                consume.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                request.get(10, java.util.concurrent.TimeUnit.SECONDS);
+
+                // 어떤 순서로 처리되든 새 코드 요청은 성공했으므로 세션에는 새로 받은 코드의 상태가 남아 있어야 한다
+                assertThat(roundSession.getAttribute(WithdrawVerificationService.SESSION_KEY)).as("round " + round).isNotNull();
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
     /** 시간을 앞으로 보낼 수 있는 시계 */
     private static final class MutableClock extends Clock {
         private Instant now;

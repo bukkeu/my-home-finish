@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.WebUtils;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
@@ -61,32 +62,39 @@ public class WithdrawVerificationService implements WithdrawVerifier {
             throw new BusinessException(MemberErrorCode.IDENTITY_CODE_TOO_SOON);
         }
         String code = newCode();
-        Object previousState = session.getAttribute(SESSION_KEY);   // 발송이 거절되면 되돌린다
-        session.setAttribute(SESSION_KEY, IdentityVerificationState.issued(email, IdentityVerificationService.hash(email, code), now.plus(CODE_TTL)));
-        try {
-            mailer.send(email, code);
-        } catch (TaskRejectedException e) {
-            // 발송 대기열이 가득 찼다. 보낸 적 없는 코드는 버리고 바로 다시 시도할 수 있게 하되, 이미 마친 확인이 있었다면 그대로 돌려놓는다
-            if (previousState != null) {
-                session.setAttribute(SESSION_KEY, previousState);
-            } else {
-                session.removeAttribute(SESSION_KEY);
+        // 세션의 확인 상태를 바꾸는 요청(코드 요청·확인·사용)은 같은 세션이면 한 번에 하나씩 처리한다.
+        // 이전 상태를 읽고 새 상태를 저장하고 발송이 거절되면 되돌리는 과정이 다른 요청에 끼어들리지 않게 한다 (메일은 비동기라 잠금은 짧다)
+        synchronized (WebUtils.getSessionMutex(session)) {
+            Object previousState = session.getAttribute(SESSION_KEY);   // 발송이 거절되면 되돌린다
+            session.setAttribute(SESSION_KEY, IdentityVerificationState.issued(email, IdentityVerificationService.hash(email, code), now.plus(CODE_TTL)));
+            try {
+                mailer.send(email, code);
+            } catch (TaskRejectedException e) {
+                // 발송 대기열이 가득 찼다. 보낸 적 없는 코드는 버리고 바로 다시 시도할 수 있게 하되, 이미 마친 확인이 있었다면 그대로 돌려놓는다
+                if (previousState != null) {
+                    session.setAttribute(SESSION_KEY, previousState);
+                } else {
+                    session.removeAttribute(SESSION_KEY);
+                }
+                lastSentAt.remove(memberId, now);
+                log.warn("탈퇴 본인 확인 메일 대기열이 가득 차 요청을 건너뛰었어요.");
+                throw new BusinessException(MemberErrorCode.IDENTITY_MAIL_UNAVAILABLE);
             }
-            lastSentAt.remove(memberId, now);
-            log.warn("탈퇴 본인 확인 메일 대기열이 가득 차 요청을 건너뛰었어요.");
-            throw new BusinessException(MemberErrorCode.IDENTITY_MAIL_UNAVAILABLE);
         }
     }
 
     @Override
     public void verify(Long memberId, String code, HttpSession session) {
         String email = requireSocialMemberEmail(memberId);
-        IdentityVerificationState state = stateOf(session);
-        if (state == null) {
+        if (session == null) {
             throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);   // 코드를 받은 적이 없다
         }
-        // 같은 세션의 요청이 동시에 와도 한 번에 하나씩만 비교·횟수 증가·확인 완료를 한다 (시도 횟수 제한이 무의미해지지 않게 상태 객체로 잠근다)
-        synchronized (state) {
+        // 같은 세션의 요청이 동시에 와도 한 번에 하나씩만 비교·횟수 증가·확인 완료를 한다 (시도 횟수 제한이 무의미해지지 않게 세션 잠금으로 묶는다)
+        synchronized (WebUtils.getSessionMutex(session)) {
+            IdentityVerificationState state = stateOf(session);
+            if (state == null) {
+                throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);   // 코드를 받은 적이 없다
+            }
             Instant now = clock.instant();
             if (!state.getEmail().equals(email) || !state.isCodeActive(now) || state.getFailures() >= MAX_FAILURES) {
                 throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);   // 다른 이메일의 코드, 만료, 이미 5번 틀림은 구분해 알리지 않는다
@@ -106,17 +114,18 @@ public class WithdrawVerificationService implements WithdrawVerifier {
 
     @Override
     public boolean consumeVerified(Long memberId, HttpSession session) {
-        IdentityVerificationState state = stateOf(session);
-        if (state == null) {
+        if (session == null) {
             return false;
         }
         String email = memberService.findLoginMemberById(memberId)
                 .map(member -> SignupRules.normalizeEmail(member.getEmail()))
                 .orElse(null);
-        synchronized (state) {
-            // 확인을 마친 이메일이 이 회원의 이메일이고 아직 유효할 때만 한 번 쓴다.
-            // 같은 세션의 동시 요청이 같은 상태를 먼저 읽었어도 먼저 쓴 요청이 세션에서 지웠으면 나중 요청은 쓸 수 없다 (성공은 정확히 한 번)
-            if (session.getAttribute(SESSION_KEY) != state || email == null || !state.isVerifiedFor(email, clock.instant())) {
+        synchronized (WebUtils.getSessionMutex(session)) {
+            // 상태를 읽는 것부터 지우는 것까지 세션 잠금 안에서 한다. 그래서 같은 세션의 동시 요청 중 성공은 정확히 한 번이고,
+            // 그 사이에 코드 요청이 새 상태를 저장했다면 그 새 상태를 지우지 않는다
+            IdentityVerificationState state = stateOf(session);
+            // 확인을 마친 이메일이 이 회원의 이메일이고 아직 유효할 때만 한 번 쓴다
+            if (state == null || email == null || !state.isVerifiedFor(email, clock.instant())) {
                 return false;
             }
             session.removeAttribute(SESSION_KEY);
