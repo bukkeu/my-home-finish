@@ -90,10 +90,12 @@ public class CourseService {
                 ? Set.of()   // 회원을 모르면 스크랩 안 한 것으로
                 : findScrappedCourseIds(memberId, courses.getContent().stream().map(Course::getCourseId).toList());
 
+        Map<Long, Long> lessonCounts = countLessons(courses.getContent().stream().map(Course::getCourseId).toList());
+
         return courses.map(course -> CourseListDTO.from(
                 course,
                 null,   // TODO 강사 이름: DBA ② 메서드가 생기면 연결
-                (int) lessonRepository.countByCourseId(course.getCourseId()),
+                lessonCounts.getOrDefault(course.getCourseId(), 0L).intValue(),
                 null,   // TODO 내 학습 상태
                 scrappedIds.contains(course.getCourseId())
         ));
@@ -222,8 +224,9 @@ public class CourseService {
     public List<CourseListDTO> findContinueWatching(Long memberId) {
         List<LearningProgress> progresses = learningProgressRepository
                 .findTop5ByMemberIdAndStatusOrderByUpdatedAtDesc(memberId, LearningProgress.STATUS_IN_PROGRESS);
-        Map<Long, Course> courses = findCoursesByIds(
-                progresses.stream().map(LearningProgress::getCourseId).toList());
+        List<Long> courseIds = progresses.stream().map(LearningProgress::getCourseId).toList();
+        Map<Long, Course> courses = findCoursesByIds(courseIds);
+        Map<Long, Long> lessonCounts = countLessons(courseIds);
 
         return progresses.stream()
                 .map(progress -> courses.get(progress.getCourseId()))
@@ -231,7 +234,7 @@ public class CourseService {
                 .map(course -> CourseListDTO.from(
                         course,
                         null,   // TODO 강사 이름
-                        (int) lessonRepository.countByCourseId(course.getCourseId()),
+                        lessonCounts.getOrDefault(course.getCourseId(), 0L).intValue(),
                         LearningProgress.STATUS_IN_PROGRESS,
                         false))
                 .toList();
@@ -339,6 +342,16 @@ public class CourseService {
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
         return courseRepository.findAllById(courseIds).stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity()));
+    }
+
+    /* 강의별 영상 수를 한 번에 (강의마다 count 쿼리를 보내지 않는다, #87) */
+    private Map<Long, Long> countLessons(List<Long> courseIds) {
+        if (courseIds.isEmpty()) {
+            return Map.of();
+        }
+        return courseRepository.countLessonsByCourseIds(courseIds).stream()
+                .collect(Collectors.toMap(CourseRepository.CourseLessonCount::getCourseId,
+                        CourseRepository.CourseLessonCount::getLessons));
     }
 
     private Set<Long> findScrappedCourseIds(Long memberId, List<Long> courseIds) {
