@@ -42,7 +42,15 @@ public enum MemberErrorCode implements ErrorCode {
     IDENTITY_CODE_EXPIRED("IDENTITY_CODE_EXPIRED", HttpStatus.BAD_REQUEST, "인증번호가 만료되었거나 너무 많이 틀렸어요. 인증번호를 다시 받아 주세요."),
     IDENTITY_CODE_TOO_SOON("IDENTITY_CODE_TOO_SOON", HttpStatus.TOO_MANY_REQUESTS, "인증번호는 1분에 한 번만 받을 수 있어요. 잠시 뒤에 다시 시도해 주세요."),
     IDENTITY_MAIL_UNAVAILABLE("IDENTITY_MAIL_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요."),
-    IDENTITY_REQUEST_LIMITED("IDENTITY_REQUEST_LIMITED", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.");
+    IDENTITY_REQUEST_LIMITED("IDENTITY_REQUEST_LIMITED", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요."),
+
+    // 간편 로그인 (API 8, 8-1, 8-2)
+    OAUTH_FAILED("OAUTH_FAILED", HttpStatus.BAD_GATEWAY, "간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요."),
+    OAUTH_PROVIDER_UNAVAILABLE("OAUTH_PROVIDER_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요."),
+    OAUTH_SESSION_EXPIRED("OAUTH_SESSION_EXPIRED", HttpStatus.BAD_REQUEST, "간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요."),
+    // 비밀번호가 없는 간편 로그인 회원의 본인 확인 (탈퇴, API 17)
+    SOCIAL_REAUTH_REQUIRED("SOCIAL_REAUTH_REQUIRED", HttpStatus.BAD_REQUEST, "구글·카카오로 다시 로그인해 본인 확인을 해 주세요."),
+    OAUTH_REAUTH_MISMATCH("OAUTH_REAUTH_MISMATCH", HttpStatus.BAD_REQUEST, "지금 로그인한 계정과 다른 계정으로 확인했어요. 같은 계정으로 다시 시도해 주세요.");
 
     private final String code;
     private final HttpStatus status;

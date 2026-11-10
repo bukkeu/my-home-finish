@@ -1,26 +1,43 @@
 package com.wanted.moneybeetle.domain.auth.controller;
 
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.auth.model.dto.IdentityVerificationDTO;
+import com.wanted.moneybeetle.domain.auth.handler.AuthSessionWriter;
 import com.wanted.moneybeetle.domain.auth.model.dto.PasswordResetDTO;
+import com.wanted.moneybeetle.domain.auth.model.dto.SocialProfile;
 import com.wanted.moneybeetle.domain.auth.model.service.IdentityVerificationService;
 import com.wanted.moneybeetle.domain.auth.model.service.PasswordResetService;
+import com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService;
 import com.wanted.moneybeetle.domain.member.model.dto.FindEmailDTO;
+import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
+import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MaskedEmailDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.SocialSignupDTO;
 import com.wanted.moneybeetle.domain.member.model.service.AccountService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.net.URI;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   POST /api/v1/auth/login, /logout, /admin/auth/login  (로그인·로그아웃은 Security 가 처리한다, #6·#33)
-*   GET  /api/v1/auth/oauth/{provider}
+*   GET  /api/v1/auth/oauth/{provider}, GET·POST /api/v1/auth/oauth-signup   (#9, 간편 로그인: 구글·카카오 실제 OAuth)
 *   POST /api/v1/auth/find-email, /password-reset/request, /password-reset/confirm   (#8)
 *   POST /api/v1/auth/identity-verification/request, /identity-verification   (#9, 가입 중 이메일 코드 본인인증)
 *   화면 : /login(LoginSelect), /login/user, /instructor/login, /admin/login
@@ -32,6 +49,11 @@ public class AuthController {
     private final AccountService accountService;
     private final PasswordResetService passwordResetService;
     private final IdentityVerificationService identityVerificationService;
+    /** API 8 의 purpose 값: 로그인한 회원이 비밀번호 대신 제공자로 다시 로그인해 본인 확인을 한다 */
+    static final String PURPOSE_REAUTH = "reauth";
+
+    private final SocialLoginService socialLoginService;
+    private final AuthSessionWriter authSessionWriter;
 
     // API 9. 아이디(이메일) 찾기
     @PostMapping("/api/v1/auth/find-email")
@@ -67,5 +89,46 @@ public class AuthController {
                                                                       HttpSession session) {
         identityVerificationService.verify(request.getEmail(), request.getCode(), session);
         return ApiResponse.success(IdentityVerificationDTO.Result.of(true));
+    }
+
+    // API 8. 간편 로그인 시작: 제공자(구글·카카오) 로그인 화면으로 보낸다. 키가 없는 제공자는 OAUTH_PROVIDER_UNAVAILABLE
+    @GetMapping("/api/v1/auth/oauth/{provider}")
+    public ResponseEntity<Void> startOAuth(@PathVariable String provider,
+                                           @RequestParam(required = false) String purpose,
+                                           HttpServletRequest request) {
+        socialLoginService.requireAvailableProvider(provider);
+        if (PURPOSE_REAUTH.equals(purpose)) {
+            // 탈퇴 같은 요청 전의 본인 확인: 로그인한 회원만 시작할 수 있고, 돌아온 로그인은 로그인이 아니라 본인 확인으로 처리한다
+            if (!(SecurityContextHolder.getContext().getAuthentication() != null
+                    && SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof AuthDetails me)) {
+                throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+            }
+            socialLoginService.beginReauth(me.getMemberId(), request.getSession());
+        } else {
+            socialLoginService.cancelReauth(request.getSession(false));
+        }
+        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create("/oauth2/authorization/" + provider)).build();
+    }
+
+    // API 8-1. 간편 로그인으로 처음 온 사람의 제공자 정보 (가입 화면이 이메일·이름을 미리 채운다)
+    @GetMapping("/api/v1/auth/oauth-signup")
+    public ApiResponse<SocialProfileView> oauthSignupInfo(HttpServletRequest request) {
+        SocialProfile pending = socialLoginService.getPending(request.getSession(false));
+        return ApiResponse.success(new SocialProfileView(pending.provider(), pending.email(), pending.nickname()));
+    }
+
+    // API 8-2. 간편 로그인으로 처음 온 사람의 가입 완료 (가입하면 바로 로그인된다)
+    @PostMapping("/api/v1/auth/oauth-signup")
+    public ResponseEntity<ApiResponse<SignupResultDTO>> oauthSignup(@Valid @RequestBody SocialSignupDTO request,
+                                                                    HttpServletRequest httpRequest,
+                                                                    HttpServletResponse httpResponse) {
+        LoginMemberDTO member = socialLoginService.completeSignup(request, httpRequest.getSession(false));
+        authSessionWriter.signIn(httpRequest, httpResponse, member);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(SignupResultDTO.of(member.getMemberId(), member.getNickname())));
+    }
+
+    /** API 8-1 응답 { provider, email, nickname } */
+    public record SocialProfileView(String provider, String email, String nickname) {
     }
 }
