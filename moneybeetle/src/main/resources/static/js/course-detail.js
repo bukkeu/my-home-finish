@@ -19,9 +19,10 @@
 
   var state = {
     course: null, path: null, current: null, play: null, tab: 'summary', tocOpen: false,
-    watched: 0, lastTime: 0, lastSavedAt: 0, pendingSaves: 0, refreshed: false
+    watched: 0, lastTime: 0, played: false, lastSavedAt: 0, pendingSaves: 0, refreshed: false
   };
   var video = null;
+  var videoLessonId = null;   // 지금 video 요소가 속한 영상 ID (영상을 바꾸는 사이 옛 video 의 값이 새 영상으로 저장되지 않게)
   var saveQueue = Promise.resolve();   // 시청 위치 저장 요청을 보낸 순서대로 처리하기 위한 줄
 
   if (!courseId) {
@@ -229,11 +230,15 @@
   function openLesson(lesson, first) {
     state.current = lesson;
     state.watched = 0;
+    state.played = false;
     state.lastSavedAt = Date.now();
     renderNow();
     renderSide();
     refs.playerBox.replaceChildren(h('div', { class: 'lec-state', text: '영상을 준비하는 중이에요…' }));
-    MB.api('/api/v1/courses/' + courseId + '/lessons/' + lesson.lessonId).then(function (play) {
+    // 앞 영상의 위치 저장이 끝난 뒤에 이어보기 위치를 받는다 (저장보다 먼저 읽으면 옛 위치가 온다)
+    saveQueue.then(function () {
+      return MB.api('/api/v1/courses/' + courseId + '/lessons/' + lesson.lessonId);
+    }).then(function (play) {
       if (state.current.lessonId !== lesson.lessonId) return;   // 그사이 다른 영상을 골랐으면 버린다
       state.play = play;
       state.watched = play.watchedSeconds || 0;   // 서버가 인정한 본 시간에서 이어서 센다 (재생 위치와 따로)
@@ -245,6 +250,7 @@
   }
 
   function mountPlayer(play, lesson) {
+    videoLessonId = lesson.lessonId;
     video = h('video', { controls: true, preload: 'metadata', playsinline: true, src: play.videoUrl,
       'aria-label': lesson.title + ' 영상' });
     video.addEventListener('loadedmetadata', function () {
@@ -254,7 +260,7 @@
       state.lastTime = video.currentTime;
     });
     // 본 시간(watched)은 실제로 재생된 구간만 더한다. 건너뛰기(seek)는 기준점만 옮기고 더하지 않는다
-    video.addEventListener('play', function () { state.lastTime = video.currentTime; });
+    video.addEventListener('play', function () { state.played = true; state.lastTime = video.currentTime; });
     video.addEventListener('seeking', function () { state.lastTime = video.currentTime; });
     video.addEventListener('seeked', function () { state.lastTime = video.currentTime; });
     video.addEventListener('timeupdate', function () {
@@ -295,7 +301,9 @@
    * - 페이지를 떠날 때(keepalive)는 기다릴 시간이 없어 줄을 서지 않고 바로 보낸다 */
   function saveProgress(ended, options) {
     var opts = options || {};
-    if (!video || !state.current) return Promise.resolve();
+    if (!video || !state.current || videoLessonId !== state.current.lessonId) return Promise.resolve();
+    // 열기만 하고 재생하지 않은 영상은 저장하지 않는다 (0초로 저장되면 강의의 이어보기 기준이 이 영상으로 바뀐다)
+    if (!state.played && !ended) return Promise.resolve();
     if (state.pendingSaves > 0 && !ended && !opts.force && !opts.keepalive) return Promise.resolve();
     var url = '/api/v1/courses/' + courseId + '/lessons/' + state.current.lessonId + '/progress';
     var payload = {
