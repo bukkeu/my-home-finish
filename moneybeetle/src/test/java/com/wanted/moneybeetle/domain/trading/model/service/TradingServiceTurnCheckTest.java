@@ -201,4 +201,50 @@ class TradingServiceTurnCheckTest {
 
         assertThat(service.getDashboardSummary()).isEmpty();
     }
+
+    // ===== #207 이전 시즌 정산 =====
+
+    private void givenAllReady() {
+        when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
+        when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
+    }
+
+    private TradingSeason previous(boolean settledAndEnded) {
+        TradingSeason previous = TradingSeason.create("시즌 6", season.getStartDate().minusDays(14), 1L);
+        previous.changeStatus(TradingSeason.STATUS_RUNNING);
+        previous.changeStatus(TradingSeason.STATUS_SETTLING);
+        if (settledAndEnded) {
+            previous.completeSettlement(LocalDateTime.of(2026, 11, 2, 0, 10));
+            previous.publishRanking(LocalDateTime.of(2026, 11, 2, 9, 0));
+        } else {
+            previous.completeSettlement(LocalDateTime.of(2026, 11, 2, 0, 10));   // 정산만 하고 공개 전: 아직 종료가 아니다
+        }
+        return previous;
+    }
+
+    @Test
+    void 이전_시즌이_정산_전이면_가격과_뉴스가_있어도_ready_가_아니다() {
+        givenAllReady();
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate()))
+                .thenReturn(Optional.of(previous(false)));
+
+        NextTurnCheckDTO check = service.checkNextTurn(season);
+
+        assertThat(check.previousSeasonSettled()).isFalse();
+        assertThat(check.ready()).isFalse();
+        assertThat(check.missingPrices()).isEmpty();
+    }
+
+    @Test
+    void 이전_시즌이_없거나_정산을_마치고_끝났으면_ready_다() {
+        givenAllReady();
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate()))
+                .thenReturn(Optional.empty());
+        assertThat(service.checkNextTurn(season).previousSeasonSettled()).isTrue();
+        assertThat(service.checkNextTurn(season).ready()).isTrue();
+
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate()))
+                .thenReturn(Optional.of(previous(true)));
+        assertThat(service.checkNextTurn(season).ready()).isTrue();
+    }
 }

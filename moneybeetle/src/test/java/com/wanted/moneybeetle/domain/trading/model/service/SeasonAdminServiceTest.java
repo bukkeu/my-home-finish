@@ -196,4 +196,71 @@ class SeasonAdminServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.NOT_FOUND);
     }
+
+    // ===== #207 이전 시즌 정산 확인, 기간 겹침 =====
+
+    private TradingSeason previousSeason(boolean settledAndEnded) {
+        TradingSeason previous = TradingSeason.create("시즌 7", MONDAY.minusDays(14), ADMIN_ID);
+        ReflectionTestUtils.setField(previous, "tradingSeasonId", 7L);
+        previous.changeStatus(TradingSeason.STATUS_RUNNING);
+        previous.changeStatus(TradingSeason.STATUS_SETTLING);
+        if (settledAndEnded) {
+            previous.completeSettlement(java.time.LocalDateTime.of(2026, 11, 16, 0, 10));
+            previous.publishRanking(java.time.LocalDateTime.of(2026, 11, 16, 9, 0));
+        }
+        return previous;
+    }
+
+    @Test
+    void 이전_시즌이_정산_전이면_새_시즌을_진행_중으로_바꿀_수_없다() {
+        TradingSeason next = savedSeason(8L, "시즌 8");
+        when(seasonRepository.findById(8L)).thenReturn(Optional.of(next));
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.of(previousSeason(false)));
+
+        assertThatThrownBy(() -> service.changeStatus(8L, new SeasonStatusDTO("RUNNING")))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+        assertThat(next.isReady()).isTrue();
+    }
+
+    @Test
+    void 이전_시즌이_정산을_마치고_끝났거나_없으면_새_시즌을_시작할_수_있다() {
+        TradingSeason first = savedSeason(8L, "시즌 8");
+        when(seasonRepository.findById(8L)).thenReturn(Optional.of(first));
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY)).thenReturn(Optional.empty());
+        service.changeStatus(8L, new SeasonStatusDTO("RUNNING"));
+        assertThat(first.isRunning()).isTrue();
+
+        TradingSeason second = savedSeason(9L, "시즌 9");
+        when(seasonRepository.findById(9L)).thenReturn(Optional.of(second));
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.of(previousSeason(true)));
+        service.changeStatus(9L, new SeasonStatusDTO("RUNNING"));
+        assertThat(second.isRunning()).isTrue();
+    }
+
+    @Test
+    void 이전_시즌_확인은_시작할_때만_하고_진행_중_시즌의_다른_변경은_막지_않는다() {
+        TradingSeason running = savedSeason(8L, "시즌 8");
+        running.changeStatus(TradingSeason.STATUS_RUNNING);
+        when(seasonRepository.findById(8L)).thenReturn(Optional.of(running));
+        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.of(previousSeason(false)));
+
+        service.changeStatus(8L, new SeasonStatusDTO("HOLIDAY"));
+
+        assertThat(running.isHoliday()).isTrue();
+    }
+
+    @Test
+    void 기간이_겹치는_시즌은_만들_수_없다() {
+        when(seasonRepository.existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                MONDAY.plusDays(13), MONDAY)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.createSeason(new SeasonSaveDTO("시즌 8", MONDAY, null), ADMIN_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.SEASON_PERIOD_OVERLAP);
+        verify(seasonRepository, never()).save(any());
+    }
 }

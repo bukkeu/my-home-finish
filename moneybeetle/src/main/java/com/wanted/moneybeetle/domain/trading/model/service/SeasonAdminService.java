@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,6 +64,12 @@ public class SeasonAdminService {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
         request.checkStartDate();
+        // 기간이 하루라도 겹치는 시즌은 만들 수 없다 (#207)
+        LocalDate periodEnd = request.getStartDate().plusDays(TradingSeason.SEASON_DAYS - 1);
+        if (seasonRepository.existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(periodEnd,
+                request.getStartDate())) {
+            throw new BusinessException(TradingErrorCode.SEASON_PERIOD_OVERLAP);
+        }
 
         TradingSeason season = TradingSeason.create(request.getName(), request.getStartDate(), adminId);
         if (request.getCopyFromSeasonId() != null) {
@@ -90,7 +97,18 @@ public class SeasonAdminService {
     /** API 117 시즌 상태 변경 */
     @Transactional
     public void changeStatus(Long seasonId, SeasonStatusDTO request) {
-        getSeason(seasonId).changeStatus(request.getStatus());
+        TradingSeason season = getSeason(seasonId);
+        // 이전 시즌 정산을 빠뜨린 채 새 시즌을 시작하면 안 된다 (#207). 준비 → 진행 중으로 바꿀 때 확인한다
+        if (season.isReady() && TradingSeason.STATUS_RUNNING.equals(request.getStatus())) {
+            boolean previousSettled = seasonRepository
+                    .findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate())
+                    .map(TradingSeason::isSettledAndEnded)
+                    .orElse(true);
+            if (!previousSettled) {
+                throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+            }
+        }
+        season.changeStatus(request.getStatus());
     }
 
     private TradingSeason getSeason(Long seasonId) {
