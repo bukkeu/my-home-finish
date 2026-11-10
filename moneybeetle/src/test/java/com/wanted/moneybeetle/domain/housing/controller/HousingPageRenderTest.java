@@ -93,6 +93,8 @@ class HousingPageRenderTest {
                 .doesNotContain("id=\"hs-score-form\"")
                 .doesNotContain("data-list=\"history\"")
                 .contains("data-locked=\"true\"");
+        // 흐린 영역 두 곳(모집 중 단지·캘린더)은 inert : 버튼에 Tab 포커스가 가지 않는다
+        assertThat(html.split("inert=\"inert\"", -1).length - 1).isEqualTo(2);
     }
 
     @Test
@@ -101,6 +103,7 @@ class HousingPageRenderTest {
 
         assertThat(html).doesNotContain("모의 청약은 Lv.12부터 이용할 수 있어요.")
                 .doesNotContain("mb-blur")
+                .doesNotContain("inert")                          // 열려 있으면 inert 를 붙이지 않는다
                 .contains("data-locked=\"false\"")
                 .contains("id=\"hs-score-form\"")
                 .contains("가점 계산하고 신청하기")
