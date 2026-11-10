@@ -36,7 +36,7 @@
 
 | 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 상태 |
 | --- | --- | --- | --- | --- |
-| `SPRING_PROFILES_ACTIVE` | 실행 프로필 선택. 설정 파일을 환경별로 나누지 않아(로컬 하나) 지금은 쓰지 않음 | | `local` | 선택 |
+| `SPRING_PROFILES_ACTIVE` | 실행 프로필 선택. `local` 이면 `application.yaml` 의 `local` 구역(SQL 로그)이 켜진다. `.env` 에 적어도 적용된다(`spring.profiles.active: ${SPRING_PROFILES_ACTIVE:}`, #114). CI 는 설정하지 않아 SQL 로그가 꺼진다 | | `local` | 선택 |
 | `DB_URL` | `spring.datasource.url` — MySQL 접속 주소 | | `jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&characterEncoding=UTF-8` | 필수 |
 | `DB_USERNAME` | `spring.datasource.username` — 로컬 MySQL에 각자 만든 계정 (`create_database.sql` 맨 아래 주석 참고) | | `moneybeetle` | 필수 |
 | `DB_PASSWORD` | `spring.datasource.password` | ✅ | 각자 정함 (아래 참고) | 필수 |
@@ -97,7 +97,9 @@
 | `spring.servlet.multipart.max-file-size` | `500MB` (강의 영상 한도. 프로필 이미지 2MB는 `FileStorageService`가 용도별로 따로 검사한다). **구현 예정**: 설정과 `FileStorageService`는 #2, 영상 검증은 #31. 그전에는 Spring Boot 기본값(파일 1MB)이다 | DP-32, DP-33 |
 | `spring.servlet.multipart.max-request-size` | `510MB` (영상은 한 요청에 한 개씩 올리므로 파일 한 개 한도보다 조금 크게. 영상 한 개당 업로드는 API명세서 #78 "영상 파일 올리기") | DP-33 |
 | 시간대 | `Asia/Seoul` (서버·DB·Jackson) | DP-42 |
-| `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql` | `local`에서만 켬 (`application-local.yaml`). `format_sql`은 `properties.hibernate` 아래에 써야 적용된다 | 학습 (09 module07) |
+| `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql` | `local` 프로필에서만 켬 (`application.yaml` 아래의 `on-profile: local` 구역, 기본은 `show-sql: false`, #114). `format_sql`은 `properties.hibernate` 아래에 써야 적용된다 | 학습 (09 module07) |
+| `management.endpoints.web.exposure.include` | `health,info` 만 웹에 연다. `health` 는 UP/DOWN 만(`show-details: never`), 메일 상태는 확인에서 뺀다(`management.health.mail.enabled: false`). `/actuator/health`·`/actuator/info` 는 누구나, 나머지 actuator 주소는 열지 않는다 (#84) | 시스템 설계 "모니터링" |
+| `logging.*` | 콘솔은 줄마다 `[요청 ID|m=회원 ID]`(`logging.pattern.correlation`, 비로그인은 회원 ID 칸이 빈다). `local` 프로필은 우리 코드 `DEBUG`, 파일 `logs/moneybeetle.log` 에 JSON 한 줄(`requestId`·`memberId` 포함, `logging.structured.format.file: logstash`), 10MB 마다 나누고 7일 보관. `logs/` 는 Git 제외 (#84) | 시스템 설계 "로그", EP-05 |
 
 ---
 

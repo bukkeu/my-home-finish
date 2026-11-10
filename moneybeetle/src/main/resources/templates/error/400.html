@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<!-- comment.
+    담당 : SCM 서수영 (#114, 공통 오류 처리)
+    내용 : 잘못된 요청 - 업로드 용량 초과(FILE_TOO_LARGE), 입력값 오류(INVALID_INPUT) 등 400 이 화면 요청에서 났을 때
+           (전에는 400 도 500 화면으로 보였다)
+    경로 : EP-04
+-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>요청을 처리할 수 없어요</title>
+</head>
+<body>
+<h1>400</h1>
+<p th:text="${message} ?: '요청을 처리할 수 없어요. 입력한 내용을 확인해 주세요.'">요청을 처리할 수 없어요. 입력한 내용을 확인해 주세요.</p>
+<a th:href="@{/}">메인으로</a>
+</body>
+</html>

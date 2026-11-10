@@ -6,6 +6,10 @@ import com.wanted.moneybeetle.domain.housing.model.dao.HousingComplexRepository;
 import com.wanted.moneybeetle.domain.housing.model.dto.AdminComplexDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexRequestDTO;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
+import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
+import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.config.TimeConfig;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -44,13 +48,16 @@ class AdminHousingServiceTest {
     private HousingComplexRepository complexRepository;
     private HousingApplicationRepository applicationRepository;
     private AdminHousingService service;
+    private final AdminLogService adminLogService = mock(AdminLogService.class);
 
     @BeforeEach
     void setUp() {
         complexRepository = mock(HousingComplexRepository.class);
         applicationRepository = mock(HousingApplicationRepository.class);
         Clock fixed = Clock.fixed(TODAY.atStartOfDay(TimeConfig.SEOUL).toInstant(), TimeConfig.SEOUL);
-        service = new AdminHousingService(complexRepository, applicationRepository, fixed);
+        // 산정·발표용 의존성(#48)은 이 테스트에서 쓰지 않아 가짜만 넣는다 (AdminHousingResultServiceTest 에서 확인)
+        service = new AdminHousingService(complexRepository, applicationRepository, fixed,
+                new HousingWinnerPolicy(), mock(MemberService.class), mock(NotificationService.class), adminLogService);
     }
 
     // 공고 10/28, 신청 11/3 ~ 11/10, 발표 11/17, 120세대
@@ -123,12 +130,12 @@ class AdminHousingServiceTest {
     @Test
     void 신청자가_있으면_일정을_바꾸는_수정은_거절한다() {
         HousingComplex complex = saved(1L);
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
         when(applicationRepository.countByHousingComplexId(1L)).thenReturn(2L);
         ComplexRequestDTO r = request();
         r.setAnnounceDate(LocalDate.of(2026, 11, 20));
 
-        assertThatThrownBy(() -> service.updateComplex(1L, r))
+        assertThatThrownBy(() -> service.updateComplex(ADMIN_ID, 1L, r))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         assertThat(complex.getAnnounceDate()).isEqualTo(LocalDate.of(2026, 11, 17));
@@ -137,12 +144,12 @@ class AdminHousingServiceTest {
     @Test
     void 신청자가_있어도_정보만_바꾸는_수정은_된다() {
         HousingComplex complex = saved(1L);
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
         when(applicationRepository.countByHousingComplexId(1L)).thenReturn(2L);
         ComplexRequestDTO r = request();
         r.setName("비틀 파크 2차");
 
-        service.updateComplex(1L, r);
+        service.updateComplex(ADMIN_ID, 1L, r);
 
         assertThat(complex.getName()).isEqualTo("비틀 파크 2차");
     }
@@ -150,21 +157,21 @@ class AdminHousingServiceTest {
     @Test
     void 신청자가_없으면_일정도_바꿀_수_있다() {
         HousingComplex complex = saved(1L);
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
         when(applicationRepository.countByHousingComplexId(1L)).thenReturn(0L);
         ComplexRequestDTO r = request();
         r.setSupplyUnits(200);
 
-        service.updateComplex(1L, r);
+        service.updateComplex(ADMIN_ID, 1L, r);
 
         assertThat(complex.getSupplyUnits()).isEqualTo(200);
     }
 
     @Test
     void 없는_단지를_수정하면_404() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+        when(complexRepository.findForUpdate(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.updateComplex(99L, request()))
+        assertThatThrownBy(() -> service.updateComplex(ADMIN_ID, 99L, request()))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(CommonErrorCode.NOT_FOUND);
     }
@@ -172,10 +179,10 @@ class AdminHousingServiceTest {
     @Test
     void 신청자가_있으면_삭제하지_않는다() {
         HousingComplex complex = saved(1L);
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
         when(applicationRepository.countByHousingComplexId(1L)).thenReturn(1L);
 
-        assertThatThrownBy(() -> service.deleteComplex(1L))
+        assertThatThrownBy(() -> service.deleteComplex(ADMIN_ID, 1L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(HousingErrorCode.COMPLEX_HAS_APPLICANTS);
         assertThat(complex.getDeletedAt()).isNull();
@@ -184,10 +191,10 @@ class AdminHousingServiceTest {
     @Test
     void 신청자가_없으면_삭제_시각을_남긴다() {
         HousingComplex complex = saved(1L);
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
         when(applicationRepository.countByHousingComplexId(1L)).thenReturn(0L);
 
-        service.deleteComplex(1L);
+        service.deleteComplex(ADMIN_ID, 1L);
 
         assertThat(complex.getDeletedAt()).isEqualTo(LocalDateTime.of(2026, 11, 5, 0, 0));
     }

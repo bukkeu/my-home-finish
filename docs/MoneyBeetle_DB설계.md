@@ -17,7 +17,7 @@
   - **로컬 시드 값 변경**: 새로 만드는 DB용으로 `sample-data.sql`에 반영하고, 이미 시드를 넣어 둔 DB에는 필요할 때만 `sql/migration/`에 `UPDATE`/`INSERT` 파일을 둡니다.
   - 어느 경우에도 기존 DB에 `schema.sql`을 다시 실행하지 않습니다(테이블과 데이터가 모두 지워짐).
 - **모의투자 시드**(#72): 분야 15개, 종목 30개(기업정보 포함), 매매 이유 6개, 시즌 1개(시즌 7, 12턴 중 현재 5턴, 이월 100%·상한 없음), 턴 12개, 가격 360행(12턴 전부), 뉴스 25개와 태그. 6~12턴 가격은 미래 턴이라 조회 API(#24)는 현재 턴까지만 보여 준다. 날짜는 고정값이라 현재 턴은 `current_turn`으로만 판단한다. 참가자·보유·거래 내역은 넣지 않는다.
-- **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 7개(모집 중 3, 모집 예정 1, 모집 마감 1, 발표 완료 2. 등록 관리자 1). 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인·단지 이미지는 컬럼이 없어 넣지 않고(#48 이후), 청약 신청·납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
+- **청약 단지·공고 시드**(#74, `[서수영] 모의 청약 구역`): `housing_complex` 8개(모집 중 3, 모집 예정 1, 모집 마감 2, 발표 완료 2. 등록 관리자 1). 8번 `비틀 시범 행복주택`은 #48 산정·발표 시연용(모집 마감, 오늘 발표, 산정 전, 2세대)이고 신청자 4명(시드 회원 2~5, 점수는 SP-71대로 계산한 값)을 함께 넣는다. 날짜는 고정값이 아니라 **시드를 실행한 날(`CURDATE()`) 기준 상대값**이라, 언제·월초·월말에 넣어도 실행한 달의 청약 캘린더(공고일 ≤ 말일, 발표일 ≥ 1일)에 네 단계가 모두 보인다(모집 예정은 오늘 공고, 발표 완료 하나는 오늘 발표). 화면의 상태는 `status`가 아니라 오늘 날짜로 계산한다(발표 여부만 `status = ANNOUNCED`). 커트라인은 쓰지 않고(#48 가점 순위 방식 확정), 단지 이미지는 컬럼이 없어 넣지 않는다. 납입 내역은 넣지 않는다(납입은 `cash_history`와 맞아야 함). 청약 신청은 신청 시점 점수를 저장하므로 8번 단지 시연용만 넣는다. 시드 회원 1~8의 청약통장은 `[DBA ②]` 구역에 있다.
 
 ---
 
@@ -1023,8 +1023,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `dependent_score` | TINYINT | N | - | - | 부양가족 점수 (만점 35) |
 | `account_score` | TINYINT | N | - | - | 통장 점수 (만점 17) |
 | `total_score` | TINYINT | N | - | - | 총 가점 (만점 84) |
-| `result` | VARCHAR(10) | Y | - | - | WIN 당첨 / LOSE 낙첨. 발표 전 NULL |
-| `result_rank` | INT | Y | - | - | 산정 순위 |
+| `result` | VARCHAR(10) | Y | - | - | WIN 당첨 / LOSE 낙첨. 산정 전 NULL (산정하면 채우고, 회원에게는 발표 뒤에만 보인다, SP-75) |
+| `result_rank` | INT | Y | - | - | 산정 순위 (1부터, 낙첨자 포함). 산정 전 NULL |
 | `applied_at` | DATETIME | N | - | 현재 시각 | 신청 일시 |
 
 ### 운영
@@ -1039,8 +1039,8 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `admin_log_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 기록 ID |
 | `admin_id` | BIGINT | N | FK → member.member_id | - | 작업한 관리자 |
-| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등 |
-| `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE …) |
+| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE |
+| `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE, HOUSING_COMPLEX …) |
 | `target_id` | BIGINT | Y | - | - | 대상 ID |
 | `detail` | JSON | Y | - | - | 변경 전·후 값 |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
@@ -1085,7 +1085,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | DH-03 | 지난 데이터 불변 | 지난 턴 가격, 체결된 거래, 신청한 청약은 바꾸지 않는다. 지난 턴 뉴스는 오타 수정만 허용하고 `admin_log`에 남긴다 (DP-41, SP-73) |
 | DH-04 | 본인 소유 가벼운 데이터는 Hard Delete | 다른 데이터가 참조하지 않고 사용자가 직접 지우는 것(스크랩 해제, 오답노트 삭제, 읽은 알림 정리)은 실제로 지운다 |
 | DH-05 | 개인정보는 기간 후 파기 | 탈퇴 회원의 개인정보는 기간이 지나면 값을 지운다(NULL). 행 자체는 학습·거래 기록 보존을 위해 남긴다 (DP-06) |
-| DH-06 | 중요 변경은 기록 | 턴 진행, 정산, 랭킹 공개, 캐시 수동 지급·회수, 강의 허가·반려, 계정 정지, 강사 권한 변경은 `admin_log`에 누가·언제·무엇을 남긴다 (DP-43) |
+| DH-06 | 중요 변경은 기록 | 턴 진행, 정산, 랭킹 공개, 캐시 수동 지급·회수, 강의 허가·반려, 계정 정지, 강사 권한 변경, 청약 공고 등록·수정·삭제·당첨 산정·결과 발표는 `admin_log`에 누가·언제·무엇을 남긴다 (DP-43) |
 
 ### 3-2 테이블별 삭제 방식
 
@@ -1150,7 +1150,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | 사이트 문의 게시판 | `inquiry.course_id`가 NULL이면 사이트 문의로 처리 (페이지의 문의하기 게시판) | 강의 문의와 사이트 문의를 한 테이블로 둘지 나눌지 |
 | 강사 가입 방식 | `instructor_profile.approval_status` PENDING → 관리자 승인 (페이지의 강사 회원가입 반영) | 직접 가입 신청 허용 여부 |
 | 청약통장 납입액 | 1회 20,000~500,000캐시, 하루 인정 250,000 (SP-70 확정, 페이지 목업과 같음). `subscription_account.recognized_amount`, `subscription_deposit.recognized_amount` 추가 | #76에서 팀 확정. 신청 시 인정금액 스냅샷(`housing_application`)은 가점표 결정(#48) 후 추가 |
-| 청약 결과 | `result` WIN/LOSE (정책 SP-75). 페이지 목업에는 예비(RESERVE) 있음 | 예비 당첨 여부 |
+| ~~청약 결과~~ | **확정 (#48)**: `result` WIN/LOSE만 쓴다. 페이지 목업의 예비(RESERVE)는 두지 않는다 (SP-75) | — |
 | 시즌 참가 캐시 차감 | `season_participant.saved_cash` 기록, 차감 시 `cash_history`에 SEASON_JOIN | 참가 때 캐시 차감 여부 |
 | 이월 상한 | `trading_season.carryover_cap` NULL 허용 | 상한 금액 |
 | 영상 등록 방식 | `lesson.video_url` 문자열 | 파일 업로드면 파일 메타 테이블 추가 |

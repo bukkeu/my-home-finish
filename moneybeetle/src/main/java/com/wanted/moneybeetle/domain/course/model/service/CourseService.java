@@ -187,9 +187,9 @@ public class CourseService {
         scrapRepository.deleteByMemberIdAndCourseId(memberId, courseId);
     }
 
-    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11) */
+    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11). 재검수·비공개·삭제된 강의는 숨긴다 (SP-31) */
     public Page<ScrapListDTO> findScraps(Long memberId, Pageable pageable) {
-        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDescScrapIdDesc(memberId, pageable);
+        Page<Scrap> scraps = scrapRepository.findVisibleScraps(memberId, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 scraps.getContent().stream().map(Scrap::getCourseId).toList());
@@ -268,9 +268,26 @@ public class CourseService {
                 .toList();
     }
 
-    /* 이재성: 통합 검색 */
-    public List<CourseListDTO> search(String keyword) {
-        return List.of(); // TODO 제목 검색 (허가 + 공개만)
+    /* 문의(inquiry 도메인) 강사 문의함(API 82): 이 강사가 맡은 강의(삭제 제외)의 ID → 제목 */
+    public Map<Long, String> findCourseTitlesByInstructor(Long instructorId) {
+        return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
+    }
+
+    /* 이재성: 통합 검색 (#15). 보이는 강의(허가+공개+미삭제)만, 제목에 키워드가 들어간 것을 최근 강의부터 */
+    public List<CourseLabelDTO> search(String keyword) {
+        List<Course> courses = courseRepository
+                .findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
+                        keyword, Course.STATUS_APPROVED);
+        if (courses.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+        return courses.stream()
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPath(course.getCategoryId(), categories)))
+                .toList();
     }
 
     /* ===== 내부 도우미 ===== */
