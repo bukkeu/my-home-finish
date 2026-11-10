@@ -219,8 +219,14 @@ public class InstructorCourseService {
         for (LessonSaveDTO.LessonItem item : items) {
             String summary = item.summary() == null ? null : item.summary().strip();
             if (item.lessonId() != null) {
-                existing.get(item.lessonId()).change(item.title().strip(), item.videoUrl(),
-                        item.durationSeconds(), summary);
+                Lesson lesson = existing.get(item.lessonId());
+                boolean videoChanged = !lesson.getVideoUrl().equals(item.videoUrl());
+                lesson.change(item.title().strip(), item.videoUrl(), item.durationSeconds(), summary);
+                if (videoChanged) {
+                    // 같은 lessonId로 다른 영상을 올리면 예전 영상의 본 시간·완료·이어보기 위치를 쓰지 않는다
+                    lessonRepository.resetWatches(lesson.getLessonId());
+                    lessonRepository.resetLastPositions(lesson.getLessonId());
+                }
                 lessonIds.add(item.lessonId());
             } else {
                 Lesson created = lessonRepository.save(Lesson.create(courseId, item.sortOrder(), item.title().strip(),

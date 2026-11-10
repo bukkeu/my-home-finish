@@ -548,7 +548,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `quiz_question_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 문항 ID |
 | `course_id` | BIGINT | N | FK → course.course_id | - | 강의 |
-| `quiz_type` | VARCHAR(10) | N | - | - | TEST 테스트 퀴즈 / MAIN 퀴즈 |
+| `quiz_type` | VARCHAR(10) | N | - | - | TEST 테스트 퀴즈 / MAIN 퀴즈 / TEST_OLD·MAIN_OLD 보관한 문항 (푼 기록이 있는 문항을 강사가 바꾸거나 빼면 수정·삭제 대신 보관. 퀴즈·검수·편집 목록에서는 빠지고 오답노트·응시 결과는 수정 전 내용을 계속 가리킴, #31) |
 | `question_type` | VARCHAR(10) | N | - | - | OX / CHOICE |
 | `content` | VARCHAR(500) | N | - | - | 문제 |
 | `explanation` | TEXT | N | - | - | 해설 |

@@ -15,7 +15,13 @@ public interface QuizQuestionRepository extends JpaRepository<QuizQuestion, Long
 
     List<QuizQuestion> findByCourseIdAndQuizTypeOrderBySortOrderAsc(Long courseId, String quizType);
     /* 관리자 검수(API 90): 이 강의의 모든 문항. 종류 → 순서 → ID로 정렬 고정 */
-    List<QuizQuestion> findByCourseIdOrderByQuizTypeAscSortOrderAscQuizQuestionIdAsc(Long courseId);
+    // 보관한 문항(TEST_OLD / MAIN_OLD, #31)은 빼고 지금 쓰는 TEST·MAIN만
+    @Query("""
+            select q from QuizQuestion q
+            where q.courseId = :courseId and q.quizType in ('TEST', 'MAIN')
+            order by q.quizType asc, q.sortOrder asc, q.quizQuestionId asc
+            """)
+    List<QuizQuestion> findByCourseIdOrderByQuizTypeAscSortOrderAscQuizQuestionIdAsc(@Param("courseId") Long courseId);
 
     /* 검수 요청 조건 (API 81): 종류별 문항 수 */
     long countByCourseIdAndQuizType(Long courseId, String quizType);

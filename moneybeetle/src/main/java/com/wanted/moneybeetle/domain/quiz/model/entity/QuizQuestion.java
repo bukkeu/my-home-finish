@@ -26,6 +26,7 @@ public class QuizQuestion {
 
     public static final String QUIZ_TYPE_TEST = "TEST";       // 영상 전 OX 5문제
     public static final String QUIZ_TYPE_MAIN = "MAIN";       // 영상 후 4지선다
+    private static final String RETIRED_SUFFIX = "_OLD";      // 보관한 문항: TEST_OLD / MAIN_OLD (#31)
     public static final String QUESTION_TYPE_OX = "OX";
     public static final String QUESTION_TYPE_CHOICE = "CHOICE";
 
@@ -53,7 +54,16 @@ public class QuizQuestion {
         return question;
     }
 
-    /* 문제·해설·순서 바꾸기 (API 79·80). 응시·오답 기록이 이 문항 ID를 가리키므로 지우지 않고 고친다 */
+    /* 푼 기록이 있는 문항을 강사가 바꾸거나 뺄 때 보관한다 (API 79·80, #31).
+     * 퀴즈 종류가 TEST_OLD / MAIN_OLD 가 되어 퀴즈·검수·편집 목록에서는 빠지고,
+     * 오답노트·응시 결과는 이 문항(수정 전 문제·보기)을 계속 가리킨다 */
+    public void retire() {
+        if (!quizType.endsWith(RETIRED_SUFFIX)) {
+            this.quizType = quizType + RETIRED_SUFFIX;
+        }
+    }
+
+    /* 문제·해설·순서 바꾸기 (API 79·80). 푼 기록이 없는 문항이거나, 기록이 있어도 해설·순서만 바꿀 때 */
     public void change(String content, String explanation, int sortOrder) {
         this.content = content;
         this.explanation = explanation;
