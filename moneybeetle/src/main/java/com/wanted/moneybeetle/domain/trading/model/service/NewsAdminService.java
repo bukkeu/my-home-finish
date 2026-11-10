@@ -82,7 +82,7 @@ public class NewsAdminService {
     /** API 132 뉴스 등록 : 다음 턴 이후에만 */
     @Transactional
     public Long createNews(Long seasonId, NewsSaveDTO request) {
-        TradingSeason season = getSeason(seasonId);
+        TradingSeason season = getSeasonForUpdate(seasonId);
         checkNotPastTurn(request.getTurnNo(), season);
         checkTagsExist(request);
 
@@ -95,8 +95,9 @@ public class NewsAdminService {
     /** API 133 뉴스 수정 : 지난 턴 뉴스는 제목·본문·메모만 */
     @Transactional
     public void changeNews(Long newsId, NewsSaveDTO request) {
-        News news = getNews(newsId);
-        TradingSeason season = getSeason(news.getTradingSeasonId());
+        LockedNews locked = lockNewsAndSeason(newsId);
+        News news = locked.news();
+        TradingSeason season = locked.season();
 
         if (news.isPublishedBy(season.getCurrentTurn())) {
             if (news.getTurnNo() != request.getTurnNo() || !sameTags(newsTagRepository.findByNewsId(newsId), request)) {
@@ -117,9 +118,9 @@ public class NewsAdminService {
     /** API 134 뉴스 삭제 : 다음 턴 이후 뉴스만 (지난 턴은 지우지 않는다, DP-41) */
     @Transactional
     public void deleteNews(Long newsId) {
-        News news = getNews(newsId);
-        TradingSeason season = getSeason(news.getTradingSeasonId());
-        if (news.isPublishedBy(season.getCurrentTurn())) {
+        LockedNews locked = lockNewsAndSeason(newsId);
+        News news = locked.news();
+        if (news.isPublishedBy(locked.season().getCurrentTurn())) {
             throw new BusinessException(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         }
         newsTagRepository.deleteByNewsId(newsId);
@@ -131,9 +132,30 @@ public class NewsAdminService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
-    private News getNews(Long newsId) {
-        return newsRepository.findById(newsId)
+    /**
+     * 뉴스를 바꾸는 작업은 턴 진행(TurnAdminService.advanceTurn)과 같은 시즌 행 잠금을 잡고 현재 턴을 확인한다.
+     * 점검 직후 다른 관리자가 다음 턴의 유일한 뉴스를 지워도 뉴스 없이 턴이 넘어가지 않는다
+     */
+    private TradingSeason getSeasonForUpdate(Long seasonId) {
+        return seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 뉴스 수정·삭제 : 시즌 번호만 먼저 읽고(News 를 영속성 컨텍스트에 올리지 않는다) 시즌 행을 잠근 뒤 뉴스를 잠금 읽기로 읽는다.
+     * 시즌 잠금을 기다리는 사이 다른 관리자가 뉴스의 턴을 옮기고 턴을 넘겼어도, 최신 턴으로 공개 여부를 판단한다.
+     * 단순 findById 는 앞서 읽은 객체나 오래된 스냅샷을 돌려줄 수 있어 쓰지 않는다
+     */
+    private LockedNews lockNewsAndSeason(Long newsId) {
+        Long seasonId = newsRepository.findSeasonIdByNewsId(newsId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+        TradingSeason season = getSeasonForUpdate(seasonId);
+        News news = newsRepository.findByIdForUpdate(newsId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+        return new LockedNews(news, season);
+    }
+
+    private record LockedNews(News news, TradingSeason season) {
     }
 
     /** 현재 턴 이하(이미 공개된 턴)에는 뉴스를 넣거나 옮길 수 없다 */

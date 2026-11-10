@@ -12,12 +12,14 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.SectorRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.StockRepository;
+import com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository;
 import com.wanted.moneybeetle.domain.trading.model.dto.AdminStockDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SectorDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SectorSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.entity.Sector;
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
+import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.util.Comparator;
@@ -44,6 +46,7 @@ public class MarketAdminService {
 
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
+    private final TradingSeasonRepository seasonRepository;
 
     // ---------- 분야 ----------
 
@@ -57,6 +60,7 @@ public class MarketAdminService {
     /** API 122 분야 등록 */
     @Transactional
     public Long createSector(SectorSaveDTO request) {
+        lockRunningSeason();
         if (sectorRepository.existsByName(request.getName())) {
             throw new BusinessException(TradingErrorCode.SECTOR_DUPLICATED);
         }
@@ -71,6 +75,7 @@ public class MarketAdminService {
     /** API 123 분야 수정 : 이름, 사용 여부(주면), 정렬 순서(주면) */
     @Transactional
     public void changeSector(Long sectorId, SectorSaveDTO request) {
+        lockRunningSeason();
         Sector sector = getSector(sectorId);
         if (sectorRepository.existsByNameAndSectorIdNot(request.getName(), sectorId)) {
             throw new BusinessException(TradingErrorCode.SECTOR_DUPLICATED);
@@ -112,6 +117,7 @@ public class MarketAdminService {
     /** API 125 종목 등록 (기업정보 포함) */
     @Transactional
     public Long createStock(StockSaveDTO request) {
+        lockRunningSeason();
         getSector(request.getSectorId());
         if (stockRepository.existsByName(request.getName())) {
             throw new BusinessException(TradingErrorCode.STOCK_DUPLICATED);
@@ -130,6 +136,7 @@ public class MarketAdminService {
     /** API 126 종목·기업정보 수정 */
     @Transactional
     public void changeStock(Long stockId, StockSaveDTO request) {
+        lockRunningSeason();
         Stock stock = stockRepository.findById(stockId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         getSector(request.getSectorId());
@@ -148,6 +155,17 @@ public class MarketAdminService {
         } catch (DataIntegrityViolationException e) {
             throw duplicatedOrRethrow(e, STOCK_NAME_KEY, TradingErrorCode.STOCK_DUPLICATED);
         }
+    }
+
+    /**
+     * 분야·종목 변경은 턴 진행(TurnAdminService.advanceTurn)과 같은 시즌 행 잠금을 잡고 시작한다.
+     * 점검 직후 분야 활성화·종목 등록·이동이 끼어들어 가격이 없는 종목을 둔 채 턴이 넘어가지 않게 한다.
+     * 진행 중·휴장 중인 시즌이 없으면(시즌 준비 중) 턴 진행과 경합할 일이 없으므로 잠그지 않는다
+     */
+    private void lockRunningSeason() {
+        seasonRepository.findFirstByStatusInOrderByStartDateDesc(
+                        List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
+                .ifPresent(season -> seasonRepository.findByIdForUpdate(season.getTradingSeasonId()));
     }
 
     private Sector getSector(Long sectorId) {

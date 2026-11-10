@@ -24,12 +24,13 @@ INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role,
 (8, 'minji@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '민지', '1999-04-12', 'MEMBER', 'ACTIVE', 8, 1250, 12000);
 
 -- 강사 정보: 모두 승인 상태 (승인 관리자 = 1)
-INSERT INTO instructor_profile (member_id, display_name, field, approval_status, approved_by, approved_at) VALUES
-(2, '박서연', '예적금·청약', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(3, '이도현', '국내 주식·ETF', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(4, '한지수', '월급 관리', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(5, '오민재', '소비·위험 관리', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(6, '정하린', '미국 주식·분산 투자', 'APPROVED', 1, '2026-11-01 10:00:00');
+-- 시드 강사는 모두 강사 가입 신청(applied_at) 후 관리자 승인을 받은 것으로 둔다 (#37)
+INSERT INTO instructor_profile (member_id, display_name, field, approval_status, approved_by, approved_at, applied_at) VALUES
+(2, '박서연', '예적금·청약', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(3, '이도현', '국내 주식·ETF', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(4, '한지수', '월급 관리', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(5, '오민재', '소비·위험 관리', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(6, '정하린', '미국 주식·분산 투자', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00');
 
 -- 약관 (가입 화면용)
 INSERT INTO terms (terms_id, title, content, is_required, version, effective_at) VALUES
@@ -105,35 +106,37 @@ INSERT INTO course_review (course_id, admin_id, result, reason) VALUES
 (19, 1, 'APPROVED', NULL),
 (17, 1, 'REJECTED', '퀴즈 해설이 비어 있어요. 보완 후 다시 요청해 주세요.');
 
--- 영상·요약글: 영상은 파일 업로드로 확정(#30). 지금은 로컬 업로드 폴더 기준 예시 경로
+-- 영상·요약글: 영상은 파일 업로드로 확정(#30).
+-- 시연용 샘플 영상 3개(30초, moneybeetle/uploads/videos/sample-1~3.mp4)를 영상 순서대로 함께 쓴다 (#73).
+-- 길이(duration_seconds)를 실제 파일 길이 30초에 맞춰서, 영상 완료(본 시간 90% 이상)·퀴즈 열기·통과까지 바로 시연할 수 있다.
 INSERT INTO lesson (course_id, sort_order, title, video_url, duration_seconds, summary) VALUES
-(1, 1, '왜 통장을 나눠야 할까', '/uploads/videos/course-1-1.mp4', 420, '왜 통장을 나눠야 할까 영상의 요약글이에요. (시드 예시)'),
-(1, 2, '통장 3개 만드는 순서', '/uploads/videos/course-1-2.mp4', 540, '통장 3개 만드는 순서 영상의 요약글이에요. (시드 예시)'),
-(2, 1, '비상금이 필요한 순간', '/uploads/videos/course-2-1.mp4', 360, '비상금이 필요한 순간 영상의 요약글이에요. (시드 예시)'),
-(2, 2, '내 비상금 목표 정하기', '/uploads/videos/course-2-2.mp4', 480, '내 비상금 목표 정하기 영상의 요약글이에요. (시드 예시)'),
-(3, 1, '고정비 찾아내기', '/uploads/videos/course-3-1.mp4', 400, '고정비 찾아내기 영상의 요약글이에요. (시드 예시)'),
-(4, 1, '예금과 적금의 기본', '/uploads/videos/course-4-1.mp4', 480, '예금과 적금의 기본 영상의 요약글이에요. (시드 예시)'),
-(4, 2, '단리와 복리', '/uploads/videos/course-4-2.mp4', 600, '단리와 복리 영상의 요약글이에요. (시드 예시)'),
-(4, 3, '이자에 붙는 세금', '/uploads/videos/course-4-3.mp4', 420, '이자에 붙는 세금 영상의 요약글이에요. (시드 예시)'),
-(5, 1, '적금 이자 계산법', '/uploads/videos/course-5-1.mp4', 540, '적금 이자 계산법 영상의 요약글이에요. (시드 예시)'),
-(6, 1, '중도해지 이율', '/uploads/videos/course-6-1.mp4', 450, '중도해지 이율 영상의 요약글이에요. (시드 예시)'),
-(7, 1, '정책 적금이란', '/uploads/videos/course-7-1.mp4', 500, '정책 적금이란 영상의 요약글이에요. (시드 예시)'),
-(8, 1, '주식의 뜻', '/uploads/videos/course-8-1.mp4', 420, '주식의 뜻 영상의 요약글이에요. (시드 예시)'),
-(8, 2, '주가가 움직이는 이유', '/uploads/videos/course-8-2.mp4', 560, '주가가 움직이는 이유 영상의 요약글이에요. (시드 예시)'),
-(9, 1, '증권 계좌 만들기', '/uploads/videos/course-9-1.mp4', 380, '증권 계좌 만들기 영상의 요약글이에요. (시드 예시)'),
-(9, 2, '매수·매도 주문', '/uploads/videos/course-9-2.mp4', 520, '매수·매도 주문 영상의 요약글이에요. (시드 예시)'),
-(10, 1, '해외 주식 주문', '/uploads/videos/course-10-1.mp4', 500, '해외 주식 주문 영상의 요약글이에요. (시드 예시)'),
-(11, 1, '환율과 수익', '/uploads/videos/course-11-1.mp4', 460, '환율과 수익 영상의 요약글이에요. (시드 예시)'),
-(11, 2, '해외 주식 세금', '/uploads/videos/course-11-2.mp4', 520, '해외 주식 세금 영상의 요약글이에요. (시드 예시)'),
-(12, 1, 'ETF란', '/uploads/videos/course-12-1.mp4', 480, 'ETF란 영상의 요약글이에요. (시드 예시)'),
-(12, 2, '펀드와 채권', '/uploads/videos/course-12-2.mp4', 540, '펀드와 채권 영상의 요약글이에요. (시드 예시)'),
-(13, 1, '분산 투자의 원리', '/uploads/videos/course-13-1.mp4', 500, '분산 투자의 원리 영상의 요약글이에요. (시드 예시)'),
-(14, 1, '코인의 변동성', '/uploads/videos/course-14-1.mp4', 450, '코인의 변동성 영상의 요약글이에요. (시드 예시)'),
-(15, 1, '청약통장이 뭐예요?', '/uploads/videos/course-15-1.mp4', 480, '청약통장이 뭐예요? 영상의 요약글이에요. (시드 예시)'),
-(15, 2, '가점은 어떻게 계산할까', '/uploads/videos/course-15-2.mp4', 840, '가점은 어떻게 계산할까 영상의 요약글이에요. (시드 예시)'),
-(16, 1, '배당이란', '/uploads/videos/course-16-1.mp4', 400, '배당이란 영상의 요약글이에요. (시드 예시)'),
-(17, 1, '리딩방과 원금 보장', '/uploads/videos/course-17-1.mp4', 420, '리딩방과 원금 보장 영상의 요약글이에요. (시드 예시)'),
-(19, 1, '금리 비교 기준', '/uploads/videos/course-19-1.mp4', 400, '금리 비교 기준 영상의 요약글이에요. (시드 예시)');
+(1, 1, '왜 통장을 나눠야 할까', '/uploads/videos/sample-1.mp4', 30, '왜 통장을 나눠야 할까 영상의 요약글이에요. (시드 예시)'),
+(1, 2, '통장 3개 만드는 순서', '/uploads/videos/sample-2.mp4', 30, '통장 3개 만드는 순서 영상의 요약글이에요. (시드 예시)'),
+(2, 1, '비상금이 필요한 순간', '/uploads/videos/sample-1.mp4', 30, '비상금이 필요한 순간 영상의 요약글이에요. (시드 예시)'),
+(2, 2, '내 비상금 목표 정하기', '/uploads/videos/sample-2.mp4', 30, '내 비상금 목표 정하기 영상의 요약글이에요. (시드 예시)'),
+(3, 1, '고정비 찾아내기', '/uploads/videos/sample-1.mp4', 30, '고정비 찾아내기 영상의 요약글이에요. (시드 예시)'),
+(4, 1, '예금과 적금의 기본', '/uploads/videos/sample-1.mp4', 30, '예금과 적금의 기본 영상의 요약글이에요. (시드 예시)'),
+(4, 2, '단리와 복리', '/uploads/videos/sample-2.mp4', 30, '단리와 복리 영상의 요약글이에요. (시드 예시)'),
+(4, 3, '이자에 붙는 세금', '/uploads/videos/sample-3.mp4', 30, '이자에 붙는 세금 영상의 요약글이에요. (시드 예시)'),
+(5, 1, '적금 이자 계산법', '/uploads/videos/sample-1.mp4', 30, '적금 이자 계산법 영상의 요약글이에요. (시드 예시)'),
+(6, 1, '중도해지 이율', '/uploads/videos/sample-1.mp4', 30, '중도해지 이율 영상의 요약글이에요. (시드 예시)'),
+(7, 1, '정책 적금이란', '/uploads/videos/sample-1.mp4', 30, '정책 적금이란 영상의 요약글이에요. (시드 예시)'),
+(8, 1, '주식의 뜻', '/uploads/videos/sample-1.mp4', 30, '주식의 뜻 영상의 요약글이에요. (시드 예시)'),
+(8, 2, '주가가 움직이는 이유', '/uploads/videos/sample-2.mp4', 30, '주가가 움직이는 이유 영상의 요약글이에요. (시드 예시)'),
+(9, 1, '증권 계좌 만들기', '/uploads/videos/sample-1.mp4', 30, '증권 계좌 만들기 영상의 요약글이에요. (시드 예시)'),
+(9, 2, '매수·매도 주문', '/uploads/videos/sample-2.mp4', 30, '매수·매도 주문 영상의 요약글이에요. (시드 예시)'),
+(10, 1, '해외 주식 주문', '/uploads/videos/sample-1.mp4', 30, '해외 주식 주문 영상의 요약글이에요. (시드 예시)'),
+(11, 1, '환율과 수익', '/uploads/videos/sample-1.mp4', 30, '환율과 수익 영상의 요약글이에요. (시드 예시)'),
+(11, 2, '해외 주식 세금', '/uploads/videos/sample-2.mp4', 30, '해외 주식 세금 영상의 요약글이에요. (시드 예시)'),
+(12, 1, 'ETF란', '/uploads/videos/sample-1.mp4', 30, 'ETF란 영상의 요약글이에요. (시드 예시)'),
+(12, 2, '펀드와 채권', '/uploads/videos/sample-2.mp4', 30, '펀드와 채권 영상의 요약글이에요. (시드 예시)'),
+(13, 1, '분산 투자의 원리', '/uploads/videos/sample-1.mp4', 30, '분산 투자의 원리 영상의 요약글이에요. (시드 예시)'),
+(14, 1, '코인의 변동성', '/uploads/videos/sample-1.mp4', 30, '코인의 변동성 영상의 요약글이에요. (시드 예시)'),
+(15, 1, '청약통장이 뭐예요?', '/uploads/videos/sample-1.mp4', 30, '청약통장이 뭐예요? 영상의 요약글이에요. (시드 예시)'),
+(15, 2, '가점은 어떻게 계산할까', '/uploads/videos/sample-2.mp4', 30, '가점은 어떻게 계산할까 영상의 요약글이에요. (시드 예시)'),
+(16, 1, '배당이란', '/uploads/videos/sample-1.mp4', 30, '배당이란 영상의 요약글이에요. (시드 예시)'),
+(17, 1, '리딩방과 원금 보장', '/uploads/videos/sample-1.mp4', 30, '리딩방과 원금 보장 영상의 요약글이에요. (시드 예시)'),
+(19, 1, '금리 비교 기준', '/uploads/videos/sample-1.mp4', 30, '금리 비교 기준 영상의 요약글이에요. (시드 예시)');
 
 -- 퀴즈: 강의 4(예금과 적금), 15(청약통장)에만 전체 문항을 넣었다 (테스트 퀴즈 OX 5 + 퀴즈 4지선다 10)
 -- 나머지 강의의 퀴즈는 강사 화면(#30)이 완성되면 강사가 채운다
@@ -274,7 +277,7 @@ INSERT INTO quiz_choice (quiz_question_id, content, is_correct, sort_order) VALU
 -- 학습자 8(민지)의 학습 기록: 홈 '이어서 볼 강의'와 vr1/vr2 분기 확인용
 INSERT INTO learning_progress (member_id, course_id, status, last_lesson_id, last_position_seconds, completed_at) VALUES
 (8, 4, 'COMPLETED', NULL, 0, '2026-11-04 21:00:00'),
-(8, 15, 'IN_PROGRESS', NULL, 312, NULL);
+(8, 15, 'IN_PROGRESS', NULL, 12, NULL);   -- 영상 2의 12초 지점 (샘플 영상 30초, #73)
 UPDATE learning_progress lp
 JOIN lesson l ON l.course_id = lp.course_id AND l.sort_order = 2
 SET lp.last_lesson_id = l.lesson_id
@@ -313,23 +316,67 @@ INSERT INTO level_policy (level, required_exp, title, levelup_cash) VALUES
 (19, 5650, '내 집', 190000),
 (20, 6250, '내 집', 200000);
 
--- 보상 규칙 중 연속 출석 보상만 먼저 넣는다 (이슈 #12). 연속 5일째부터 매일 10,000캐시 (SP-12, 확정 #76), 경험치는 없다.
--- 이 규칙이 없으면 5일째 출석 때 캐시 지급이 REWARD_RULE_NOT_FOUND 로 실패한다.
--- 학습 완료·퀴즈 만점 규칙은 XP 값이 확정된 뒤(#68) 같은 표에 더한다. (code 는 UNIQUE 라서 같은 코드를 두 번 넣지 않는다)
+-- 보상 규칙 (code 는 UNIQUE). 규칙이 없으면 그 보상 지급이 REWARD_RULE_NOT_FOUND 로 실패한다
+-- - ATTENDANCE_STREAK : 연속 5일째부터 매일 10,000캐시 (SP-12, 확정 #76, 이슈 #12)
+-- - COURSE_COMPLETE · QUIZ_PERFECT : 학습 완료 30,000캐시·150 XP, 퀴즈 만점 30 XP (SP-13·SP-22, 확정 #68)
+-- - ATTENDANCE_DAILY : 출석 경험치 기본값 10 XP. 연속 일수 5일마다 ×2·×3… 상한 ×5(50 XP)는 코드에서 계산 (SP-22, 확정 #68)
 INSERT INTO reward_rule (code, name, cash_amount, exp_amount, description, is_active) VALUES
-('ATTENDANCE_STREAK', '연속 출석 보상', 10000, 0, '연속 5일째부터 매일 지급 (SP-12)', 1);
+('ATTENDANCE_STREAK', '연속 출석 보상', 10000, 0, '연속 5일째부터 매일 지급 (SP-12)', 1),
+('COURSE_COMPLETE', '강의 학습 완료', 30000, 150, '같은 강의 최초 1회 (SP-13, SP-22)', 1),
+('QUIZ_PERFECT', '퀴즈 만점 보너스', 0, 30, '같은 강의 최초 1회 (SP-22)', 1),
+('ATTENDANCE_DAILY', '출석 경험치', 0, 10, '출석마다. 연속 일수 5일마다 +10, 하루 상한 50 (SP-22)', 1);
 
 -- 청약통장: 회원당 하나(member_id 유니크). 잔액·납입회차는 기본값 0
 INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8);
 
 -- 민지(8)의 원장: member.cash·exp 값과 내역이 맞게 한 줄씩 둔다 (SP-15, GRW-07).
--- 학습 완료·퀴즈 만점 보상 규칙(reward_rule) 시드는 XP 값이 확정된 뒤(#68) 생기므로 reward_rule_id는 비워 둔다
+-- 아래 내역은 시드용으로 한 건에 묶은 것이라 실제 보상 규칙 지급이 아니어서 reward_rule_id 는 비워 둔다
 INSERT INTO cash_history (member_id, history_type, source_type, source_id, amount, balance_after, reason, admin_id) VALUES
 (8, 'ADMIN_GIVE', 'ADMIN', NULL, 12000, 12000, '시드 초기 지급 (로컬 개발용)', 1);
 
 -- 경험치 1,250 = 누적 Lv.8 (이슈 #11 기준). 시드에서는 완료한 강의 4 한 건으로 묶었다
 INSERT INTO exp_history (member_id, source_type, source_id, amount, exp_after, level_after) VALUES
 (8, 'COURSE_COMPLETE', 4, 1250, 1250, 8);
+
+-- 경제 용어 (이슈 #75): 관리자 화면 프로토타입(moneybeetle-page/AdminDashboard.dc.html)의 용어 12개. 앞 5개는 홈 프로토타입(UserHome-vr2)의 "오늘의 경제 용어"와 같다.
+-- 용어는 UNIQUE 라서 같은 용어를 두 번 넣지 않는다. 번호 순서가 곧 등록 순서이고, 지정하지 않은 날의 자동 선정(SP-46)이 이 순서를 쓴다.
+INSERT INTO economic_term (economic_term_id, term, description) VALUES
+(1, '복리', '원금에 붙은 이자에도 다시 이자가 붙는 방식'),
+(2, '실수령액', '세전 급여에서 4대보험과 소득세를 뺀 금액'),
+(3, '배당', '기업이 이익의 일부를 주주에게 나눠 주는 것'),
+(4, '리밸런싱', '정해 둔 자산 비중으로 포트폴리오를 다시 맞추는 일'),
+(5, '청약 가점', '무주택 기간·부양가족·통장 가입 기간으로 매기는 점수'),
+(6, 'ETF', '거래소에 상장돼 주식처럼 사고파는 지수 추종 펀드'),
+(7, '확정일자', '임대차 계약서에 날짜를 받아 보증금 우선순위를 확보하는 것'),
+(8, 'LTV', '집값 대비 대출 가능 금액의 비율'),
+(9, '분산 투자', '여러 자산에 나눠 위험을 줄이는 투자'),
+(10, '인플레이션', '물가가 계속 오르고 돈의 가치가 떨어지는 현상'),
+(11, '예금자보호', '금융사가 문을 닫아도 1인당 일정 금액까지 돌려주는 제도'),
+(12, '전세가율', '매매가 대비 전세 보증금의 비율');
+
+-- 이 구역의 날짜·시각은 DB 세션 시간대(CURDATE()·NOW())가 아니라 한국 시간(+09:00) 기준이다. 서버·세션 시간대가 달라도 한국의 "오늘"에 맞춘다.
+-- (앱은 한국 시간으로 오늘을 정한다. 아래 두 변수는 이 파일을 실행하는 같은 연결에서 계속 쓴다)
+SET @seed_now = CONVERT_TZ(NOW(), @@session.time_zone, '+09:00');
+SET @seed_today = DATE(@seed_now);
+
+-- 날짜별 오늘의 경제 용어: 관리자가 직접 지정한 두 날(is_auto = 0). 날짜는 "실행한 날(한국 시간)" 기준이라 언제 시드를 넣어도 홈에 5개가 나온다.
+-- 오늘 = 1~5번(홈 프로토타입의 5개), 내일 = 6~10번 (관리자 프로토타입의 두 번째 지정일과 같은 구성). 그 밖의 날은 처음 볼 때 자동 선정된다.
+INSERT INTO term_schedule (show_date, economic_term_id, sort_order, is_auto) VALUES
+(@seed_today, 1, 1, 0), (@seed_today, 2, 2, 0), (@seed_today, 3, 3, 0), (@seed_today, 4, 4, 0), (@seed_today, 5, 5, 0),
+(@seed_today + INTERVAL 1 DAY, 6, 1, 0), (@seed_today + INTERVAL 1 DAY, 7, 2, 0), (@seed_today + INTERVAL 1 DAY, 8, 3, 0),
+(@seed_today + INTERVAL 1 DAY, 9, 4, 0), (@seed_today + INTERVAL 1 DAY, 10, 5, 0);
+
+-- 알림 (이슈 #75): 개발용 샘플. 종류별(UNLOCK · INQUIRY_REPLY · HOUSING_RESULT · RANKING · COURSE_REJECTED) 1건 이상.
+-- 제목·이동 주소는 실제로 알림을 보내는 코드와 같은 형식이다. content 는 실제 알림처럼 비워 둔다 (알림 목록 API 에도 content 가 없다).
+-- 민지(8)는 읽지 않은 알림 3건(종의 빨간 점·안 읽은 수 확인용)과 읽은 알림 1건, 강사 5번은 반려된 강의 17의 반려 알림을 받는다.
+-- 문의 답변 알림은 문의 시드가 없어 이동 주소를 비워 둔다 (없는 문의로 이동하지 않게 한다. 종은 주소가 없으면 눌러도 이동하지 않는다).
+INSERT INTO notification (member_id, type, title, link_url, is_read, created_at) VALUES
+(8, 'INQUIRY_REPLY', '문의에 답변이 등록됐어요', NULL, 0, @seed_now - INTERVAL 5 MINUTE),
+(8, 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, @seed_now - INTERVAL 3 HOUR),
+(8, 'HOUSING_RESULT', '새봄 국민주택 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY),
+(8, 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, @seed_now - INTERVAL 2 DAY),
+(5, 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, @seed_now - INTERVAL 1 HOUR);
+
 -- 모의투자 (#72, 이재성) ─ 프로토타입 moneybeetle-page/new1/Admin.jsx 기준
 -- 시즌 1개(시즌 7, 2026-10-19 월 시작, 14일·12턴)를 5턴 진행 중 상태로 넣는다. 시즌 만든 관리자 = 1
 -- 주의: 날짜는 프로토타입 기준 고정값이라 오늘보다 과거일 수 있다. 현재 턴은 current_turn 으로만 판단하고 날짜와 비교하지 않는다

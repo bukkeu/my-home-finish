@@ -43,7 +43,7 @@ class HomeServiceTest {
         termService = mock(TermService.class);
         courseService = mock(CourseService.class);
         growthService = mock(GrowthService.class);
-        service = new HomeService(termService, courseService, growthService);
+        service = new HomeService(termService, courseService, growthService, null);
 
         when(termService.getToday()).thenReturn(new TodayTermsDTO(LocalDate.of(2026, 11, 9),
                 List.of(new EconomicTermDTO(3L, "복리", "이자에 이자가 붙는 방식"))));
