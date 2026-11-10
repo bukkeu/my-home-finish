@@ -861,7 +861,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
     { "cashHistoryId": 88, "historyType": "EARN", "title": "강의 완료 · 금리와 채권 가격", "amount": 3000, "balanceAfter": 12400, "createdAt": "2026-11-02T14:10:00" },
     { "cashHistoryId": 87, "historyType": "USE", "title": "청약통장 납입", "amount": -1000, "balanceAfter": 9400, "createdAt": "2026-11-02T09:00:00" }
   ],
-  "page": 0, "size": 20, "totalElements": 42
+  "page": 0, "size": 20, "totalElements": 42, "totalPages": 3
 }
 ```
 
@@ -885,7 +885,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 {
   "level": 8, "exp": 1120,
   "items": [ { "expHistoryId": 12, "sourceType": "COURSE_COMPLETE", "title": "금리와 채권 가격", "amount": 100, "levelAfter": 8, "createdAt": "2026-11-02T14:10:00" } ],
-  "page": 0, "size": 20, "totalElements": 12
+  "page": 0, "size": 20, "totalElements": 12, "totalPages": 1
 }
 ```
 
@@ -1023,7 +1023,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, SP-31 |
-| 설명 | 허가 + 공개 강의만. 소주제별 조회. |
+| 설명 | 허가 + 공개 강의만. 상위 카테고리 ID를 주면 그 아래 소주제 강의까지 모두. 강의 화면(#52)이 `categoryId`(소주제)로 묶고, 내 학습 상태(`status`)·끝까지 본 영상 수(`watchedLessonCount`)로 진행률을 그린다. 강사 이름은 강사 정보의 표시 이름. |
 
 **Request**
 
@@ -1034,9 +1034,10 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "items": [
-    { "courseId": 2, "title": "ETF로 시작하는 분산 투자", "instructorName": "박서연", "thumbnailUrl": null, "lessonCount": 3, "status": "IN_PROGRESS", "isScrapped": false }
+    { "courseId": 2, "categoryId": 15, "title": "ETF로 시작하는 분산 투자", "instructorName": "박서연", "thumbnailUrl": null,
+      "lessonCount": 3, "watchedLessonCount": 1, "status": "IN_PROGRESS", "infoBaseDate": null, "isScrapped": false }
   ],
-  "page": 0, "size": 20, "totalElements": 4
+  "page": 0, "size": 20, "totalElements": 4, "totalPages": 1
 }
 ```
 
@@ -1048,7 +1049,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-02, LRN-04, SP-41 |
-| 설명 | 강의 소개, 영상 목록(최대 3개)과 요약글, 진행 상태, 스크랩 여부. |
+| 설명 | 강의 소개, 영상 목록(최대 3개)과 요약글, 내 진행 상태(`progressStatus`·`lastLessonId`, 안 들었으면 null), 영상별 시청 완료(`isCompleted`, 서버가 정한 완료 #20), 스크랩 여부. 이어보기 위치는 영상 재생 정보(API 32)의 `positionSeconds`. 퀴즈 정보는 퀴즈 API(39·41)에서 받는다(#52에서 응답 모양을 구현에 맞춤). |
 
 **Request**
 
@@ -1059,15 +1060,14 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "courseId": 7, "title": "청약통장 기초와 가점 계산", "description": "...",
-  "category": { "categoryId": 21, "name": "청약", "parentName": "부동산" },
-  "instructor": { "memberId": 31, "displayName": "박서연" },
+  "categoryId": 21, "categoryName": "청약",
+  "instructorId": 31, "instructorName": "박서연",
   "infoBaseDate": "2026-10-01", "infoSource": "청약홈",
   "lessons": [
     { "lessonId": 20, "sortOrder": 1, "title": "청약통장이 뭐예요?", "durationSeconds": 480, "summary": "...", "isCompleted": true },
     { "lessonId": 21, "sortOrder": 2, "title": "가점은 어떻게 계산할까", "durationSeconds": 840, "summary": "...", "isCompleted": false }
   ],
-  "progress": { "status": "IN_PROGRESS", "lastLessonId": 21, "lastPositionSeconds": 312, "completedAt": null },
-  "quiz": { "testQuizCount": 5, "quizCount": 10, "passScore": 70, "isQuizOpen": false },
+  "progressStatus": "IN_PROGRESS", "lastLessonId": 21,
   "isScrapped": true
 }
 ```
@@ -1082,7 +1082,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-03, LRN-05 |
-| 설명 | 재생 주소와 이어보기 위치. |
+| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
 
 **Request**
 
@@ -1091,7 +1091,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 **Response**
 
 ```json
-{ "lessonId": 21, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "positionSeconds": 312 }
+{ "lessonId": 21, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "positionSeconds": 312, "watchedSeconds": 300 }
 ```
 
 **Error**: `COURSE_NOT_PUBLIC`, `LESSON_NOT_FOUND`
@@ -1696,6 +1696,8 @@ Header: Idempotency-Key: 7c1e...
 { "reasons": [ { "reasonId": 1, "label": "뉴스를 보고" }, { "reasonId": 2, "label": "나눠 담으려고" } ] }
 ```
 
+- 사용 중인 선택지만, 정렬 순서대로 준다
+
 #### 60. 매수·매도
 
 | 항목 | 내용 |
@@ -1720,7 +1722,12 @@ Header: Idempotency-Key: 9b2f...
 { "orderId": 901, "price": 84500, "amount": 507000, "cash": 2432000, "holding": { "stockId": 1, "quantity": 18, "avgPrice": 80833 } }
 ```
 
-**Error**: `NOT_ENOUGH_CASH`, `NOT_ENOUGH_QUANTITY`, `REASON_REQUIRED`, `STALE_TURN_PRICE`, `MARKET_HOLIDAY`, `SEASON_CLOSED`, `NOT_JOINED`, `DUPLICATE_REQUEST`
+- `orderType`은 `BUY`·`SELL`, `quantity`는 1 이상의 정수. 수수료·세금은 없다 (SP-56)
+- 체결가는 현재 턴의 그 종목 가격이다 (SP-53). `holding`은 체결 뒤 그 종목의 보유다 (다 팔면 `quantity` 0, `avgPrice` 0)
+- 검사 순서: 매매 이유 → 시즌 상태(정산·종료 `SEASON_CLOSED`, 휴장 `MARKET_HOLIDAY`) → 턴(`STALE_TURN_PRICE`) → 참가 여부 → 종목 → 현금·수량
+- 같은 참가자의 주문은 참가자 행을 잠그고 처리하고, 현금·보유 수량·거래 내역은 한 트랜잭션이다. 어디서 실패해도 모두 되돌려진다 (DP-40)
+
+**Error**: `REASON_REQUIRED`(400, 이유가 없거나 없는/사용 안 하는 선택지), `NOT_ENOUGH_CASH`(400), `NOT_ENOUGH_QUANTITY`(400), `INVALID_INPUT`(400, 종목·종류·수량·턴이 올바르지 않음), `NOT_JOINED`(403), `STALE_TURN_PRICE`(409, `turnNo`가 현재 턴과 다름), `MARKET_HOLIDAY`(409), `SEASON_CLOSED`(409), `DUPLICATE_REQUEST`(409, 같은 Idempotency-Key), `NO_RUNNING_SEASON`(404, 보이는 시즌이 없거나 첫 턴이 시작되기 전), `NOT_FOUND`(404, 없거나 사용 안 하는 종목·분야, 그 턴 가격이 없음)
 
 #### 61. 내 거래 내역
 
@@ -1734,13 +1741,18 @@ Header: Idempotency-Key: 9b2f...
 
 **Request**
 
-- Query: seasonId=7&page=0&size=20
+- Query: seasonId=7&page=0&size=20 (seasonId를 빼면 지금 보이는 시즌, page 기본 0, size 기본 20·최대 100)
 
 **Response**
 
 ```json
 { "totalCount": 4, "items": [ { "orderId": 901, "turnNo": 5, "stockName": "한빛반도체", "orderType": "BUY", "quantity": 6, "price": 84500, "reason": "뉴스를 보고" } ] }
 ```
+
+- 최근 거래부터. 그 시즌에 참가하지 않았으면 `totalCount` 0과 빈 목록
+- `reason`은 고른 매매 이유 이름 (없으면 `null`)
+
+**Error**: `NO_RUNNING_SEASON`(404, seasonId 없이 보이는 시즌이 없을 때), `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, page·size가 올바르지 않음)
 
 #### 62. 시즌 랭킹
 
@@ -3825,6 +3837,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |
+| 모의투자 | `NOT_JOINED` | 403 | 이번 시즌에 참가하지 않았어요. 먼저 참가해 주세요 |
 | 모의투자 | `NOT_ENOUGH_CASH` | 400 | 현금이 부족해요 |
 | 모의투자 | `NOT_ENOUGH_QUANTITY` | 400 | 보유한 수량보다 많이 팔 수 없어요 |
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
@@ -3833,7 +3846,6 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `LAST_TURN_REACHED` | 409 | 마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
-| 모의투자 | `NOT_SETTLED` | 409 | 정산을 먼저 해 주세요 |
 | 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
 | 강사·관리자 | `STOCK_DUPLICATED` | 409 | 이미 있는 종목 이름이에요 |
 | 강사·관리자 | `STOCK_LIMIT_EXCEEDED` | 409 | 한 분야에는 종목을 2개까지 둘 수 있어요 |
