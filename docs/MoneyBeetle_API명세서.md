@@ -1696,6 +1696,8 @@ Header: Idempotency-Key: 7c1e...
 { "reasons": [ { "reasonId": 1, "label": "뉴스를 보고" }, { "reasonId": 2, "label": "나눠 담으려고" } ] }
 ```
 
+- 사용 중인 선택지만, 정렬 순서대로 준다
+
 #### 60. 매수·매도
 
 | 항목 | 내용 |
@@ -1720,7 +1722,12 @@ Header: Idempotency-Key: 9b2f...
 { "orderId": 901, "price": 84500, "amount": 507000, "cash": 2432000, "holding": { "stockId": 1, "quantity": 18, "avgPrice": 80833 } }
 ```
 
-**Error**: `NOT_ENOUGH_CASH`, `NOT_ENOUGH_QUANTITY`, `REASON_REQUIRED`, `STALE_TURN_PRICE`, `MARKET_HOLIDAY`, `SEASON_CLOSED`, `NOT_JOINED`, `DUPLICATE_REQUEST`
+- `orderType`은 `BUY`·`SELL`, `quantity`는 1 이상의 정수. 수수료·세금은 없다 (SP-56)
+- 체결가는 현재 턴의 그 종목 가격이다 (SP-53). `holding`은 체결 뒤 그 종목의 보유다 (다 팔면 `quantity` 0, `avgPrice` 0)
+- 검사 순서: 매매 이유 → 시즌 상태(정산·종료 `SEASON_CLOSED`, 휴장 `MARKET_HOLIDAY`) → 턴(`STALE_TURN_PRICE`) → 참가 여부 → 종목 → 현금·수량
+- 같은 참가자의 주문은 참가자 행을 잠그고 처리하고, 현금·보유 수량·거래 내역은 한 트랜잭션이다. 어디서 실패해도 모두 되돌려진다 (DP-40)
+
+**Error**: `REASON_REQUIRED`(400, 이유가 없거나 없는/사용 안 하는 선택지), `NOT_ENOUGH_CASH`(400), `NOT_ENOUGH_QUANTITY`(400), `INVALID_INPUT`(400, 종목·종류·수량·턴이 올바르지 않음), `NOT_JOINED`(403), `STALE_TURN_PRICE`(409, `turnNo`가 현재 턴과 다름), `MARKET_HOLIDAY`(409), `SEASON_CLOSED`(409), `DUPLICATE_REQUEST`(409, 같은 Idempotency-Key), `NO_RUNNING_SEASON`(404, 보이는 시즌이 없거나 첫 턴이 시작되기 전), `NOT_FOUND`(404, 없거나 사용 안 하는 종목·분야, 그 턴 가격이 없음)
 
 #### 61. 내 거래 내역
 
@@ -1734,13 +1741,18 @@ Header: Idempotency-Key: 9b2f...
 
 **Request**
 
-- Query: seasonId=7&page=0&size=20
+- Query: seasonId=7&page=0&size=20 (seasonId를 빼면 지금 보이는 시즌, page 기본 0, size 기본 20·최대 100)
 
 **Response**
 
 ```json
 { "totalCount": 4, "items": [ { "orderId": 901, "turnNo": 5, "stockName": "한빛반도체", "orderType": "BUY", "quantity": 6, "price": 84500, "reason": "뉴스를 보고" } ] }
 ```
+
+- 최근 거래부터. 그 시즌에 참가하지 않았으면 `totalCount` 0과 빈 목록
+- `reason`은 고른 매매 이유 이름 (없으면 `null`)
+
+**Error**: `NO_RUNNING_SEASON`(404, seasonId 없이 보이는 시즌이 없을 때), `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, page·size가 올바르지 않음)
 
 #### 62. 시즌 랭킹
 
@@ -3801,6 +3813,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |
+| 모의투자 | `NOT_JOINED` | 403 | 이번 시즌에 참가하지 않았어요. 먼저 참가해 주세요 |
 | 모의투자 | `NOT_ENOUGH_CASH` | 400 | 현금이 부족해요 |
 | 모의투자 | `NOT_ENOUGH_QUANTITY` | 400 | 보유한 수량보다 많이 팔 수 없어요 |
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
