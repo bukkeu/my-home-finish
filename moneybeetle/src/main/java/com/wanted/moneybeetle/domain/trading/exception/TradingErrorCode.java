@@ -7,6 +7,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #40 시즌 관리 : START_DATE_NOT_MONDAY, INVALID_STATUS_TRANSITION, SEASON_CLOSED
 *   - #24 시세·뉴스 조회 : NO_RUNNING_SEASON
 *   - #26 시즌 랭킹 : RANKING_NOT_PUBLISHED
+*   - #46 정산·랭킹 공개 : NOT_SETTLED
 *   - 앞으로 추가 : ALREADY_JOINED, JOIN_CLOSED, NOT_ENOUGH_QUANTITY, STALE_TURN_PRICE, MARKET_HOLIDAY,
 *     NEXT_TURN_NOT_READY, PAST_TURN_LOCKED, CSV_INVALID
 *  */
@@ -27,7 +28,8 @@ public enum TradingErrorCode implements ErrorCode {
     START_DATE_NOT_MONDAY(HttpStatus.BAD_REQUEST, "시즌 시작일은 월요일이어야 해요"),                                 // 400
     INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "지금 상태에서는 그 상태로 바꿀 수 없어요"),                          // 409
     SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요"),                                       // 409
-    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요");                                       // 403
+    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요"),                                       // 403
+    NOT_SETTLED(HttpStatus.CONFLICT, "정산을 먼저 해 주세요");                                                    // 409
 
     private final HttpStatus status;
     private final String message;

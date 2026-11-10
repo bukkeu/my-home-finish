@@ -3,7 +3,11 @@ package com.wanted.moneybeetle.domain.trading.model.dao;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /* comment.
 *   담당 : PM (모의투자)
@@ -16,4 +20,9 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
 
     /** 관리자 시즌 목록 : 최근 시작한 시즌부터 */
     List<TradingSeason> findAllByOrderByStartDateDesc();
+
+    /** 턴을 넘길 때 같은 시즌을 두 관리자가 동시에 넘기지 못하게 행을 잠그고 읽는다 (#44) */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from TradingSeason s where s.tradingSeasonId = :seasonId")
+    Optional<TradingSeason> findByIdForUpdate(@Param("seasonId") Long seasonId);
 }
