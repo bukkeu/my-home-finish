@@ -52,17 +52,30 @@
   }
 
   // ---------- 확인창 (되돌릴 수 없는 작업 전에) ----------
+  // 어느 버튼을 눌렀는지는 폼 submit 의 submitter 로 안다 (close 이벤트는 브라우저에 따라 오지 않을 때가 있다). Esc 는 cancel
   var dialog = document.getElementById('ah-confirm');
+  var dialogForm = dialog.querySelector('form');
   function confirmBox(title, body, okLabel) {
     dialog.querySelector('[data-confirm-title]').textContent = title;
     dialog.querySelector('[data-confirm-body]').textContent = body;
     dialog.querySelector('[data-confirm-ok]').textContent = okLabel || '확인';
-    dialog.returnValue = '';
     return new Promise(function (resolve) {
-      dialog.addEventListener('close', function onClose() {
-        dialog.removeEventListener('close', onClose);
-        resolve(dialog.returnValue === 'ok');
-      });
+      function done(ok) {
+        dialogForm.removeEventListener('submit', onSubmit);
+        dialog.removeEventListener('cancel', onCancel);
+        if (dialog.open) dialog.close();
+        resolve(ok);
+      }
+      function onSubmit(e) {
+        e.preventDefault();
+        done(!!(e.submitter && e.submitter.value === 'ok'));
+      }
+      function onCancel(e) {
+        e.preventDefault();
+        done(false);
+      }
+      dialogForm.addEventListener('submit', onSubmit);
+      dialog.addEventListener('cancel', onCancel);
       dialog.showModal();
     });
   }
@@ -435,6 +448,121 @@
       body.appendChild(tr);
     });
   }
+
+  // ---------- 당첨 산정 (API 147) · 결과 발표 (API 148) ----------
+  // 산정 : 신청 마감 다음 날부터, 한 번만 / 발표 : 산정한 뒤 발표일부터, 한 번만 (SP-75, ADM-38·39)
+  // 버튼은 오늘(서울) 기준으로 먼저 켜고 끄며, 서버도 같은 규칙으로 다시 막는다 (APPLY_NOT_CLOSED, BEFORE_ANNOUNCE_DATE …)
+  var resPanel = root.querySelector('[data-panel="results"]');
+
+  function computeState(c) {
+    if (c.computed) return { ok: false, done: true, why: '산정을 마쳤어요.' };
+    if (TODAY <= c.applyEndDate) return { ok: false, why: '신청 마감(' + dotted(c.applyEndDate) + ') 다음 날부터 산정할 수 있어요.' };
+    return { ok: true, why: '공급 ' + fmt(c.supplyUnits) + '세대 · 신청 ' + fmt(c.applicants) + '명으로 산정해요.' };
+  }
+  function announceState(c) {
+    if (c.status === 'ANNOUNCED') return { ok: false, done: true, why: '발표를 마쳤어요. 회원 화면에 결과가 보여요.' };
+    if (!c.computed) return { ok: false, why: '먼저 당첨자를 산정해 주세요.' };
+    if (TODAY < c.announceDate) return { ok: false, why: '당첨자 발표일(' + dotted(c.announceDate) + ')부터 발표할 수 있어요.' };
+    return { ok: true, why: '신청자 ' + fmt(c.applicants) + '명에게 결과 알림이 가요.' };
+  }
+
+  function renderResults() {
+    var box = resPanel.querySelector('[data-list="results"]');
+    box.replaceChildren();
+    if (!state.items.length) {
+      box.appendChild(el('div', 'card ah-empty', '등록된 공고가 없어요.'));
+      return;
+    }
+    // 오늘 처리할 수 있는 공고를 먼저 (그다음은 목록 순서 그대로)
+    var items = state.items.slice().sort(function (a, b) {
+      var ra = computeState(a).ok || announceState(a).ok ? 0 : 1;
+      var rb = computeState(b).ok || announceState(b).ok ? 0 : 1;
+      return ra - rb;
+    });
+    items.forEach(function (c) { box.appendChild(resultCard(c)); });
+  }
+
+  function stepBox(title, st, label, onClick) {
+    var box = el('div', 'ah-step' + (st.ok ? ' is-ready' : '') + (st.done ? ' is-done' : ''));
+    var head = el('div', 'ah-step__title');
+    head.appendChild(el('span', null, title));
+    if (st.done) head.appendChild(el('span', 'ah-badge', '완료'));
+    box.appendChild(head);
+    box.appendChild(el('p', 'ah-step__why', st.why));
+    if (!st.done) {
+      var btn = el('button', 'btn ' + (st.ok ? 'btn-primary' : 'btn-secondary'), label);
+      btn.type = 'button';
+      btn.disabled = !st.ok;
+      btn.addEventListener('click', function () { onClick(btn); });
+      box.appendChild(btn);
+    }
+    return box;
+  }
+
+  function resultCard(c) {
+    var cs = computeState(c);
+    var as = announceState(c);
+    var card = el('article', 'card ah-item' + (cs.ok || as.ok ? ' is-actionable' : ''));
+    var head = el('div', 'ah-item__head');
+    head.appendChild(el('strong', null, c.name));
+    head.appendChild(statusTag(c.status));
+    card.appendChild(head);
+    card.appendChild(el('p', 'ah-item__meta', '신청 ' + dotted(c.applyStartDate) + ' ~ ' + dotted(c.applyEndDate)
+        + ' · 발표 ' + dotted(c.announceDate) + ' · 공급 ' + fmt(c.supplyUnits) + '세대 · 신청 ' + fmt(c.applicants) + '명'));
+
+    var steps = el('div', 'ah-steps');
+    steps.appendChild(stepBox('① 당첨자 산정', cs, '당첨자 산정', function (btn) { compute(c, btn); }));
+    steps.appendChild(stepBox('② 결과 발표', as, '결과 발표', function (btn) { announce(c, btn); }));
+    card.appendChild(steps);
+
+    var actions = el('div', 'ah-actions');
+    var apps = el('button', 'btn btn-ghost', '신청 현황 보기');
+    apps.type = 'button';
+    apps.addEventListener('click', function () { openApplicants(c.complexId); });
+    actions.appendChild(apps);
+    card.appendChild(actions);
+    return card;
+  }
+
+  function compute(c, btn) {
+    var body = c.name + '\n공급 ' + fmt(c.supplyUnits) + '세대 · 신청 ' + fmt(c.applicants) + '명'
+        + '\n가점 → 납입회차 → 추첨 순으로 순위를 매겨 당첨자를 정해요.'
+        + '\n한 번만 할 수 있고 되돌릴 수 없어요. 산정 뒤에는 일정·공급 세대 수를 바꿀 수 없어요.';
+    confirmBox('당첨자를 산정할까요?', body, '산정').then(function (ok) {
+      if (!ok) return null;
+      btn.disabled = true;                              // 요청 중 연타 방지
+      return MB.api(API + '/' + c.complexId + '/compute', { method: 'POST' }).then(function (r) {
+        MB.toast('산정했어요 · 신청 ' + fmt(r.applicants) + '명 중 당첨 ' + fmt(r.winners) + '명');
+        return loadComplexes();
+      });
+    }).catch(function (err) {
+      MB.toast(err.message, 'error');
+      loadComplexes();                                  // 그사이 다른 관리자가 처리했으면 최신 상태로
+    });
+  }
+
+  function announce(c, btn) {
+    var body = c.name + '\n발표하면 회원 화면(내 신청 내역)에 당첨·낙첨 결과가 보이고, 신청자 '
+        + fmt(c.applicants) + '명에게 알림이 가요.\n한 번만 할 수 있고 되돌릴 수 없어요.';
+    confirmBox('결과를 발표할까요?', body, '발표').then(function (ok) {
+      if (!ok) return null;
+      btn.disabled = true;
+      return MB.api(API + '/' + c.complexId + '/announce', { method: 'POST' }).then(function (r) {
+        MB.toast('결과를 발표했어요 · 알림 ' + fmt(r.notified) + '명');
+        return loadComplexes();
+      });
+    }).catch(function (err) {
+      MB.toast(err.message, 'error');
+      loadComplexes();
+    });
+  }
+
+  onTab.results = function () {
+    if (state.loaded) renderResults();
+  };
+  onData.push(function () {
+    if (!resPanel.hidden) renderResults();
+  });
 
   // ---------- 시작 ----------
   loadComplexes();
