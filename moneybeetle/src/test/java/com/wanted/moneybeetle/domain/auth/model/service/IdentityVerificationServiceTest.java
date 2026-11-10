@@ -159,6 +159,20 @@ class IdentityVerificationServiceTest {
     }
 
     @Test
+    @DisplayName("이미 인증을 마친 뒤 재발송 요청이 대기열 가득 참으로 거절돼도 완료한 인증은 그대로 남는다")
+    void rejectedResendKeepsVerifiedState() {
+        service.requestCode(EMAIL, IP, session);
+        service.verify(EMAIL, sentCode(), session);
+        clock.advance(IdentityVerificationService.RESEND_INTERVAL);   // 60초가 지나 다시 요청할 수 있다
+        doThrow(new TaskRejectedException("full")).when(mailer).send(anyString(), anyString());
+
+        assertThatThrownBy(() -> service.requestCode(EMAIL, IP, session))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_MAIL_UNAVAILABLE));
+
+        assertThatCode(() -> service.requireVerified(EMAIL, session)).doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("맞는 코드를 넣으면 인증된 것으로 표시되고, 가입 전 확인(requireVerified)을 통과한다")
     void verifyWithCorrectCode() {
         service.requestCode(EMAIL, IP, session);
