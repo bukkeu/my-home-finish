@@ -150,22 +150,27 @@ class AuthTemplatesRenderTest {
     }
 
     @Test
-    @DisplayName("auth.js 가 byId 로 찾는 요소(id)가 인증 화면 템플릿에 모두 있다")
-    void everyElementIdUsedByScriptExistsInTemplates() throws Exception {
+    @DisplayName("auth.js 의 화면별 블록(if (page === '...'))이 byId 로 찾는 id 가 그 화면을 그린 결과에 모두 있다")
+    void everyElementIdUsedByEachPageExistsInThatPage() throws Exception {
         String script = read("/static/js/auth.js");
-        Set<String> wanted = new LinkedHashSet<>();
-        Matcher matcher = Pattern.compile("byId\\('([^']+)'\\)").matcher(script);
-        while (matcher.find()) {
-            wanted.add(matcher.group(1));
-        }
-        StringBuilder templates = new StringBuilder();
-        for (String name : new String[] {"auth/login", "member/signup", "member/social-signup", "auth/find-email", "auth/password-reset"}) {
-            templates.append(read("/templates/" + name + ".html"));
-        }
+        String[][] pages = {{"login", "/t/login"}, {"signup", "/t/signup"}, {"social-signup", "/t/social-signup"},
+                {"find-email", "/t/find-email"}, {"password-reset", "/t/password-reset"}};
+        for (String[] page : pages) {
+            // 화면 블록은 들여쓰기 2칸의 "if (page === 'x') {" 로 시작해 들여쓰기 2칸의 "}" 로 끝난다 (같은 화면의 블록이 둘 이상일 수 있다)
+            Matcher block = Pattern.compile("(?s)\\n  if \\(page === '" + Pattern.quote(page[0]) + "'\\) \\{\\n(.*?)\\n  \\}\\n").matcher(script);
+            Set<String> wanted = new LinkedHashSet<>();
+            while (block.find()) {
+                Matcher ids = Pattern.compile("byId\\('([^']+)'\\)").matcher(block.group(1));
+                while (ids.find()) {
+                    wanted.add(ids.group(1));
+                }
+            }
+            String html = render(page[1]);
 
-        assertThat(wanted).as("auth.js 에서 byId 로 찾는 id").isNotEmpty();
-        for (String id : wanted) {
-            assertThat(templates.toString()).as("템플릿에 id=\"" + id + "\" 가 있어야 한다").contains("id=\"" + id + "\"");
+            assertThat(wanted).as(page[0] + " 화면 블록에서 byId 로 찾는 id").isNotEmpty();
+            for (String id : wanted) {
+                assertThat(html).as(page[0] + " 화면에 id=\"" + id + "\" 가 있어야 한다").contains("id=\"" + id + "\"");
+            }
         }
     }
 

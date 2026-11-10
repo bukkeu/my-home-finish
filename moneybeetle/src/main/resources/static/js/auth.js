@@ -185,16 +185,20 @@
         var email = byId('signup-email').value.trim();
         var code = byId('signup-code').value.trim();
         if (!/^\d{6}$/.test(code)) return setMessage('signup-email-message', '인증번호 6자리를 입력해 주세요.', false);
+        // 확인 요청을 보내는 동안 이메일을 고칠 수 없게 막아, 인증한 이메일과 화면의 이메일이 달라지지 않게 한다
+        byId('signup-email').readOnly = true;
         return api('/api/v1/auth/identity-verification', { method: 'POST', body: { email: email, code: code } }).then(function (result) {
           if (!result.verified) throw { code: 'IDENTITY_CODE_INVALID' };
           emailVerified = true; verifiedEmail = email;
           byId('signup-next-1').disabled = false;
           setMessage('signup-email-message', '이메일 인증이 완료됐어요.', true);
-          byId('signup-email').readOnly = true;
           codeButton.disabled = true;
           button.dataset.locked = 'true';
           button.disabled = true;
-        }).catch(function (error) { apiError(error, 'signup-email-message'); });
+        }).catch(function (error) {
+          byId('signup-email').readOnly = false;   // 실패하면 이메일을 다시 고칠 수 있다
+          apiError(error, 'signup-email-message');
+        });
       });
     });
     byId('signup-next-1').addEventListener('click', function () { if (emailVerified && byId('signup-email').value.trim() === verifiedEmail) showStep(2); });
