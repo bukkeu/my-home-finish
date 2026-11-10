@@ -12,7 +12,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #111 턴 진행 규칙 : MARKET_HOLIDAY, LAST_TURN_REACHED
 *   - #44 턴 진행 : NEXT_TURN_NOT_READY, TURN_CONFLICT
 *   - #25 매수·매도 : NOT_JOINED, NOT_ENOUGH_CASH, NOT_ENOUGH_QUANTITY, REASON_REQUIRED, STALE_TURN_PRICE
-*   - 앞으로 추가 : RANKING_NOT_PUBLISHED
+*   - #26 시즌 랭킹 : RANKING_NOT_PUBLISHED
 *  */
 
 import com.wanted.moneybeetle.global.exception.ErrorCode;
@@ -46,7 +46,8 @@ public enum TradingErrorCode implements ErrorCode {
     NOT_ENOUGH_CASH(HttpStatus.BAD_REQUEST, "현금이 부족해요"),                                                    // 400
     NOT_ENOUGH_QUANTITY(HttpStatus.BAD_REQUEST, "보유한 수량보다 많이 팔 수 없어요"),                                 // 400
     REASON_REQUIRED(HttpStatus.BAD_REQUEST, "매매 이유를 골라 주세요"),                                             // 400
-    STALE_TURN_PRICE(HttpStatus.CONFLICT, "가격이 바뀌었어요. 현재 가격을 확인해 주세요");                             // 409
+    STALE_TURN_PRICE(HttpStatus.CONFLICT, "가격이 바뀌었어요. 현재 가격을 확인해 주세요"),                             // 409
+    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요");                                       // 403
 
     private final HttpStatus status;
     private final String message;

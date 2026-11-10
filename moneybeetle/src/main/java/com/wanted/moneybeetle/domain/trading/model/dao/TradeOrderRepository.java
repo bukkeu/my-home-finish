@@ -41,4 +41,7 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
 
     /** 내 거래 내역 한 쪽. 정렬은 Pageable 로 (최근 거래부터) (#25) */
     Page<TradeOrder> findBySeasonParticipantId(Long seasonParticipantId, Pageable pageable);
+
+    /** 한 참가자의 거래 내역, 최근 거래부터 (관리자 참가자 상세 #45) */
+    List<TradeOrder> findBySeasonParticipantIdOrderByTradeOrderIdDesc(Long seasonParticipantId);
 }

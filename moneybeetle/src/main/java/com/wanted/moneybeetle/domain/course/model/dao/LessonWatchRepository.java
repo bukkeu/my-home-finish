@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.Optional;
 
 /* comment.
@@ -17,6 +18,9 @@ public interface LessonWatchRepository extends JpaRepository<LessonWatch, Long> 
 
     Optional<LessonWatch> findByMemberIdAndLessonId(Long memberId, Long lessonId);
 
+    /* 퀴즈 잠금 해제 확인 (API 41·42): 이 영상들 중 끝까지 본 수 */
+    long countByMemberIdAndLessonIdInAndIsCompletedTrue(Long memberId, Collection<Long> lessonIds);
+
     /* 시청 기록: 허가 + 공개 + 삭제 안 된 강의의 영상만, 최근 본 순 (DH-01, SP-31)
      * 페이지 수가 맞도록 DB에서 강의를 조인해 거른다. 기록 자체는 지우지 않는다 */
     @Query(value = """
@@ -24,7 +28,7 @@ public interface LessonWatchRepository extends JpaRepository<LessonWatch, Long> 
             where w.lessonId = l.lessonId and l.courseId = c.courseId
               and w.memberId = :memberId
               and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
-            order by w.lastWatchedAt desc
+            order by w.lastWatchedAt desc, w.lessonWatchId desc
             """,
             countQuery = """
             select count(w) from LessonWatch w, Lesson l, Course c
