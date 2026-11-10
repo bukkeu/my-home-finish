@@ -37,7 +37,9 @@
   }
   function pad(n) { return n < 10 ? '0' + n : String(n); }
   function showError(error) {
-    status.textContent = (error && error.message) || '홈을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.';
+    // API 오류({ code, message })의 문구만 보여 주고, 스크립트 자체의 오류(영어 메시지)는 일반 안내로 바꾼다
+    var message = error && error.code && error.message;
+    status.textContent = message || '홈을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.';
   }
 
   /** 오늘 / 어제 / n일 전 (달력 날짜 기준) */
@@ -235,6 +237,7 @@
 
   // ------------------------------------------------------------------ 시작
   api('/api/v1/home').then(function (home) {
+    home = home || {};
     var learning = home.learning || { watchedLessons: 0, completedCourses: 0 };
     var first = !home.continueCourse && !learning.watchedLessons;
     status.textContent = '';
@@ -249,5 +252,5 @@
       loadCategories();
     }
     setupTraining(home.training);
-  }, showError);
+  }).catch(showError);
 })();

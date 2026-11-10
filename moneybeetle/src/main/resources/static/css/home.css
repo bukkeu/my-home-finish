@@ -5,7 +5,7 @@
 *  */
 
 .hm { display: flex; flex-direction: column; gap: 48px; box-sizing: border-box; }
-.hm [hidden] { display: none !important; }
+.hm [hidden], .hm-lockdlg [hidden] { display: none !important; }
 .hm h1, .hm h2 { font-family: var(--font-heading); font-weight: 800; }
 .hm-status { margin: 0; color: var(--color-neutral-700); font-size: 15px; }
 .hm-status:empty { display: none; }
@@ -125,7 +125,7 @@
 /* 잠금 안내 */
 .hm-lockdlg { align-items: center; gap: 14px; width: min(400px, 100%); padding: 28px; text-align: center; }
 .hm-lockdlg__title { font-size: 20px; font-weight: 800; }
-.hm-lockdlg__sub { color: var(--color-neutral-700); font-size: 14px; word-break: keep-all; }
+.hm-lockdlg__sub { color: var(--color-neutral-700); font-size: 14px; word-break: keep-all; white-space: pre-line; }
 .hm-lockdlg__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
 .hm-lockdlg__actions .btn { text-decoration: none; }
 

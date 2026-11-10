@@ -73,8 +73,30 @@
       else if (event.target.closest('[data-words-hide]')) { hideToday(); close_(); }
     });
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && backdrop && !backdrop.hidden) close_();
+      if (!backdrop || backdrop.hidden) return;
+      if (event.key === 'Escape') { close_(); return; }
+      if (event.key === 'Tab') trapFocus(event);
     });
+  }
+
+  /** 팝업이 열려 있는 동안 Tab 이 팝업 밖으로 나가지 않게 한다 (처음 항목에서 Shift+Tab 은 마지막으로, 마지막에서 Tab 은 처음으로) */
+  function trapFocus(event) {
+    var items = Array.prototype.filter.call(backdrop.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])'),
+      function (node) { return !node.disabled && node.offsetParent !== null; });
+    if (!items.length) return;
+    var first = items[0];
+    var last = items[items.length - 1];
+    var active = document.activeElement;
+    if (!backdrop.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   function render(terms) {
