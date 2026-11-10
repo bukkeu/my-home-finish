@@ -192,6 +192,7 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `cash_history` | `idx_cash_history_1` | member_id, created_at | 캐시 내역 최신순 |
 | `exp_history` | `idx_exp_history_1` | member_id, created_at | 경험치 내역 최신순 |
 | `course` | `idx_course_1` | category_id, status, is_public | 카테고리별 공개 강의 목록 |
+| `course` | `idx_course_2` | status, submitted_at | 관리자 강의 목록 상태 필터 + 검수 요청 최신순 (#87) |
 | `quiz_question` | `idx_quiz_question_1` | course_id, quiz_type, sort_order | 강의별 테스트 퀴즈·퀴즈 문항 조회 |
 | `learning_progress` | `idx_learning_progress_1` | member_id, status | 학습 완료 목록 |
 | `lesson_watch` | `idx_lesson_watch_1` | member_id, last_watched_at | 시청 기록 최신순 |
@@ -205,6 +206,23 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `housing_application` | `idx_housing_application_1` | housing_complex_id, total_score | 단지별 가점순 산정 |
 | `admin_log` | `idx_admin_log_1` | target_type, target_id | 대상별 작업 기록 |
 | `admin_log` | `idx_admin_log_2` | admin_id, created_at | 관리자별 기록 |
+| `admin_log` | `idx_admin_log_3` | created_at | 필터 없는 작업 기록 최신순 (#87) |
+| `member` | `idx_member_1` | role, status | 관리자 대시보드 회원·강사 수, 회원·강사 목록 필터 (#87) |
+| `member` | `idx_member_2` | status, withdrawn_at | 탈퇴 회원 개인정보 정리 대상 (#87) |
+
+**인덱스·쿼리 점검 (#87, 신아림 구역: 회원·강의·문의·운영)**: 시드 + 회원 3만·강의 5천·작업 기록 5만 행으로 주요 조회의 `EXPLAIN`을 확인했다. 기존 DB는 `sql/migration/2026-11-10_index_review_member_course_admin_log.sql`을 실행한다(여러 번 실행해도 안전).
+
+| 조회 | 점검 전 | 조치 후 |
+| --- | --- | --- |
+| 회원·강사 수 집계 (`countByRoleAndStatus`) | 전체 스캔 3만 행 | `idx_member_1` ref, 인덱스만 읽음 |
+| 탈퇴 회원 정리 대상 (`findPurgeTargets`) | PK 순서로 훑으며 거름 | `idx_member_2` range |
+| 관리자 강의 목록 상태 필터 (`searchForAdmin`) | 전체 스캔 + filesort | `idx_course_2` ref, filesort 없음 |
+| 관리자 작업 기록 최신순 (`AdminLogRepository.search`, 필터 없음) | 전체 스캔 5만 행 + filesort | `idx_admin_log_3` 역순으로 21행만 읽음 |
+| 강의 목록·이어서 볼 강의의 영상 수 | 강의마다 `count` 쿼리 (N+1) | `CourseRepository.countLessonsByCourseIds`로 한 번에 |
+| 시청 기록·카테고리 강의 목록·문의 하루 한도·내 문의·강의별 문의 | 기존 인덱스 사용 (`idx_lesson_watch_1`, `idx_course_1`, `idx_inquiry_1·2`) | 변경 없음 |
+
+- 그대로 둔 것: 공개 강의 전체 조회(`findByStatusAndIsPublicTrueAndDeletedAtIsNull`, 홈)는 허가 강의가 대부분이라 결과가 곧 전체에 가까워 옵티마이저가 전체 스캔을 고른다. 강의 제목 검색(`LIKE '%키워드%'`)은 앞이 `%`라 B-Tree 인덱스를 쓸 수 없다(강의 수가 수백 개 규모라 현재는 문제없음, 커지면 FULLTEXT ngram 검토).
+- 지운 인덱스: 없음. FK 인덱스는 MySQL이 FK에 필요로 해서 남기고, 다른 인덱스는 모두 쓰는 조회가 있다.
 
 **중복 방지 UNIQUE (복합)**
 
