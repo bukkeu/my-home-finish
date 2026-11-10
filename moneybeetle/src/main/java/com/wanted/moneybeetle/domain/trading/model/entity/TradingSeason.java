@@ -147,12 +147,17 @@ public class TradingSeason {
         return NEXT_STATUSES.getOrDefault(this.status, Set.of()).contains(nextStatus);
     }
 
-    /** 12턴의 거래일: 시작일부터 일요일을 빼고 하루 1턴 (SP-50) */
+    /** 휴장일 규칙 (SP-50): 일요일. 거래일 계산·턴 달력·다음 턴 점검이 모두 이 메서드를 쓴다 */
+    public static boolean isClosedDay(LocalDate date) {
+        return date.getDayOfWeek() == DayOfWeek.SUNDAY;
+    }
+
+    /** 12턴의 거래일: 시작일부터 휴장일(일요일)을 빼고 하루 1턴 (SP-50) */
     public List<LocalDate> tradeDates() {
         List<LocalDate> dates = new ArrayList<>();
         LocalDate date = this.startDate;
         while (dates.size() < this.totalTurns) {
-            if (date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            if (!isClosedDay(date)) {
                 dates.add(date);
             }
             date = date.plusDays(1);

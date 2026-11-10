@@ -36,7 +36,6 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -214,7 +213,7 @@ public class TradingService {
      */
     public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
         // 관리자가 휴장(HOLIDAY)으로 바꾸지 않았어도 서울 기준 일요일이면 휴장일이다 (SP-50, 휴장일에는 턴이 잠긴다)
-        boolean holiday = season.isHoliday() || LocalDate.now(clock).getDayOfWeek() == DayOfWeek.SUNDAY;
+        boolean holiday = season.isHoliday() || TradingSeason.isClosedDay(LocalDate.now(clock));
         if (season.isLastTurn()) {
             return new NextTurnCheckDTO(false, null, List.of(), 0, holiday);
         }
