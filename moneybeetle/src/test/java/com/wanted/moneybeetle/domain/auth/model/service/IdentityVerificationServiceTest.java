@@ -238,6 +238,71 @@ class IdentityVerificationServiceTest {
         assertThatCode(() -> service.verify(EMAIL, second, session)).doesNotThrowAnyException();
     }
 
+    @Test
+    @DisplayName("이미 5번 틀린 상태를 먼저 읽고 들어온 늦은 요청은 맞는 코드여도 비교하지 않고 IDENTITY_CODE_EXPIRED (제한 확인이 비교보다 앞선다)")
+    void limitIsCheckedBeforeComparing() {
+        service.requestCode(EMAIL, session);
+        String code = sentCode();
+        var state = (com.wanted.moneybeetle.domain.auth.model.dto.IdentityVerificationState)
+                session.getAttribute(IdentityVerificationService.SESSION_KEY);
+        // 동시에 들어온 다른 요청들이 5번 틀린 것으로 센 뒤, 상태를 먼저 읽어 둔 이 요청이 뒤늦게 비교 단계에 온 상황을 흉내 낸다
+        // (세션에서 상태가 지워지기 전이라 상태 객체는 그대로 남아 있다)
+        for (int i = 0; i < IdentityVerificationService.MAX_FAILURES; i++) {
+            state.recordFailure();
+        }
+
+        assertThatThrownBy(() -> service.verify(EMAIL, code, session))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_CODE_EXPIRED));
+        assertThatThrownBy(() -> service.requireVerified(EMAIL, session))   // 인증된 것으로 표시되지 않았다
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_NOT_VERIFIED));
+    }
+
+    @Test
+    @DisplayName("같은 세션에서 틀린 코드가 동시에 몰려도 5번까지만 비교한다 (동시 요청으로 시도 횟수 제한을 넘길 수 없다)")
+    void concurrentGuessesAreLimited() throws Exception {
+        // 여러 스레드가 같은 세션을 쓰므로 스레드에 안전한 가짜 세션을 쓴다 (MockHttpSession 의 저장소는 스레드에 안전하지 않다)
+        java.util.Map<String, Object> store = new java.util.concurrent.ConcurrentHashMap<>();
+        jakarta.servlet.http.HttpSession shared = mock(jakarta.servlet.http.HttpSession.class);
+        org.mockito.Mockito.doAnswer(call -> store.put(call.getArgument(0), call.getArgument(1)))
+                .when(shared).setAttribute(anyString(), org.mockito.ArgumentMatchers.any());
+        when(shared.getAttribute(anyString())).thenAnswer(call -> store.get((String) call.getArgument(0)));
+        org.mockito.Mockito.doAnswer(call -> store.remove((String) call.getArgument(0)))
+                .when(shared).removeAttribute(anyString());
+
+        service.requestCode(EMAIL, shared);
+        String code = sentCode();
+        String wrong = code.equals("000000") ? "111111" : "000000";
+
+        int threads = 40;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Future<MemberErrorCode>> results = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            results.add(pool.submit(() -> {
+                start.await();
+                try {
+                    service.verify(EMAIL, wrong, shared);
+                    return null;
+                } catch (BusinessException e) {
+                    return (MemberErrorCode) e.getErrorCode();
+                }
+            }));
+        }
+        start.countDown();
+        int invalid = 0;
+        for (java.util.concurrent.Future<MemberErrorCode> result : results) {
+            if (result.get(10, java.util.concurrent.TimeUnit.SECONDS) == MemberErrorCode.IDENTITY_CODE_INVALID) {
+                invalid++;
+            }
+        }
+        pool.shutdown();
+
+        // 틀렸다는 답(= 코드를 실제로 비교한 요청)은 4번뿐이고, 5번째 이후는 모두 만료로 거절된다
+        assertThat(invalid).isEqualTo(IdentityVerificationService.MAX_FAILURES - 1);
+        assertThatThrownBy(() -> service.verify(EMAIL, code, shared))   // 제한에 걸린 뒤에는 맞는 코드도 쓸 수 없다
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.IDENTITY_CODE_EXPIRED));
+    }
+
     /** 시간을 앞뒤로 옮길 수 있는 테스트용 시계 */
     private static final class MutableClock extends java.time.Clock {
         private Instant now;
