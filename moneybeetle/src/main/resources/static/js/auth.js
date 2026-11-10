@@ -22,6 +22,7 @@
     IDENTITY_MAIL_UNAVAILABLE: '인증 메일을 보낼 수 없어요. 잠시 뒤 다시 시도해 주세요.',
     IDENTITY_NOT_VERIFIED: '이메일 인증을 먼저 완료해 주세요.',
     OAUTH_FAILED: '간편 로그인에 실패했어요. 다시 시도해 주세요.',
+    OAUTH_PROVIDER_UNAVAILABLE: '이 간편 로그인은 아직 설정되지 않았어요. 다른 방법으로 로그인해 주세요.',
     TOKEN_EXPIRED: '재설정 링크가 만료됐어요. 새 링크를 요청해 주세요.',
     TOKEN_USED: '이미 사용한 재설정 링크예요. 새 링크를 요청해 주세요.',
     MEMBER_NOT_FOUND: '입력한 정보와 일치하는 계정을 찾지 못했어요.'
