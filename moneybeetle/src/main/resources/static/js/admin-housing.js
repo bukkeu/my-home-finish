@@ -77,11 +77,13 @@
     });
     root.querySelectorAll('.ah-panel').forEach(function (p) { p.hidden = p.dataset.panel !== name; });
     if (history.replaceState) history.replaceState(null, '', name === 'notices' ? location.pathname : '#' + name);
-    if (window.AH.onTab) window.AH.onTab(name);
+    if (onTab[name]) onTab[name]();
   }
   tabs.forEach(function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
-  // 다른 단계(신청 현황·산정 발표)에서 쓰도록 열어 둔다
-  window.AH = { showTab: showTab, find: find, el: el, fmt: fmt, dotted: dotted, statusTag: statusTag, confirmBox: confirmBox };
+
+  // 탭을 열 때 · 목록을 새로 받았을 때 할 일 (탭마다 하나씩 등록한다)
+  var onTab = {};
+  var onData = [];
 
   // ---------- 목록 (API 142) ----------
   var listSeq = 0;
@@ -93,7 +95,7 @@
       state.loaded = true;
       renderSummary();
       renderList();
-      if (window.AH.onData) window.AH.onData(state.items);
+      onData.forEach(function (fn) { fn(); });
     }).catch(function (err) {
       if (seq !== listSeq) return;
       var box = root.querySelector('[data-list="notices"]');
@@ -101,7 +103,6 @@
       MB.toast(err.message, 'error');
     });
   }
-  window.AH.reload = loadComplexes;
 
   function renderSummary() {
     var counts = { ALL: state.items.length, UPCOMING: 0, OPEN: 0, CLOSED: 0, ANNOUNCED: 0 };
@@ -164,10 +165,7 @@
 
     var apps = el('button', 'btn btn-secondary', '신청 현황 ' + fmt(c.applicants) + '건');
     apps.type = 'button';
-    apps.addEventListener('click', function () {
-      if (window.AH.openApplicants) window.AH.openApplicants(c.complexId);
-      else showTab('applicants');
-    });
+    apps.addEventListener('click', function () { openApplicants(c.complexId); });
     actions.appendChild(apps);
 
     var del = el('button', 'btn btn-ghost', '삭제');
@@ -337,6 +335,105 @@
           MB.toast(err.message, 'error');
           loadComplexes();
         });
+  }
+
+  // ---------- 신청 현황 (API 146) ----------
+  // 산정 전 : 가점 → 납입회차 → 먼저 신청한 순 / 산정 뒤 : 산정 순위 순 (서버가 정렬해서 준다)
+  var appPanel = root.querySelector('[data-panel="applicants"]');
+  var appSelect = appPanel.querySelector('[data-app-complex]');
+  var appState = { complexId: null };
+  var RESULT_TEXT = { WIN: '당첨', LOSE: '낙첨' };
+
+  function fillComplexOptions() {
+    var keep = appState.complexId;
+    appSelect.replaceChildren();
+    state.items.forEach(function (c) {
+      var o = el('option', null, c.name + ' · ' + (STATUS_TEXT[c.status] || c.status) + ' · 신청 ' + fmt(c.applicants) + '명');
+      o.value = String(c.complexId);
+      appSelect.appendChild(o);
+    });
+    if (keep && find(keep)) appSelect.value = String(keep);
+  }
+  onData.push(fillComplexOptions);
+
+  function openApplicants(id) {
+    appState.complexId = id;
+    showTab('applicants');
+  }
+
+  onTab.applicants = function () {
+    if (!state.loaded) return;                          // 목록을 받은 뒤 onData 가 다시 부른다
+    fillComplexOptions();
+    if (!appState.complexId || !find(appState.complexId)) {
+      // 처음 열면 신청자가 있는 가장 최근 단지부터
+      var first = state.items.filter(function (c) { return c.applicants > 0; })[0] || state.items[0];
+      appState.complexId = first ? first.complexId : null;
+    }
+    if (appState.complexId) appSelect.value = String(appState.complexId);
+    loadApplicants();
+  };
+  onData.push(function () {
+    if (!appPanel.hidden) onTab.applicants();
+  });
+  appSelect.addEventListener('change', function () {
+    appState.complexId = Number(appSelect.value);
+    loadApplicants();
+  });
+
+  function setAppMessage(text) {
+    var body = appPanel.querySelector('[data-list="applicants"]');
+    var row = el('tr');
+    var cell = el('td', 'ah-empty', text);
+    cell.colSpan = 7;
+    row.appendChild(cell);
+    body.replaceChildren(row);
+  }
+
+  var appSeq = 0;                                       // 단지를 빠르게 바꿀 때 늦게 온 이전 단지 응답을 버린다
+  function loadApplicants() {
+    var c = find(appState.complexId);
+    var summary = appPanel.querySelector('[data-app-summary]');
+    if (!c) {
+      summary.textContent = '';
+      setAppMessage('등록된 공고가 없어요.');
+      return Promise.resolve();
+    }
+    var competition = c.supplyUnits ? (c.applicants / c.supplyUnits).toFixed(2) : '0.00';
+    summary.textContent = '공급 ' + fmt(c.supplyUnits) + '세대 · 신청 ' + fmt(c.applicants) + '명 · 경쟁률 ' + competition + ' : 1'
+        + (c.computed ? ' · 산정 완료' : ' · 산정 전');
+    appPanel.querySelector('[data-app-rank-head]').textContent = c.computed ? '순위' : '순서';
+    setAppMessage('불러오는 중이에요…');
+    var seq = ++appSeq;
+    return MB.api(API + '/' + c.complexId + '/applications').then(function (data) {
+      if (seq !== appSeq) return;
+      renderApplicants((data && data.items) || [], c);
+    }).catch(function (err) {
+      if (seq !== appSeq) return;
+      setAppMessage('신청자를 불러오지 못했어요. ' + err.message);
+      MB.toast(err.message, 'error');
+    });
+  }
+
+  function renderApplicants(items, c) {
+    var body = appPanel.querySelector('[data-list="applicants"]');
+    if (!items.length) {
+      setAppMessage(c.status === 'UPCOMING' ? '아직 접수 전이에요.' : '신청자가 없어요.');
+      return;
+    }
+    body.replaceChildren();
+    items.forEach(function (a, i) {
+      var tr = el('tr');
+      tr.appendChild(el('td', null, String(a.resultRank != null ? a.resultRank : i + 1)));
+      tr.appendChild(el('td', null, a.nickname));
+      tr.appendChild(el('td', null, a.receiptNo));
+      tr.appendChild(el('td', 'is-num', a.totalScore + '점'));
+      tr.appendChild(el('td', 'is-num', fmt(a.paidCount) + '회'));
+      tr.appendChild(el('td', null, dotted(String(a.appliedAt).slice(0, 16).replace('T', ' '))));
+      var result = el('td');
+      result.appendChild(el('span', 'ah-result' + (a.result ? ' is-' + a.result : ''), RESULT_TEXT[a.result] || '산정 전'));
+      tr.appendChild(result);
+      body.appendChild(tr);
+    });
   }
 
   // ---------- 시작 ----------

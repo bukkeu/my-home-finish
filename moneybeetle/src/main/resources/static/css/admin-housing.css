@@ -89,6 +89,20 @@
 .ah-item__note { margin: 0; font-size: 12px; color: var(--color-neutral-700); }
 .ah-item .btn { height: 36px; font-size: 13px; padding: 0 14px; }
 
+/* ---------- 신청 현황 (2단계) ---------- */
+.ah-picker { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+.ah-picker select { min-width: 220px; }
+.ah-table-wrap { padding: 0; overflow-x: auto; }
+.ah-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+.ah-table th, .ah-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--color-divider); white-space: nowrap; }
+.ah-table th { font-size: 12px; color: var(--color-neutral-700); font-weight: 700; background: var(--color-bg); }
+.ah-table tbody tr:last-child td { border-bottom: 0; }
+.ah-table .is-num { text-align: right; }
+.ah-table td.ah-empty { white-space: normal; }
+.ah-result { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--color-accent-100); }
+.ah-result.is-WIN { background: var(--color-accent-400); }
+.ah-result.is-LOSE { background: rgba(229, 72, 77, .12); color: var(--color-danger); }
+
 /* ---------- 확인창 ---------- */
 .ah-dialog { border: 0; padding: 0; border-radius: 20px; width: min(440px, calc(100% - 32px)); background: var(--color-bg); color: var(--color-text); }
 .ah-dialog::backdrop { background: rgba(38, 59, 26, .45); }

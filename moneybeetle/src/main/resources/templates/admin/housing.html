@@ -120,7 +120,31 @@
 
       <!--/* ===================== 신청 현황 (API 146) ===================== */-->
       <div class="ah-panel" data-panel="applicants" hidden>
-        <div class="card ah-empty">신청 현황은 다음 단계에서 채워요.</div>
+        <div class="ah-section__head">
+          <label class="ah-picker">단지
+            <select data-app-complex aria-label="신청 현황을 볼 단지"></select>
+          </label>
+          <p class="ah-muted" data-app-summary></p>
+        </div>
+        <p class="ah-muted">산정 전에는 가점 높은 순 → 납입회차 많은 순 → 먼저 신청한 순으로, 산정 뒤에는 산정 순위로 보여요. 결과는 발표 전까지 회원에게 보이지 않아요.</p>
+        <div class="card ah-table-wrap">
+          <table class="ah-table">
+            <thead>
+            <tr>
+              <th scope="col" data-app-rank-head>순서</th>
+              <th scope="col">닉네임</th>
+              <th scope="col">접수번호</th>
+              <th scope="col" class="is-num">가점</th>
+              <th scope="col" class="is-num">납입회차</th>
+              <th scope="col">신청 일시</th>
+              <th scope="col">결과</th>
+            </tr>
+            </thead>
+            <tbody data-list="applicants">
+            <tr><td colspan="7" class="ah-empty">단지를 고르면 신청자가 보여요.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!--/* ===================== 당첨 산정·발표 (API 147·148) ===================== */-->
