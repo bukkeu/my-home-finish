@@ -30,6 +30,8 @@ public class RewardRule {
     public static final String QUIZ_PERFECT = "QUIZ_PERFECT";
     /** 연속 출석 보상 (SP-10~12) */
     public static final String ATTENDANCE_STREAK = "ATTENDANCE_STREAK";
+    /** 출석 경험치 기본값 (SP-22, #205). 연속 일수 구간에 따라 AttendanceService 가 배수(1~5)를 곱해 10~50 XP 를 준다 */
+    public static final String ATTENDANCE_DAILY = "ATTENDANCE_DAILY";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

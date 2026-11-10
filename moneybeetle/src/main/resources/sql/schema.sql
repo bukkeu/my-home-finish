@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS `economic_term` (
 CREATE TABLE IF NOT EXISTS `exp_history` (
                                              `exp_history_id` bigint NOT NULL AUTO_INCREMENT COMMENT '내역 ID',
                                              `member_id` bigint NOT NULL COMMENT '회원',
-                                             `source_type` varchar(30) NOT NULL COMMENT 'COURSE_COMPLETE / QUIZ_PERFECT',
+                                             `source_type` varchar(30) NOT NULL COMMENT 'COURSE_COMPLETE / QUIZ_PERFECT / ATTENDANCE',
     `source_id` bigint NOT NULL COMMENT '원인 강의 ID',
     `reward_rule_id` bigint DEFAULT NULL COMMENT '적용한 보상 규칙',
     `amount` int NOT NULL COMMENT '지급 경험치',

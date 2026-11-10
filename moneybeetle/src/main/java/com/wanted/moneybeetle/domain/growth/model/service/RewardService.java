@@ -19,6 +19,7 @@ import com.wanted.moneybeetle.domain.notification.model.service.NotificationServ
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -55,12 +56,16 @@ public class RewardService {
     /** 보상 규칙 코드 -> 경험치 이력의 원인 종류. 여기에 없는 규칙은 경험치를 줄 수 없다 */
     private static final Map<String, String> EXP_SOURCE_BY_RULE = Map.of(
             RewardRule.COURSE_COMPLETE, ExpHistory.SOURCE_COURSE_COMPLETE,
-            RewardRule.QUIZ_PERFECT, ExpHistory.SOURCE_QUIZ_PERFECT);
+            RewardRule.QUIZ_PERFECT, ExpHistory.SOURCE_QUIZ_PERFECT,
+            RewardRule.ATTENDANCE_DAILY, ExpHistory.SOURCE_ATTENDANCE);
 
     /** 보상 규칙 코드 -> 캐시 이력의 원인 종류. 여기에 없는 규칙은 캐시를 줄 수 없다 */
     private static final Map<String, String> CASH_SOURCE_BY_RULE = Map.of(
             RewardRule.COURSE_COMPLETE, CashHistory.SOURCE_COURSE_COMPLETE,
             RewardRule.ATTENDANCE_STREAK, CashHistory.SOURCE_ATTENDANCE);
+
+    /** 출석 경험치(ATTENDANCE_DAILY)가 하루에 받을 수 있는 최대 XP (SP-22). 규칙의 기본값을 바꿔도 이 값을 넘지 않는다 */
+    public static final int ATTENDANCE_DAILY_EXP_CAP = 50;
 
     /** 캐시를 쓸 수 있는 원인 종류 (SP-16) */
     private static final List<String> USE_SOURCES = List.of(
@@ -91,9 +96,40 @@ public class RewardService {
         }
         RewardRule rule = rewardRuleRepository.findByCodeAndActiveTrue(ruleCode)
                 .orElseThrow(() -> new BusinessException(GrowthErrorCode.REWARD_RULE_NOT_FOUND));
+        return grantInternal(memberId, rule, sourceId, 1);
+    }
 
+    /**
+     * 규칙의 경험치를 expMultiplier 배로 지급한다 (예: 연속 출석 일수 구간에 따라 10~50 XP, SP-22).
+     * 캐시는 규칙 값 그대로이고, 이중 지급 방지·레벨업·해금 알림은 {@link #grant} 와 똑같이 처리한다.
+     * 배수는 호출하는 쪽이 정하고(출석은 AttendanceService), 규칙 표에는 기본값만 둔다.
+     * 출석 경험치(ATTENDANCE_DAILY)는 배수를 곱한 값이 하루 상한({@link #ATTENDANCE_DAILY_EXP_CAP} XP)을 넘지 않게 자른다 (SP-22).
+     *
+     * 규칙은 여기서 한 번만 읽는다. 사용 중인 규칙이 없거나 경험치 기본값이 0 이면 아무것도 바꾸지 않고 빈 결과를 돌려준다
+     * (예외를 던지지 않으므로, 호출한 쪽의 트랜잭션 — 예: 출석 기록 — 이 되돌려지지 않는다).
+     * 규칙을 읽은 뒤에 일어나는 오류(레벨 정책표 설정 오류 등)는 grant 와 같이 예외로 던진다.
+     *
+     * @param expMultiplier 경험치 배수 (1 이상)
+     * @return 지급 결과. 지급할 규칙이 없으면(꺼짐·기본값 0) 비어 있다
+     * @throws IllegalArgumentException 배수가 1 보다 작을 때
+     */
+    @Transactional
+    public Optional<RewardResultDTO> grantWithExpMultiplier(Long memberId, String ruleCode, Long sourceId, int expMultiplier) {
+        if (expMultiplier < 1) {
+            throw new IllegalArgumentException("경험치 배수는 1 이상이어야 합니다: " + expMultiplier);
+        }
+        if (memberId == null || sourceId == null) {
+            throw new IllegalArgumentException("memberId 와 sourceId 가 필요합니다.");
+        }
+        return rewardRuleRepository.findByCodeAndActiveTrue(ruleCode)
+                .filter(rule -> rule.getExpAmount() > 0)
+                .map(rule -> grantInternal(memberId, rule, sourceId, expMultiplier));
+    }
+
+    /** 읽어 둔 규칙으로 지급한다 (규칙을 다시 읽지 않는다). 호출하는 쪽이 사용 중인 규칙을 넘긴다 */
+    private RewardResultDTO grantInternal(Long memberId, RewardRule rule, Long sourceId, int expMultiplier) {
         long cash = rule.getCashAmount();
-        int exp = rule.getExpAmount();
+        int exp = scaledExp(rule, expMultiplier);
         String expSource = EXP_SOURCE_BY_RULE.get(rule.getCode());
         String cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
         if ((exp > 0 && expSource == null) || (cash > 0 && cashSource == null)) {
@@ -165,6 +201,18 @@ public class RewardService {
                         "/user/demo-housing-subscription");
             }
         }
+    }
+
+    /**
+     * 규칙의 경험치 기본값에 배수를 곱한다. 곱셈은 long 으로 해서 큰 기본값에서도 넘치지 않게 한 뒤,
+     * 출석 경험치(ATTENDANCE_DAILY)에만 하루 상한을 적용한다. 다른 규칙은 값을 자르지 않는다 (배수 1 이면 규칙 값 그대로).
+     */
+    private static int scaledExp(RewardRule rule, int expMultiplier) {
+        long scaled = (long) rule.getExpAmount() * expMultiplier;
+        if (RewardRule.ATTENDANCE_DAILY.equals(rule.getCode())) {
+            scaled = Math.min(scaled, ATTENDANCE_DAILY_EXP_CAP);
+        }
+        return (int) Math.min(scaled, Integer.MAX_VALUE);
     }
 
     /**
