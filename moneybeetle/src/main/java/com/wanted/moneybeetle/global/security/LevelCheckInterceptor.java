@@ -17,13 +17,15 @@ import org.springframework.web.servlet.HandlerInterceptor;
 *   담당 : SCM (공통 기반·보안)
 *   레벨 해금 확인 (SP-24, INV-01, SUB-01) - 레벨이 모자라면 LEVEL_LOCKED (403)
 *   - 현재 레벨 : 로그인 회원 번호로 GrowthService.getLevel(memberId) 를 불러 매번 DB 에서 확인한다 (역할분담 §7)
-*   - 기준 레벨 : @RequireLevel 의 UnlockFeature 기본값 (TODO system_setting 값을 읽는 Service 가 생기면 그 값으로)
+*   - 기준 레벨 : @RequireLevel 의 UnlockFeature 를 UnlockLevelProvider 로 읽는다
+*                 (모의 청약은 운영 설정 값, 모의투자는 아직 기본값 #223. 화면도 같은 Provider 를 써서 기준이 같다)
 *  */
 @Component
 @RequiredArgsConstructor
 public class LevelCheckInterceptor implements HandlerInterceptor {
 
-    private final GrowthService growthService;   // 레벨 조회
+    private final GrowthService growthService;               // 레벨 조회
+    private final UnlockLevelProvider unlockLevelProvider;   // 기능별 해금 레벨
 
     // 컨트롤러 도착 "전"에 실행
     @Override
@@ -46,7 +48,7 @@ public class LevelCheckInterceptor implements HandlerInterceptor {
         }
 
         // 필요한 레벨과 지금 레벨 비교
-        int requiredLevel = requireLevel.value().getDefaultLevel();
+        int requiredLevel = unlockLevelProvider.getLevel(requireLevel.value());
         int currentLevel = findCurrentLevel();
 
         // 레벨이 모자라면 업무 예외 → GlobalExceptionHandler 가 403 LEVEL_LOCKED 로 응답

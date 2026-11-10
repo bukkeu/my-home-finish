@@ -53,6 +53,7 @@ class AdminHousingPageRenderTest {
     void setUp() {
         when(memberService.isActiveMember(anyLong())).thenReturn(true);
         when(housingPageService.today()).thenReturn(TODAY);
+        when(housingPageService.unlockLevel()).thenReturn(10);   // 운영 설정으로 바꾼 해금 레벨 (#223)
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
@@ -92,6 +93,7 @@ class AdminHousingPageRenderTest {
                 .contains("모의 청약 관리").contains("대시보드").contains("청약 공고 관리")
                 .contains("신청 현황").contains("당첨 결과 관리").contains("관리자 대시보드로")
                 .contains("data-mb-drawer")                   // 모바일에서 공통 햄버거로 열린다
+                .contains("Lv.10 이상")                       // 신청 조건 안내는 운영 설정 해금 레벨 (#223)
                 .contains("가상 실습이며 실제 금융 거래가 아니에요");   // NFR-12 고지 (공통 조각)
     }
 }

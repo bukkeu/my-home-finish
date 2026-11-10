@@ -30,7 +30,7 @@
 | 데이터 형식 | `Content-Type: application/json; charset=UTF-8` (파일 업로드만 `multipart/form-data`) |
 | 인증 | 세션 쿠키(`JSESSIONID`). 30분 동안 요청이 없으면 만료 (DP-11) |
 | 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자 |
-| 해금 | 모의투자 API는 Lv.8, 모의 청약 API는 Lv.12 미만이면 `403 LEVEL_LOCKED` (SP-24) |
+| 해금 | 모의투자 API는 Lv.8, 모의 청약 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_HOUSING`, 기본 Lv.12) 미만이면 `403 LEVEL_LOCKED` (SP-24, #223) |
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
@@ -2995,7 +2995,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | NFR-13 |
-| 설명 | 값 변경, admin_log 기록. |
+| 설명 | 값 변경, admin_log 기록. `UNLOCK_LEVEL_HOUSING`을 바꾸면 모의 청약 레벨 검사와 화면 잠금에 바로 반영된다(값이 없거나 1 미만이면 기본 Lv.12, #223). `UNLOCK_LEVEL_TRADING`은 아직 반영하지 않는다(시즌 해금 레벨과의 기준 결정 후). |
 
 **Request**
 
