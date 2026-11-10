@@ -187,17 +187,20 @@
       if (seq !== loadSeq) return null;
       var items = (data && data.items) || [];
       // 신청자가 있는 단지만 신청자 목록을 받는다 (가점·순위·결과 → 신청 현황·커트라인·결과 검토)
+      // 한 단지가 실패해도 나머지는 보이게 하되, 실패한 단지는 이름을 알려 준다 (빈 목록과 헷갈리지 않게)
+      var failed = [];
       return Promise.all(items.map(function (c) {
         if (!c.applicants) return Promise.resolve([]);
         return MB.api(API + '/' + c.complexId + '/applications')
             .then(function (d) { return (d && d.items) || []; })
-            .catch(function () { return []; });
+            .catch(function () { failed.push(c.name); return []; });
       })).then(function (lists) {
         if (seq !== loadSeq) return;
         state.items = items;
         state.apps = {};
         items.forEach(function (c, i) { state.apps[c.complexId] = lists[i]; });
         state.loaded = true;
+        if (failed.length) MB.toast('신청자 목록을 불러오지 못했어요 · ' + failed.join(', '), 'error');
         renderSide();
         fillRegionOptions();
         fillComplexOptions();
@@ -372,7 +375,7 @@
     hide.setAttribute('aria-disabled', 'true');
     hide.title = '준비 중이에요 (공고 숨김 기능이 아직 없어요)';
     actions.appendChild(hide);
-    var del = button('ah-pill ah-pill--danger', '삭제', function () { removeComplex(c); });
+    var del = button('ah-pill ah-pill--danger', '삭제', function () { removeComplex(c, del); });
     del.disabled = c.applicants > 0;
     if (del.disabled) del.title = '신청자가 있는 공고는 삭제할 수 없어요';
     actions.appendChild(del);
@@ -547,10 +550,11 @@
   });
 
   // ---------- 청약 공고 관리 : 삭제 (API 145, Soft Delete) ----------
-  function removeComplex(c) {
+  function removeComplex(c, btn) {
     confirmBox('공고를 삭제할까요?', c.name + '\n삭제한 공고는 사용자 화면과 이 목록에서 사라져요.', '삭제')
         .then(function (ok) {
-          if (!ok) return null;
+          if (!ok) return null;                           // 취소하면 버튼은 그대로
+          btn.disabled = true;                            // 삭제 요청 중 연타 방지
           return MB.api(API + '/' + c.complexId, { method: 'DELETE' }).then(function () {
             MB.toast('공고를 삭제했어요 · ' + c.name);
             if (state.editing === c.complexId) resetForm();
@@ -558,6 +562,7 @@
           });
         })
         .catch(function (err) {
+          btn.disabled = false;                           // 실패하면 다시 누를 수 있게 (목록을 새로 그리면 상태도 다시 맞춰진다)
           MB.toast(err.message, 'error');
           loadAll();
         });
@@ -774,10 +779,11 @@
       stats.appendChild(d);
     });
     box.appendChild(stats);
-    var ok = wins + loses === list.length;
+    // 받은 목록 수와 당첨·낙첨 합계가 모두 서버의 신청 건수(c.applicants)와 같아야 통과 (목록을 못 받았을 때도 잡힌다)
+    var ok = list.length === c.applicants && wins + loses === c.applicants;
     box.appendChild(el('span', 'ah-review__sum' + (ok ? '' : ' is-bad'), ok
-        ? '✓ 당첨 + 낙첨 = 회원 신청 ' + list.length + '건'
-        : '합계가 회원 신청 건수와 달라요. 산정 결과를 확인해 주세요.'));
+        ? '✓ 당첨 + 낙첨 = 회원 신청 ' + c.applicants + '건'
+        : '합계가 회원 신청 건수(' + c.applicants + '건)와 달라요. 새로고침하거나 산정 결과를 확인해 주세요.'));
     var cut = cutline(c);
     list.forEach(function (a) {
       var row = el('div', 'ah-review__row');

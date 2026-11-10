@@ -71,7 +71,9 @@
   all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: var(--color-accent-100); color: var(--color-text);
 }
-.ah-pill:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+/* all: unset 으로 브라우저 기본 포커스 표시가 사라진 버튼들 → 키보드로 움직일 때 윤곽선을 다시 보인다 */
+.ah-pill:focus-visible, .ah-stat:focus-visible, .ah-task:focus-visible, .ah-chip:focus-visible,
+.ah-tr:focus-visible, .ah-x:focus-visible, .ah-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 .ah-pill--lg { height: 44px; padding: 0 22px; font-size: 14px; }
 .ah-pill--primary { background: var(--color-accent-400); font-weight: 800; }
 .ah-pill--danger { background: #F9DEDC; color: #8A1C14; }
