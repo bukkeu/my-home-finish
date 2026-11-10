@@ -7,6 +7,7 @@ import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.domain.quiz.exception.QuizErrorCode;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizAnswerRepository;
@@ -72,6 +73,7 @@ public class QuizService {
     private final RewardService rewardService;                  // growth 도메인 (DBA②) - 보상 지급
     private final GrowthService growthService;                  // growth 도메인 (DBA②) - 레벨 이름
     private final SystemSettingService systemSettingService;    // operation 도메인 (DBA②) - 통과 점수
+    private final MemberService memberService;                  // member 도메인 (DBA②) - 회원 행 잠금
     private final Clock clock;                                  // Asia/Seoul 공통 시계
 
     /* ===== 테스트 퀴즈 (#19) ===== */
@@ -116,9 +118,12 @@ public class QuizService {
 
     /* API 42. 퀴즈 제출·채점 (QST-02~05, SP-34~36, NFR-06)
      * 서버에서 채점 → 응시·답안 저장 → 틀린 문제는 오답노트에 → 통과했고 처음 완료면 학습 완료 + 보상.
-     * 모두 한 트랜잭션이라 보상 지급이 실패하면 채점 기록도 함께 취소된다 */
+     * 모두 한 트랜잭션이라 보상 지급이 실패하면 채점 기록도 함께 취소된다.
+     * 맨 처음 회원 행을 잠가 같은 회원의 제출·시청 위치 저장을 한 줄로 세운다 (보상 지급도 같은 잠금을 쓰므로
+     * 잠금 순서가 항상 회원 → 학습 기록이라 교착 상태가 없고, 동시 제출이 오래된 완료 여부로 보상을 두 번 판단하지 않는다) */
     @Transactional
     public QuizResultDTO submitQuiz(Long memberId, Long courseId, QuizSubmitDTO request) {
+        memberService.lockBalance(memberId);
         List<QuizQuestion> questions = getOpenQuiz(memberId, courseId);
         Map<Long, List<QuizChoice>> choicesByQuestion = findChoicesByQuestion(questions);
         Map<Long, Long> selected = toSelectedMap(request);

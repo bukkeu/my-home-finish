@@ -24,6 +24,7 @@ import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
 import com.wanted.moneybeetle.domain.course.model.entity.Scrap;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -58,6 +59,7 @@ public class CourseService {
     private final ScrapRepository scrapRepository;
     private final CourseReviewRepository courseReviewRepository;
     private final Clock clock;                          // Asia/Seoul 공통 시계 (학습 완료 시각)
+    private final MemberService memberService;          // member 도메인 (DBA②) - 회원 행 잠금
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -121,9 +123,11 @@ public class CourseService {
         return LessonPlayDTO.from(lesson, positionSeconds);
     }
 
-    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38) */
+    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38).
+     * 퀴즈 제출(QuizService.submitQuiz)과 같은 회원 행 잠금을 먼저 잡아, 학습 완료 상태를 오래된 값으로 덮어쓰지 않는다 */
     @Transactional
     public void saveProgress(Long memberId, Long courseId, Long lessonId, ProgressDTO request) {
+        memberService.lockBalance(memberId);
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
