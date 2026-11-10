@@ -71,6 +71,8 @@ public class TurnAdminService {
         if (adminId == null) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
+        // 분야·종목 변경과 같은 공통 잠금을 먼저 잡아 점검 도중 시장 구성이 바뀌지 않게 한다
+        seasonRepository.findFirstByOrderByTradingSeasonIdAsc();
         TradingSeason season = seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         if (season.getCurrentTurn() != expectedCurrentTurn) {

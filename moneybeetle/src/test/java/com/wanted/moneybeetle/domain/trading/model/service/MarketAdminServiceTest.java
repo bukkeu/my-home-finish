@@ -321,7 +321,7 @@ class MarketAdminServiceTest {
         assertThat(stocks).extracting(AdminStockDTO::getSectorName).containsExactly("모빌리티", "반도체");
     }
 
-    // ===== 턴 진행과 같은 시즌 행 잠금 =====
+    // ===== 턴 진행과 같은 공통 시즌 행 잠금 =====
 
     private com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason runningSeason() {
         var season = com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.create("시즌 7",
@@ -332,8 +332,8 @@ class MarketAdminServiceTest {
     }
 
     @Test
-    void 진행_중인_시즌이_있으면_분야_종목_변경이_그_시즌_행을_잠근다() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any()))
+    void 분야_종목_변경_네_경로가_모두_최초_시즌_행을_잠근다() {
+        when(seasonRepository.findFirstByOrderByTradingSeasonIdAsc())
                 .thenReturn(java.util.Optional.of(runningSeason()));
         when(sectorRepository.existsByName("핀테크")).thenReturn(false);
         when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -343,26 +343,26 @@ class MarketAdminServiceTest {
 
         // 네 변경 메서드가 각각 잠금을 잡는지 누적 횟수로 확인한다 (하나라도 빠지면 횟수가 어긋난다)
         service.createSector(new SectorSaveDTO("핀테크", 15, null));
-        verify(seasonRepository, times(1)).findByIdForUpdate(7L);
+        verify(seasonRepository, times(1)).findFirstByOrderByTradingSeasonIdAsc();
 
         service.changeSector(1L, new SectorSaveDTO("시스템반도체", null, null));
-        verify(seasonRepository, times(2)).findByIdForUpdate(7L);
+        verify(seasonRepository, times(2)).findFirstByOrderByTradingSeasonIdAsc();
 
         service.createStock(new StockSaveDTO(1L, "새반도체", 10_000, null, null, null, null));
-        verify(seasonRepository, times(3)).findByIdForUpdate(7L);
+        verify(seasonRepository, times(3)).findFirstByOrderByTradingSeasonIdAsc();
 
         service.changeStock(1L, new StockSaveDTO(1L, "한빛반도체", 10_000, null, null, null, null));
-        verify(seasonRepository, times(4)).findByIdForUpdate(7L);
+        verify(seasonRepository, times(4)).findFirstByOrderByTradingSeasonIdAsc();
     }
 
     @Test
-    void 진행_중인_시즌이_없으면_잠그지_않는다() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any())).thenReturn(java.util.Optional.empty());
+    void 시즌이_없어도_공통_잠금_조회_후_변경한다() {
+        when(seasonRepository.findFirstByOrderByTradingSeasonIdAsc()).thenReturn(java.util.Optional.empty());
         when(sectorRepository.existsByName("핀테크")).thenReturn(false);
         when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.createSector(new SectorSaveDTO("핀테크", 15, null));
 
-        verify(seasonRepository, never()).findByIdForUpdate(any());
+        verify(seasonRepository).findFirstByOrderByTradingSeasonIdAsc();
     }
 }

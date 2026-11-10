@@ -22,6 +22,10 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     /** 관리자 시즌 목록 : 최근 시작한 시즌부터 */
     List<TradingSeason> findAllByOrderByStartDateDesc();
 
+    /** 시장 변경과 턴 진행이 시즌 선택과 무관하게 먼저 잡는 공통 잠금 행 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<TradingSeason> findFirstByOrderByTradingSeasonIdAsc();
+
     /** 턴을 넘길 때 같은 시즌을 두 관리자가 동시에 넘기지 못하게 행을 잠그고 읽는다 (#44) */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from TradingSeason s where s.tradingSeasonId = :seasonId")

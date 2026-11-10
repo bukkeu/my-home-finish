@@ -60,7 +60,7 @@ public class MarketAdminService {
     /** API 122 분야 등록 */
     @Transactional
     public Long createSector(SectorSaveDTO request) {
-        lockRunningSeason();
+        lockMarketChange();
         if (sectorRepository.existsByName(request.getName())) {
             throw new BusinessException(TradingErrorCode.SECTOR_DUPLICATED);
         }
@@ -75,7 +75,7 @@ public class MarketAdminService {
     /** API 123 분야 수정 : 이름, 사용 여부(주면), 정렬 순서(주면) */
     @Transactional
     public void changeSector(Long sectorId, SectorSaveDTO request) {
-        lockRunningSeason();
+        lockMarketChange();
         Sector sector = getSector(sectorId);
         if (sectorRepository.existsByNameAndSectorIdNot(request.getName(), sectorId)) {
             throw new BusinessException(TradingErrorCode.SECTOR_DUPLICATED);
@@ -117,7 +117,7 @@ public class MarketAdminService {
     /** API 125 종목 등록 (기업정보 포함) */
     @Transactional
     public Long createStock(StockSaveDTO request) {
-        lockRunningSeason();
+        lockMarketChange();
         getSector(request.getSectorId());
         if (stockRepository.existsByName(request.getName())) {
             throw new BusinessException(TradingErrorCode.STOCK_DUPLICATED);
@@ -136,7 +136,7 @@ public class MarketAdminService {
     /** API 126 종목·기업정보 수정 */
     @Transactional
     public void changeStock(Long stockId, StockSaveDTO request) {
-        lockRunningSeason();
+        lockMarketChange();
         Stock stock = stockRepository.findById(stockId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         getSector(request.getSectorId());
@@ -158,14 +158,12 @@ public class MarketAdminService {
     }
 
     /**
-     * 분야·종목 변경은 턴 진행(TurnAdminService.advanceTurn)과 같은 시즌 행 잠금을 잡고 시작한다.
+     * 분야·종목 변경은 턴 진행(TurnAdminService.advanceTurn)과 같은 최초 시즌 행 잠금을 잡고 시작한다.
      * 점검 직후 분야 활성화·종목 등록·이동이 끼어들어 가격이 없는 종목을 둔 채 턴이 넘어가지 않게 한다.
-     * 진행 중·휴장 중인 시즌이 없으면(시즌 준비 중) 턴 진행과 경합할 일이 없으므로 잠그지 않는다
+     * 상태나 시작일로 시즌을 고르면 턴 진행 대상과 다른 행을 잠글 수 있으므로, 가장 작은 시즌 번호를 공통 잠금으로 쓴다
      */
-    private void lockRunningSeason() {
-        seasonRepository.findFirstByStatusInOrderByStartDateDesc(
-                        List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
-                .ifPresent(season -> seasonRepository.findByIdForUpdate(season.getTradingSeasonId()));
+    private void lockMarketChange() {
+        seasonRepository.findFirstByOrderByTradingSeasonIdAsc();
     }
 
     private Sector getSector(Long sectorId) {
