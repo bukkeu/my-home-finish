@@ -5,7 +5,7 @@
 SET @seed_now = CONVERT_TZ(NOW(), @@session.time_zone, '+09:00');
 SET @seed_today = DATE(@seed_now);
 
--- 여러 번 실행해도 안전하다: 용어·일정은 이미 있으면 건너뛰고(INSERT IGNORE, 용어는 이름 기준), 알림은 샘플 행마다 같은 알림이 있는지 보고 없는 것만 넣는다.
+-- 여러 번 실행해도 안전하다: 용어는 이름 기준으로 이미 있으면 건너뛰고(INSERT IGNORE), 일정은 빈 칸만 채우고, 알림은 샘플 행마다 같은 알림이 있는지 보고 없는 것만 넣는다.
 
 -- 용어는 번호를 정하지 않고 용어 이름으로 넣는다 (term 이 고유라서 이미 있는 이름은 건너뛴다).
 -- 이미 다른 용어가 1~12번을 쓰고 있어도 번호가 겹치지 않고, 번호는 AUTO_INCREMENT 가 입력 순서대로 매긴다 (등록 순서 = 번호 순서)
@@ -23,27 +23,15 @@ INSERT IGNORE INTO economic_term (term, description) VALUES
 ('예금자보호', '금융사가 문을 닫아도 1인당 일정 금액까지 돌려주는 제도'),
 ('전세가율', '매매가 대비 전세 보증금의 비율');
 
--- 오늘·내일 중 자동 선정만 있고 5개가 안 되는 날은 먼저 비운다.
--- 용어가 5개 미만일 때 홈을 열면 자동 선정이 있는 만큼만(예: 1개) 저장해 두는데, 그 날짜를 아래에서 통째로 건너뛰면 5개가 채워지지 않기 때문이다.
--- 관리자가 직접 지정한 행(is_auto = 0)이 하나라도 있는 날과 이미 5개 이상인 날은 건드리지 않는다.
--- (같은 테이블을 읽으며 지우려면 하위 질의를 한 번 감싸야 한다 - MySQL 규칙)
-DELETE FROM term_schedule
-WHERE show_date IN (
-    SELECT d.show_date FROM (
-        SELECT show_date FROM term_schedule
-        WHERE show_date IN (@seed_today, @seed_today + INTERVAL 1 DAY)
-        GROUP BY show_date
-        HAVING SUM(is_auto = 0) = 0 AND COUNT(*) < 5
-    ) d
-);
-
--- 오늘(실행한 날)과 내일의 오늘의 경제 용어. 용어 번호를 믿지 않고 이름으로 실제 번호를 찾아 넣는다.
--- 날짜 단위로 통째로 넣거나 통째로 건너뛴다: 그 날짜에 일정이 하나라도 이미 있으면(관리자가 지정했거나 자동 선정으로 저장된 날) 그 날짜는 건드리지 않는다.
--- 그래서 기존 일정과 일부만 겹쳐 5개가 아닌 4개짜리 날이 생기는 일이 없다 (INSERT IGNORE 는 겹치는 행만 건너뛴다).
-INSERT IGNORE INTO term_schedule (show_date, economic_term_id, sort_order, is_auto)
-SELECT @seed_today + INTERVAL s.day_offset DAY, t.economic_term_id, s.sort_order, 0
-FROM (
-    SELECT 0 AS day_offset, '복리' AS term, 1 AS sort_order
+-- 오늘(실행한 날)과 내일의 오늘의 경제 용어를 날짜마다 5개가 되게 채운다. 용어 번호를 믿지 않고 이름으로 실제 번호를 찾아 넣는다.
+-- 이미 있는 일정은 지우거나 바꾸지 않는다 (관리자가 직접 지정한 행, 이미 저장된 자동 선정 행 모두 그대로 둔다).
+-- 날짜별로 아직 그 날짜에 없는 시드 용어를 시드 순서대로 골라, 그 날짜에 비어 있는 순서(1~5) 칸에 차례로 채운다.
+-- - 일정이 없는 날: 5개 모두 넣는다.  - 이미 5개인 날: 빈 칸이 없어 아무것도 넣지 않는다.
+-- - 1~4개만 있는 날(자동 선정이 있는 만큼만 저장된 날, 일부만 지정된 날): 부족한 만큼만 채운다.
+-- 여러 번 실행해도 안전하다: 두 번째부터는 빈 칸이 없어 아무것도 넣지 않는다.
+INSERT INTO term_schedule (show_date, economic_term_id, sort_order, is_auto)
+WITH seed AS (
+    SELECT 0 AS day_offset, '복리' AS term, 1 AS seed_rank
     UNION ALL SELECT 0, '실수령액', 2
     UNION ALL SELECT 0, '배당', 3
     UNION ALL SELECT 0, '리밸런싱', 4
@@ -53,11 +41,33 @@ FROM (
     UNION ALL SELECT 1, 'LTV', 3
     UNION ALL SELECT 1, '분산 투자', 4
     UNION ALL SELECT 1, '인플레이션', 5
-) s
-JOIN economic_term t ON t.term = s.term
-WHERE NOT EXISTS (
-    SELECT 1 FROM term_schedule x WHERE x.show_date = @seed_today + INTERVAL s.day_offset DAY
-);
+),
+days AS (
+    SELECT 0 AS day_offset, CAST(@seed_today AS DATE) AS show_date
+    UNION ALL SELECT 1, CAST(@seed_today AS DATE) + INTERVAL 1 DAY
+),
+candidates AS (
+    SELECT d.show_date, t.economic_term_id,
+           ROW_NUMBER() OVER (PARTITION BY d.show_date ORDER BY s.seed_rank) AS rn
+    FROM seed s
+    JOIN days d ON d.day_offset = s.day_offset
+    JOIN economic_term t ON t.term = s.term
+    WHERE NOT EXISTS (
+        SELECT 1 FROM term_schedule x WHERE x.show_date = d.show_date AND x.economic_term_id = t.economic_term_id
+    )
+),
+free_slots AS (
+    SELECT d.show_date, n.slot,
+           ROW_NUMBER() OVER (PARTITION BY d.show_date ORDER BY n.slot) AS rn
+    FROM days d
+    JOIN (SELECT 1 AS slot UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) n
+    WHERE NOT EXISTS (
+        SELECT 1 FROM term_schedule x WHERE x.show_date = d.show_date AND x.sort_order = n.slot
+    )
+)
+SELECT c.show_date, c.economic_term_id, f.slot, 0
+FROM candidates c
+JOIN free_slots f ON f.show_date = c.show_date AND f.rn = c.rn;
 
 -- 알림 샘플 (시드 회원 8 민지 4건, 강사 5번 1건).
 -- - 번호가 같다고 시드 회원이라고 믿지 않는다: 회원 번호와 시드 이메일이 모두 맞는 회원에게만 넣는다.
