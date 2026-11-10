@@ -48,4 +48,7 @@ public interface SeasonParticipantRepository extends JpaRepository<SeasonPartici
 
     /** 정산으로 수익률 순위가 확정된 참가자 (시즌 랭킹 조회 #26) */
     Page<SeasonParticipant> findByTradingSeasonIdAndReturnRankIsNotNull(Long tradingSeasonId, Pageable pageable);
+
+    /** 시즌의 모든 참가자 (관리자 참가자 목록·랭킹 미리보기 #45, 정산 #46) */
+    List<SeasonParticipant> findByTradingSeasonIdOrderBySeasonParticipantIdAsc(Long tradingSeasonId);
 }

@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
 import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -19,13 +20,14 @@ import java.util.Objects;
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
  *   테이블 course (DRAFT -> REVIEW -> APPROVED/REJECTED, is_public, Soft Delete)
+ *   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#157)
  *  */
 @Entity
 @Table(name = "course")
 @DynamicUpdate      // 바뀐 컬럼만 UPDATE: 검수 요청·수정과 관리자 삭제가 동시에 저장돼도 서로의 값을 옛 값으로 덮어쓰지 않는다 (#32 리뷰)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Course {
+public class Course extends BaseTimeEntity {
 
     // 상태값은 Entity가 상수로 가진다 (컨벤션 4장)
     public static final String STATUS_DRAFT = "DRAFT";
