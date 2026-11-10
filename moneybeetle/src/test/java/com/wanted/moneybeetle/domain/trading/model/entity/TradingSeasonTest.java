@@ -8,12 +8,13 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /* comment.
 *   담당 : PM (#40)
-*   TradingSeason 규칙 확인 : 기본 설정, 12턴 거래일(일요일 제외), 상태 순서(SP-65), 설정 잠금
+*   TradingSeason 규칙 확인 : 기본 설정, 12턴 거래일(일요일 제외), 상태 순서(SP-65), 설정 잠금, 턴 진행·정산·랭킹 공개(#111)
 *  */
 class TradingSeasonTest {
 
@@ -96,5 +97,88 @@ class TradingSeasonTest {
         assertThatThrownBy(() -> season.changeSetting(new BigDecimal("100.00"), null, 8))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.SEASON_CLOSED);
+    }
+
+    // ===== #111 턴 진행·정산·랭킹 공개 규칙 =====
+
+    private TradingSeason runningSeason() {
+        TradingSeason season = season();
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
+        return season;
+    }
+
+    @Test
+    void 진행_중이면_턴이_하나씩_넘어간다() {
+        TradingSeason season = runningSeason();
+
+        season.advanceTurn();
+        season.advanceTurn();
+
+        assertThat(season.getCurrentTurn()).isEqualTo(2);
+    }
+
+    @Test
+    void 마지막_턴_이후에는_턴을_넘길_수_없다() {
+        TradingSeason season = runningSeason();
+        for (int i = 0; i < season.getTotalTurns(); i++) {
+            season.advanceTurn();
+        }
+
+        assertThatThrownBy(season::advanceTurn)
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.LAST_TURN_REACHED));
+        assertThat(season.getCurrentTurn()).isEqualTo(12);
+    }
+
+    @Test
+    void 휴장일에는_턴을_넘길_수_없다() {
+        TradingSeason season = runningSeason();
+        season.changeStatus(TradingSeason.STATUS_HOLIDAY);
+
+        assertThatThrownBy(season::advanceTurn)
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_HOLIDAY));
+        assertThat(season.getCurrentTurn()).isZero();
+    }
+
+    @Test
+    void 준비_정산_종료_상태에서는_턴을_넘길_수_없다() {
+        TradingSeason ready = season();
+        TradingSeason settling = runningSeason();
+        settling.changeStatus(TradingSeason.STATUS_SETTLING);
+
+        for (TradingSeason season : List.of(ready, settling)) {
+            assertThatThrownBy(season::advanceTurn)
+                    .isInstanceOfSatisfying(BusinessException.class,
+                            e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
+        }
+    }
+
+    @Test
+    void 정산은_정산_중에만_기록하고_랭킹_공개는_정산을_마친_뒤에만_한다() {
+        TradingSeason running = runningSeason();
+        LocalDateTime now = LocalDateTime.of(2026, 11, 30, 0, 0);
+
+        assertThatThrownBy(() -> running.completeSettlement(now)).isInstanceOf(BusinessException.class);
+
+        TradingSeason season = runningSeason();
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
+        assertThatThrownBy(() -> season.publishRanking(now)).isInstanceOf(BusinessException.class);
+
+        season.completeSettlement(now);
+        season.publishRanking(now.plusMinutes(1));
+
+        assertThat(season.isEnded()).isTrue();
+        assertThat(season.isRankingPublished()).isTrue();
+    }
+
+    @Test
+    void 랭킹을_공개하지_않은_진행_중_시즌은_공개할_수_없다() {
+        TradingSeason season = runningSeason();
+
+        assertThatThrownBy(() -> season.publishRanking(LocalDateTime.of(2026, 11, 30, 0, 0)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
+        assertThat(season.isEnded()).isFalse();
     }
 }

@@ -6,7 +6,8 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #41 분야·종목 관리 : SECTOR_DUPLICATED, STOCK_DUPLICATED, STOCK_LIMIT_EXCEEDED
 *   - #40 시즌 관리 : START_DATE_NOT_MONDAY, INVALID_STATUS_TRANSITION, SEASON_CLOSED
 *   - #24 시세·뉴스 조회 : NO_RUNNING_SEASON
-*   - 앞으로 추가 : ALREADY_JOINED, JOIN_CLOSED, NOT_ENOUGH_QUANTITY, STALE_TURN_PRICE, MARKET_HOLIDAY,
+*   - #111 턴 진행 규칙 : MARKET_HOLIDAY, LAST_TURN_REACHED
+*   - 앞으로 추가 : ALREADY_JOINED, JOIN_CLOSED, NOT_ENOUGH_QUANTITY, STALE_TURN_PRICE,
 *     RANKING_NOT_PUBLISHED, NEXT_TURN_NOT_READY, PAST_TURN_LOCKED, CSV_INVALID
 *  */
 
@@ -25,7 +26,9 @@ public enum TradingErrorCode implements ErrorCode {
     NO_RUNNING_SEASON(HttpStatus.NOT_FOUND, "다음 시즌을 준비 중이에요"),                                          // 404
     START_DATE_NOT_MONDAY(HttpStatus.BAD_REQUEST, "시즌 시작일은 월요일이어야 해요"),                                 // 400
     INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "지금 상태에서는 그 상태로 바꿀 수 없어요"),                          // 409
-    SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요");                                        // 409
+    SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요"),                                       // 409
+    MARKET_HOLIDAY(HttpStatus.CONFLICT, "오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요"),                         // 409
+    LAST_TURN_REACHED(HttpStatus.CONFLICT, "마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요");                    // 409
 
     private final HttpStatus status;
     private final String message;
