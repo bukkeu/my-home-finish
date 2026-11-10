@@ -35,6 +35,8 @@
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
 | 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 거절된 4xx 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 5xx 응답은 처리 여부를 알 수 없어 보관하고 같은 키로 다시 오면 그 응답을 돌려준다(이미 저장된 주문·납입이 다시 실행되지 않게). 5xx를 받은 화면은 자동으로 다시 보내지 않고, 내역(거래 내역·청약통장·퀴즈 결과)을 다시 조회해 처리됐는지 먼저 확인한 뒤 처리되지 않았을 때만 새 키로 시도한다(새 키는 기존 기록이 적용되지 않아 그대로 다시 실행된다). 응답을 만들지 못하고 필터 밖으로 예외·Error가 전파된 경우도 처리 여부를 알 수 없으므로 5xx와 같게 500(`INTERNAL_ERROR`) 결과로 보관한다(같은 키로 다시 와도 재실행되지 않고, "처리 중"으로 남아 `DUPLICATE_REQUEST`가 계속되지도 않는다). 헤더가 없으면 막지 않고 그대로 처리한다. 키는 100자까지이고(UUID 36자), 넘으면 처리하지 않고 400 `IDEMPOTENCY_KEY_TOO_LONG` (`IdempotencyFilter`, #65) |
+| 요청 ID | 모든 응답에 `X-Request-Id` 헤더(8자리)를 붙인다. 화면에서 오류를 알릴 때 이 값을 함께 남기면 서버 로그에서 같은 요청을 찾을 수 있다. 요청에 영문·숫자·하이픈 36자 이내의 `X-Request-Id` 를 보내면 그 값을 그대로 쓴다 (`RequestLogFilter`, #84) |
+| 서버 상태 확인 | `GET /actuator/health` → `{ "status": "UP" }`, `GET /actuator/info` → 앱 이름. 로그인 없이 호출하며 `/api/v1` 응답 형식(`success`·`data`)을 쓰지 않는다. 그 외 actuator 주소는 열지 않는다 (발표 전 로컬 점검용, #84) |
 
 ### 1-2 응답 형식
 
@@ -975,7 +977,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, INV-06 |
-| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. |
+| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. 키워드는 앞뒤 공백을 빼고 비어 있으면 세 목록 모두 빈 결과. 강의는 보이는 강의(허가·공개·미삭제) 중 제목에 키워드가 들어간 것을 최근 강의부터, 종목은 모의투자 해금(Lv.8) 회원에게만 사용 중 분야·종목 중 이름에 키워드가 들어간 것(`stockId`, `name`, `sectorName`). 경제 용어는 경제 용어 담당 검색 메서드가 생기면 채운다(그전에는 빈 목록). 로그인 회원 번호는 세션에서 꺼내며, 로그인 정보가 없으면 종목은 빈 목록 (#15) |
 
 **Request**
 
@@ -1102,7 +1104,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `PUT` |
 | 권한 | 회원 |
 | 관련 | LRN-05~06, SP-38 |
-| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속) + 15초까지만 인정하고, 인정된 본 시간이 영상 길이의 90% 이상이면 완료. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
+| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
 
 **Request**
 
@@ -1200,7 +1202,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-08, USR-11 |
-| 설명 | 마이페이지 스크랩 목록. |
+| 설명 | 마이페이지 스크랩 목록. 최근 스크랩 순. 지금 사용자에게 보이는 강의(허가 + 공개 + 삭제 안 됨)만 보여 준다. 재검수 중·비공개·삭제된 강의는 숨기지만 스크랩 기록은 남아서, 다시 허가·공개되면 목록에 돌아온다(SP-31). |
 
 **Request**
 
@@ -1540,7 +1542,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-01~02, INV-05, INV-14, NFR-12 |
-| 설명 | 현재 시즌·턴, 남은 현금, 순자산, 보유 종목. 해금 레벨 미달이면 403. |
+| 설명 | 현재 시즌·턴, 남은 현금, 순자산, 보유 종목. 해금 레벨 미달이면 403. 시즌은 진행 중·휴장 중·정산 중·종료 중 시작일이 가장 최근인 것(정산 중·종료에도 열리고 `season.status`로 "정산 중"·"종료"를 안내한다. 준비 중 시즌뿐이면 `NO_RUNNING_SEASON`). `calendar`는 시작일부터 14일이고 `state`는 `DONE`(지난 턴)·`CURRENT`(현재 턴)·`UPCOMING`(남은 턴)·`HOLIDAY`(일요일, `turnNo` null). `nextTurnAt`은 다음 턴 거래일 0시(마지막 턴이면 null). 순자산 = 현금 + 보유 종목 평가금액(현재 턴 가격, 가격이 없으면 평균 단가), 수익률은 소수 둘째 자리 반올림(SP-61). 이 시즌에 참가하지 않았으면 `participation`은 null, `holdings`는 빈 목록 (#23) |
 
 **Request**
 
@@ -1568,7 +1570,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-03~04, SP-51~52, DP-40 |
-| 설명 | 시즌당 1회, 첫 턴 종료 전까지. 투자 가능 금액 = 모은 캐시 + 이월금으로 확정(이후 불변). |
+| 설명 | 시즌당 1회, 첫 턴 종료 전까지(진행 중이고 현재 턴이 1일 때, 시작 전 시즌도 마감으로 본다). 투자 가능 금액 = 모은 캐시(참가할 때의 캐시 잔액) + 이월금(이 회원의 가장 최근 다른 시즌 `carryover_out`)으로 확정(이후 불변). **참가해도 회원 캐시는 빼지 않는다** (PM 결정, #23). 로그인 정보가 없으면 401 `UNAUTHORIZED` |
 
 **Request**
 
@@ -1581,7 +1583,7 @@ Header: Idempotency-Key: 7c1e...
 { "participantId": 120, "savedCash": 3200000, "carryoverIn": 1620000, "investAmount": 4820000 }
 ```
 
-**Error**: `LEVEL_LOCKED`, `ALREADY_JOINED`, `JOIN_CLOSED`
+**Error**: `LEVEL_LOCKED`, `ALREADY_JOINED`, `JOIN_CLOSED`, `NOT_FOUND`(없는 시즌), `UNAUTHORIZED`
 
 #### 55. 분야 목록
 
@@ -2006,16 +2008,16 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-06 |
-| 설명 | 검수 상태 포함. |
+| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). |
 
 **Request**
 
-- Query: status=DRAFT|REVIEW|APPROVED|REJECTED
+- Query: status=DRAFT|REVIEW|APPROVED|REJECTED (선택)
 
 **Response**
 
 ```json
-{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
+{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
 ```
 
 #### 73. 강의 생성
@@ -2026,7 +2028,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | 카테고리·소주제, 제목, 소개로 강의를 만든다(DRAFT). |
+| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
 
 **Request**
 
@@ -2041,7 +2043,7 @@ Header: Idempotency-Key: 31aa...
 { "courseId": 7, "status": "DRAFT" }
 ```
 
-**Error**: `FORBIDDEN_WORD`
+**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리)
 
 #### 74. 강의 편집 정보
 
@@ -2051,7 +2053,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-01~05 |
-| 설명 | 영상·요약글·퀴즈(정답 포함) 전체. |
+| 설명 | 본인 강의만. 강의 정보 + lessons(영상·요약글) + quizzes(테스트 퀴즈·퀴즈, 보기별 isCorrect·해설 포함) + rejectReason(가장 최근 반려 사유). |
 
 **Request**
 
@@ -2059,9 +2061,9 @@ Header: Idempotency-Key: 31aa...
 
 **Response**
 
-- (강의 상세 + lessons + testQuiz + quiz 정답 포함)
+- `{ courseId, categoryId, title, description, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
 
-**Error**: `FORBIDDEN`
+**Error**: `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 75. 강의 수정
 
@@ -2071,12 +2073,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-31 |
-| 설명 | 허가된 강의를 고치면 다시 검수(REVIEW). |
+| 설명 | 본인 강의만. 검수 중(REVIEW)에는 수정 불가. 허가된 강의를 고치면 다시 검수(REVIEW, submitted_at 갱신) → 허가 전까지 사용자에게 보이지 않음. 요청 형식·검사는 API 73과 같다. |
 
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "...", "description": "..." }
+{ "categoryId": 21, "title": "...", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2084,6 +2086,8 @@ Header: Idempotency-Key: 31aa...
 ```json
 { "courseId": 7, "status": "REVIEW" }
 ```
+
+**Error**: `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 76. 강의 삭제
 
@@ -2093,7 +2097,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `DELETE` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-32 |
-| 설명 | 학습 기록이 있으면 삭제 불가. |
+| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(비공개는 관리자에게 요청). 없으면 Soft Delete(deleted_at). |
 
 **Request**
 
@@ -2103,7 +2107,7 @@ Header: Idempotency-Key: 31aa...
 
 - 204 No Content
 
-**Error**: `COURSE_HAS_LEARNERS`
+**Error**: `COURSE_HAS_LEARNERS`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 77. 썸네일 업로드
 
@@ -2113,7 +2117,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | multipart/form-data. |
+| 설명 | 본인 강의만, 검수 중에는 불가. multipart/form-data(필드 file). 이미지 2MB·jpg·png(DP-32). 허가된 강의의 썸네일을 바꾸면 정보 수정(API 75)과 같이 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31). |
 
 **Request**
 
@@ -2122,10 +2126,10 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "thumbnailUrl": "/files/course/7.png" }
+{ "thumbnailUrl": "/uploads/3f2a....png" }
 ```
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 78. 영상·요약글 저장
 
@@ -2452,7 +2456,8 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review·admin_log(action COURSE_APPROVE, 변경 전·후 상태) 기록. |
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
+
 
 - Path: courseId=9
 
@@ -2471,7 +2476,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-|설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, admin_log(action COURSE_REJECT, 변경 전·후 상태·사유) 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
+| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
@@ -3090,7 +3095,11 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (분야 목록)
+```json
+{ "items": [ { "sectorId": 1, "name": "반도체", "sortOrder": 1, "isActive": true } ] }
+```
+
+- 정렬 순서(sortOrder) → 번호 순. 사용 안 함(isActive=false) 분야도 포함한다.
 
 #### 122. 분야 등록
 
@@ -3114,6 +3123,8 @@ email=admin@moneybeetle.kr&password=...
 { "sectorId": 15 }
 ```
 
+**Error**: `SECTOR_DUPLICATED`
+
 #### 123. 분야 수정
 
 | 항목 | 내용 |
@@ -3126,12 +3137,16 @@ email=admin@moneybeetle.kr&password=...
 **Request**
 
 ```json
-{ "name": "핀테크", "isActive": true }
+{ "name": "핀테크", "isActive": true, "sortOrder": 15 }
 ```
 
 **Response**
 
 - 204 No Content
+
+- isActive·sortOrder는 줄 때만 바꾼다.
+
+**Error**: `SECTOR_DUPLICATED`, `NOT_FOUND`
 
 #### 124. 종목 목록
 
@@ -3149,7 +3164,11 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (종목 목록 + startPrice)
+```json
+{ "items": [ { "stockId": 1, "sectorId": 1, "sectorName": "반도체", "name": "한빛반도체", "startPrice": 76800, "intro": "...", "business": "...", "revenue": "1조 2,000억", "operatingProfit": "1,450억", "isActive": true } ] }
+```
+
+- 분야 정렬 순서 → 종목 번호 순.
 
 #### 125. 종목 등록
 
@@ -3159,7 +3178,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-17~18 |
-| 설명 | 이름, 분야, 시작 가격, 기업정보. |
+| 설명 | 이름, 분야, 시작 가격, 기업정보. 회사 소개(`intro`)는 16,000자 이하(DB `TEXT` 65,535바이트에 들어가게). |
 
 **Request**
 
@@ -3174,7 +3193,7 @@ email=admin@moneybeetle.kr&password=...
 { "stockId": 1 }
 ```
 
-**Error**: `STOCK_DUPLICATED`
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(그 분야에 사용 중 종목이 이미 2개), `NOT_FOUND`(없는 분야)
 
 #### 126. 종목·기업정보 수정
 
@@ -3193,6 +3212,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(사용 중 종목을 이미 2개인 분야로 옮길 때), `NOT_FOUND`
+
 #### 127. 턴별 가격표
 
 | 항목 | 내용 |
@@ -3201,7 +3222,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-19, ADM-22 |
-| 설명 | 종목(행) × 1~12턴(열). |
+| 설명 | 종목(행) × 1~12턴(열). 비어 있는 칸은 null. currentTurn 이하의 턴은 잠겨 있다(수정 불가). 종목 순서는 관리자 종목 목록(API 124)과 같다. |
 
 **Request**
 
@@ -3210,7 +3231,7 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "rows": [ { "stockId": 1, "stockName": "한빛반도체", "prices": [76800, 78900, 80100, 82200, 84500, null, null] } ] }
+{ "currentTurn": 5, "rows": [ { "stockId": 1, "stockName": "한빛반도체", "prices": [76800, 78900, 80100, 82200, 84500, null, null, null, null, null, null, null] } ] }
 ```
 
 #### 128. 턴별 가격 저장
@@ -3221,7 +3242,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-19~20, ADM-23~24, SP-60 |
-| 설명 | 가격 또는 변동률로 입력. 지난 턴은 수정 불가. ±30% 초과·0 이하는 warnings로 알려 주고 confirm=true면 저장. |
+| 설명 | 가격 또는 변동률(지난 턴 대비 %)로 입력. 변동률은 지난 턴 가격(없으면 시작 가격) × (1 + 변동률)을 50원 단위로 반올림해 가격으로 바꾼다. 현재 턴 이하(이미 지난 턴)는 수정 불가. 지난 턴보다 ±30%를 넘게 움직이면 warnings로 알려 주고, confirm=false면 저장하지 않고 `saved: 0`, confirm=true면 저장한다. 0원 이하는 DB가 받지 않으므로 경고가 아니라 거절. 저장할 때 변동률(change_rate)도 다시 계산한다. |
 
 **Request**
 
@@ -3235,7 +3256,7 @@ email=admin@moneybeetle.kr&password=...
 { "saved": 2, "warnings": [ { "stockId": 2, "turnNo": 6, "message": "한 턴에 ±30%를 넘는 변동이에요" } ] }
 ```
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_LOCKED`, `PRICE_NOT_POSITIVE`, `PRICE_OUT_OF_RANGE`(변동률로 계산한 가격이 너무 큼), `NOT_FOUND`
 
 #### 129. 가격표 CSV 내려받기
 
@@ -3245,7 +3266,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-21 |
-| 설명 | text/csv. |
+| 설명 | text/csv(UTF-8, 엑셀용 BOM). 제목 줄 `stockId,stockName,turn1,…,turn12`, 빈 칸은 가격 없음. 종목 이름에 쉼표·큰따옴표·줄바꿈이 있으면 큰따옴표로 감싸고(안쪽 `"`는 `""`, RFC 4180), `=` `+` `-` `@`로 시작하면 엑셀 수식으로 읽히지 않게 앞에 `'`를 붙인다. |
 
 **Request**
 
@@ -3263,7 +3284,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-21 |
-| 설명 | 형식 오류가 있으면 전체 취소, 오류 행 반환. |
+| 설명 | 내려받은 CSV와 같은 형식(큰따옴표로 감싼 칸은 RFC 4180 규칙으로 읽는다). 빈 칸은 그대로 두고 값이 있는 칸만 저장한다. 지난 턴 칸은 기존 값과 같으면 통과, 다르면 오류. 형식 오류(제목 줄, 칸 수, 없는 종목, 같은 종목 중복, 1 이상의 정수가 아닌 값)가 하나라도 있으면 전체 취소하고 오류 행을 돌려준다. ±30% 경고는 저장한 뒤 warnings로 알려 준다. |
 
 **Request**
 
@@ -3272,7 +3293,13 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "saved": 360 }
+{ "saved": 360, "warnings": [] }
+```
+
+오류(400)
+
+```json
+{ "success": false, "data": { "errors": [ { "line": 3, "message": "없는 종목 번호예요: 99" } ] }, "error": { "code": "CSV_INVALID", "message": "CSV 형식이 맞지 않는 행이 있어요" } }
 ```
 
 **Error**: `CSV_INVALID`
@@ -3285,7 +3312,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-25~26 |
-| 설명 | 턴별 뉴스(관리자 메모 포함). |
+| 설명 | 턴별 뉴스(관리자 메모 포함). `turnNo`를 빼면 시즌 전체를 턴 순서로 (#43) |
 
 **Request**
 
@@ -3293,7 +3320,12 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (뉴스 목록 + adminMemo)
+```json
+{ "items": [ { "newsId": 31, "turnNo": 6, "title": "...", "content": "...", "adminMemo": "다음 턴 상승 유도",
+  "sectors": [ { "id": 1, "name": "반도체" } ], "stocks": [ { "id": 1, "name": "한빛반도체" } ] } ] }
+```
+
+**Error**: `NOT_FOUND`(없는 시즌)
 
 #### 132. 뉴스 등록
 
@@ -3303,7 +3335,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-25~26 |
-| 설명 | 제목, 본문, 관련 분야·종목, 관리자 메모. |
+| 설명 | 제목(100자), 본문(16,000자), 관련 분야·종목(없으면 빈 목록), 관리자 메모(500자). 다음 턴 이후(`turnNo` > 현재 턴)에만 등록할 수 있다 (#43) |
 
 **Request**
 
@@ -3318,6 +3350,8 @@ email=admin@moneybeetle.kr&password=...
 { "newsId": 40 }
 ```
 
+**Error**: `PAST_TURN_NEWS_LOCKED`(현재 턴 이하), `NOT_FOUND`(없는 시즌·분야·종목)
+
 #### 133. 뉴스 수정
 
 | 항목 | 내용 |
@@ -3326,7 +3360,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-27, SP-60 |
-| 설명 | 지난 턴 뉴스는 오타 수정만(admin_log 기록). |
+| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
 
 **Request**
 
@@ -3336,7 +3370,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
 
 #### 134. 뉴스 삭제
 
@@ -3346,7 +3380,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `DELETE` |
 | 권한 | 관리자 |
 | 관련 | ADM-25 |
-| 설명 | 다음 턴 이후 뉴스만. |
+| 설명 | 다음 턴 이후 뉴스만. 관련 분야·종목도 함께 지운다 (#43) |
 
 **Request**
 
@@ -3356,7 +3390,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_LOCKED`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
 
 #### 135. 참가자 목록
 
@@ -3709,6 +3743,9 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
+| 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
+| 강사·관리자 | `STOCK_DUPLICATED` | 409 | 이미 있는 종목 이름이에요 |
+| 강사·관리자 | `STOCK_LIMIT_EXCEEDED` | 409 | 한 분야에는 종목을 2개까지 둘 수 있어요 |
 | 강사·관리자 | `START_DATE_NOT_MONDAY` | 400 | 시즌 시작일은 월요일이어야 해요 |
 | 강사·관리자 | `INVALID_STATUS_TRANSITION` | 409 | 지금 상태에서는 그 상태로 바꿀 수 없어요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
@@ -3732,7 +3769,10 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
-| 강사·관리자 | `CSV_INVALID` | 400 | N행의 형식이 맞지 않아요 |
+| 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
+| 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |
+| 강사·관리자 | `PRICE_NOT_POSITIVE` | 400 | 가격은 1원 이상이어야 해요 |
+| 강사·관리자 | `PRICE_OUT_OF_RANGE` | 400 | 변동률이 너무 커서 가격을 계산할 수 없어요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
 

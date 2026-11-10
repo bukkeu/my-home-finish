@@ -417,10 +417,11 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | code | 의미 | 기본값 | 쓰는 곳 |
 | --- | --- | --- | --- |
 | `ATTENDANCE_STREAK` | 연속 출석 보상. 연속 **5일째부터 매일** 지급 (SP-12) | 캐시 10,000 · 경험치 0 · 사용 중 | `AttendanceService.checkToday` → `RewardService.grant` (원인 ID = 그날의 `attendance_id`) |
-| `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | XP 값 확정(#68) 뒤 시드 | 학습 완료 처리 |
-| `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | XP 값 확정(#68) 뒤 시드 | 퀴즈 제출 처리 |
+| `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | 캐시 30,000 · 경험치 150 · 사용 중 (#68) | 학습 완료 처리 |
+| `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | 캐시 0 · 경험치 30 · 사용 중 (#68) | 퀴즈 제출 처리 |
+| `ATTENDANCE_DAILY` | 출석 경험치 (SP-22). 출석한 날마다 지급 | 캐시 0 · 경험치 10 · 사용 중 (#68). **경험치는 기본값(10) × 연속 일수 구간**: 1~5일째 ×1, 6~10일째 ×2, …, 21일째부터 ×5(상한 50). 구간 계산은 코드 | 출석 처리 (`AttendanceService`, 구현 요청 #68 후속) |
 
-- `ATTENDANCE_STREAK`만 먼저 시드에 들어 있다(`sample-data.sql`, 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`). 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
+- 시드: `sample-data.sql`에 네 규칙이 모두 있다. 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`(연속 출석)과 `sql/migration/2026-11-10_reward_rule_exp_seed.sql`(학습 완료·퀴즈 만점·출석 경험치, #68)을 실행한다. 학습 완료·퀴즈 만점 규칙이 없으면 그 보상 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다. 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
 - 마이그레이션은 규칙이 **없을 때만** 넣고 이미 있는 규칙은 바꾸지 않는다(관리자가 값을 고쳤을 수 있다). 다시 실행해도 결과가 같다.
 - 5일째가 되는 기준(연속 일수)은 코드 상수 `AttendanceService.REWARD_START_STREAK`이고, 규칙 표에는 금액만 둔다.
 
