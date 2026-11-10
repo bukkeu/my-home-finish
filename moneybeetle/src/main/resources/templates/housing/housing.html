@@ -170,8 +170,10 @@
             <button type="button" class="btn btn-secondary" data-go-tab="complexes">전체 단지 보기</button>
           </div>
           <div class="hs-lockable" th:classappend="${page.locked} ? 'is-locked'">
+            <!--/* 잠겨 있으면 inert : 흐린 예시 카드의 버튼에 Tab 포커스도 가지 않게 (aria-hidden 은 화면 낭독만 막는다) */-->
             <div class="hs-open-grid" data-list="openComplexes"
-                 th:classappend="${page.locked} ? 'mb-blur'" th:attr="aria-hidden=${page.locked}">
+                 th:classappend="${page.locked} ? 'mb-blur'"
+                 th:attr="aria-hidden=${page.locked}, inert=${page.locked ? 'inert' : null}">
               <div class="card hs-empty-card">불러오는 중이에요…</div>
             </div>
             <div class="hs-lockable__msg" th:if="${page.locked}" th:text="|Lv.${page.unlockLevel}부터 볼 수 있어요|">Lv.12부터 볼 수 있어요</div>
@@ -199,7 +201,8 @@
             <span class="hs-legend__today"><b>1</b>오늘</span>
           </div>
           <div class="hs-lockable" th:classappend="${page.locked} ? 'is-locked'">
-            <div th:classappend="${page.locked} ? 'mb-blur'" th:attr="aria-hidden=${page.locked}">
+            <div th:classappend="${page.locked} ? 'mb-blur'"
+                 th:attr="aria-hidden=${page.locked}, inert=${page.locked ? 'inert' : null}">
               <div class="card hs-cal">
                 <div class="hs-cal__week">
                   <span class="is-sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="is-sat">토</span>
