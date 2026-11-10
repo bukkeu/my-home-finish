@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
@@ -25,4 +26,10 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from TradingSeason s where s.tradingSeasonId = :seasonId")
     Optional<TradingSeason> findByIdForUpdate(@Param("seasonId") Long seasonId);
+
+    /** 이 시작일보다 먼저 시작한 시즌 중 가장 최근 시즌 = "이전 시즌" (#207) */
+    Optional<TradingSeason> findFirstByStartDateBeforeOrderByStartDateDesc(LocalDate startDate);
+
+    /** 기간(시작일~종료일)이 주어진 기간과 하루라도 겹치는 시즌이 있는가 (#207) */
+    boolean existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate periodEnd, LocalDate periodStart);
 }

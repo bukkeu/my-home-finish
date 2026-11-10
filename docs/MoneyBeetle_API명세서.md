@@ -2962,7 +2962,9 @@ email=admin@moneybeetle.kr&password=...
 { "seasonId": 8, "turns": [ { "turnNo": 1, "tradeDate": "2026-11-16" } ] }
 ```
 
-**Error**: `START_DATE_NOT_MONDAY`, `NOT_FOUND`
+- 기간(시작일~시작일+13일)이 이미 있는 시즌과 하루라도 겹치면 만들 수 없다 (#207)
+
+**Error**: `START_DATE_NOT_MONDAY`, `NOT_FOUND`, `SEASON_PERIOD_OVERLAP`(409, 기간 겹침)
 
 #### 116. 시즌 설정
 
@@ -3006,7 +3008,9 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `INVALID_STATUS_TRANSITION`
+- 준비(READY) → 진행 중(RUNNING)으로 바꿀 때 **이전 시즌**(시작일이 더 이른 가장 최근 시즌)이 있으면, 이전 시즌이 정산을 마치고 종료(ENDED, `settled_at` 있음)된 상태여야 한다. 아니면 `PREVIOUS_SEASON_NOT_SETTLED` (#207)
+
+**Error**: `INVALID_STATUS_TRANSITION`, `PREVIOUS_SEASON_NOT_SETTLED`(409)
 
 #### 118. 턴 달력·진행 기록
 
@@ -3053,10 +3057,11 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "ready": false, "nextTurn": 6, "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
+{ "ready": false, "nextTurn": 6, "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false, "previousSeasonSettled": true }
 ```
 
 - `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
+- `previousSeasonSettled`: 이전 시즌이 없거나 정산을 마치고 끝났는가. `false`이면 `ready`도 `false`다 — 화면은 버튼을 비활성화하고 "이전 시즌 정산을 먼저 마쳐 주세요"를 안내한다 (#207)
 - `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
 - 마지막 턴이면 `nextTurn`이 `null`, `ready`는 `false`
 - 관리자 대시보드(84)의 `nextTurnReady`·`missing`도 같은 계산이다 (`TradingService.getDashboardSummary()`)
@@ -3089,7 +3094,7 @@ email=admin@moneybeetle.kr&password=...
 - 넘기면 그 턴의 `progressedAt`·`progressedBy`를 남기고 admin_log(`TURN_ADVANCE`, 변경 전·후 턴)에도 기록한다 (같은 트랜잭션)
 - 같은 시즌을 두 관리자가 동시에 넘기지 못하게 시즌 행을 잠그고 처리한다
 
-**Error**: `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
+**Error**: `PREVIOUS_SEASON_NOT_SETTLED`(409, 이전 시즌 정산 전 — 점검보다 먼저 확인), `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 
 #### 121. 분야 목록
 
@@ -3782,6 +3787,8 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
+| 강사·관리자 | `PREVIOUS_SEASON_NOT_SETTLED` | 409 | 이전 시즌 정산을 먼저 마쳐 주세요 |
+| 강사·관리자 | `SEASON_PERIOD_OVERLAP` | 409 | 기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
 | 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
 | 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |

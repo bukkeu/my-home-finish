@@ -214,7 +214,7 @@ public class TradingService {
     public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
         boolean holiday = season.isHoliday();
         if (season.isLastTurn()) {
-            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday);
+            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday, isPreviousSeasonSettled(season));
         }
         int nextTurn = season.getCurrentTurn() + 1;
         Set<Long> activeSectorIds = sectorRepository.findByIsActiveTrueOrderBySortOrderAscSectorIdAsc().stream()
@@ -229,8 +229,17 @@ public class TradingService {
                 .map(Stock::getName)
                 .toList();
         long newsCount = newsRepository.countByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn);
-        boolean ready = season.isRunning() && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0;
-        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday);
+        boolean previousSettled = isPreviousSeasonSettled(season);
+        boolean ready = season.isRunning() && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0
+                && previousSettled;
+        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday, previousSettled);
+    }
+
+    /** 이전 시즌(시작일이 더 이른 가장 최근 시즌)이 없거나, 정산을 마치고 끝났는가 (#207) */
+    private boolean isPreviousSeasonSettled(TradingSeason season) {
+        return seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate())
+                .map(TradingSeason::isSettledAndEnded)
+                .orElse(true);
     }
 
     /**

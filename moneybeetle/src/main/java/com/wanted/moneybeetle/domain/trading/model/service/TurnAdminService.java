@@ -78,7 +78,12 @@ public class TurnAdminService {
             throw new BusinessException(TradingErrorCode.TURN_CONFLICT);
         }
         season.checkAdvanceable();
-        if (!tradingService.checkNextTurn(season).ready()) {
+        NextTurnCheckDTO check = tradingService.checkNextTurn(season);
+        if (!check.previousSeasonSettled()) {
+            // 이전 시즌 정산을 빠뜨리면 회원이 이번 시즌 참가 기회를 잃으므로 가격·뉴스 점검보다 먼저 알려 준다 (#207)
+            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+        }
+        if (!check.ready()) {
             throw new BusinessException(TradingErrorCode.NEXT_TURN_NOT_READY);
         }
 

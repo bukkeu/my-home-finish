@@ -91,7 +91,7 @@ class AdminTurnControllerTest {
     @Test
     void 다음_턴_점검은_ready_와_비어_있는_종목을_돌려준다() throws Exception {
         when(service.checkNextTurn(7L)).thenReturn(
-                new NextTurnCheckDTO(false, 6, List.of("모아모빌리티", "별숲엔터"), 2, false));
+                new NextTurnCheckDTO(false, 6, List.of("모아모빌리티", "별숲엔터"), 2, false, true));
 
         mockMvc().perform(get(BASE + "/next-check"))
                 .andExpect(status().isOk())
