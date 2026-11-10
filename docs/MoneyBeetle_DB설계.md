@@ -425,7 +425,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | 컬럼명 | 데이터 타입 | Null | 제약 조건 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- |
 | `reward_rule_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 규칙 ID |
-| `code` | VARCHAR(30) | N | UNIQUE | - | COURSE_COMPLETE / QUIZ_PERFECT / ATTENDANCE_STREAK |
+| `code` | VARCHAR(30) | N | UNIQUE | - | COURSE_COMPLETE / QUIZ_PERFECT / ATTENDANCE_STREAK / ATTENDANCE_DAILY / RANKING_RANK_1~3 |
 | `name` | VARCHAR(50) | N | - | - | 규칙 이름 |
 | `cash_amount` | INT | N | - | 0 | 지급 캐시 |
 | `exp_amount` | INT | N | - | 0 | 지급 경험치 |
@@ -442,8 +442,9 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `COURSE_COMPLETE` | 강의 학습 완료 (SP-13, SP-22) | 캐시 30,000 · 경험치 150 · 사용 중 (#68) | 학습 완료 처리 |
 | `QUIZ_PERFECT` | 퀴즈 만점 보너스 (SP-22) | 캐시 0 · 경험치 30 · 사용 중 (#68) | 퀴즈 제출 처리 |
 | `ATTENDANCE_DAILY` | 출석 경험치 (SP-22). 출석한 날마다 지급 | 캐시 0 · 경험치 10 · 사용 중 (#68). **경험치는 기본값(10) × 연속 일수 구간**: 1~5일째 ×1, 6~10일째 ×2, …, 21일째부터 ×5(상한 50). 구간 계산은 코드 | 출석 처리 (`AttendanceService`, 구현 요청 #68 후속) |
+| `RANKING_RANK_1` · `RANKING_RANK_2` · `RANKING_RANK_3` | 시즌 랭킹 1·2·3위 보상 (SP-64). 순자산·수익률 랭킹 **각각**의 순위에 같은 규칙을 쓰고, 두 랭킹에 모두 들면 두 번 받는다 | 캐시 50,000 / 30,000 / 10,000 · 경험치 0 · 사용 중 (#76) | 랭킹 공개 때 `RewardService.grantRankingReward(memberId, rank, rankingAwardId)` (원인 종류 `RANKING`, 원인 ID = 수상 기록 `ranking_award_id`) |
 
-- 시드: `sample-data.sql`에 네 규칙이 모두 있다. 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`(연속 출석)과 `sql/migration/2026-11-10_reward_rule_exp_seed.sql`(학습 완료·퀴즈 만점·출석 경험치, #68)을 실행한다. 학습 완료·퀴즈 만점 규칙이 없으면 그 보상 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다. 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
+- 시드: `sample-data.sql`에 일곱 규칙(연속 출석, 학습 완료, 퀴즈 만점, 출석 경험치, 랭킹 1·2·3위)이 모두 있다. 기존 DB는 `sql/migration/2026-11-09_reward_rule_attendance_streak_seed.sql`(연속 출석)과 `sql/migration/2026-11-10_reward_rule_exp_seed.sql`(학습 완료·퀴즈 만점·출석 경험치, #68)을 실행한다. 학습 완료·퀴즈 만점 규칙이 없으면 그 보상 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다. 이 규칙이 없으면 5일째 출석 때 캐시 지급이 `REWARD_RULE_NOT_FOUND`로 실패한다.
 - 마이그레이션은 규칙이 **없을 때만** 넣고 이미 있는 규칙은 바꾸지 않는다(관리자가 값을 고쳤을 수 있다). 다시 실행해도 결과가 같다.
 - 5일째가 되는 기준(연속 일수)은 코드 상수 `AttendanceService.REWARD_START_STREAK`이고, 규칙 표에는 금액만 둔다.
 
@@ -458,7 +459,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `cash_history_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 내역 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE(member_id, source_type, source_id) | - | 회원 |
 | `history_type` | VARCHAR(20) | N | - | - | EARN / USE / ADMIN_GIVE / ADMIN_TAKE |
-| `source_type` | VARCHAR(30) | N | UNIQUE(member_id, source_type, source_id) | - | ATTENDANCE / COURSE_COMPLETE / LEVEL_UP / SEASON_JOIN / SUBSCRIPTION_DEPOSIT / ADMIN |
+| `source_type` | VARCHAR(30) | N | UNIQUE(member_id, source_type, source_id) | - | ATTENDANCE / COURSE_COMPLETE / LEVEL_UP / SEASON_JOIN / SUBSCRIPTION_DEPOSIT / RANKING / ADMIN |
 | `source_id` | BIGINT | Y | UNIQUE(member_id, source_type, source_id) | - | 원인 데이터 ID (출석 ID, 강의 ID, 레벨 등) |
 | `reward_rule_id` | BIGINT | Y | FK → reward_rule.reward_rule_id | - | 적용한 보상 규칙 |
 | `amount` | BIGINT | N | - | - | 변동 금액 (사용·회수는 음수) |

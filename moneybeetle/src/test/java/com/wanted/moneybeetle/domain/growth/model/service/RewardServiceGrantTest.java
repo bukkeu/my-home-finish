@@ -710,4 +710,97 @@ class RewardServiceGrantTest {
 
         assertThat(rewardService.getBalance(MEMBER)).isEqualTo(12_000);
     }
+
+    // ---- 시즌 랭킹 보상 (이슈 #10, SP-64) ----
+
+    @Test
+    @DisplayName("랭킹 1·2·3위 보상은 순위별 규칙(50,000 / 30,000 / 10,000)의 캐시만 지급하고 RANKING 원인·수상 기록 ID 로 남긴다")
+    void grantRankingRewardByRank() {
+        givenBalance(5, 900, 100_000);
+        long[][] expected = {{1, 50_000, 71L}, {2, 30_000, 72L}, {3, 10_000, 73L}};
+        for (long[] row : expected) {
+            int rank = (int) row[0];
+            long cash = row[1];
+            long awardId = row[2];
+            givenRule(RewardRule.rankingRuleCode(rank), (int) cash, 0);
+            when(memberService.addReward(MEMBER, cash, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 5, 900, 100_000 + cash));
+
+            RewardResultDTO result = rewardService.grantRankingReward(MEMBER, rank, awardId);
+
+            assertThat(result.getGrantedCash()).isEqualTo(cash);
+            assertThat(result.getGrantedExp()).isZero();
+            assertThat(result.isAlreadyGranted()).isFalse();
+        }
+
+        ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
+        verify(cashHistoryRepository, org.mockito.Mockito.times(3)).save(history.capture());
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceType).containsOnly(CashHistory.SOURCE_RANKING);
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceId).containsExactly(71L, 72L, 73L);
+        assertThat(history.getAllValues()).extracting(CashHistory::getAmount).containsExactly(50_000L, 30_000L, 10_000L);
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("같은 수상 기록으로 다시 지급을 부르면 한 번만 지급된다 (이중 지급 방지)")
+    void rankingRewardTwiceIsIgnored() {
+        givenRule(RewardRule.RANKING_RANK_1, 50_000, 0);
+        givenBalance(5, 900, 150_000);
+        when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashHistory.SOURCE_RANKING, 71L))
+                .thenReturn(Optional.of(CashHistory.earn(MEMBER, CashHistory.SOURCE_RANKING, 71L, 1L, 50_000, 150_000)));
+
+        RewardResultDTO result = rewardService.grantRankingReward(MEMBER, 1, 71L);
+
+        assertThat(result.isAlreadyGranted()).isTrue();
+        verify(memberService, never()).addReward(anyLong(), anyLong(), anyInt());
+        verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("순자산·수익률 랭킹에 모두 들면 수상 기록이 둘이라 두 번 받는다 (같은 순위여도 원인 ID 가 다르다)")
+    void bothRankingsPayTwice() {
+        givenRule(RewardRule.RANKING_RANK_1, 50_000, 0);
+        givenBalance(5, 900, 0);
+        when(memberService.addReward(MEMBER, 50_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 5, 900, 50_000));
+
+        RewardResultDTO asset = rewardService.grantRankingReward(MEMBER, 1, 81L);    // 순자산 랭킹 수상
+        RewardResultDTO returnRate = rewardService.grantRankingReward(MEMBER, 1, 82L);   // 수익률 랭킹 수상
+
+        assertThat(asset.getGrantedCash()).isEqualTo(50_000);
+        assertThat(returnRate.getGrantedCash()).isEqualTo(50_000);
+        ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
+        verify(cashHistoryRepository, org.mockito.Mockito.times(2)).save(history.capture());
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceId).containsExactly(81L, 82L);
+    }
+
+    @Test
+    @DisplayName("랭킹 보상 규칙이 없거나 꺼져 있으면 REWARD_RULE_NOT_FOUND 이고 아무것도 바꾸지 않는다")
+    void rankingRuleMissing() {
+        when(ruleRepository.findByCodeAndActiveTrue(RewardRule.RANKING_RANK_2)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> rewardService.grantRankingReward(MEMBER, 2, 72L))
+                .satisfies(e -> assertErrorCode(e, GrowthErrorCode.REWARD_RULE_NOT_FOUND));
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("관리자가 랭킹 보상 금액을 바꾸면 바뀐 금액으로 지급한다 (금액은 규칙에서 읽는다)")
+    void rankingAmountComesFromRule() {
+        givenRule(RewardRule.RANKING_RANK_3, 20_000, 0);   // 기본값 10,000 을 관리자가 20,000 으로 바꿈
+        givenBalance(5, 900, 0);
+        when(memberService.addReward(MEMBER, 20_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 5, 900, 20_000));
+
+        assertThat(rewardService.grantRankingReward(MEMBER, 3, 73L).getGrantedCash()).isEqualTo(20_000);
+    }
+
+    @Test
+    @DisplayName("1~3위가 아닌 순위는 거절하고 아무것도 조회하지 않는다")
+    void rankOutOfRange() {
+        for (int rank : new int[] {0, 4, -1}) {
+            assertThatThrownBy(() -> rewardService.grantRankingReward(MEMBER, rank, 70L))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        verify(ruleRepository, never()).findByCodeAndActiveTrue(org.mockito.ArgumentMatchers.anyString());
+        verify(memberService, never()).lockBalance(anyLong());
+    }
 }
