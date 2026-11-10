@@ -81,7 +81,7 @@
   function mount(box, options) {
     var opts = options || {};
     var isCourse = opts.mode === 'course';
-    var st = { items: [], tab: 'all', writing: false, openId: opts.openId || null, details: {}, meId: null, loading: true, error: null };
+    var st = { items: [], tab: 'all', writing: false, openId: opts.openId || null, details: {}, deleted: {}, meId: null, loading: true, error: null };   // deleted: 이 화면에서 지운 문의 ID (늦게 온 상세 응답을 버린다)
 
     var uid = 'inq' + (++boardSeq);
     var els = {
@@ -260,6 +260,7 @@
 
     function openDetail(id, scroll) {
       return MB.api('/api/v1/inquiries/' + id).then(function (d) {
+        if (st.deleted[id]) return;   // 조회하는 사이 지운 문의면 다시 보이지 않게
         st.details[id] = d;
         st.openId = id;
         drawList();
@@ -268,6 +269,7 @@
           if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }).catch(function (err) {
+        if (st.deleted[id]) return;
         if (st.openId === id && !st.items.some(function (i) { return i.inquiryId === id; })) st.openId = null;
         MB.toast(errorText(err, '문의를 열지 못했어요.'), 'error');
         drawList();
@@ -281,6 +283,7 @@
       if (!d) {
         fill(detailBox, h('div', { class: 'inq-state', text: '문의를 불러오는 중이에요…' }));
         MB.api('/api/v1/inquiries/' + id).then(function (res) {
+          if (st.deleted[id]) return;
           st.details[id] = res;
           if (st.openId === id) fillDetail(detailBox, id);
         }).catch(function (err) {
@@ -294,6 +297,14 @@
       var mine = st.meId != null && d.writer && d.writer.memberId === st.meId;
       var answers = (d.replies || []).filter(function (r) { return r.writer && r.writer.role !== 'MEMBER'; });
       var comments = (d.replies || []).filter(function (r) { return !r.writer || r.writer.role === 'MEMBER'; });
+
+      if (d.isHidden) {
+        // 관리자가 숨긴 글: 서버가 제목·본문을 안내 문구로 바꿔 보낸다(DP-22). 화면은 내용 대신 안내만 보이고 답글을 막는다
+        fill(detailBox, h('div', { class: 'inq-waiting inq-hidden', role: 'note' }, [
+          '🔒 관리자에 의해 숨김 처리된 문의예요.', h('br'), '내용과 답변은 볼 수 없고, 댓글도 남길 수 없어요.'
+        ]), mine ? renderOwnerActions(d) : null);
+        return;
+      }
 
       fill(detailBox, 
         h('p', { class: 'inq-body', text: d.content }),
@@ -316,7 +327,7 @@
               h('span', { class: 'inq-meta', text: date(c.createdAt) })
             ]);
           }))) : null,
-        d.isHidden ? null : renderReplyBox(d, mine),
+        renderReplyBox(d, mine),
         mine ? renderOwnerActions(d) : null
       );
     }
@@ -365,6 +376,7 @@
           MB.api('/api/v1/inquiries/' + d.inquiryId, { method: 'DELETE' }).then(function () {
             MB.toast('문의를 삭제했어요.');
             st.items = st.items.filter(function (i) { return i.inquiryId !== d.inquiryId; });
+            st.deleted[d.inquiryId] = true;
             delete st.details[d.inquiryId];
             st.openId = null;
             drawList();
