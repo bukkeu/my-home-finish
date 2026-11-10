@@ -109,7 +109,7 @@ class ParticipationServiceTest {
         when(rewardService.getBalance(MEMBER_ID)).thenReturn(3_200_000L);
         SeasonParticipant previous = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
         previous.settle(1_620_000L, new BigDecimal("62.00"), 1_620_000L);
-        when(participantRepository.findFirstByMemberIdAndTradingSeasonIdNotOrderByJoinedAtDesc(MEMBER_ID, SEASON_ID))
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID))
                 .thenReturn(Optional.of(previous));
         when(participantRepository.saveAndFlush(any(SeasonParticipant.class))).thenAnswer(invocation -> {
             SeasonParticipant saved = invocation.getArgument(0);
@@ -136,6 +136,19 @@ class ParticipationServiceTest {
 
         assertThat(result.getCarryoverIn()).isZero();
         assertThat(result.getInvestAmount()).isEqualTo(500_000L);
+    }
+
+    @Test
+    void 이전_시즌이_정산_전이면_PREVIOUS_SEASON_NOT_SETTLED이고_참가_기록을_만들지_않는다() {
+        season(1);
+        SeasonParticipant unsettled = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID)).thenReturn(Optional.of(unsettled));
+
+        assertThatThrownBy(() -> service.join(SEASON_ID, MEMBER_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+        verify(participantRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(rewardService);
     }
 
     @Test
