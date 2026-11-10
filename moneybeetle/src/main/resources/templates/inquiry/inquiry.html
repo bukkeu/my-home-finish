@@ -1,5 +1,35 @@
-<!-- comment.
-    담당 : DBA ① 신아림 (#55, 문의 게시판 화면)
-    원본 디자인 : UserInquiry.dc.html
-    경로 : /user/inquiry
--->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('문의 게시판')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/inquiry.css}">
+</head>
+<body>
+<!--/* comment.
+  담당 : DBA ① 신아림 (#55, 문의 게시판 화면)
+  원본 디자인 : UserInquiry.dc.html (화면설계 5.2.6)
+  경로 : /user/inquiry, /user/inquiry/{inquiryId} (답변 알림에서 열면 그 문의를 펼친다)
+  데이터 : GET·POST /api/v1/inquiries (사이트 문의 목록·작성), GET·PATCH·DELETE /api/v1/inquiries/{id}, POST /{id}/replies
+  - 사이트 문의(분류 선택)만 이 게시판에 보인다. 강의 문의는 강의 상세의 '강의 문의' 탭에서 쓴다 (화면설계 5.2.6 구분 주의)
+  - 볼 수 있는 사람은 작성자와 관리자뿐이라(서버 검증, SP-40) 공개/비공개 선택은 두지 않는다
+*/-->
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('inquiry')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+    <main class="mb-main">
+      <div class="inq-page">
+        <section class="inq-hero">
+          <h1>문의 게시판</h1>
+          <p>답변이 등록되면 알림으로 알려 드려요. 강의 내용에 대한 질문은 강의 상세의 '강의 문의' 탭에 남기면 강사가 답해 드려요.</p>
+        </section>
+        <div class="inq-board" data-inq-board></div>
+      </div>
+    </main>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/inquiry-board.js}"></script>
+<script th:src="@{/js/inquiry.js}"></script>
+</body>
+</html>
