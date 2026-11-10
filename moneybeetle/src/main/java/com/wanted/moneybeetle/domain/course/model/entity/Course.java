@@ -144,10 +144,7 @@ public class Course {
         this.description = description;
         this.infoBaseDate = infoBaseDate;
         this.infoSource = infoSource;
-        if (isApproved()) {
-            this.status = STATUS_REVIEW;
-            this.submittedAt = now;
-        }
+        reReviewIfApproved(now);
     }
 
     /* 썸네일 주소 바꾸기 (API 77). 검수 중에는 못 바꾼다.
@@ -155,6 +152,18 @@ public class Course {
     public void changeThumbnail(String thumbnailUrl, LocalDateTime now) {
         checkEditable();
         this.thumbnailUrl = thumbnailUrl;
+        reReviewIfApproved(now);
+    }
+
+    /* 영상·요약글·테스트 퀴즈·퀴즈를 바꿨을 때 (API 78~80, #31). 검수 중에는 못 바꾼다.
+     * 허가된 강의의 내용을 바꾸면 정보 수정과 같이 다시 검수(REVIEW, SP-31) */
+    public void markContentChanged(LocalDateTime now) {
+        checkEditable();
+        reReviewIfApproved(now);
+    }
+
+    /* 허가된 강의를 고치면 다시 검수 → 허가 전까지 사용자에게 보이지 않는다 (SP-31) */
+    private void reReviewIfApproved(LocalDateTime now) {
         if (isApproved()) {
             this.status = STATUS_REVIEW;
             this.submittedAt = now;

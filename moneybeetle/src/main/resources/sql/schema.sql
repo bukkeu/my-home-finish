@@ -542,7 +542,7 @@ CREATE TABLE IF NOT EXISTS `quiz_choice` (
 CREATE TABLE IF NOT EXISTS `quiz_question` (
                                                `quiz_question_id` bigint NOT NULL AUTO_INCREMENT COMMENT '문항 ID',
                                                `course_id` bigint NOT NULL COMMENT '강의',
-                                               `quiz_type` varchar(10) NOT NULL COMMENT 'TEST 테스트 퀴즈 / MAIN 퀴즈',
+                                               `quiz_type` varchar(10) NOT NULL COMMENT 'TEST 테스트 퀴즈 / MAIN 퀴즈 / TEST_OLD·MAIN_OLD 보관한 문항(푼 기록이 있어 수정·삭제 대신 보관)',
     `question_type` varchar(10) NOT NULL COMMENT 'OX / CHOICE',
     `content` varchar(500) NOT NULL COMMENT '문제',
     `explanation` text NOT NULL COMMENT '해설',
