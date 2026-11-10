@@ -9,3 +9,7 @@
 
 # 사용자 업로드 파일 (FileStorageService, file.upload-dir)
 uploads/
+# 단, 시연용 샘플 영상(moneybeetle/uploads/videos, 시드 lesson.video_url)은 저장소에 둔다 (#73)
+!moneybeetle/uploads/
+moneybeetle/uploads/*
+!moneybeetle/uploads/videos/

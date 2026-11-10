@@ -60,7 +60,7 @@
 | `KAKAO_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
-| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결) | | `./uploads` | DP-32·33 |
+| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
 - 간편 로그인은 요구사항 우선순위가 **하**입니다. 구현 전에는 `GOOGLE_*`, `KAKAO_*`를 비워 둬도 됩니다. 단, 값이 비어 있는 채로 로그인 등록 설정을 켜면 서버가 뜨지 않을 수 있으므로, 구현할 때 "키가 없으면 해당 로그인을 끄는" 처리를 함께 넣습니다.
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
