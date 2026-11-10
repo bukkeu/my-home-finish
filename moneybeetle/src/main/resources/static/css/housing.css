@@ -4,7 +4,8 @@
 *  공통 토큰(var(--color-*))과 .btn · .tag · .card 는 common.css 것을 쓰고, 이 화면에만 쓰는 것은 hs- 로 시작한다
 *  */
 
-.hs { display: flex; flex-direction: column; gap: 24px; max-width: 1280px; box-sizing: border-box; }
+/* 폭 상한을 두지 않는다 : 넓은 화면(100% 배율)에서도 다른 화면처럼 본문을 꽉 채운다 */
+.hs { display: flex; flex-direction: column; gap: 24px; box-sizing: border-box; }
 .hs h1, .hs h2, .hs h3 { margin: 0; }
 .hs h2 { font-size: 24px; }
 .hs h3 { font-size: 18px; }
