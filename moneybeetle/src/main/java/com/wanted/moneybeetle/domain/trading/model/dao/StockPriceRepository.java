@@ -14,6 +14,9 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, Long> {
     /** 그 시즌·턴의 모든 종목 가격 (#24 시세) */
     List<StockPrice> findByTradingSeasonIdAndTurnNo(Long tradingSeasonId, int turnNo);
 
+    /** 시즌의 가격표 전체 (30종목 x 12턴) */
+    List<StockPrice> findAllByTradingSeasonId(Long tradingSeasonId);
+
     /** 한 종목의 1턴부터 주어진 턴까지 가격 흐름 (#24 종목 상세) */
     List<StockPrice> findByTradingSeasonIdAndStockIdAndTurnNoLessThanEqualOrderByTurnNoAsc(
             Long tradingSeasonId, Long stockId, int turnNo);
