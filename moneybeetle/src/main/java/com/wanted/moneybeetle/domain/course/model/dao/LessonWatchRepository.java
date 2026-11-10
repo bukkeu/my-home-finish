@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /* comment.
@@ -17,6 +18,26 @@ import java.util.Optional;
 public interface LessonWatchRepository extends JpaRepository<LessonWatch, Long> {
 
     Optional<LessonWatch> findByMemberIdAndLessonId(Long memberId, Long lessonId);
+
+    /* 강의 상세: 이 회원이 이 영상들 중 끝까지 본 영상 (#52, 목차 완료 표시) */
+    List<LessonWatch> findByMemberIdAndLessonIdInAndIsCompletedTrue(Long memberId, Collection<Long> lessonIds);
+
+    /* 강의 목록: 강의별로 끝까지 본 영상 수를 한 번에 (#52, 진행률) */
+    @Query("""
+            select l.courseId as courseId, count(w) as watched
+            from LessonWatch w, Lesson l
+            where w.lessonId = l.lessonId
+              and w.memberId = :memberId and w.isCompleted = true
+              and l.courseId in :courseIds
+            group by l.courseId
+            """)
+    List<CourseWatchedCount> countCompletedByCourse(@Param("memberId") Long memberId,
+                                                    @Param("courseIds") Collection<Long> courseIds);
+
+    interface CourseWatchedCount {
+        Long getCourseId();
+        long getWatched();
+    }
 
     /* 퀴즈 잠금 해제 확인 (API 41·42): 이 영상들 중 끝까지 본 수 */
     long countByMemberIdAndLessonIdInAndIsCompletedTrue(Long memberId, Collection<Long> lessonIds);

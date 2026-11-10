@@ -1023,7 +1023,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, SP-31 |
-| 설명 | 허가 + 공개 강의만. 소주제별 조회. |
+| 설명 | 허가 + 공개 강의만. 상위 카테고리 ID를 주면 그 아래 소주제 강의까지 모두. 강의 화면(#52)이 `categoryId`(소주제)로 묶고, 내 학습 상태(`status`)·끝까지 본 영상 수(`watchedLessonCount`)로 진행률을 그린다. 강사 이름은 강사 정보의 표시 이름. |
 
 **Request**
 
@@ -1034,9 +1034,10 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "items": [
-    { "courseId": 2, "title": "ETF로 시작하는 분산 투자", "instructorName": "박서연", "thumbnailUrl": null, "lessonCount": 3, "status": "IN_PROGRESS", "isScrapped": false }
+    { "courseId": 2, "categoryId": 15, "title": "ETF로 시작하는 분산 투자", "instructorName": "박서연", "thumbnailUrl": null,
+      "lessonCount": 3, "watchedLessonCount": 1, "status": "IN_PROGRESS", "infoBaseDate": null, "isScrapped": false }
   ],
-  "page": 0, "size": 20, "totalElements": 4
+  "page": 0, "size": 20, "totalElements": 4, "totalPages": 1
 }
 ```
 
@@ -1048,7 +1049,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-02, LRN-04, SP-41 |
-| 설명 | 강의 소개, 영상 목록(최대 3개)과 요약글, 진행 상태, 스크랩 여부. |
+| 설명 | 강의 소개, 영상 목록(최대 3개)과 요약글, 내 진행 상태(`progressStatus`·`lastLessonId`, 안 들었으면 null), 영상별 시청 완료(`isCompleted`, 서버가 정한 완료 #20), 스크랩 여부. 이어보기 위치는 영상 재생 정보(API 32)의 `positionSeconds`. 퀴즈 정보는 퀴즈 API(39·41)에서 받는다(#52에서 응답 모양을 구현에 맞춤). |
 
 **Request**
 
@@ -1059,15 +1060,14 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "courseId": 7, "title": "청약통장 기초와 가점 계산", "description": "...",
-  "category": { "categoryId": 21, "name": "청약", "parentName": "부동산" },
-  "instructor": { "memberId": 31, "displayName": "박서연" },
+  "categoryId": 21, "categoryName": "청약",
+  "instructorId": 31, "instructorName": "박서연",
   "infoBaseDate": "2026-10-01", "infoSource": "청약홈",
   "lessons": [
     { "lessonId": 20, "sortOrder": 1, "title": "청약통장이 뭐예요?", "durationSeconds": 480, "summary": "...", "isCompleted": true },
     { "lessonId": 21, "sortOrder": 2, "title": "가점은 어떻게 계산할까", "durationSeconds": 840, "summary": "...", "isCompleted": false }
   ],
-  "progress": { "status": "IN_PROGRESS", "lastLessonId": 21, "lastPositionSeconds": 312, "completedAt": null },
-  "quiz": { "testQuizCount": 5, "quizCount": 10, "passScore": 70, "isQuizOpen": false },
+  "progressStatus": "IN_PROGRESS", "lastLessonId": 21,
   "isScrapped": true
 }
 ```
@@ -1082,7 +1082,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-03, LRN-05 |
-| 설명 | 재생 주소와 이어보기 위치. |
+| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
 
 **Request**
 
@@ -1091,7 +1091,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 **Response**
 
 ```json
-{ "lessonId": 21, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "positionSeconds": 312 }
+{ "lessonId": 21, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "positionSeconds": 312, "watchedSeconds": 300 }
 ```
 
 **Error**: `COURSE_NOT_PUBLIC`, `LESSON_NOT_FOUND`
