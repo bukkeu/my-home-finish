@@ -3075,7 +3075,7 @@ email=admin@moneybeetle.kr&password=...
 { "currentTurn": 6 }
 ```
 
-**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`
+**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`, `LAST_TURN_REACHED`(12턴 이후), `INVALID_STATUS_TRANSITION`(진행 중이 아닐 때)
 
 #### 121. 분야 목록
 
@@ -3739,6 +3739,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
 | 모의투자 | `STALE_TURN_PRICE` | 409 | 가격이 바뀌었어요. 현재 가격을 확인해 주세요 |
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
+| 모의투자 | `LAST_TURN_REACHED` | 409 | 마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
 | 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
