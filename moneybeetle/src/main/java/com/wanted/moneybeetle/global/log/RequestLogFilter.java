@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 *   - 요청마다 요청 ID 를 정해 MDC("requestId")에 넣는다 → 이 요청 동안 남는 모든 로그 줄에 같은 ID 가 붙는다
 *     (콘솔은 logging.pattern.correlation, local 의 파일 로그는 JSON 필드로)
 *   - 응답 헤더 X-Request-Id 로도 돌려준다. 화면에서 오류를 신고할 때 이 ID 로 서버 로그를 찾을 수 있다
+*   - 처리되지 않은 예외가 밖으로 나가면 "GET … 500 12ms 예외=IOException" (WARN, 예외 메시지는 쓰지 않음)
 *   - 요청이 끝나면 한 줄 : "GET /api/v1/housing/complexes 200 12ms" (+ MDC 의 회원 ID). 콘솔에는 "[요청 ID|m=회원 ID] …" 로 찍힌다
 *   - 비밀값을 남기지 않는다 : 경로만 남기고 쿼리(?token= 등)·본문·파라미터 값은 쓰지 않는다
 *   - 보안 필터보다 먼저(가장 바깥에서) 돈다 → 로그인 처리·권한 거절 로그에도 요청 ID 가 붙는다
@@ -52,11 +53,15 @@ public class RequestLogFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String requestId = resolveRequestId(request.getHeader(HEADER));
         long start = System.nanoTime();
+        Throwable failure = null;
         try {
             // MDC 를 try 안에서 넣어, 어느 줄에서 예외가 나도 finally 의 정리가 항상 돈다 (스레드가 재사용돼도 값이 남지 않게)
             MDC.put(MDC_REQUEST_ID, requestId);
             response.setHeader(HEADER, requestId);
             chain.doFilter(request, response);
+        } catch (IOException | ServletException | RuntimeException | Error e) {
+            failure = e;                                                 // 기록만 하고 그대로 다시 던진다
+            throw e;
         } finally {
             String path = request.getRequestURI();                       // 쿼리 문자열은 포함하지 않는다
             if (!isStaticResource(path)) {
@@ -65,7 +70,14 @@ public class RequestLogFilter extends OncePerRequestFilter {
                     MDC.put(MDC_MEMBER_ID, String.valueOf(memberId));
                 }
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-                log.info("{} {} {} {}ms", request.getMethod(), path, response.getStatus(), elapsedMs);
+                if (failure == null) {
+                    log.info("{} {} {} {}ms", request.getMethod(), path, response.getStatus(), elapsedMs);
+                } else {
+                    // 처리되지 않고 밖으로 나간 예외 : 응답 상태는 아직 200 일 수 있어 실패(500)로 적고 예외 종류를 남긴다
+                    // (예외 메시지는 비밀값이 섞일 수 있어 쓰지 않는다. 자세한 원인은 GlobalExceptionHandler·서버 로그)
+                    log.warn("{} {} 500 {}ms 예외={}", request.getMethod(), path, elapsedMs,
+                            failure.getClass().getSimpleName());
+                }
             }
             MDC.remove(MDC_MEMBER_ID);
             MDC.remove(MDC_REQUEST_ID);

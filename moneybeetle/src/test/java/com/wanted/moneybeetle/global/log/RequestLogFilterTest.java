@@ -134,7 +134,7 @@ class RequestLogFilterTest {
     }
 
     @Test
-    void 로그인한_요청에서_예외가_나도_요청_로그를_남기고_MDC_를_비운다() {
+    void 로그인한_요청에서_예외가_나면_실패로_기록하고_MDC_를_비운다() {
         AuthDetails details = mock(AuthDetails.class);
         when(details.getMemberId()).thenReturn(8L);
         SecurityContextHolder.getContext().setAuthentication(
@@ -149,8 +149,13 @@ class RequestLogFilterTest {
             throw new IOException("연결 끊김");
         })).isInstanceOf(IOException.class);
 
-        assertThat(requestLines()).singleElement().satisfies(e -> assertThat(e.getMDCPropertyMap())
-                .containsEntry("requestId", "front-1234").containsEntry("memberId", "8"));
+        assertThat(requestLines()).singleElement().satisfies(e -> {
+            assertThat(e.getMDCPropertyMap()).containsEntry("requestId", "front-1234").containsEntry("memberId", "8");
+            // 응답 상태(아직 200)를 그대로 적지 않고 실패(500)와 예외 종류로 남긴다. 예외 메시지는 남기지 않는다
+            assertThat(e.getFormattedMessage()).startsWith("GET /api/v1/test/echo 500 ")
+                    .contains("예외=IOException").doesNotContain(" 200 ", "연결 끊김");
+            assertThat(e.getLevel().toString()).isEqualTo("WARN");
+        });
         assertThat(MDC.get(RequestLogFilter.MDC_REQUEST_ID)).isNull();                        // 예외 뒤에는 비워진다
         assertThat(MDC.get(RequestLogFilter.MDC_MEMBER_ID)).isNull();
     }
