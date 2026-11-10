@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   - grantRankingReward(memberId, rank, awardId)     : 시즌 랭킹 1~3위 캐시 지급 (SP-64) [호출: 이재성 랭킹 공개]
 *   - spendCash(memberId, sourceType, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]
 *   - adjustByAdmin(adminId, memberId, give, amt, why): 관리자 수동 지급·회수 [호출: growth.CashAdjustService, 이슈 #39]
-*   - getBalance(memberId)                            : 캐시 잔액 조회
+*   - getBalance(memberId) / getBalanceSnapshot       : 회원 캐시 잔액·성장 정보 조회
 *   - findCashHistories / findExpHistories            : 내역 조회 (API 22, 23)
 *
 *   진행 상태 (이슈 #10)
@@ -335,6 +335,11 @@ public class RewardService {
     /** 회원의 현재 캐시 잔액을 조회한다. 없는 회원이면 MEMBER_NOT_FOUND */
     public long getBalance(Long memberId) {
         return memberService.getBalance(memberId).getCash();
+    }
+
+    /** 회원의 캐시·경험치·레벨 현재 값을 조회한다 (성장 내역 API 응답용). */
+    public MemberBalanceDTO getBalanceSnapshot(Long memberId) {
+        return memberService.getBalance(memberId);
     }
 
     /**
