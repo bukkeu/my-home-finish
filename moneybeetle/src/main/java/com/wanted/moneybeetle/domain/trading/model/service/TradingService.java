@@ -213,7 +213,7 @@ public class TradingService {
      */
     public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
         // 관리자가 휴장(HOLIDAY)으로 바꾸지 않았어도 서울 기준 일요일이면 휴장일이다 (SP-50, 휴장일에는 턴이 잠긴다)
-        boolean holiday = season.isHoliday() || TradingSeason.isClosedDay(LocalDate.now(clock));
+        boolean holiday = season.isHoliday() || TradingSeason.isClosedDay(today());
         if (season.isLastTurn()) {
             return new NextTurnCheckDTO(false, null, List.of(), 0, holiday);
         }
@@ -242,13 +242,19 @@ public class TradingService {
         return seasonRepository.findFirstByStatusInOrderByStartDateDesc(
                         List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
                 .map(season -> {
-                    LocalDate today = LocalDate.now(clock);
+                    LocalDate today = today();
                     long todayOrders = orderRepository.countOrdersBetween(season.getTradingSeasonId(),
                             today.atStartOfDay(), today.plusDays(1).atStartOfDay());
                     NextTurnCheckDTO check = checkNextTurn(season);
+                    // 다음 턴이 있는데 그 턴 뉴스가 하나도 없으면 "뉴스 누락" 1건
+                    int missingNews = check.nextTurn() != null && check.newsCount() == 0 ? 1 : 0;
                     return new TradingDashboardSummaryDTO(season.getTradingSeasonId(), todayOrders, check.ready(),
-                            new TradingDashboardSummaryDTO.Missing(check.missingPrices().size(),
-                                    check.nextTurn() != null && check.newsCount() == 0 ? 1 : 0));
+                            new TradingDashboardSummaryDTO.Missing(check.missingPrices().size(), missingNews));
                 });
+    }
+
+    /** 오늘 날짜 (서울 시계 Clock 기준, TimeConfig) */
+    private LocalDate today() {
+        return LocalDate.now(clock);
     }
 }
