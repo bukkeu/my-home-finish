@@ -488,7 +488,7 @@ class RewardServiceGrantTest {
         givenBalance(2, 200, 1_000);
         when(memberService.addReward(MEMBER, 0L, 30)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 230, 1_000));
 
-        RewardResultDTO result = rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3);
+        RewardResultDTO result = rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3).orElseThrow();
 
         assertThat(result.getGrantedExp()).isEqualTo(30);
         assertThat(result.getGrantedCash()).isZero();
@@ -509,14 +509,89 @@ class RewardServiceGrantTest {
     }
 
     @Test
-    @DisplayName("findActiveExp: 사용 중인 규칙의 경험치, 없으면 0")
-    void findActiveExp() {
-        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
-        when(ruleRepository.findByCodeAndActiveTrue(RewardRule.QUIZ_PERFECT)).thenReturn(Optional.empty());
+    @DisplayName("지급할 규칙이 없으면(꺼짐·없음) 예외 없이 빈 결과를 돌려주고 회원 행도 잠그지 않는다")
+    void multiplierGrantSkipsWhenRuleMissing() {
+        when(ruleRepository.findByCodeAndActiveTrue(RewardRule.ATTENDANCE_DAILY)).thenReturn(Optional.empty());
 
-        assertThat(rewardService.findActiveExp(RewardRule.ATTENDANCE_DAILY)).isEqualTo(10);
-        assertThat(rewardService.findActiveExp(RewardRule.QUIZ_PERFECT)).isZero();
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 2)).isEmpty();
+
+        verify(memberService, never()).lockBalance(anyLong());
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    @DisplayName("경험치 기본값이 0 이면 빈 결과를 돌려주고 아무것도 바꾸지 않는다 (규칙은 한 번만 읽는다)")
+    void multiplierGrantSkipsWhenExpIsZero() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 0);
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3)).isEmpty();
+
+        verify(ruleRepository, org.mockito.Mockito.times(1)).findByCodeAndActiveTrue(RewardRule.ATTENDANCE_DAILY);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("규칙은 한 번만 읽는다 (지급 중에 다시 조회하지 않는다)")
+    void multiplierGrantReadsRuleOnce() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 20)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 220, 1_000));
+
+        rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 2);
+
+        verify(ruleRepository, org.mockito.Mockito.times(1)).findByCodeAndActiveTrue(RewardRule.ATTENDANCE_DAILY);
+    }
+
+    @Test
+    @DisplayName("출석 경험치는 하루 50 XP 를 넘지 않는다: 기본값 10 × 5 = 50 은 그대로, 기본값을 20 으로 바꿔도 ×5 는 50 으로 자른다 (SP-22)")
+    void attendanceExpIsCappedAtFifty() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 50)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 250, 1_000));
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 5).orElseThrow().getGrantedExp())
+                .isEqualTo(50);
+
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 20);
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 501L, 5).orElseThrow().getGrantedExp())
+                .isEqualTo(50);   // 20 × 5 = 100 → 50
+    }
+
+    @Test
+    @DisplayName("상한 아래의 값은 자르지 않는다 (기본값 20 × 2 = 40)")
+    void attendanceExpBelowCapIsKept() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 20);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 40)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 240, 1_000));
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 2).orElseThrow().getGrantedExp())
+                .isEqualTo(40);
+    }
+
+    @Test
+    @DisplayName("기본값이 아주 커도 곱셈이 넘치지 않고(long 계산) 상한 50 으로 자른다")
+    void attendanceExpDoesNotOverflow() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 2_000_000_000);   // 2,000,000,000 × 5 는 int 범위를 넘는다
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 50)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 250, 1_000));
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 5).orElseThrow().getGrantedExp())
+                .isEqualTo(50);
+    }
+
+    @Test
+    @DisplayName("상한은 출석 경험치에만 적용한다: 다른 규칙(여기서는 경험치 40)은 배수를 곱해도 50 으로 자르지 않고, 배수 없는 기존 grant 도 그대로다")
+    void capAppliesOnlyToAttendance() {
+        givenRule(RewardRule.COURSE_COMPLETE, 0, 40);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 80)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 280, 1_000));
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.COURSE_COMPLETE, 15L, 2).orElseThrow().getGrantedExp())
+                .isEqualTo(80);   // 40 × 2 = 80 은 출석 상한(50)보다 크지만 다른 규칙이라 자르지 않는다
+
+        when(memberService.addReward(MEMBER, 0L, 40)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 240, 1_000));
+        assertThat(rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 16L).getGrantedExp()).isEqualTo(40);
+    }
+
+
 
     @Test
     @DisplayName("사용 중인 보상 규칙이 없으면 REWARD_RULE_NOT_FOUND 이고 아무것도 바꾸지 않는다")

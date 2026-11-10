@@ -25,9 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 *     (나중에 로그인에 연결했을 때) 로그인이 실패하지 않게 하려는 것이다. 이 사이에 규칙이 꺼지는 아주 짧은 경우만 지급 예외가 남는다.
 *   - 출석 경험치(#205, SP-22): 출석한 날마다 보상 규칙 ATTENDANCE_DAILY 의 기본값(10 XP)에 연속 일수 구간 배수를 곱해 준다.
 *     배수 = min(EXP_MAX_MULTIPLIER, ceil(연속 일수 / EXP_TIER_DAYS)) 라서 1~5일째 10, 6~10일째 20, ... 21일째부터 50 XP(하루 상한)다.
-*     하루라도 빠지면 연속 일수가 1로 돌아가 다시 10 XP 부터다. 기본값은 규칙 표에서 읽어 관리자가 바꿀 수 있고, 구간(5일)·상한(5배)은 코드 상수다.
+*     하루라도 빠지면 연속 일수가 1로 돌아가 다시 10 XP 부터다. 기본값은 규칙 표에서 읽어 관리자가 바꿀 수 있고, 구간(5일)·배수 상한(5배)은 코드 상수다.
+*     기본값을 바꿔도 하루 최대 50 XP 는 넘지 않는다 (RewardService.ATTENDANCE_DAILY_EXP_CAP, SP-22).
 *     연속 출석 캐시와는 별개로 함께 준다. 원인 ID = 출석 ID 라서 같은 날 두 번 주지 않고, 레벨업·해금 알림은 RewardService 가 처리한다.
-*     규칙이 꺼져 있으면(기본값 0) 경험치만 건너뛰고 출석은 기록한다 (캐시 규칙과 같은 이유).
+*     규칙이 꺼져 있으면(기본값 0) 경험치만 건너뛰고 출석은 기록한다 (캐시 규칙과 같은 이유). 하루 상한 50 XP 는 RewardService 가 적용한다.
 *   - '오늘'은 공통 Clock(서울)으로 판단한다 (DP-42)
 *  */
 @Service
@@ -69,11 +70,10 @@ public class AttendanceService {
                     .grant(memberId, RewardRule.ATTENDANCE_STREAK, attendance.getAttendanceId())
                     .getGrantedCash();
         }
-        // 출석 경험치: 규칙이 꺼져 있으면(기본값 0) 건너뛴다. 원인 ID = 출석 ID 라서 같은 날 두 번 지급되지 않는다 (SP-18)
-        if (rewardService.findActiveExp(RewardRule.ATTENDANCE_DAILY) > 0) {
-            rewardService.grantWithExpMultiplier(memberId, RewardRule.ATTENDANCE_DAILY,
-                    attendance.getAttendanceId(), expMultiplier(state.getStreak()));
-        }
+        // 출석 경험치: RewardService 가 규칙을 한 번만 읽고, 규칙이 꺼져 있거나 기본값이 0 이면 아무것도 하지 않고 비어 있는 결과를 돌려준다.
+        // 그래서 규칙이 꺼진 경우에도 예외가 없어 출석 기록이 되돌려지지 않는다. 원인 ID = 출석 ID 라서 같은 날 두 번 지급되지 않는다 (SP-18)
+        rewardService.grantWithExpMultiplier(memberId, RewardRule.ATTENDANCE_DAILY,
+                attendance.getAttendanceId(), expMultiplier(state.getStreak()));
         return AttendanceResultDTO.checked(state.getStreak(), rewardCash);
     }
 
