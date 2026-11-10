@@ -101,7 +101,7 @@ public class IdentityVerificationService implements SignupIdentityVerifier {
             } else {
                 session.removeAttribute(SESSION_KEY);
             }
-            lastSentAt.remove(email);
+            lastSentAt.remove(email, now);   // 이 요청이 기록한 값일 때만 지운다 (같은 이메일의 동시 요청이 새로 남긴 기록은 유지)
             log.warn("본인인증 메일 대기열이 가득 차 요청을 건너뛰었어요.");
             throw new BusinessException(MemberErrorCode.IDENTITY_MAIL_UNAVAILABLE);
         }

@@ -149,8 +149,9 @@ class SocialLoginServiceTest {
 
         service.beginReauth(7L, session);
         clock.advance(SocialLoginService.REAUTH_VALID);
-        assertThat(service.isReauthPending(session)).isFalse();
-        assertCode(() -> service.completeReauth(profile, session), MemberErrorCode.OAUTH_SESSION_EXPIRED);
+        assertThat(service.isReauthPending(session)).isTrue();   // 만료돼도 대기 상태는 남아, 일반 로그인으로 처리되지 않고
+        assertCode(() -> service.completeReauth(profile, session), MemberErrorCode.OAUTH_SESSION_EXPIRED);   // 여기서 만료 오류로 막힌다
+        assertThat(service.isReauthPending(session)).isFalse();   // 확인을 한 번 시도하면 대기 상태는 지워진다
     }
 
     @Test

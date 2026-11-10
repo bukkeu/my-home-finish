@@ -116,10 +116,13 @@ public class SocialLoginService implements SocialReauthVerifier {
         return session != null && session.getAttribute(REAUTH_PENDING_KEY) instanceof Reauth;
     }
 
-    /** 이 세션이 본인 확인을 하러 간 상태인가 (제공자에서 돌아온 로그인을 일반 로그인이 아니라 본인 확인으로 처리해야 하는지) */
+    /**
+     * 이 세션이 본인 확인을 하러 간 상태인가 (제공자에서 돌아온 로그인을 일반 로그인이 아니라 본인 확인으로 처리해야 하는지).
+     * 시간이 지났어도 시작한 상태가 남아 있으면 true 다. 그래야 만료된 확인이 일반 로그인으로 처리되지 않고 completeReauth 가
+     * OAUTH_SESSION_EXPIRED 로 막는다.
+     */
     public boolean isReauthPending(HttpSession session) {
-        return session != null && session.getAttribute(REAUTH_PENDING_KEY) instanceof Reauth pending
-                && clock.instant().isBefore(pending.expiresAt());
+        return hasPendingReauth(session);
     }
 
     /**

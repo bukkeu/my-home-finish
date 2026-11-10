@@ -25,7 +25,9 @@ import org.springframework.web.context.WebApplicationContext;
 *   - 키가 없는 경우(서버가 그대로 뜨고 OAuth 주소가 열리지 않음)는 SecurityConfigTest 등 기존 테스트가 OAuthClientConfig 없이 돌아 확인한다.
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, OAuthClientConfig.class},
-        properties = {"GOOGLE_CLIENT_ID=test-google-id", "GOOGLE_CLIENT_SECRET=test-google-secret"})
+        properties = {"GOOGLE_CLIENT_ID=test-google-id", "GOOGLE_CLIENT_SECRET=test-google-secret",
+                // 개발 환경·CI 에 카카오 키가 설정돼 있어도 영향받지 않게 비워 둔다
+                "KAKAO_CLIENT_ID=", "KAKAO_CLIENT_SECRET="})
 @MockSecurityServices
 class OAuth2LoginHttpTest {
 

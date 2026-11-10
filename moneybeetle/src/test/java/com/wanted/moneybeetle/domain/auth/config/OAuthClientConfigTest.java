@@ -15,7 +15,10 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 *  */
 class OAuthClientConfigTest {
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner().withUserConfiguration(OAuthClientConfig.class);
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withUserConfiguration(OAuthClientConfig.class)
+            // 개발 환경·CI 의 OAuth 환경변수가 테스트에 영향을 주지 않게 기본값을 비워 두고, 각 테스트가 필요한 값만 덮어쓴다
+            .withPropertyValues("GOOGLE_CLIENT_ID=", "GOOGLE_CLIENT_SECRET=", "KAKAO_CLIENT_ID=", "KAKAO_CLIENT_SECRET=");
 
     @Test
     @DisplayName("키가 하나도 없으면 등록 정보(빈)를 만들지 않는다 (서버는 그대로 뜬다)")

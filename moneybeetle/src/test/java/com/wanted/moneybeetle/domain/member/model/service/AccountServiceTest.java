@@ -236,6 +236,16 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("비밀번호가 있는 회원이 빈 비밀번호를 보내거나 생략하면 PASSWORD_WRONG 이고 계정은 그대로다")
+    void blankOrMissingPasswordIsRejected() {
+        assertThatThrownBy(() -> service.withdraw(1L, "", session))
+                .satisfies(e -> assertCode(e, MemberErrorCode.PASSWORD_WRONG));
+        assertThatThrownBy(() -> service.withdraw(1L, null, session))
+                .satisfies(e -> assertCode(e, MemberErrorCode.PASSWORD_WRONG));
+        assertThat(member.isActive()).isTrue();
+    }
+
+    @Test
     @DisplayName("비밀번호가 없는 간편 로그인 회원은 다시 로그인으로 본인 확인을 마친 세션이면 탈퇴한다 (비밀번호는 보지 않는다)")
     void socialMemberWithdrawsAfterReauth() {
         ReflectionTestUtils.setField(member, "passwordHash", null);
