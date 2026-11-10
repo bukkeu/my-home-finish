@@ -19,7 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 *   담당 : PM (모의투자)
 *   관리자 정산·랭킹 공개·보상·통계 (#46) : POST /seasons/{id}/settle, /rankings/publish, /rewards, GET /seasons/{id}/statistics
 *   (참가자 목록·상세·랭킹 미리보기는 AdminParticipantController, #45)
-*   권한 : /api/v1/admin/** 는 SecurityConfig 에서 ADMIN 만. POST 는 Idempotency-Key 로 중복 요청을 막는다
+*   권한 : /api/v1/admin/** 는 SecurityConfig 에서 ADMIN 만.
+*   중복 요청 : SettlementService 가 시즌 행을 잠그고 상태·기존 수상 기록을 확인해 한 번만 처리한다
 *   화면 : /admin/trading-management
 *  */
 @RestController
