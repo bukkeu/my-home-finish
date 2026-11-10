@@ -1,9 +1,11 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.StockPrice;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 
 /* comment.
 *   담당 : PM (모의투자)
@@ -22,5 +24,6 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, Long> {
             Long tradingSeasonId, Long stockId, int turnNo);
 
     /** 그 시즌·턴·종목의 가격 한 건 (주문 체결가 #25) */
+    @Lock(LockModeType.PESSIMISTIC_READ)
     Optional<StockPrice> findByTradingSeasonIdAndStockIdAndTurnNo(Long tradingSeasonId, Long stockId, int turnNo);
 }

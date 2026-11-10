@@ -23,6 +23,8 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradeReason;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -62,6 +64,7 @@ public class OrderService {
     private final HoldingRepository holdingRepository;
     private final TradeOrderRepository orderRepository;
     private final TradeReasonRepository reasonRepository;
+    private final Clock clock;
 
     /** API 59 매매 이유 선택지 */
     public List<TradeReasonDTO> findTradeReasons() {
@@ -89,7 +92,7 @@ public class OrderService {
 
         boolean buy = TradeOrder.TYPE_BUY.equals(request.orderType());
         Holding holding = holdingRepository
-                .findBySeasonParticipantIdAndStockId(participant.getSeasonParticipantId(), stock.getStockId())
+                .findForUpdateBySeasonParticipantIdAndStockId(participant.getSeasonParticipantId(), stock.getStockId())
                 .orElse(null);
         long amount = (long) request.quantity() * price;
         TradeOrder order;
@@ -176,7 +179,7 @@ public class OrderService {
         if (season.isSettlingOrEnded()) {
             throw new BusinessException(TradingErrorCode.SEASON_CLOSED);
         }
-        if (season.isHoliday()) {
+        if (season.isHoliday() || TradingSeason.isClosedDay(LocalDate.now(clock))) {
             throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
         }
         if (season.getCurrentTurn() < 1) {
