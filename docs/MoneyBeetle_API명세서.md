@@ -2693,7 +2693,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 역할·상태·키워드 검색. |
+| 설명 | 역할·상태·키워드 검색(#37). 키워드의 `%`·`_`는 글자 그대로 찾는다. 관리자 계정은 빼고, role(MEMBER·INSTRUCTOR)·status(ACTIVE·SUSPENDED·WITHDRAWN)·keyword(닉네임·이메일 일부) 모두 선택, 모르는 값은 필터 없이. 최근 가입 순, 기본 20개(최대 50). 목록 응답 형식(1-3). `role`은 회원 정보상 역할이라 승인 전 강사도 INSTRUCTOR로 보인다. |
 
 **Request**
 
@@ -2713,7 +2713,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-06, DP-43 |
-| 설명 | 정지 시 사유 필수. |
+| 설명 | 정지 시 사유 필수(200자). status는 ACTIVE·SUSPENDED만. 정지하면 로그인할 수 없고(`ACCOUNT_SUSPENDED`), 이미 로그인한 세션도 다음 요청에서 끊긴다. 해제하면 정지 사유를 지운다. 관리자·탈퇴 계정은 바꿀 수 없다. 같은 상태로 바꾸면 아무것도 하지 않는다. admin_log 기록(MEMBER_SUSPEND·MEMBER_ACTIVATE). |
 
 **Request**
 
@@ -2725,7 +2725,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
 
 #### 103. 강사 권한 부여·회수
 
@@ -2735,7 +2735,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-07 |
-| 설명 | INSTRUCTOR ↔︎ MEMBER. |
+| 설명 | INSTRUCTOR ↔︎ MEMBER. INSTRUCTOR로 바꾸면 강사 정보를 승인(없으면 닉네임을 표시 이름으로 만들어 승인)해서 다음 로그인부터 강사 권한이 생긴다(SP-07). MEMBER로 바꾸면 강사 정보를 회수(REVOKED)한다(만든 강의는 남고 강사 화면·API만 막힘). 회수하면 이미 로그인해 둔 강사 세션도 다음 요청에서 끊기고(다시 로그인하면 MEMBER), 부여는 기존 세션을 건드리지 않아 다음 로그인부터 적용된다. 관리자·탈퇴 계정은 바꿀 수 없다. admin_log 기록(MEMBER_ROLE_CHANGE). |
 
 **Request**
 
@@ -2747,6 +2747,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
+
 #### 104. 강사 가입 신청 목록
 
 | 항목 | 내용 |
@@ -2755,7 +2757,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인 대기 강사. |
+| 설명 | 승인 대기 강사. status(PENDING·APPROVED·REVOKED, 기본 PENDING), 탈퇴 회원 제외, 신청 순, 기본 20개(최대 50). 실제로 강사 가입을 신청한(API 12) 강사만 나오고, 관리자가 직접 권한을 준 강사(API 103)는 빠진다. `createdAt`은 신청 시각(instructor_profile.applied_at), 그 순서로 정렬. 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -2775,7 +2777,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인하면 role=INSTRUCTOR. 거절은 /reject. |
+| 설명 | 승인 대기(PENDING) 신청만 승인. 승인하면 강사 정보 APPROVED(승인 관리자·시각 기록) + role=INSTRUCTOR → 다음 로그인부터 강사 권한(SP-07). admin_log 기록(INSTRUCTOR_APPROVE). 거절(/reject)은 아직 없다(필요하면 후속 이슈). |
 
 **Request**
 
@@ -2784,6 +2786,8 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+
+**Error**: `APPLICATION_NOT_FOUND`(404), `APPLICATION_NOT_PENDING`(409), `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`
 
 #### 106. 문의 게시판 관리
 

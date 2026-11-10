@@ -42,6 +42,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -94,7 +95,8 @@ class OrderServiceTest {
             season.advanceTurn();
         }
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
-        when(seasonRepository.findTopByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
+        when(seasonRepository.findSeasonIdsByStatusIn(anyList(), any(Pageable.class))).thenReturn(List.of(SEASON_ID));
+        when(seasonRepository.findByIdForShare(SEASON_ID)).thenReturn(Optional.of(season));
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
 
         participant = SeasonParticipant.create(SEASON_ID, MEMBER_ID, 1_000_000, 0);
@@ -126,15 +128,6 @@ class OrderServiceTest {
 
     private OrderRequestDTO order(String type, int quantity, int turnNo, Long reasonId) {
         return new OrderRequestDTO(STOCK_ID, type, quantity, turnNo, reasonId);
-    }
-
-    @Test
-    void 주문은_시즌_행을_먼저_잠근_뒤_참가자_행을_잠근다() {
-        service.placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID));
-
-        var order = inOrder(seasonRepository, participantRepository);
-        order.verify(seasonRepository).findTopByStatusInOrderByStartDateDesc(TradingService.VISIBLE_STATUSES);
-        order.verify(participantRepository).findForUpdateBySeasonAndMember(SEASON_ID, MEMBER_ID);
     }
 
     private Holding givenHolding(int quantity, int avgPrice) {
@@ -258,15 +251,37 @@ class OrderServiceTest {
 
     @Test
     void 첫_턴이_시작되기_전이거나_보이는_시즌이_없으면_NO_RUNNING_SEASON() {
-        when(seasonRepository.findTopByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
+        when(seasonRepository.findSeasonIdsByStatusIn(anyList(), any(Pageable.class))).thenReturn(List.of());
 
         assertRejected(order("BUY", 1, 5, REASON_ID), TradingErrorCode.NO_RUNNING_SEASON);
 
         TradingSeason notStarted = TradingSeason.create("시즌 8", LocalDate.of(2026, 11, 16), 1L);
+        ReflectionTestUtils.setField(notStarted, "tradingSeasonId", 8L);
         notStarted.changeStatus(TradingSeason.STATUS_RUNNING);
-        when(seasonRepository.findTopByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(notStarted));
+        when(seasonRepository.findSeasonIdsByStatusIn(anyList(), any(Pageable.class))).thenReturn(List.of(8L));
+        when(seasonRepository.findByIdForShare(8L)).thenReturn(Optional.of(notStarted));
 
         assertRejected(order("BUY", 1, 0, REASON_ID), TradingErrorCode.NO_RUNNING_SEASON);
+    }
+
+    @Test
+    void 주문은_시즌_행을_공유_잠금으로_읽은_뒤_상태를_확인하고_참가자_행을_잠근다() {
+        // 번호만 읽은 뒤(객체를 올리지 않음) 잠금 읽기로 최신 상태를 본다. 그 사이 시즌이 정산 중으로 바뀌었다면 거절한다
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
+
+        assertRejected(order("BUY", 1, 5, REASON_ID), TradingErrorCode.SEASON_CLOSED);
+        verify(participantRepository, never()).findForUpdateBySeasonAndMember(any(), any());
+    }
+
+    @Test
+    void 정상_주문은_시즌_번호_읽기_시즌_공유_잠금_참가자_잠금_순서로_처리한다() {
+        service.placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID));
+
+        InOrder calls = inOrder(seasonRepository, participantRepository);
+        calls.verify(seasonRepository).findSeasonIdsByStatusIn(anyList(), any(Pageable.class));
+        calls.verify(seasonRepository).findByIdForShare(SEASON_ID);
+        calls.verify(participantRepository).findForUpdateBySeasonAndMember(SEASON_ID, MEMBER_ID);
+        verify(seasonRepository, never()).findFirstByStatusInOrderByStartDateDesc(anyList());
     }
 
     @Test

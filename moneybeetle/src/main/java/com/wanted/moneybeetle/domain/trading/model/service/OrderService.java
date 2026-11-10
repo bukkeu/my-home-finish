@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   - 매매 이유는 반드시 골라야 한다 (REASON_REQUIRED, SP-57). 수수료·세금은 없다 (SP-56)
 *   - 현금·보유 수량·거래 내역은 한 트랜잭션이다. 어디서 실패해도 모두 되돌려진다 (DP-40)
 *   - 같은 참가자의 주문은 참가자 행을 잠그고 처리해 동시에 들어와도 현금·수량이 어긋나지 않는다
+*   - 주문은 시즌 행을 공유 잠금으로 읽고(턴 진행은 배타 잠금) 상태·현재 턴을 확인한 뒤 참가자 행을 잠근다. 주문 중에 턴이 넘어가지 않는다
 *   - 같은 요청 번호(Idempotency-Key)로 다시 보내면 IdempotencyFilter 가 먼저 막는다 (DUPLICATE_REQUEST)
 *  */
 @Service
@@ -76,7 +77,7 @@ public class OrderService {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
         TradeReason reason = findReason(request.reasonId());
-        TradingSeason season = getOrderableSeason(request.turnNo());
+        TradingSeason season = lockOrderableSeason(request.turnNo());
         SeasonParticipant participant = participantRepository
                 .findForUpdateBySeasonAndMember(season.getTradingSeasonId(), memberId)
                 .orElseThrow(() -> new BusinessException(TradingErrorCode.NOT_JOINED));
@@ -160,10 +161,17 @@ public class OrderService {
                 .orElseThrow(() -> new BusinessException(TradingErrorCode.REASON_REQUIRED));
     }
 
-    /** 지금 주문할 수 있는 시즌 : 진행 중이고, 화면이 본 턴이 현재 턴이어야 한다 */
-    private TradingSeason getOrderableSeason(int requestedTurn) {
-        TradingSeason season = seasonRepository
-                .findTopByStatusInOrderByStartDateDesc(TradingService.VISIBLE_STATUSES)
+    /**
+     * 지금 주문할 수 있는 시즌 : 진행 중이고, 화면이 본 턴이 현재 턴이어야 한다.
+     * 시즌 번호만 먼저 읽고 시즌 행을 공유 잠금으로 읽은 뒤 상태·현재 턴을 확인한다. 턴 진행(TurnAdminService.advanceTurn)은
+     * 같은 행을 배타 잠금으로 잡으므로, 주문이 끝나기 전에 턴이 넘어가 이전 턴 가격으로 체결되지 않는다.
+     * 시즌 객체를 먼저 올리면 잠금을 기다린 뒤에도 오래된 상태를 보므로 번호만 읽는다
+     */
+    private TradingSeason lockOrderableSeason(int requestedTurn) {
+        Long seasonId = seasonRepository.findSeasonIdsByStatusIn(TradingService.VISIBLE_STATUSES, PageRequest.of(0, 1))
+                .stream().findFirst()
+                .orElseThrow(() -> new BusinessException(TradingErrorCode.NO_RUNNING_SEASON));
+        TradingSeason season = seasonRepository.findByIdForShare(seasonId)
                 .orElseThrow(() -> new BusinessException(TradingErrorCode.NO_RUNNING_SEASON));
         if (season.isSettlingOrEnded()) {
             throw new BusinessException(TradingErrorCode.SEASON_CLOSED);
