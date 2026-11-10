@@ -146,7 +146,12 @@ public class IdentityVerificationService {
     private boolean reserveIpSlot(String clientIp, Instant now) {
         String key = clientIp == null || clientIp.isBlank() ? "unknown" : clientIp;
         if (requestsByIp.size() > COOLDOWN_PRUNE_SIZE) {
-            requestsByIp.values().removeIf(times -> times.isEmpty() || !now.isBefore(times.peekLast().plus(IP_WINDOW)));   // 오래된 기록을 지운다
+            // 오래된 기록을 지운다. deque 는 스레드 안전하지 않으므로 값을 직접 훑지 않고, 키마다 computeIfPresent 로
+            // 아래 compute 와 같은 잠금 안에서 읽고 지운다 (비었거나 마지막 기록이 창보다 오래된 키만 지우고, 나머지는 그대로 둔다)
+            for (String ip : requestsByIp.keySet()) {
+                requestsByIp.computeIfPresent(ip, (k, times) ->
+                        times.isEmpty() || !now.isBefore(times.peekLast().plus(IP_WINDOW)) ? null : times);
+            }
         }
         boolean[] reserved = {false};
         requestsByIp.compute(key, (ip, times) -> {

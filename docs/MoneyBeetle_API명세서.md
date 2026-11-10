@@ -2749,7 +2749,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 역할·상태·키워드 검색. |
+| 설명 | 역할·상태·키워드 검색(#37). 키워드의 `%`·`_`는 글자 그대로 찾는다. 관리자 계정은 빼고, role(MEMBER·INSTRUCTOR)·status(ACTIVE·SUSPENDED·WITHDRAWN)·keyword(닉네임·이메일 일부) 모두 선택, 모르는 값은 필터 없이. 최근 가입 순, 기본 20개(최대 50). 목록 응답 형식(1-3). `role`은 회원 정보상 역할이라 승인 전 강사도 INSTRUCTOR로 보인다. |
 
 **Request**
 
@@ -2769,7 +2769,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-06, DP-43 |
-| 설명 | 정지 시 사유 필수. |
+| 설명 | 정지 시 사유 필수(200자). status는 ACTIVE·SUSPENDED만. 정지하면 로그인할 수 없고(`ACCOUNT_SUSPENDED`), 이미 로그인한 세션도 다음 요청에서 끊긴다. 해제하면 정지 사유를 지운다. 관리자·탈퇴 계정은 바꿀 수 없다. 같은 상태로 바꾸면 아무것도 하지 않는다. admin_log 기록(MEMBER_SUSPEND·MEMBER_ACTIVATE). |
 
 **Request**
 
@@ -2781,7 +2781,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
 
 #### 103. 강사 권한 부여·회수
 
@@ -2791,7 +2791,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-07 |
-| 설명 | INSTRUCTOR ↔︎ MEMBER. |
+| 설명 | INSTRUCTOR ↔︎ MEMBER. INSTRUCTOR로 바꾸면 강사 정보를 승인(없으면 닉네임을 표시 이름으로 만들어 승인)해서 다음 로그인부터 강사 권한이 생긴다(SP-07). MEMBER로 바꾸면 강사 정보를 회수(REVOKED)한다(만든 강의는 남고 강사 화면·API만 막힘). 회수하면 이미 로그인해 둔 강사 세션도 다음 요청에서 끊기고(다시 로그인하면 MEMBER), 부여는 기존 세션을 건드리지 않아 다음 로그인부터 적용된다. 관리자·탈퇴 계정은 바꿀 수 없다. admin_log 기록(MEMBER_ROLE_CHANGE). |
 
 **Request**
 
@@ -2803,6 +2803,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
+
 #### 104. 강사 가입 신청 목록
 
 | 항목 | 내용 |
@@ -2811,7 +2813,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인 대기 강사. |
+| 설명 | 승인 대기 강사. status(PENDING·APPROVED·REVOKED, 기본 PENDING), 탈퇴 회원 제외, 신청 순, 기본 20개(최대 50). 실제로 강사 가입을 신청한(API 12) 강사만 나오고, 관리자가 직접 권한을 준 강사(API 103)는 빠진다. `createdAt`은 신청 시각(instructor_profile.applied_at), 그 순서로 정렬. 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -2831,7 +2833,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인하면 role=INSTRUCTOR. 거절은 /reject. |
+| 설명 | 승인 대기(PENDING) 신청만 승인. 승인하면 강사 정보 APPROVED(승인 관리자·시각 기록) + role=INSTRUCTOR → 다음 로그인부터 강사 권한(SP-07). admin_log 기록(INSTRUCTOR_APPROVE). 거절(/reject)은 아직 없다(필요하면 후속 이슈). |
 
 **Request**
 
@@ -2840,6 +2842,8 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+
+**Error**: `APPLICATION_NOT_FOUND`(404), `APPLICATION_NOT_PENDING`(409), `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`
 
 #### 106. 문의 게시판 관리
 
@@ -3108,7 +3112,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-13, ADM-15 |
-| 설명 | 지난 턴/오늘/남은 턴/휴장일, 누가 언제 넘겼는지. |
+| 설명 | 지난 턴/지금 턴/남은 턴/휴장일, 누가 언제 넘겼는지. |
 
 **Request**
 
@@ -3117,8 +3121,16 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "turns": [ { "turnNo": 4, "tradeDate": "2026-11-05", "state": "DONE", "progressedAt": "2026-11-05T00:00:03", "progressedBy": "김운영" } ] }
+{ "seasonId": 7, "status": "RUNNING", "currentTurn": 5, "totalTurns": 12,
+  "turns": [ { "turnNo": 4, "tradeDate": "2026-11-05", "state": "DONE", "progressedAt": "2026-11-05T00:00:03", "progressedBy": "김운영" } ],
+  "holidays": ["2026-11-08", "2026-11-15"] }
 ```
+
+- `state`: `DONE`(지난 턴) · `CURRENT`(지금 턴) · `UPCOMING`(남은 턴). 아직 넘기지 않은 턴은 `progressedAt`·`progressedBy`가 `null`
+- `progressedBy`는 넘긴 관리자의 닉네임. 턴은 "그 턴으로 넘긴 때"를 기록한다 (4턴의 진행 기록 = 3턴 → 4턴으로 넘긴 때)
+- `holidays`: 시즌 기간 중 휴장일(일요일)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 119. 다음 턴 점검
 
@@ -3137,8 +3149,17 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "ready": false, "nextTurn": 6, "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
+{ "ready": false, "nextTurn": 6, "nextTradeDate": "2026-11-07", "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
 ```
+
+- `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
+- `nextTradeDate`: 다음 턴의 예정 거래일(턴 달력의 `tradeDate`와 같다). 마지막 턴이면 `null`. 서버는 예정일 전에도 턴을 넘기게 두고(SP-59 관리자 버튼), **예정일이 오늘보다 뒤이면 화면이 "N턴 예정일은 M/D예요. 지금 넘길까요?" 확인을 받는다** (SP-50 하루 1턴 실수 방지)
+- `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
+- 휴장일 : 시즌 상태가 `HOLIDAY`이거나, 상태와 상관없이 **서울 기준 오늘이 일요일**이면 `isHoliday: true`, `ready: false`다 (SP-50, 휴장일에는 턴이 잠긴다)
+- 마지막 턴이면 `nextTurn`이 `null`, `ready`는 `false`
+- 관리자 대시보드(84)의 `nextTurnReady`·`missing`도 같은 계산이다 (`TradingService.getDashboardSummary()`)
+
+**Error**: `NOT_FOUND`(404)
 
 #### 120. 다음 턴 진행
 
@@ -3162,7 +3183,13 @@ email=admin@moneybeetle.kr&password=...
 { "currentTurn": 6 }
 ```
 
-**Error**: `NEXT_TURN_NOT_READY`, `MARKET_HOLIDAY`, `TURN_CONFLICT`, `LAST_TURN_REACHED`(12턴 이후), `INVALID_STATUS_TRANSITION`(진행 중이 아닐 때)
+- `expectedCurrentTurn`은 화면이 보고 있던 현재 턴이다. 서버의 현재 턴과 다르면 `TURN_CONFLICT`(다른 관리자가 먼저 넘긴 경우)
+- 넘기면 그 턴의 `progressedAt`·`progressedBy`를 남기고 admin_log(`TURN_ADVANCE`, 변경 전·후 턴)에도 기록한다 (같은 트랜잭션)
+- 같은 시즌을 두 관리자가 동시에 넘기지 못하게 시즌 행을 잠그고 처리한다
+- 휴장일(시즌 상태 `HOLIDAY` 또는 서울 기준 일요일)에는 점검 실패보다 먼저 `MARKET_HOLIDAY`로 거절한다
+- 뉴스 등록·수정·삭제와 분야·종목 변경도 같은 시즌 행 잠금을 잡고 처리해, 점검 직후 끼어들어 뉴스·가격이 빠진 채 턴이 넘어가지 않게 한다
+
+**Error**: `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 
 #### 121. 분야 목록
 
@@ -3883,6 +3910,7 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
+| 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
 | 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
 | 강사·관리자 | `CSV_INVALID` | 400 | CSV 형식이 맞지 않는 행이 있어요 (오류 행은 data.errors) |

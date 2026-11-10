@@ -147,12 +147,17 @@ public class TradingSeason {
         return NEXT_STATUSES.getOrDefault(this.status, Set.of()).contains(nextStatus);
     }
 
-    /** 12턴의 거래일: 시작일부터 일요일을 빼고 하루 1턴 (SP-50) */
+    /** 휴장일 규칙 (SP-50): 일요일. 거래일 계산·턴 달력·다음 턴 점검이 모두 이 메서드를 쓴다 */
+    public static boolean isClosedDay(LocalDate date) {
+        return date.getDayOfWeek() == DayOfWeek.SUNDAY;
+    }
+
+    /** 12턴의 거래일: 시작일부터 휴장일(일요일)을 빼고 하루 1턴 (SP-50) */
     public List<LocalDate> tradeDates() {
         List<LocalDate> dates = new ArrayList<>();
         LocalDate date = this.startDate;
         while (dates.size() < this.totalTurns) {
-            if (date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            if (!isClosedDay(date)) {
                 dates.add(date);
             }
             date = date.plusDays(1);
@@ -160,11 +165,22 @@ public class TradingSeason {
         return dates;
     }
 
+    /** n턴의 예정 거래일 (1~totalTurns) */
+    public LocalDate tradeDateOf(int turnNo) {
+        return tradeDates().get(turnNo - 1);
+    }
+
     /**
      * 다음 턴으로 넘긴다 (SP-59). 진행 중(RUNNING)일 때만, 마지막 턴(totalTurns) 이후에는 넘길 수 없다.
      * 휴장(HOLIDAY)에는 MARKET_HOLIDAY, 그 밖의 상태에서는 INVALID_STATUS_TRANSITION 으로 거절한다
      */
     public void advanceTurn() {
+        checkAdvanceable();
+        this.currentTurn++;
+    }
+
+    /** 지금 턴을 넘길 수 있는 상태인지 확인한다 (넘길 수 없으면 BusinessException). 가격·뉴스 준비 여부는 Service 가 확인한다 */
+    public void checkAdvanceable() {
         if (isHoliday()) {
             throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
         }
@@ -174,7 +190,6 @@ public class TradingSeason {
         if (isLastTurn()) {
             throw new BusinessException(TradingErrorCode.LAST_TURN_REACHED);
         }
-        this.currentTurn++;
     }
 
     /** 정산을 마쳤다고 기록한다. 정산 중(SETTLING)에만 */

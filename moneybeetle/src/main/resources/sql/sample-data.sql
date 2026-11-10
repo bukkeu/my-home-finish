@@ -24,12 +24,13 @@ INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role,
 (8, 'minji@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '민지', '1999-04-12', 'MEMBER', 'ACTIVE', 8, 1250, 12000);
 
 -- 강사 정보: 모두 승인 상태 (승인 관리자 = 1)
-INSERT INTO instructor_profile (member_id, display_name, field, approval_status, approved_by, approved_at) VALUES
-(2, '박서연', '예적금·청약', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(3, '이도현', '국내 주식·ETF', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(4, '한지수', '월급 관리', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(5, '오민재', '소비·위험 관리', 'APPROVED', 1, '2026-11-01 10:00:00'),
-(6, '정하린', '미국 주식·분산 투자', 'APPROVED', 1, '2026-11-01 10:00:00');
+-- 시드 강사는 모두 강사 가입 신청(applied_at) 후 관리자 승인을 받은 것으로 둔다 (#37)
+INSERT INTO instructor_profile (member_id, display_name, field, approval_status, approved_by, approved_at, applied_at) VALUES
+(2, '박서연', '예적금·청약', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(3, '이도현', '국내 주식·ETF', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(4, '한지수', '월급 관리', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(5, '오민재', '소비·위험 관리', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00'),
+(6, '정하린', '미국 주식·분산 투자', 'APPROVED', 1, '2026-11-01 10:00:00', '2026-10-31 10:00:00');
 
 -- 약관 (가입 화면용)
 INSERT INTO terms (terms_id, title, content, is_required, version, effective_at) VALUES
