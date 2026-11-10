@@ -16,8 +16,8 @@ reviews:
     둘째 줄에 PR 설명의 "Closes #번호" 또는 "Refs #번호"에서 찾은 관련 이슈 번호를 적는다. 없으면 "관련 이슈: 없음"이라고 적는다.
     이어서 변경 내용을 한국어 글머리표 3~5개로 요약한다.
   collapse_walkthrough: false        # 변경 설명(Walkthrough)을 펼친 상태로 표시
-  sequence_diagrams: true            # 요청 흐름을 시퀀스 다이어그램으로 표시
-  estimate_code_review_effort: true
+  sequence_diagrams: false           # 시퀀스 다이어그램 생성 끔 (리뷰 속도)
+  estimate_code_review_effort: false # 리뷰 난이도 추정 끔 (리뷰 속도)
   review_status: true
   poem: false
   in_progress_fortune: false         # 리뷰 진행 중 문구(운세 멘트) 끄기
@@ -25,6 +25,7 @@ reviews:
 
   auto_review:
     enabled: true
+    auto_incremental_review: false   # 커밋마다 재리뷰하지 않음. 다시 받으려면 PR 댓글에 @coderabbitai review
     drafts: false                    # Draft PR은 리뷰하지 않음
     base_branches:                   # 기본 브랜치 외에 리뷰할 대상 브랜치 (Git 규칙: 작업 브랜치 → dev → main)
       - "dev"
@@ -186,12 +187,7 @@ reviews:
       mode: "warning"
     docstrings:
       mode: "off"                     # 주석 커버리지 경고는 끔
-    custom_checks:
-      - name: "계층 의존 방향"
-        mode: "warning"
-        instructions: |
-          변경된 Controller 클래스가 Repository를 직접 주입받거나 호출하면 실패.
-          Controller는 Service만 호출해야 한다. 변경된 Controller가 없으면 통과.
+    custom_checks:                   # 계층 의존 방향·비밀번호 암호화는 path_instructions 리뷰 댓글로 확인
       - name: "도메인 범위"
         mode: "warning"
         instructions: |
@@ -203,17 +199,6 @@ reviews:
         instructions: |
           growth 도메인 밖의 코드가 CashHistory·ExpHistory 저장소나 회원의 캐시·경험치 값을 직접 바꾸면 실패.
           캐시·경험치 변경은 growth.RewardService 메소드를 호출해야 한다. 관련 변경이 없으면 통과.
-      - name: "비밀번호 암호화"
-        mode: "warning"
-        instructions: |
-          회원 비밀번호를 저장하거나 변경하는 코드가 바뀌었는데 PasswordEncoder로 인코딩하지 않으면 실패.
-          관련 코드 변경이 없으면 통과.
-      - name: "이슈·명세서 연결"
-        mode: "warning"
-        instructions: |
-          PR 설명에 "Closes #번호" 또는 "Refs #번호"가 모두 없으면 실패. 완료한 이슈는 "Closes #번호", 일부 구현·후속 작업이 남은 이슈는 "Refs #번호"를 사용한다. "Refs"는 이슈를 자동 종료하지 않는다. 단, dev → main 릴리스 PR과 docs 타입 PR은 예외로 통과.
-          Controller의 /api/v1 주소나 resources/sql 파일이 바뀌었는데 docs/MoneyBeetle_API명세서.md 또는 docs/MoneyBeetle_DB설계.md가 함께 바뀌지 않았으면 실패.
-          해당 사항이 없으면 통과.
 
   tools:
     pmd:
