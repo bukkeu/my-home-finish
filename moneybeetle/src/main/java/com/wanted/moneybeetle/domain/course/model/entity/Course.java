@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.util.Objects;
  *  */
 @Entity
 @Table(name = "course")
+@DynamicUpdate      // 바뀐 컬럼만 UPDATE: 검수 요청·수정과 관리자 삭제가 동시에 저장돼도 서로의 값을 옛 값으로 덮어쓰지 않는다 (#32 리뷰)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Course {
@@ -47,6 +49,24 @@ public class Course {
     private LocalDateTime submittedAt;
     private LocalDateTime approvedAt;
     private LocalDateTime deletedAt;
+
+    private Course(Long instructorId, Long categoryId, String title, String description,
+                   LocalDate infoBaseDate, String infoSource) {
+        this.instructorId = instructorId;
+        this.categoryId = categoryId;
+        this.title = title;
+        this.description = description;
+        this.infoBaseDate = infoBaseDate;
+        this.infoSource = infoSource;
+        this.status = STATUS_DRAFT;
+        this.isPublic = false;
+    }
+
+    /* 강의 생성 (API 73, TCH-01). 작성 중(DRAFT)·비공개로 시작한다 */
+    public static Course create(Long instructorId, Long categoryId, String title, String description,
+                                LocalDate infoBaseDate, String infoSource) {
+        return new Course(instructorId, categoryId, title, description, infoBaseDate, infoSource);
+    }
 
     // 사용자에게 보여도 되는 강의인지는 Entity가 판단 (SP-31)
     public boolean isVisibleToLearner() {
@@ -112,6 +132,41 @@ public class Course {
         checkRequestable();
         this.status = STATUS_REVIEW;
         this.submittedAt = submittedAt;
+    }
+
+    /* 강의 정보 수정 (API 75, TCH-06·SP-31). 검수 중에는 못 고친다.
+     * 허가된 강의를 고치면 다시 검수(REVIEW) → 허가 전까지 사용자에게 보이지 않는다(isVisibleToLearner) */
+    public void change(Long categoryId, String title, String description, LocalDate infoBaseDate, String infoSource,
+                       LocalDateTime now) {
+        checkEditable();
+        this.categoryId = categoryId;
+        this.title = title;
+        this.description = description;
+        this.infoBaseDate = infoBaseDate;
+        this.infoSource = infoSource;
+        if (isApproved()) {
+            this.status = STATUS_REVIEW;
+            this.submittedAt = now;
+        }
+    }
+
+    /* 썸네일 주소 바꾸기 (API 77). 검수 중에는 못 바꾼다.
+     * 허가된 강의의 썸네일을 바꾸면 정보 수정과 같이 다시 검수(REVIEW, SP-31) */
+    public void changeThumbnail(String thumbnailUrl, LocalDateTime now) {
+        checkEditable();
+        this.thumbnailUrl = thumbnailUrl;
+        if (isApproved()) {
+            this.status = STATUS_REVIEW;
+            this.submittedAt = now;
+        }
+    }
+
+    /* 수정할 수 있는 상태인지 (API 75·77). 검수 중이면 COURSE_IN_REVIEW
+     * 서비스가 파일 저장처럼 되돌리기 어려운 작업 전에 먼저 부른다 */
+    public void checkEditable() {
+        if (isInReview()) {
+            throw new BusinessException(CourseErrorCode.COURSE_IN_REVIEW);
+        }
     }
 
     private void requireInReview() {

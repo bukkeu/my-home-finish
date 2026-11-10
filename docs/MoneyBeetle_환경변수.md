@@ -98,6 +98,8 @@
 | `spring.servlet.multipart.max-request-size` | `510MB` (영상은 한 요청에 한 개씩 올리므로 파일 한 개 한도보다 조금 크게. 영상 한 개당 업로드는 API명세서 #78 "영상 파일 올리기") | DP-33 |
 | 시간대 | `Asia/Seoul` (서버·DB·Jackson) | DP-42 |
 | `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql` | `local` 프로필에서만 켬 (`application.yaml` 아래의 `on-profile: local` 구역, 기본은 `show-sql: false`, #114). `format_sql`은 `properties.hibernate` 아래에 써야 적용된다 | 학습 (09 module07) |
+| `management.endpoints.web.exposure.include` | `health,info` 만 웹에 연다. `health` 는 UP/DOWN 만(`show-details: never`), 메일 상태는 확인에서 뺀다(`management.health.mail.enabled: false`). `/actuator/health`·`/actuator/info` 는 누구나, 나머지 actuator 주소는 열지 않는다 (#84) | 시스템 설계 "모니터링" |
+| `logging.*` | 콘솔은 줄마다 `[요청 ID|m=회원 ID]`(`logging.pattern.correlation`, 비로그인은 회원 ID 칸이 빈다). `local` 프로필은 우리 코드 `DEBUG`, 파일 `logs/moneybeetle.log` 에 JSON 한 줄(`requestId`·`memberId` 포함, `logging.structured.format.file: logstash`), 10MB 마다 나누고 7일 보관. `logs/` 는 Git 제외 (#84) | 시스템 설계 "로그", EP-05 |
 
 ---
 
