@@ -146,8 +146,13 @@ class TradingSeasonTest {
         TradingSeason ready = season();
         TradingSeason settling = runningSeason();
         settling.changeStatus(TradingSeason.STATUS_SETTLING);
+        TradingSeason ended = runningSeason();                  // 진행 중 -> 정산 중 -> (정산·공개) -> 종료
+        ended.changeStatus(TradingSeason.STATUS_SETTLING);
+        ended.completeSettlement(LocalDateTime.of(2026, 11, 30, 0, 0));
+        ended.publishRanking(LocalDateTime.of(2026, 11, 30, 0, 1));
+        assertThat(ended.isEnded()).isTrue();
 
-        for (TradingSeason season : List.of(ready, settling)) {
+        for (TradingSeason season : List.of(ready, settling, ended)) {
             assertThatThrownBy(season::advanceTurn)
                     .isInstanceOfSatisfying(BusinessException.class,
                             e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
@@ -159,11 +164,15 @@ class TradingSeasonTest {
         TradingSeason running = runningSeason();
         LocalDateTime now = LocalDateTime.of(2026, 11, 30, 0, 0);
 
-        assertThatThrownBy(() -> running.completeSettlement(now)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> running.completeSettlement(now))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
 
         TradingSeason season = runningSeason();
         season.changeStatus(TradingSeason.STATUS_SETTLING);
-        assertThatThrownBy(() -> season.publishRanking(now)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> season.publishRanking(now))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
 
         season.completeSettlement(now);
         season.publishRanking(now.plusMinutes(1));
