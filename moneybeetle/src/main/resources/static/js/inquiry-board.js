@@ -304,7 +304,7 @@
               h('span', { class: 'inq-meta', text: date(c.createdAt) })
             ]);
           }))) : null,
-        d.isHidden ? null : renderReplyBox(d),
+        d.isHidden ? null : renderReplyBox(d, mine),
         mine ? renderOwnerActions(d) : null
       );
     }
@@ -319,9 +319,11 @@
       });
     }
 
-    function renderReplyBox(d) {
-      var input = h('textarea', { class: 'inq-input', rows: '2', maxlength: String(CONTENT_MAX), placeholder: '추가로 궁금한 점을 댓글로 남겨 주세요', 'aria-label': '댓글' });
-      var send = h('button', { type: 'button', class: 'btn btn-secondary', text: '댓글 남기기' });
+    /* 작성자는 댓글, 강사·관리자(내 글이 아님)는 답변을 남긴다. 답변이 달리면 서버가 '답변 완료'로 바꾸고 작성자에게 알린다 */
+    function renderReplyBox(d, mine) {
+      var input = h('textarea', { class: 'inq-input', rows: '2', maxlength: String(CONTENT_MAX), 'aria-label': mine ? '댓글' : '답변',
+        placeholder: mine ? '추가로 궁금한 점을 댓글로 남겨 주세요' : '답변을 남겨 주세요. 등록하면 작성자에게 알림이 가요' });
+      var send = h('button', { type: 'button', class: mine ? 'btn btn-secondary' : 'btn btn-primary', text: mine ? '댓글 남기기' : '답변 남기기' });
       send.addEventListener('click', function () {
         var content = input.value.trim();
         if (!content) { MB.toast('댓글 내용을 입력해 주세요.', 'error'); return; }
@@ -329,7 +331,7 @@
         MB.api('/api/v1/inquiries/' + d.inquiryId + '/replies', { method: 'POST', body: { content: content } }).then(function () {
           refreshDetail(d.inquiryId);
         }).catch(function (err) {
-          MB.toast(errorText(err, '댓글을 남기지 못했어요.'), 'error');
+          MB.toast(errorText(err, mine ? '댓글을 남기지 못했어요.' : '답변을 남기지 못했어요.'), 'error');
           send.disabled = false;
         });
       });
