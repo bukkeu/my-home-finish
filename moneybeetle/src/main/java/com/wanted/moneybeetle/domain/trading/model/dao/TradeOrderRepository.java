@@ -29,6 +29,9 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
         long getOrderCount();
     }
 
+    /** 한 참가자의 거래 내역, 최근 거래부터 (관리자 참가자 상세 #45) */
+    List<TradeOrder> findBySeasonParticipantIdOrderByTradeOrderIdDesc(Long seasonParticipantId);
+
     /** 시즌 안에서 주어진 시각 범위에 들어온 주문 수 (관리자 대시보드의 오늘 주문 수, #193) */
     @Query("""
             select count(o)
@@ -41,7 +44,4 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
 
     /** 내 거래 내역 한 쪽. 정렬은 Pageable 로 (최근 거래부터) (#25) */
     Page<TradeOrder> findBySeasonParticipantId(Long seasonParticipantId, Pageable pageable);
-
-    /** 한 참가자의 거래 내역, 최근 거래부터 (관리자 참가자 상세 #45) */
-    List<TradeOrder> findBySeasonParticipantIdOrderByTradeOrderIdDesc(Long seasonParticipantId);
 }

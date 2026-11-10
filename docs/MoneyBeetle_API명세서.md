@@ -2693,7 +2693,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 역할·상태·키워드 검색. |
+| 설명 | 역할·상태·키워드 검색(#37). 키워드의 `%`·`_`는 글자 그대로 찾는다. 관리자 계정은 빼고, role(MEMBER·INSTRUCTOR)·status(ACTIVE·SUSPENDED·WITHDRAWN)·keyword(닉네임·이메일 일부) 모두 선택, 모르는 값은 필터 없이. 최근 가입 순, 기본 20개(최대 50). 목록 응답 형식(1-3). `role`은 회원 정보상 역할이라 승인 전 강사도 INSTRUCTOR로 보인다. |
 
 **Request**
 
@@ -2713,7 +2713,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-06, DP-43 |
-| 설명 | 정지 시 사유 필수. |
+| 설명 | 정지 시 사유 필수(200자). status는 ACTIVE·SUSPENDED만. 정지하면 로그인할 수 없고(`ACCOUNT_SUSPENDED`), 이미 로그인한 세션도 다음 요청에서 끊긴다. 해제하면 정지 사유를 지운다. 관리자·탈퇴 계정은 바꿀 수 없다. 같은 상태로 바꾸면 아무것도 하지 않는다. admin_log 기록(MEMBER_SUSPEND·MEMBER_ACTIVATE). |
 
 **Request**
 
@@ -2725,7 +2725,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `REASON_REQUIRED`
+**Error**: `REASON_REQUIRED`, `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
 
 #### 103. 강사 권한 부여·회수
 
@@ -2735,7 +2735,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-06, SP-07 |
-| 설명 | INSTRUCTOR ↔︎ MEMBER. |
+| 설명 | INSTRUCTOR ↔︎ MEMBER. INSTRUCTOR로 바꾸면 강사 정보를 승인(없으면 닉네임을 표시 이름으로 만들어 승인)해서 다음 로그인부터 강사 권한이 생긴다(SP-07). MEMBER로 바꾸면 강사 정보를 회수(REVOKED)한다(만든 강의는 남고 강사 화면·API만 막힘). 회수하면 이미 로그인해 둔 강사 세션도 다음 요청에서 끊기고(다시 로그인하면 MEMBER), 부여는 기존 세션을 건드리지 않아 다음 로그인부터 적용된다. 관리자·탈퇴 계정은 바꿀 수 없다. admin_log 기록(MEMBER_ROLE_CHANGE). |
 
 **Request**
 
@@ -2747,6 +2747,8 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
+**Error**: `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`, `INVALID_INPUT`
+
 #### 104. 강사 가입 신청 목록
 
 | 항목 | 내용 |
@@ -2755,7 +2757,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인 대기 강사. |
+| 설명 | 승인 대기 강사. status(PENDING·APPROVED·REVOKED, 기본 PENDING), 탈퇴 회원 제외, 신청 순, 기본 20개(최대 50). 실제로 강사 가입을 신청한(API 12) 강사만 나오고, 관리자가 직접 권한을 준 강사(API 103)는 빠진다. `createdAt`은 신청 시각(instructor_profile.applied_at), 그 순서로 정렬. 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -2775,7 +2777,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-06 |
-| 설명 | 승인하면 role=INSTRUCTOR. 거절은 /reject. |
+| 설명 | 승인 대기(PENDING) 신청만 승인. 승인하면 강사 정보 APPROVED(승인 관리자·시각 기록) + role=INSTRUCTOR → 다음 로그인부터 강사 권한(SP-07). admin_log 기록(INSTRUCTOR_APPROVE). 거절(/reject)은 아직 없다(필요하면 후속 이슈). |
 
 **Request**
 
@@ -2784,6 +2786,8 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+
+**Error**: `APPLICATION_NOT_FOUND`(404), `APPLICATION_NOT_PENDING`(409), `MEMBER_NOT_CHANGEABLE`(409), `MEMBER_NOT_FOUND`
 
 #### 106. 문의 게시판 관리
 
@@ -3089,10 +3093,11 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "ready": false, "nextTurn": 6, "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
+{ "ready": false, "nextTurn": 6, "nextTradeDate": "2026-11-07", "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false }
 ```
 
 - `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
+- `nextTradeDate`: 다음 턴의 예정 거래일(턴 달력의 `tradeDate`와 같다). 마지막 턴이면 `null`. 서버는 예정일 전에도 턴을 넘기게 두고(SP-59 관리자 버튼), **예정일이 오늘보다 뒤이면 화면이 "N턴 예정일은 M/D예요. 지금 넘길까요?" 확인을 받는다** (SP-50 하루 1턴 실수 방지)
 - `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
 - 휴장일 : 시즌 상태가 `HOLIDAY`이거나, 상태와 상관없이 **서울 기준 오늘이 일요일**이면 `isHoliday: true`, `ready: false`다 (SP-50, 휴장일에는 턴이 잠긴다)
 - 마지막 턴이면 `nextTurn`이 `null`, `ready`는 `false`
