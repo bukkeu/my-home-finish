@@ -1,6 +1,6 @@
 /* comment.
 *   담당 : DBA ① 신아림 (#52, 강의 목록 /user/lectures)
-*   GET /api/v1/categories 로 카테고리·소주제를, GET /api/v1/courses?categoryId= 로 그 카테고리 강의를 받아 그린다.
+*   GET /api/v1/categories 로 카테고리·소주제를, GET /api/v1/courses?categoryId= 로 그 카테고리 강의를 (마지막 페이지까지) 받아 그린다.
 *   - cat=money|estate (사이드바 링크) → 첫 번째 / 두 번째 카테고리. categoryId= 로 직접 고를 수도 있다
 *   - 소주제 칩은 화면 안에서 거른다(전체 강의를 한 번에 받아 둠). 검색어는 제목·강사·소주제에 대해 거른다
 *   - 카드형/목록형 선택은 localStorage(mb-lecture-view)에 저장한다 (막혀 있어도 화면은 동작)
@@ -66,6 +66,15 @@
     return idx >= 0 && idx < CAT_KEYS.length ? 'cat=' + CAT_KEYS[idx] : 'categoryId=' + top.categoryId;
   }
 
+  /* 카테고리 강의를 마지막 페이지까지 받아 합친다 (한 페이지 최대 100개) */
+  function fetchCourses(categoryId, number, courses) {
+    return MB.api('/api/v1/courses?categoryId=' + categoryId + '&page=' + number + '&size=' + PAGE_SIZE)
+      .then(function (page) {
+        var all = courses.concat((page && page.items) || []);
+        return page && number + 1 < page.totalPages ? fetchCourses(categoryId, number + 1, all) : all;
+      });
+  }
+
   function load() {
     els.sections.replaceChildren(h('div', { class: 'lec-state', text: '강의를 불러오는 중이에요…' }));
     MB.api('/api/v1/categories').then(function (categories) {
@@ -75,10 +84,10 @@
         els.sections.replaceChildren(h('div', { class: 'lec-state', text: '아직 열린 강의 카테고리가 없어요.' }));
         return null;
       }
-      return MB.api('/api/v1/courses?categoryId=' + state.top.categoryId + '&page=0&size=' + PAGE_SIZE);
-    }).then(function (page) {
+      return fetchCourses(state.top.categoryId, 0, []);
+    }).then(function (courses) {
       if (!state.top) return;
-      state.courses = (page && page.items) || [];
+      state.courses = courses || [];
       render();
     }).catch(function (err) {
       els.sections.replaceChildren(L.errorBox(err, load));

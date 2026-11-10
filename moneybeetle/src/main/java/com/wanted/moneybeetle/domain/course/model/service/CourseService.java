@@ -143,8 +143,11 @@ public class CourseService {
         int positionSeconds = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
                 .map(progress -> progress.positionOf(lessonId))
                 .orElse(0);
+        int watchedSeconds = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
+                .map(LessonWatch::getWatchedSeconds)
+                .orElse(0);
 
-        return LessonPlayDTO.from(lesson, positionSeconds);
+        return LessonPlayDTO.from(lesson, positionSeconds, watchedSeconds);
     }
 
     /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38).

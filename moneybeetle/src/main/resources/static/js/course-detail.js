@@ -12,13 +12,14 @@
   var h = L.h;
 
   var SAVE_EVERY_MS = 15000;
+  var MAX_STEP = 2;           // timeupdate 사이 이만큼(초)보다 크게 뛰면 건너뛰기로 본다 (2배속까지는 재생으로 인정)
   var courseId = Number(new URLSearchParams(location.search).get('courseId'));
   var body = root.querySelector('[data-lec-body]');
   var back = root.querySelector('[data-lec-back]');
 
   var state = {
     course: null, path: null, current: null, play: null, tab: 'summary', tocOpen: false,
-    watchedMax: 0, lastSavedAt: 0, pendingSaves: 0, refreshed: false
+    watched: 0, lastTime: 0, lastSavedAt: 0, pendingSaves: 0, refreshed: false
   };
   var video = null;
   var saveQueue = Promise.resolve();   // 시청 위치 저장 요청을 보낸 순서대로 처리하기 위한 줄
@@ -227,7 +228,7 @@
 
   function openLesson(lesson, first) {
     state.current = lesson;
-    state.watchedMax = 0;
+    state.watched = 0;
     state.lastSavedAt = Date.now();
     renderNow();
     renderSide();
@@ -235,7 +236,7 @@
     MB.api('/api/v1/courses/' + courseId + '/lessons/' + lesson.lessonId).then(function (play) {
       if (state.current.lessonId !== lesson.lessonId) return;   // 그사이 다른 영상을 골랐으면 버린다
       state.play = play;
-      state.watchedMax = play.positionSeconds || 0;
+      state.watched = play.watchedSeconds || 0;   // 서버가 인정한 본 시간에서 이어서 센다 (재생 위치와 따로)
       mountPlayer(play, lesson);
       if (!first) refs.playerBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }).catch(function (err) {
@@ -250,14 +251,19 @@
       var pos = play.positionSeconds || 0;
       // 거의 끝에서 멈춘 영상은 처음부터 다시 본다
       if (pos > 0 && (!video.duration || pos < video.duration - 3)) video.currentTime = pos;
+      state.lastTime = video.currentTime;
     });
+    // 본 시간(watched)은 실제로 재생된 구간만 더한다. 건너뛰기(seek)는 기준점만 옮기고 더하지 않는다
+    video.addEventListener('play', function () { state.lastTime = video.currentTime; });
+    video.addEventListener('seeking', function () { state.lastTime = video.currentTime; });
+    video.addEventListener('seeked', function () { state.lastTime = video.currentTime; });
     video.addEventListener('timeupdate', function () {
-      state.watchedMax = Math.max(state.watchedMax, Math.floor(video.currentTime));
+      if (!video.paused && !video.seeking) addWatched(video.currentTime);
       if (!video.paused && Date.now() - state.lastSavedAt >= SAVE_EVERY_MS) saveProgress(false);
     });
     video.addEventListener('pause', function () { if (!video.ended) saveProgress(false, { force: true }); });
     video.addEventListener('ended', function () {
-      state.watchedMax = Math.max(state.watchedMax, Math.floor(video.duration || 0));
+      addWatched(video.duration || video.currentTime);   // 마지막 timeupdate 뒤 남은 짧은 재생분만 더한다
       saveProgress(true).then(refreshCourse);
     });
     video.addEventListener('error', function () {
@@ -270,6 +276,14 @@
       ]),
       h('p', { class: 'lec-player-note', text: '끝까지 보면 시청 완료로 기록되고, 마지막으로 본 위치가 저장돼요. 건너뛴 부분은 본 시간으로 치지 않아요.' })
     );
+  }
+
+  /* 직전 기준점에서 지금 위치까지 앞으로 재생된 만큼만 본 시간에 더한다.
+   * timeupdate 는 0.25초쯤마다 오므로 한 번에 MAX_STEP 초보다 크게 뛰면 재생이 아니라 건너뛰기로 본다 */
+  function addWatched(time) {
+    var step = time - state.lastTime;
+    if (step > 0 && step <= MAX_STEP) state.watched += step;
+    state.lastTime = time;
   }
 
   /* 시청 위치 저장 (API 33). 완료 여부는 서버가 본 시간으로 정하므로 completed 는 참고값이다
@@ -286,7 +300,7 @@
     var url = '/api/v1/courses/' + courseId + '/lessons/' + state.current.lessonId + '/progress';
     var payload = {
       positionSeconds: ended ? Math.floor(video.duration || 0) : Math.floor(video.currentTime || 0),
-      watchedSeconds: state.watchedMax,
+      watchedSeconds: Math.floor(state.watched),
       completed: !!ended
     };
     state.lastSavedAt = Date.now();
@@ -295,9 +309,12 @@
       return MB.api(url, { method: 'PUT', keepalive: !!opts.keepalive, body: payload })
         .catch(function () { /* 다음 저장 때 다시 보낸다 */ });
     }
-    var request = opts.keepalive ? send() : saveQueue.then(send);
+    // 어떤 이유로든 실패해도 줄이 막히거나 요청 수가 남지 않게 마지막에 한 번 더 받는다
+    var request = (opts.keepalive ? send() : saveQueue.then(send))
+      .catch(function () { /* 저장 실패는 다음 저장 때 다시 보낸다 */ })
+      .then(function () { state.pendingSaves -= 1; });
     if (!opts.keepalive) saveQueue = request;
-    return request.then(function () { state.pendingSaves -= 1; });
+    return request;
   }
 
   /* ---------- 스크랩 ---------- */
