@@ -176,3 +176,82 @@
   .lec-now__nav { width: 100%; }
   .lec-now__nav .btn { flex: 1; height: 44px; }
 }
+
+/* ---------- 테스트 퀴즈·최종 퀴즈·결과 (#53) ---------- */
+.lec-step--locked { cursor: not-allowed; }
+.lec-step--locked .lec-step__text { filter: blur(.6px); }   /* 잠긴 단계는 흐리게 (NFR-09). 무엇이 잠겼는지는 읽을 수 있을 정도로만 */
+.lec-step--locked:hover { background: transparent; }
+.lec-quiz { display: flex; flex-direction: column; gap: 16px; }
+.lec-quiz__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lec-quiz__head h2 { margin: 0; font-size: 20px; letter-spacing: -0.03em; }
+.lec-quiz__chip { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800;
+  background: var(--color-accent-700); color: var(--color-accent); }
+.lec-quiz__chip--test { background: var(--color-gold); color: var(--color-accent-700); }
+.lec-quiz__info { margin: 0; border-radius: 12px; background: #FBF3DA; padding: 12px 16px; font-size: 13px; line-height: 1.7; word-break: keep-all; }
+.lec-quiz__list { display: flex; flex-direction: column; gap: 10px; }
+.lec-quiz__sub { font-size: 14px; }
+.lec-quiz__no { flex: none; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  background: var(--color-accent-700); color: var(--color-accent); }
+.lec-quiz__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lec-quiz__status { flex: 1; min-width: 120px; font-size: 13px; font-weight: 600; color: var(--color-neutral-700); }
+.lec-quiz__go { margin-left: auto; }
+
+.lec-ox { border: 1px solid var(--color-divider); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+.lec-ox.is-correct { background: var(--color-accent-100); }
+.lec-ox.is-wrong { background: #FFF4F3; }
+.lec-ox__row { display: flex; align-items: flex-start; gap: 12px; }
+.lec-ox__q { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; line-height: 1.6; word-break: keep-all; }
+.lec-ox__picks { display: flex; gap: 6px; flex: none; }
+.lec-ox__pick { width: 46px; height: 46px; border-radius: 12px; border: 2px solid var(--color-accent-700); background: #fff;
+  font: inherit; font-size: 19px; font-weight: 900; color: var(--color-text); cursor: pointer; }
+.lec-ox__pick[aria-pressed="true"] { background: var(--color-accent); }
+.lec-ox__pick:disabled { cursor: default; }
+.lec-ox__pick:disabled:not([aria-pressed="true"]) { opacity: .5; }
+.lec-ox__exp { margin: 0; font-size: 14px; line-height: 1.6; padding: 10px 14px; border-radius: 10px; background: #fff;
+  border-left: 3px solid var(--color-accent-600); }
+.lec-ox.is-wrong .lec-ox__exp { border-left-color: var(--color-danger); }
+
+.lec-quiz__locked { border-radius: 14px; background: var(--color-bg); border: 1px solid var(--color-divider); padding: 36px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.lec-quiz__lock { font-size: 28px; }
+.lec-quiz__dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.lec-quiz__dot { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--color-divider); background: #fff;
+  font: inherit; font-size: 13px; font-weight: 800; color: var(--color-text); cursor: pointer; padding: 0; }
+.lec-quiz__dot.is-answered { background: var(--color-accent-100); border-color: var(--color-accent); }
+.lec-quiz__dot[aria-current="step"] { border-color: var(--color-accent-700); background: var(--color-accent-700); color: #fff; }
+.lec-quiz__q { display: flex; flex-direction: column; gap: 6px; }
+.lec-quiz__text { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.55; word-break: keep-all; }
+.lec-quiz__choices { display: flex; flex-direction: column; gap: 10px; }
+.lec-choice { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--color-divider);
+  background: #fff; font: inherit; font-size: 15px; line-height: 1.5; text-align: left; color: var(--color-text); cursor: pointer; }
+.lec-choice:hover { border-color: var(--color-accent-700); }
+.lec-choice[aria-checked="true"] { border-color: var(--color-accent-700); background: var(--color-accent-100); }
+.lec-choice__mark { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800;
+  border: 2px solid var(--color-accent-700); background: #fff; }
+.lec-choice[aria-checked="true"] .lec-choice__mark { background: var(--color-accent); }
+
+.lec-quiz__score { border-radius: 14px; padding: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; background: #FFF0D6; }
+.lec-quiz__score.is-passed { background: var(--color-accent-100); }
+.lec-quiz__points { font-size: 48px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+.lec-quiz__points small { font-size: 20px; }
+.lec-quiz__verdict { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.lec-quiz__verdict b { font-size: 20px; }
+.lec-quiz__reward { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-radius: 14px;
+  background: var(--color-accent-700); color: #fff; font-size: 14px; }
+.lec-wrong { border: 1px solid var(--color-divider); border-radius: 14px; padding: 14px 16px; background: var(--color-bg); display: flex; flex-direction: column; gap: 8px; }
+.lec-wrong__q { font-size: 14px; font-weight: 700; line-height: 1.55; word-break: keep-all; }
+.lec-wrong__pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.lec-wrong__mine, .lec-wrong__right { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-radius: 12px; font-size: 15px; font-weight: 700; }
+.lec-wrong__mine { background: #FCE8E6; border: 1.5px solid #F2B8B5; color: #8C1D18; }
+.lec-wrong__right { background: var(--color-accent-100); border: 1.5px solid var(--color-accent); color: var(--color-accent-700); }
+.lec-wrong__mine small, .lec-wrong__right small { font-size: 12px; font-weight: 800; }
+.lec-wrong__exp { margin: 0; padding: 10px 14px; border-radius: 12px; background: #fff; font-size: 13px; line-height: 1.6; }
+
+@media (max-width: 767px) {
+  .lec-ox__row { flex-wrap: wrap; }
+  .lec-ox__picks { width: 100%; justify-content: flex-end; }
+  .lec-quiz__actions .btn { flex: 1; height: 44px; }
+  .lec-quiz__status { flex-basis: 100%; order: -1; }
+  .lec-quiz__go { margin-left: 0; }
+  .lec-quiz__points { font-size: 40px; }
+}
