@@ -83,4 +83,18 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
             order by c.courseId desc
             """)
     List<Course> findMyCourses(@Param("instructorId") Long instructorId, @Param("status") String status);
+
+    /* 강의 목록·이어서 볼 강의의 영상 수를 강의 여러 개 한 번에 센다 (#87, 강의마다 count 하던 N+1 정리) */
+    @Query("""
+            select l.courseId as courseId, count(l) as lessons
+            from Lesson l
+            where l.courseId in :courseIds
+            group by l.courseId
+            """)
+    List<CourseLessonCount> countLessonsByCourseIds(@Param("courseIds") List<Long> courseIds);
+
+    interface CourseLessonCount {
+        Long getCourseId();
+        long getLessons();
+    }
 }

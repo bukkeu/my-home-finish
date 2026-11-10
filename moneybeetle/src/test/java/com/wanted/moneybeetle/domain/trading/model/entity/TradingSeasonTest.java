@@ -48,6 +48,16 @@ class TradingSeasonTest {
     }
 
     @Test
+    void n턴의_예정_거래일은_일요일을_건너뛴다() {
+        TradingSeason season = season();
+
+        assertThat(season.tradeDateOf(1)).isEqualTo(MONDAY);
+        assertThat(season.tradeDateOf(6)).isEqualTo(LocalDate.of(2026, 11, 21));
+        assertThat(season.tradeDateOf(7)).isEqualTo(LocalDate.of(2026, 11, 23));
+        assertThat(season.tradeDateOf(12)).isEqualTo(LocalDate.of(2026, 11, 28));
+    }
+
+    @Test
     void 정해진_순서로_상태를_바꿀_수_있다() {
         TradingSeason season = season();
 

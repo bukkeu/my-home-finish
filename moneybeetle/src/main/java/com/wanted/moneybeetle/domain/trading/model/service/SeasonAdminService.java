@@ -90,7 +90,9 @@ public class SeasonAdminService {
     /** API 117 시즌 상태 변경 */
     @Transactional
     public void changeStatus(Long seasonId, SeasonStatusDTO request) {
-        getSeason(seasonId).changeStatus(request.getStatus());
+        seasonRepository.findByIdForUpdate(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND))
+                .changeStatus(request.getStatus());
     }
 
     private TradingSeason getSeason(Long seasonId) {

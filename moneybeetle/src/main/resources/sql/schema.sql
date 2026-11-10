@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `admin_log` (
     PRIMARY KEY (`admin_log_id`),
     KEY `idx_admin_log_1` (`target_type`,`target_id`),
     KEY `idx_admin_log_2` (`admin_id`,`created_at`),
+    KEY `idx_admin_log_3` (`created_at`),
     CONSTRAINT `fk_admin_log_admin_id` FOREIGN KEY (`admin_id`) REFERENCES `member` (`member_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='관리자 작업 기록';
 
@@ -84,7 +85,7 @@ CREATE TABLE IF NOT EXISTS `cash_history` (
                                               `cash_history_id` bigint NOT NULL AUTO_INCREMENT COMMENT '내역 ID',
                                               `member_id` bigint NOT NULL COMMENT '회원',
                                               `history_type` varchar(20) NOT NULL COMMENT 'EARN / USE / ADMIN_GIVE / ADMIN_TAKE',
-    `source_type` varchar(30) NOT NULL COMMENT 'ATTENDANCE / COURSE_COMPLETE / LEVEL_UP / SEASON_JOIN / SUBSCRIPTION_DEPOSIT / ADMIN',
+    `source_type` varchar(30) NOT NULL COMMENT 'ATTENDANCE / COURSE_COMPLETE / LEVEL_UP / SEASON_JOIN / SUBSCRIPTION_DEPOSIT / RANKING / ADMIN',
     `source_id` bigint DEFAULT NULL COMMENT '원인 데이터 ID (출석 ID, 강의 ID, 레벨 등)',
     `reward_rule_id` bigint DEFAULT NULL COMMENT '적용한 보상 규칙',
     `amount` bigint NOT NULL COMMENT '변동 금액 (사용·회수는 음수)',
@@ -136,6 +137,7 @@ CREATE TABLE IF NOT EXISTS `course` (
     `deleted_at` datetime DEFAULT NULL COMMENT '삭제 일시 (Soft Delete)',
     PRIMARY KEY (`course_id`),
     KEY `idx_course_1` (`category_id`,`status`,`is_public`),
+    KEY `idx_course_2` (`status`,`submitted_at`),
     KEY `fk_course_instructor_id` (`instructor_id`),
     CONSTRAINT `fk_course_category_id` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`),
     CONSTRAINT `fk_course_instructor_id` FOREIGN KEY (`instructor_id`) REFERENCES `member` (`member_id`)
@@ -172,7 +174,7 @@ CREATE TABLE IF NOT EXISTS `economic_term` (
 CREATE TABLE IF NOT EXISTS `exp_history` (
                                              `exp_history_id` bigint NOT NULL AUTO_INCREMENT COMMENT '내역 ID',
                                              `member_id` bigint NOT NULL COMMENT '회원',
-                                             `source_type` varchar(30) NOT NULL COMMENT 'COURSE_COMPLETE / QUIZ_PERFECT',
+                                             `source_type` varchar(30) NOT NULL COMMENT 'COURSE_COMPLETE / QUIZ_PERFECT / ATTENDANCE',
     `source_id` bigint NOT NULL COMMENT '원인 강의 ID',
     `reward_rule_id` bigint DEFAULT NULL COMMENT '적용한 보상 규칙',
     `amount` int NOT NULL COMMENT '지급 경험치',
@@ -232,6 +234,7 @@ CREATE TABLE IF NOT EXISTS `housing_application` (
     UNIQUE KEY `uk_housing_application_receipt_no` (`receipt_no`),
     UNIQUE KEY `uk_housing_application_1` (`member_id`,`housing_complex_id`),
     KEY `idx_housing_application_1` (`housing_complex_id`,`total_score`),
+    KEY `idx_housing_application_2` (`applied_at`),
     CONSTRAINT `fk_housing_application_housing_complex_id` FOREIGN KEY (`housing_complex_id`) REFERENCES `housing_complex` (`housing_complex_id`),
     CONSTRAINT `fk_housing_application_member_id` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='청약 신청';
@@ -311,6 +314,7 @@ CREATE TABLE IF NOT EXISTS `instructor_profile` (
     `approval_status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING / APPROVED / REVOKED',
     `approved_by` bigint DEFAULT NULL COMMENT '승인한 관리자',
     `approved_at` datetime DEFAULT NULL COMMENT '승인 일시',
+    `applied_at` datetime DEFAULT NULL COMMENT '강사 가입 신청 일시 (관리자가 직접 권한을 준 강사는 NULL, #37)',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     PRIMARY KEY (`instructor_profile_id`),
@@ -414,6 +418,8 @@ CREATE TABLE IF NOT EXISTS `member` (
     PRIMARY KEY (`member_id`),
     UNIQUE KEY `uk_member_nickname` (`nickname`),
     UNIQUE KEY `uk_member_email` (`email`),
+    KEY `idx_member_1` (`role`,`status`),
+    KEY `idx_member_2` (`status`,`withdrawn_at`),
     CONSTRAINT `ck_member_1` CHECK ((`cash` >= 0)),
     CONSTRAINT `ck_member_2` CHECK ((`level` between 1 and 20)),
     CONSTRAINT `ck_member_3` CHECK ((`exp` >= 0))
@@ -542,7 +548,7 @@ CREATE TABLE IF NOT EXISTS `quiz_choice` (
 CREATE TABLE IF NOT EXISTS `quiz_question` (
                                                `quiz_question_id` bigint NOT NULL AUTO_INCREMENT COMMENT '문항 ID',
                                                `course_id` bigint NOT NULL COMMENT '강의',
-                                               `quiz_type` varchar(10) NOT NULL COMMENT 'TEST 테스트 퀴즈 / MAIN 퀴즈',
+                                               `quiz_type` varchar(10) NOT NULL COMMENT 'TEST 테스트 퀴즈 / MAIN 퀴즈 / TEST_OLD·MAIN_OLD 보관한 문항(푼 기록이 있어 수정·삭제 대신 보관)',
     `question_type` varchar(10) NOT NULL COMMENT 'OX / CHOICE',
     `content` varchar(500) NOT NULL COMMENT '문제',
     `explanation` text NOT NULL COMMENT '해설',

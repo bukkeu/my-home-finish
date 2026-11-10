@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,8 +17,10 @@ import com.wanted.moneybeetle.domain.trading.model.dto.SectorSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.entity.Sector;
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
+import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,13 +38,15 @@ class MarketAdminServiceTest {
 
     private SectorRepository sectorRepository;
     private StockRepository stockRepository;
+    private com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository seasonRepository;
     private MarketAdminService service;
 
     @BeforeEach
     void setUp() {
         sectorRepository = mock(SectorRepository.class);
         stockRepository = mock(StockRepository.class);
-        service = new MarketAdminService(sectorRepository, stockRepository);
+        seasonRepository = org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository.class);
+        service = new MarketAdminService(sectorRepository, stockRepository, seasonRepository);
     }
 
     private Sector sector(long id, String name, int sortOrder) {
@@ -316,5 +321,42 @@ class MarketAdminServiceTest {
 
         assertThat(stocks).extracting(AdminStockDTO::getName).containsExactly("모아모빌리티", "한빛반도체");
         assertThat(stocks).extracting(AdminStockDTO::getSectorName).containsExactly("모빌리티", "반도체");
+    }
+
+    // ===== 턴 진행과 같은 시즌 행 잠금 =====
+
+    @Test
+    void 분야_종목_변경은_READY_RUNNING_HOLIDAY_시즌을_직접_잠금_조회한다() {
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock(1L, 1L, "한빛반도체")));
+        when(stockRepository.saveAndFlush(any(Stock.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // 네 변경 메서드가 각각 잠금을 잡는지 누적 횟수로 확인한다 (하나라도 빠지면 횟수가 어긋난다)
+        service.createSector(new SectorSaveDTO("핀테크", 15, null));
+        verify(seasonRepository, times(1)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
+
+        service.changeSector(1L, new SectorSaveDTO("시스템반도체", null, null));
+        verify(seasonRepository, times(2)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
+
+        service.createStock(new StockSaveDTO(1L, "새반도체", 10_000, null, null, null, null));
+        verify(seasonRepository, times(3)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
+
+        service.changeStock(1L, new StockSaveDTO(1L, "한빛반도체", 10_000, null, null, null, null));
+        verify(seasonRepository, times(4)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
+    }
+
+    @Test
+    void 잠글_시즌이_있어도_분야를_등록한다() {
+        TradingSeason ready = TradingSeason.create("시즌 7", LocalDate.of(2026, 11, 16), 1L);
+        when(seasonRepository.findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY")))
+                .thenReturn(List.of(ready));
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createSector(new SectorSaveDTO("핀테크", 15, null));
+
+        verify(sectorRepository).saveAndFlush(any(Sector.class));
     }
 }
