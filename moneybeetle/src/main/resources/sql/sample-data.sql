@@ -313,17 +313,21 @@ INSERT INTO level_policy (level, required_exp, title, levelup_cash) VALUES
 (19, 5650, '내 집', 190000),
 (20, 6250, '내 집', 200000);
 
--- 보상 규칙 중 연속 출석 보상만 먼저 넣는다 (이슈 #12). 연속 5일째부터 매일 10,000캐시 (SP-12, 확정 #76), 경험치는 없다.
--- 이 규칙이 없으면 5일째 출석 때 캐시 지급이 REWARD_RULE_NOT_FOUND 로 실패한다.
--- 학습 완료·퀴즈 만점 규칙은 XP 값이 확정된 뒤(#68) 같은 표에 더한다. (code 는 UNIQUE 라서 같은 코드를 두 번 넣지 않는다)
+-- 보상 규칙 (code 는 UNIQUE). 규칙이 없으면 그 보상 지급이 REWARD_RULE_NOT_FOUND 로 실패한다
+-- - ATTENDANCE_STREAK : 연속 5일째부터 매일 10,000캐시 (SP-12, 확정 #76, 이슈 #12)
+-- - COURSE_COMPLETE · QUIZ_PERFECT : 학습 완료 30,000캐시·150 XP, 퀴즈 만점 30 XP (SP-13·SP-22, 확정 #68)
+-- - ATTENDANCE_DAILY : 출석 경험치 기본값 10 XP. 연속 일수 5일마다 ×2·×3… 상한 ×5(50 XP)는 코드에서 계산 (SP-22, 확정 #68)
 INSERT INTO reward_rule (code, name, cash_amount, exp_amount, description, is_active) VALUES
-('ATTENDANCE_STREAK', '연속 출석 보상', 10000, 0, '연속 5일째부터 매일 지급 (SP-12)', 1);
+('ATTENDANCE_STREAK', '연속 출석 보상', 10000, 0, '연속 5일째부터 매일 지급 (SP-12)', 1),
+('COURSE_COMPLETE', '강의 학습 완료', 30000, 150, '같은 강의 최초 1회 (SP-13, SP-22)', 1),
+('QUIZ_PERFECT', '퀴즈 만점 보너스', 0, 30, '같은 강의 최초 1회 (SP-22)', 1),
+('ATTENDANCE_DAILY', '출석 경험치', 0, 10, '출석마다. 연속 일수 5일마다 +10, 하루 상한 50 (SP-22)', 1);
 
 -- 청약통장: 회원당 하나(member_id 유니크). 잔액·납입회차는 기본값 0
 INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8);
 
 -- 민지(8)의 원장: member.cash·exp 값과 내역이 맞게 한 줄씩 둔다 (SP-15, GRW-07).
--- 학습 완료·퀴즈 만점 보상 규칙(reward_rule) 시드는 XP 값이 확정된 뒤(#68) 생기므로 reward_rule_id는 비워 둔다
+-- 아래 내역은 시드용으로 한 건에 묶은 것이라 실제 보상 규칙 지급이 아니어서 reward_rule_id 는 비워 둔다
 INSERT INTO cash_history (member_id, history_type, source_type, source_id, amount, balance_after, reason, admin_id) VALUES
 (8, 'ADMIN_GIVE', 'ADMIN', NULL, 12000, 12000, '시드 초기 지급 (로컬 개발용)', 1);
 
