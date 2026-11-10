@@ -75,8 +75,8 @@ public class AuthController {
     // API 5-1. 본인인증 코드 요청 (이메일로 6자리 코드를 보낸다)
     @PostMapping("/api/v1/auth/identity-verification/request")
     public ResponseEntity<Void> requestIdentityCode(@Valid @RequestBody IdentityVerificationDTO.CodeRequest request,
-                                                    HttpSession session) {
-        identityVerificationService.requestCode(request.getEmail(), session);
+                                                    HttpServletRequest httpRequest, HttpSession session) {
+        identityVerificationService.requestCode(request.getEmail(), httpRequest.getRemoteAddr(), session);
         return ResponseEntity.accepted().build();
     }
 
