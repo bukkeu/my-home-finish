@@ -10,11 +10,12 @@ import com.wanted.moneybeetle.domain.course.model.dto.ProgressDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.ScrapListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.global.common.ApiResponse;
+import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -39,8 +40,9 @@ import java.util.List;
  *   PUT /api/v1/courses/{courseId}/lessons/{lessonId}/progress (이어보기)
  *   POST/DELETE /api/v1/courses/{courseId}/scrap
  *   GET /api/v1/members/me/watch-histories, /completed-courses, /scraps
- *   화면 : /user/lectures, /user/lecture-detail
+ *   화면 : /user/lectures (course/category), /user/lecture-detail (course/detail) - #52
  *   로그인 회원: @AuthenticationPrincipal AuthDetails (#132). 주소 단위 로그인 여부는 SecurityConfig가 정한다
+ *   응답: 공통 형식 ApiResponse, 목록은 PageResponse { items, page, size, totalElements, totalPages } (API 명세서 1-3, #157)
  *  */
 @Controller
 @RequiredArgsConstructor
@@ -56,29 +58,27 @@ public class CourseController {
     /* API 29. 카테고리·소주제 */
     @GetMapping("/api/v1/categories")
     @ResponseBody
-    public List<CategoryTreeDTO> getCategories() {
-        // TODO 리팩터링 이슈: ApiResponse.success(...)로 감싸기
-        return courseService.findCategoryTree();
+    public ApiResponse<List<CategoryTreeDTO>> getCategories() {
+        return ApiResponse.success(courseService.findCategoryTree());
     }
 
     /* API 30. 강의 목록 (허가 + 공개만) */
     @GetMapping("/api/v1/courses")
     @ResponseBody
-    public Page<CourseListDTO> getCourses(
+    public ApiResponse<PageResponse<CourseListDTO>> getCourses(
             @AuthenticationPrincipal AuthDetails me,
             @RequestParam Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
-        // TODO 리팩터링 이슈: ApiResponse.success(PageResponse.from(...))로 감싸기
-        return courseService.findCourses(memberIdOrNull(me), categoryId, toPageable(page, size, Sort.by("courseId")));
+        return ApiResponse.success(PageResponse.from(
+                courseService.findCourses(memberIdOrNull(me), categoryId, toPageable(page, size, Sort.by("courseId")))));
     }
 
     /* API 31. 강의 상세 */
     @GetMapping("/api/v1/courses/{courseId}")
     @ResponseBody
-    public CourseDetailDTO getCourse(@AuthenticationPrincipal AuthDetails me, @PathVariable Long courseId) {
-        // TODO 리팩터링 이슈: ApiResponse.success(...)로 감싸기
-        return courseService.getCourseDetail(memberIdOrNull(me), courseId);
+    public ApiResponse<CourseDetailDTO> getCourse(@AuthenticationPrincipal AuthDetails me, @PathVariable Long courseId) {
+        return ApiResponse.success(courseService.getCourseDetail(memberIdOrNull(me), courseId));
     }
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
@@ -86,9 +86,9 @@ public class CourseController {
     /* API 32. 영상 재생 정보 */
     @GetMapping("/api/v1/courses/{courseId}/lessons/{lessonId}")
     @ResponseBody
-    public LessonPlayDTO getLesson(@AuthenticationPrincipal AuthDetails me,
-                                   @PathVariable Long courseId, @PathVariable Long lessonId) {
-        return courseService.getLessonPlay(memberIdOf(me), courseId, lessonId);
+    public ApiResponse<LessonPlayDTO> getLesson(@AuthenticationPrincipal AuthDetails me,
+                                                @PathVariable Long courseId, @PathVariable Long lessonId) {
+        return ApiResponse.success(courseService.getLessonPlay(memberIdOf(me), courseId, lessonId));
     }
 
     /* API 33. 시청 위치 저장 → 204 No Content */
@@ -104,21 +104,23 @@ public class CourseController {
     /* API 34. 시청 기록 */
     @GetMapping("/api/v1/members/me/watch-histories")
     @ResponseBody
-    public Page<WatchHistoryDTO> getWatchHistories(
+    public ApiResponse<PageResponse<WatchHistoryDTO>> getWatchHistories(
             @AuthenticationPrincipal AuthDetails me,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
-        return courseService.findWatchHistories(memberIdOf(me), toPageable(page, size, Sort.unsorted()));
+        return ApiResponse.success(PageResponse.from(
+                courseService.findWatchHistories(memberIdOf(me), toPageable(page, size, Sort.unsorted()))));
     }
 
     /* API 35. 학습 완료 목록 */
     @GetMapping("/api/v1/members/me/completed-courses")
     @ResponseBody
-    public Page<CompletedCourseDTO> getCompletedCourses(
+    public ApiResponse<PageResponse<CompletedCourseDTO>> getCompletedCourses(
             @AuthenticationPrincipal AuthDetails me,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
-        return courseService.findCompletedCourses(memberIdOf(me), toPageable(page, size, Sort.unsorted()));
+        return ApiResponse.success(PageResponse.from(
+                courseService.findCompletedCourses(memberIdOf(me), toPageable(page, size, Sort.unsorted()))));
     }
 
     /* ===== 스크랩 (#18) ===== */
@@ -140,16 +142,29 @@ public class CourseController {
     /* API 38. 스크랩 목록 */
     @GetMapping("/api/v1/members/me/scraps")
     @ResponseBody
-    public Page<ScrapListDTO> getScraps(
+    public ApiResponse<PageResponse<ScrapListDTO>> getScraps(
             @AuthenticationPrincipal AuthDetails me,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
-        return courseService.findScraps(memberIdOf(me), toPageable(page, size, Sort.unsorted()));
+        return ApiResponse.success(PageResponse.from(
+                courseService.findScraps(memberIdOf(me), toPageable(page, size, Sort.unsorted()))));
     }
 
     /* ===== 화면 (#52) =====
-     * GET /user/lectures, /user/lecture-detail → Thymeleaf 템플릿 반환
+     * 화면은 틀만 그리고, 데이터는 화면 스크립트(static/js/course-*.js)가 위 API로 받아 온다
      */
+
+    /* 강의 목록 화면: /user/lectures?cat=money|estate (화면설계 5.2.3) */
+    @GetMapping("/user/lectures")
+    public String lecturesPage() {
+        return "course/category";
+    }
+
+    /* 강의 상세·영상 시청 화면: /user/lecture-detail?courseId= (화면설계 5.2.4) */
+    @GetMapping("/user/lecture-detail")
+    public String lectureDetailPage() {
+        return "course/detail";
+    }
 
     /* page는 0 이상, size는 1~100 사이로 맞춘다 (API 명세서 1-3) */
     private Pageable toPageable(int page, int size, Sort sort) {

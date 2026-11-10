@@ -24,6 +24,8 @@ import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
 import com.wanted.moneybeetle.domain.course.model.entity.Scrap;
+import com.wanted.moneybeetle.domain.member.model.service.InstructorService;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,6 +34,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +59,9 @@ public class CourseService {
     private final LessonWatchRepository lessonWatchRepository;
     private final ScrapRepository scrapRepository;
     private final CourseReviewRepository courseReviewRepository;
+    private final Clock clock;                          // Asia/Seoul 공통 시계 (학습 완료 시각)
+    private final MemberService memberService;          // member 도메인 (DBA②) - 회원 행 잠금
+    private final InstructorService instructorService;  // member 도메인 - 강사 이름 (#52)
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -85,11 +92,20 @@ public class CourseService {
                 ? Set.of()   // 회원을 모르면 스크랩 안 한 것으로
                 : findScrappedCourseIds(memberId, courses.getContent().stream().map(Course::getCourseId).toList());
 
+        List<Long> courseIds = courses.getContent().stream().map(Course::getCourseId).toList();
+        Map<Long, Long> lessonCounts = countLessons(courseIds);
+        Map<Long, String> instructorNames = instructorService.findDisplayNames(
+                courses.getContent().stream().map(Course::getInstructorId).distinct().toList());
+        // 내 학습 상태·끝까지 본 영상 수도 강의마다 조회하지 않고 한 번에 (#52)
+        Map<Long, String> statuses = findProgressStatuses(memberId, courseIds);
+        Map<Long, Long> watchedCounts = countWatchedLessons(memberId, courseIds);
+
         return courses.map(course -> CourseListDTO.from(
                 course,
-                null,   // TODO 강사 이름: DBA ② 메서드가 생기면 연결
-                (int) lessonRepository.countByCourseId(course.getCourseId()),
-                null,   // TODO 내 학습 상태
+                instructorNames.get(course.getInstructorId()),
+                lessonCounts.getOrDefault(course.getCourseId(), 0L).intValue(),
+                watchedCounts.getOrDefault(course.getCourseId(), 0L).intValue(),
+                statuses.get(course.getCourseId()),
                 scrappedIds.contains(course.getCourseId())
         ));
     }
@@ -100,8 +116,21 @@ public class CourseService {
         Category category = categoryRepository.findById(course.getCategoryId()).orElse(null);
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId);
         boolean scrapped = memberId != null && scrapRepository.existsByMemberIdAndCourseId(memberId, courseId);
+        String instructorName = instructorService.findDisplayNames(List.of(course.getInstructorId()))
+                .get(course.getInstructorId());
 
-        return CourseDetailDTO.from(course, category, lessons, scrapped);
+        // 내 진행 상태·끝까지 본 영상 (#52, 목차 완료 표시·이어보기). 비로그인이면 없음
+        LearningProgress progress = memberId == null ? null
+                : learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId).orElse(null);
+        Set<Long> completedLessonIds = memberId == null || lessons.isEmpty() ? Set.of()
+                : lessonWatchRepository.findByMemberIdAndLessonIdInAndIsCompletedTrue(memberId,
+                                lessons.stream().map(Lesson::getLessonId).toList()).stream()
+                        .map(LessonWatch::getLessonId)
+                        .collect(Collectors.toSet());
+
+        return CourseDetailDTO.from(course, category, instructorName, lessons, completedLessonIds, scrapped,
+                progress == null ? null : progress.getStatus(),
+                progress == null ? null : progress.getLastLessonId());
     }
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
@@ -114,13 +143,19 @@ public class CourseService {
         int positionSeconds = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
                 .map(progress -> progress.positionOf(lessonId))
                 .orElse(0);
+        int watchedSeconds = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
+                .map(LessonWatch::getWatchedSeconds)
+                .orElse(0);
 
-        return LessonPlayDTO.from(lesson, positionSeconds);
+        return LessonPlayDTO.from(lesson, positionSeconds, watchedSeconds);
     }
 
-    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38) */
+    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38).
+     * 퀴즈 제출(QuizService.submitQuiz)과 같은 회원 행 잠금을 먼저 잡아, 학습 완료 상태를 오래된 값으로 덮어쓰지 않는다.
+     * 영상 완료 여부는 화면의 completed 값이 아니라 서버 시계로 확인한 본 시간으로 정한다 (LessonWatch.record) */
     @Transactional
     public void saveProgress(Long memberId, Long courseId, Long lessonId, ProgressDTO request) {
+        memberService.lockBalance(memberId);
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
@@ -128,9 +163,10 @@ public class CourseService {
                 .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
         progress.moveTo(lessonId, lesson.clampSeconds(request.getPositionSeconds()));
 
+        LocalDateTime now = LocalDateTime.now(clock);
         LessonWatch watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
-                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId)));
-        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), request.isCompleted());
+                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId, now)));
+        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), lesson.getDurationSeconds(), now);
         // 수정은 save()를 다시 부르지 않는다. 트랜잭션이 끝날 때 변경 감지로 UPDATE된다
     }
 
@@ -187,9 +223,9 @@ public class CourseService {
         scrapRepository.deleteByMemberIdAndCourseId(memberId, courseId);
     }
 
-    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11) */
+    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11). 재검수·비공개·삭제된 강의는 숨긴다 (SP-31) */
     public Page<ScrapListDTO> findScraps(Long memberId, Pageable pageable) {
-        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDescScrapIdDesc(memberId, pageable);
+        Page<Scrap> scraps = scrapRepository.findVisibleScraps(memberId, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 scraps.getContent().stream().map(Scrap::getCourseId).toList());
@@ -213,16 +249,21 @@ public class CourseService {
     public List<CourseListDTO> findContinueWatching(Long memberId) {
         List<LearningProgress> progresses = learningProgressRepository
                 .findTop5ByMemberIdAndStatusOrderByUpdatedAtDesc(memberId, LearningProgress.STATUS_IN_PROGRESS);
-        Map<Long, Course> courses = findCoursesByIds(
-                progresses.stream().map(LearningProgress::getCourseId).toList());
+        List<Long> courseIds = progresses.stream().map(LearningProgress::getCourseId).toList();
+        Map<Long, Course> courses = findCoursesByIds(courseIds);
+        Map<Long, Long> lessonCounts = countLessons(courseIds);
+        Map<Long, Long> watchedCounts = countWatchedLessons(memberId, courseIds);
+        Map<Long, String> instructorNames = instructorService.findDisplayNames(
+                courses.values().stream().map(Course::getInstructorId).distinct().toList());
 
         return progresses.stream()
                 .map(progress -> courses.get(progress.getCourseId()))
                 .filter(course -> course != null && course.isVisibleToLearner())
                 .map(course -> CourseListDTO.from(
                         course,
-                        null,   // TODO 강사 이름
-                        (int) lessonRepository.countByCourseId(course.getCourseId()),
+                        instructorNames.get(course.getInstructorId()),
+                        lessonCounts.getOrDefault(course.getCourseId(), 0L).intValue(),
+                        watchedCounts.getOrDefault(course.getCourseId(), 0L).intValue(),
                         LearningProgress.STATUS_IN_PROGRESS,
                         false))
                 .toList();
@@ -274,9 +315,42 @@ public class CourseService {
                 .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
     }
 
-    /* 이재성: 통합 검색 */
-    public List<CourseListDTO> search(String keyword) {
-        return List.of(); // TODO 제목 검색 (허가 + 공개만)
+    /* 퀴즈(quiz 도메인, API 41·42): 이 강의의 영상을 모두 끝까지 봤는지 (QST-02 "영상을 모두 본 뒤 퀴즈").
+     * 영상이 없는 강의는 퀴즈를 열지 않는다 */
+    public boolean hasWatchedAllLessons(Long memberId, Long courseId) {
+        List<Long> lessonIds = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId).stream()
+                .map(Lesson::getLessonId)
+                .toList();
+        if (lessonIds.isEmpty()) {
+            return false;
+        }
+        return lessonWatchRepository.countByMemberIdAndLessonIdInAndIsCompletedTrue(memberId, lessonIds)
+                == lessonIds.size();
+    }
+
+    /* 퀴즈(quiz 도메인, API 42): 퀴즈 통과 → 학습 완료 (SP-34, LRN-07).
+     * 이번에 처음 완료됐으면 true (보상은 이때만), 이미 완료였으면 false */
+    @Transactional
+    public boolean completeLearning(Long memberId, Long courseId) {
+        LearningProgress progress = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
+        return progress.complete(LocalDateTime.now(clock));
+    }
+
+    /* 이재성: 통합 검색 (#15). 보이는 강의(허가+공개+미삭제)만, 제목에 키워드가 들어간 것을 최근 강의부터 */
+    public List<CourseLabelDTO> search(String keyword) {
+        List<Course> courses = courseRepository
+                .findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
+                        keyword, Course.STATUS_APPROVED);
+        if (courses.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+        return courses.stream()
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPath(course.getCategoryId(), categories)))
+                .toList();
     }
 
     /* ===== 내부 도우미 ===== */
@@ -297,6 +371,35 @@ public class CourseService {
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
         return courseRepository.findAllById(courseIds).stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity()));
+    }
+
+    /* 강의별 영상 수를 한 번에 (강의마다 count 쿼리를 보내지 않는다, #87) */
+    private Map<Long, Long> countLessons(List<Long> courseIds) {
+        if (courseIds.isEmpty()) {
+            return Map.of();
+        }
+        return courseRepository.countLessonsByCourseIds(courseIds).stream()
+                .collect(Collectors.toMap(CourseRepository.CourseLessonCount::getCourseId,
+                        CourseRepository.CourseLessonCount::getLessons));
+    }
+
+    /* 강의별 내 학습 상태 (IN_PROGRESS / COMPLETED). 비로그인이면 비어 있다 (#52) */
+    private Map<Long, String> findProgressStatuses(Long memberId, List<Long> courseIds) {
+        if (memberId == null || courseIds.isEmpty()) {
+            return Map.of();
+        }
+        return learningProgressRepository.findByMemberIdAndCourseIdIn(memberId, courseIds).stream()
+                .collect(Collectors.toMap(LearningProgress::getCourseId, LearningProgress::getStatus));
+    }
+
+    /* 강의별 내가 끝까지 본 영상 수 (진행률). 비로그인이면 비어 있다 (#52) */
+    private Map<Long, Long> countWatchedLessons(Long memberId, List<Long> courseIds) {
+        if (memberId == null || courseIds.isEmpty()) {
+            return Map.of();
+        }
+        return lessonWatchRepository.countCompletedByCourse(memberId, courseIds).stream()
+                .collect(Collectors.toMap(LessonWatchRepository.CourseWatchedCount::getCourseId,
+                        LessonWatchRepository.CourseWatchedCount::getWatched));
     }
 
     private Set<Long> findScrappedCourseIds(Long memberId, List<Long> courseIds) {

@@ -4,21 +4,36 @@ import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import jakarta.persistence.LockModeType;
+
 import java.util.List;
+import java.util.Optional;
 
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
  *   테이블 course
  *  */
 public interface CourseRepository extends JpaRepository<Course, Long> {
+    /* 상태를 바꾸는 작업용 조회 (SELECT ... FOR UPDATE).
+     * 정보 수정·썸네일·삭제·검수 요청·허가·반려·공개 전환이 같은 강의를 동시에 바꿀 때
+     * 앞 작업이 끝날 때까지 기다렸다가 바뀐 상태로 다시 검사하게 한다 (#30) */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Course c where c.courseId = :courseId")
+    Optional<Course> findByIdForUpdate(@Param("courseId") Long courseId);
+
     // 목록: 허가 + 공개 + 삭제 안 됨
     Page<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
             List<Long> categoryIds, String status, Pageable pageable);
 
     List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(String status);
+
+    // 통합 검색(#15): 허가 + 공개 + 삭제 안 됨 강의 중 제목에 키워드가 들어간 것, 최근 강의부터
+    List<Course> findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
+            String keyword, String status);
 
     List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, String status);
 
@@ -57,5 +72,29 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     interface CategoryCourseCount {
         Long getCategoryId();
         long getCourseCount();
+    }
+
+    /* 강사 내 강의 목록 (API 72): 삭제 제외, status가 null이면 전체, 최근 만든 순 */
+    @Query("""
+            select c from Course c
+            where c.instructorId = :instructorId
+              and c.deletedAt is null
+              and (:status is null or c.status = :status)
+            order by c.courseId desc
+            """)
+    List<Course> findMyCourses(@Param("instructorId") Long instructorId, @Param("status") String status);
+
+    /* 강의 목록·이어서 볼 강의의 영상 수를 강의 여러 개 한 번에 센다 (#87, 강의마다 count 하던 N+1 정리) */
+    @Query("""
+            select l.courseId as courseId, count(l) as lessons
+            from Lesson l
+            where l.courseId in :courseIds
+            group by l.courseId
+            """)
+    List<CourseLessonCount> countLessonsByCourseIds(@Param("courseIds") List<Long> courseIds);
+
+    interface CourseLessonCount {
+        Long getCourseId();
+        long getLessons();
     }
 }

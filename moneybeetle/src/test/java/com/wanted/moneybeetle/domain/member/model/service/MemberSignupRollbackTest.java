@@ -9,7 +9,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementReposi
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

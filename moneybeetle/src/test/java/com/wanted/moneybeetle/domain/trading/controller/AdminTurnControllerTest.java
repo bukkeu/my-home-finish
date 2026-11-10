@@ -91,15 +91,18 @@ class AdminTurnControllerTest {
     @Test
     void 다음_턴_점검은_ready_와_비어_있는_종목을_돌려준다() throws Exception {
         when(service.checkNextTurn(7L)).thenReturn(
-                new NextTurnCheckDTO(false, 6, List.of("모아모빌리티", "별숲엔터"), 2, false, true));
+                new NextTurnCheckDTO(false, 6, LocalDate.of(2026, 11, 7),
+                        List.of("모아모빌리티", "별숲엔터"), 2, false, true));
 
         mockMvc().perform(get(BASE + "/next-check"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.ready").value(false))
                 .andExpect(jsonPath("$.data.nextTurn").value(6))
+                .andExpect(jsonPath("$.data.nextTradeDate").value("2026-11-07"))
                 .andExpect(jsonPath("$.data.missingPrices[1]").value("별숲엔터"))
                 .andExpect(jsonPath("$.data.newsCount").value(2))
-                .andExpect(jsonPath("$.data.isHoliday").value(false));
+                .andExpect(jsonPath("$.data.isHoliday").value(false))
+                .andExpect(jsonPath("$.data.previousSeasonSettled").value(true));
     }
 
     @Test

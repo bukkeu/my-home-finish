@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,12 +15,13 @@ import lombok.NoArgsConstructor;
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
  *   테이블 lesson (영상 + 요약글, 강의당 1~3개)
+ *   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#157)
  *  */
 @Entity
 @Table(name = "lesson")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Lesson {
+public class Lesson extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,5 +38,28 @@ public class Lesson {
     public int clampSeconds(int seconds) {
         int notNegative = Math.max(seconds, 0);
         return durationSeconds > 0 ? Math.min(notNegative, durationSeconds) : notNegative;
+    }
+
+    /* 새 영상 (API 78). 순서·내용 검사는 서비스가 끝낸 뒤 부른다 */
+    public static Lesson create(Long courseId, int sortOrder, String title, String videoUrl,
+                                int durationSeconds, String summary) {
+        Lesson lesson = new Lesson();
+        lesson.courseId = courseId;
+        lesson.sortOrder = sortOrder;
+        lesson.change(title, videoUrl, durationSeconds, summary);
+        return lesson;
+    }
+
+    /* 영상 제목·파일·길이·요약글 바꾸기 (API 78) */
+    public void change(String title, String videoUrl, int durationSeconds, String summary) {
+        this.title = title;
+        this.videoUrl = videoUrl;
+        this.durationSeconds = durationSeconds;
+        this.summary = summary;
+    }
+
+    /* 영상 순서 바꾸기 (API 78). (강의, 순서)가 유일해서 서비스가 빈 자리로 하나씩 옮긴다 */
+    public void changeOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 }

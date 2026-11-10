@@ -43,6 +43,7 @@ class SeasonAdminServiceTest {
     private TradingSeasonRepository seasonRepository;
     private SeasonTurnRepository turnRepository;
     private SeasonParticipantRepository participantRepository;
+    private TradingService tradingService;
     private SeasonAdminService service;
 
     @BeforeEach
@@ -50,7 +51,9 @@ class SeasonAdminServiceTest {
         seasonRepository = mock(TradingSeasonRepository.class);
         turnRepository = mock(SeasonTurnRepository.class);
         participantRepository = mock(SeasonParticipantRepository.class);
-        service = new SeasonAdminService(seasonRepository, turnRepository, participantRepository);
+        tradingService = mock(TradingService.class);
+        service = new SeasonAdminService(seasonRepository, turnRepository, participantRepository, tradingService);
+        when(tradingService.isPreviousSeasonSettled(any(TradingSeason.class))).thenReturn(true);
 
         // 저장하면 번호가 붙는 것처럼 흉내 낸다
         when(seasonRepository.save(any(TradingSeason.class))).thenAnswer(invocation -> {
@@ -215,8 +218,7 @@ class SeasonAdminServiceTest {
     void 이전_시즌이_정산_전이면_새_시즌을_진행_중으로_바꿀_수_없다() {
         TradingSeason next = savedSeason(8L, "시즌 8");
         when(seasonRepository.findById(8L)).thenReturn(Optional.of(next));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
-                .thenReturn(Optional.of(previousSeason(false)));
+        when(tradingService.isPreviousSeasonSettled(next)).thenReturn(false);
 
         assertThatThrownBy(() -> service.changeStatus(8L, new SeasonStatusDTO("RUNNING")))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -228,14 +230,11 @@ class SeasonAdminServiceTest {
     void 이전_시즌이_정산을_마치고_끝났거나_없으면_새_시즌을_시작할_수_있다() {
         TradingSeason first = savedSeason(8L, "시즌 8");
         when(seasonRepository.findById(8L)).thenReturn(Optional.of(first));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY)).thenReturn(Optional.empty());
         service.changeStatus(8L, new SeasonStatusDTO("RUNNING"));
         assertThat(first.isRunning()).isTrue();
 
         TradingSeason second = savedSeason(9L, "시즌 9");
         when(seasonRepository.findById(9L)).thenReturn(Optional.of(second));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
-                .thenReturn(Optional.of(previousSeason(true)));
         service.changeStatus(9L, new SeasonStatusDTO("RUNNING"));
         assertThat(second.isRunning()).isTrue();
     }
@@ -245,9 +244,6 @@ class SeasonAdminServiceTest {
         TradingSeason running = savedSeason(8L, "시즌 8");
         running.changeStatus(TradingSeason.STATUS_RUNNING);
         when(seasonRepository.findById(8L)).thenReturn(Optional.of(running));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
-                .thenReturn(Optional.of(previousSeason(false)));
-
         service.changeStatus(8L, new SeasonStatusDTO("HOLIDAY"));
 
         assertThat(running.isHoliday()).isTrue();

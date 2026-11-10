@@ -39,6 +39,7 @@ public class SeasonAdminService {
     private final TradingSeasonRepository seasonRepository;
     private final SeasonTurnRepository turnRepository;
     private final SeasonParticipantRepository participantRepository;
+    private final TradingService tradingService;
 
     /** API 114 시즌 목록 */
     public List<SeasonSummaryDTO> findSeasons() {
@@ -99,14 +100,9 @@ public class SeasonAdminService {
     public void changeStatus(Long seasonId, SeasonStatusDTO request) {
         TradingSeason season = getSeason(seasonId);
         // 이전 시즌 정산을 빠뜨린 채 새 시즌을 시작하면 안 된다 (#207). 준비 → 진행 중으로 바꿀 때 확인한다
-        if (season.isReady() && TradingSeason.STATUS_RUNNING.equals(request.getStatus())) {
-            boolean previousSettled = seasonRepository
-                    .findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate())
-                    .map(TradingSeason::isSettledAndEnded)
-                    .orElse(true);
-            if (!previousSettled) {
-                throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
-            }
+        if (season.isReady() && TradingSeason.STATUS_RUNNING.equals(request.getStatus())
+                && !tradingService.isPreviousSeasonSettled(season)) {
+            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
         }
         season.changeStatus(request.getStatus());
     }

@@ -34,3 +34,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 서버 로그 (#84, local 프로필에서 logs/ 에 저장) ###
+logs/
