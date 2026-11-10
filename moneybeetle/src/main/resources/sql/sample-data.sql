@@ -334,6 +334,46 @@ INSERT INTO cash_history (member_id, history_type, source_type, source_id, amoun
 -- 경험치 1,250 = 누적 Lv.8 (이슈 #11 기준). 시드에서는 완료한 강의 4 한 건으로 묶었다
 INSERT INTO exp_history (member_id, source_type, source_id, amount, exp_after, level_after) VALUES
 (8, 'COURSE_COMPLETE', 4, 1250, 1250, 8);
+
+-- 경제 용어 (이슈 #75): 관리자 화면 프로토타입(moneybeetle-page/AdminDashboard.dc.html)의 용어 12개. 앞 5개는 홈 프로토타입(UserHome-vr2)의 "오늘의 경제 용어"와 같다.
+-- 용어는 UNIQUE 라서 같은 용어를 두 번 넣지 않는다. 번호 순서가 곧 등록 순서이고, 지정하지 않은 날의 자동 선정(SP-46)이 이 순서를 쓴다.
+INSERT INTO economic_term (economic_term_id, term, description) VALUES
+(1, '복리', '원금에 붙은 이자에도 다시 이자가 붙는 방식'),
+(2, '실수령액', '세전 급여에서 4대보험과 소득세를 뺀 금액'),
+(3, '배당', '기업이 이익의 일부를 주주에게 나눠 주는 것'),
+(4, '리밸런싱', '정해 둔 자산 비중으로 포트폴리오를 다시 맞추는 일'),
+(5, '청약 가점', '무주택 기간·부양가족·통장 가입 기간으로 매기는 점수'),
+(6, 'ETF', '거래소에 상장돼 주식처럼 사고파는 지수 추종 펀드'),
+(7, '확정일자', '임대차 계약서에 날짜를 받아 보증금 우선순위를 확보하는 것'),
+(8, 'LTV', '집값 대비 대출 가능 금액의 비율'),
+(9, '분산 투자', '여러 자산에 나눠 위험을 줄이는 투자'),
+(10, '인플레이션', '물가가 계속 오르고 돈의 가치가 떨어지는 현상'),
+(11, '예금자보호', '금융사가 문을 닫아도 1인당 일정 금액까지 돌려주는 제도'),
+(12, '전세가율', '매매가 대비 전세 보증금의 비율');
+
+-- 이 구역의 날짜·시각은 DB 세션 시간대(CURDATE()·NOW())가 아니라 한국 시간(+09:00) 기준이다. 서버·세션 시간대가 달라도 한국의 "오늘"에 맞춘다.
+-- (앱은 한국 시간으로 오늘을 정한다. 아래 두 변수는 이 파일을 실행하는 같은 연결에서 계속 쓴다)
+SET @seed_now = CONVERT_TZ(NOW(), @@session.time_zone, '+09:00');
+SET @seed_today = DATE(@seed_now);
+
+-- 날짜별 오늘의 경제 용어: 관리자가 직접 지정한 두 날(is_auto = 0). 날짜는 "실행한 날(한국 시간)" 기준이라 언제 시드를 넣어도 홈에 5개가 나온다.
+-- 오늘 = 1~5번(홈 프로토타입의 5개), 내일 = 6~10번 (관리자 프로토타입의 두 번째 지정일과 같은 구성). 그 밖의 날은 처음 볼 때 자동 선정된다.
+INSERT INTO term_schedule (show_date, economic_term_id, sort_order, is_auto) VALUES
+(@seed_today, 1, 1, 0), (@seed_today, 2, 2, 0), (@seed_today, 3, 3, 0), (@seed_today, 4, 4, 0), (@seed_today, 5, 5, 0),
+(@seed_today + INTERVAL 1 DAY, 6, 1, 0), (@seed_today + INTERVAL 1 DAY, 7, 2, 0), (@seed_today + INTERVAL 1 DAY, 8, 3, 0),
+(@seed_today + INTERVAL 1 DAY, 9, 4, 0), (@seed_today + INTERVAL 1 DAY, 10, 5, 0);
+
+-- 알림 (이슈 #75): 개발용 샘플. 종류별(UNLOCK · INQUIRY_REPLY · HOUSING_RESULT · RANKING · COURSE_REJECTED) 1건 이상.
+-- 제목·이동 주소는 실제로 알림을 보내는 코드와 같은 형식이다. content 는 실제 알림처럼 비워 둔다 (알림 목록 API 에도 content 가 없다).
+-- 민지(8)는 읽지 않은 알림 3건(종의 빨간 점·안 읽은 수 확인용)과 읽은 알림 1건, 강사 5번은 반려된 강의 17의 반려 알림을 받는다.
+-- 문의 답변 알림은 문의 시드가 없어 이동 주소를 비워 둔다 (없는 문의로 이동하지 않게 한다. 종은 주소가 없으면 눌러도 이동하지 않는다).
+INSERT INTO notification (member_id, type, title, link_url, is_read, created_at) VALUES
+(8, 'INQUIRY_REPLY', '문의에 답변이 등록됐어요', NULL, 0, @seed_now - INTERVAL 5 MINUTE),
+(8, 'RANKING', '시즌 6 랭킹이 공개됐어요', '/user/demo-trading', 0, @seed_now - INTERVAL 3 HOUR),
+(8, 'HOUSING_RESULT', '새봄 국민주택 청약 결과가 발표됐어요', '/user/demo-housing-subscription', 0, @seed_now - INTERVAL 1 DAY),
+(8, 'UNLOCK', '모의투자가 열렸어요', '/user/demo-trading', 1, @seed_now - INTERVAL 2 DAY),
+(5, 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, @seed_now - INTERVAL 1 HOUR);
+
 -- 모의투자 (#72, 이재성) ─ 프로토타입 moneybeetle-page/new1/Admin.jsx 기준
 -- 시즌 1개(시즌 7, 2026-10-19 월 시작, 14일·12턴)를 5턴 진행 중 상태로 넣는다. 시즌 만든 관리자 = 1
 -- 주의: 날짜는 프로토타입 기준 고정값이라 오늘보다 과거일 수 있다. 현재 턴은 current_turn 으로만 판단하고 날짜와 비교하지 않는다
