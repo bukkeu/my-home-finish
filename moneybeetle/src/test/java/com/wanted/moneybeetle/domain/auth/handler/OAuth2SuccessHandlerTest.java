@@ -136,34 +136,6 @@ class OAuth2SuccessHandlerTest {
     }
 
     @Test
-    @DisplayName("본인 확인을 하러 온 로그인은 새 로그인으로 처리하지 않고, 같은 회원의 로그인 상태를 되돌려 마이페이지로 보낸다")
-    void reauthReturnsToMyPage() throws IOException {
-        when(socialLoginService.isReauthPending(any())).thenReturn(true);
-        when(socialLoginService.completeReauth(any(SocialProfile.class), any())).thenReturn(member(Member.ROLE_MEMBER));
-
-        handler.onAuthenticationSuccess(request, response, googleToken());
-
-        assertThat(response.getRedirectedUrl()).isEqualTo(OAuth2SuccessHandler.REAUTH_DONE_URL);
-        assertThat(savedContext()).isNotNull();   // OAuth2 인증 정보 대신 AuthDetails 로그인 상태가 남는다
-        assertThat(((com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails) savedContext().getAuthentication().getPrincipal()).getMemberId()).isEqualTo(7L);
-        org.mockito.Mockito.verify(socialLoginService, org.mockito.Mockito.never()).login(any(), any());   // 로그인 기록·출석은 하지 않는다
-        org.mockito.Mockito.verifyNoInteractions(attendanceService);
-    }
-
-    @Test
-    @DisplayName("본인 확인이 다른 계정이거나 만료됐으면 로그인 상태를 지우고 로그인 화면으로 오류 코드와 함께 보낸다")
-    void reauthMismatch() throws IOException {
-        when(socialLoginService.isReauthPending(any())).thenReturn(true);
-        when(socialLoginService.completeReauth(any(SocialProfile.class), any()))
-                .thenThrow(new BusinessException(MemberErrorCode.OAUTH_REAUTH_MISMATCH));
-
-        handler.onAuthenticationSuccess(request, response, googleToken());
-
-        assertThat(response.getRedirectedUrl()).isEqualTo("/login?oauthError=OAUTH_REAUTH_MISMATCH");
-        assertThat(savedContext()).isNull();
-    }
-
-    @Test
     @DisplayName("막힌 경우(이미 가입된 이메일 등)는 로그인 화면으로 가며 오류 코드만 알린다")
     void blocked() throws IOException {
         when(socialLoginService.login(any(SocialProfile.class), any())).thenThrow(new BusinessException(MemberErrorCode.EMAIL_DUPLICATED));

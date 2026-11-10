@@ -25,8 +25,6 @@ import org.springframework.stereotype.Component;
 *   - 이미 가입한 사람: 이메일·비밀번호 로그인과 같은 로그인 상태(AuthDetails)를 만들고 역할별 첫 화면으로 보낸다. 일반 회원이면 오늘 출석도 기록한다.
 *   - 처음 온 사람: 로그인 상태를 만들지 않고(가입 전) SIGNUP_URL 로 보낸다. 화면이 API 8-1·8-2 로 이어서 가입한다.
 *   - 막힌 경우(이미 가입된 이메일, 탈퇴·정지 계정, 이메일 없음 등): 로그인 화면으로 보내며 오류 코드를 oauthError 로 알린다. 오류 코드만 알리고 제공자 정보는 싣지 않는다.
-*   - 이미 로그인한 회원이 본인 확인을 하러 온 경우(API 8 purpose=reauth): 같은 계정이면 확인을 기록하고 로그인 상태를 되돌려 REAUTH_DONE_URL 로 보낸다.
-*     다른 계정이거나 확인이 만료됐으면 로그인 상태를 지우고 로그인 화면으로 오류 코드와 함께 보낸다 (제공자 인증으로 바뀐 인증 정보를 그대로 둘 수 없다).
 *   - 브라우저가 주소를 따라가는 흐름이라 이메일 로그인(API 6)처럼 JSON 으로 답하지 않고 이동(302)시킨다.
 *  */
 @Slf4j
@@ -38,9 +36,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     public static final String SIGNUP_URL = "/signup/social";
     /** 간편 로그인이 막혔을 때 돌아가는 화면. ?oauthError=오류코드 */
     public static final String LOGIN_ERROR_URL = "/login?oauthError=";
-    /** 비밀번호가 없는 회원이 제공자로 다시 로그인해 본인 확인(탈퇴 등)을 마치면 돌아가는 화면 (마이페이지, FE #69) */
-    public static final String REAUTH_DONE_URL = "/user/my-page?reauth=done";
-
     private final SocialLoginService socialLoginService;
     private final AuthSessionWriter sessionWriter;
     private final AttendanceService attendanceService;
@@ -54,14 +49,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             }
             SocialProfile profile = SocialProfileExtractor.extract(
                     token.getAuthorizedClientRegistrationId(), token.getPrincipal().getAttributes());
-            if (socialLoginService.isReauthPending(request.getSession(false))) {
-                // 로그인한 회원이 본인 확인을 하러 온 것이다. 새로 로그인시키지 않고, 같은 회원의 로그인 상태를 그대로 되돌려 놓고 확인만 기록한다
-                // (제공자 인증이 끝나면 Spring Security 가 인증 정보를 OAuth2 사용자로 바꿔 놓기 때문에 AuthDetails 로 다시 만든다)
-                LoginMemberDTO me = socialLoginService.completeReauth(profile, request.getSession());
-                sessionWriter.signIn(request, response, me);
-                response.sendRedirect(REAUTH_DONE_URL);
-                return;
-            }
             SocialLoginService.Result result = socialLoginService.login(profile, request.getSession());
 
             if (result.signupRequired()) {

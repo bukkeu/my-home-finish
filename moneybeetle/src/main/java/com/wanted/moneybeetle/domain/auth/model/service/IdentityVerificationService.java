@@ -200,7 +200,7 @@ public class IdentityVerificationService implements SignupIdentityVerifier {
         return attribute instanceof IdentityVerificationState state ? state : null;
     }
 
-    private static boolean matches(IdentityVerificationState state, String email, String code) {
+    static boolean matches(IdentityVerificationState state, String email, String code) {
         if (code == null) {
             return false;
         }

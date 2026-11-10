@@ -134,6 +134,8 @@
 | 15 | `POST` | `/api/v1/members/me/profile-image` | 프로필 이미지 변경 | 회원 | USR-12, DP-32 |
 | 16 | `PATCH` | `/api/v1/members/me/password` | 비밀번호 변경 | 회원 | USR-13, SP-03 |
 | 17 | `DELETE` | `/api/v1/members/me` | 회원 탈퇴 | 회원 | USR-14, DP-06 |
+| 17-1 | `POST` | `/api/v1/members/me/withdraw-verification/request` | 탈퇴 본인 확인 코드 요청 (간편 로그인 회원) | 회원 | USR-14, DP-06 |
+| 17-2 | `POST` | `/api/v1/members/me/withdraw-verification` | 탈퇴 본인 확인 (받은 코드 확인, 간편 로그인 회원) | 회원 | USR-14, DP-06 |
 | 18 | `GET` | `/api/v1/members/{memberId}/profile` | 다른 회원 공개 프로필 | 회원 | DP-03, HOM-06 |
 
 ### 홈·성장
@@ -537,20 +539,19 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | --- | --- |
 | Endpoint | `/api/v1/auth/oauth/{provider}` |
 | Method | `GET` |
-| 권한 | 비회원 (`purpose=reauth` 는 회원) |
+| 권한 | 비회원 |
 | 관련 | USR-07, DP-13 |
-| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. **본인 확인용 다시 로그인(`purpose=reauth`)**: 비밀번호가 없는 간편 로그인 회원이 탈퇴(API 17) 전에 같은 제공자로 다시 로그인해 본인을 확인한다. 로그인한 회원만 시작할 수 있고(아니면 `UNAUTHORIZED` 401) 시작하면 세션에 5분짜리 확인 대기 상태가 생긴다. 제공자의 로그인 세션이 살아 있어도 새 확인 없이 통과하지 않도록, 이 요청에만 제공자에게 로그인을 다시 요구하는 `prompt` 값을 붙인다(카카오 `login`, 구글 `select_account consent`. 구글은 비밀번호 입력까지 강제하지는 못한다. 카카오톡 인앱 브라우저는 `login` 을 지원하지 않을 수 있다). 일반 간편 로그인은 그대로다. 제공자에서 돌아오면 새 로그인이 아니라 본인 확인으로 처리한다: 연결된 계정이 지금 로그인한 회원의 계정과 같으면 확인을 기록하고(5분 안에 탈퇴 요청 한 번에 쓸 수 있다) 로그인 상태를 그대로 두고 `/user/my-page?reauth=done` 으로 이동(302)한다. 다른 계정이거나 확인이 만료됐으면 로그인 상태를 지우고 `/login?oauthError=OAUTH_REAUTH_MISMATCH`(만료는 `OAUTH_SESSION_EXPIRED`)로 이동한다. |
+| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. |
 
 **Request**
 
 - Path: provider=google | kakao
-- Query: purpose=reauth (선택. 탈퇴 본인 확인용 다시 로그인)
 
 **Response**
 
 - 302 Found → `/oauth2/authorization/{provider}` → 제공자 로그인 화면
 
-**Error**: `OAUTH_PROVIDER_UNAVAILABLE`, `UNAUTHORIZED`(`purpose=reauth` 인데 로그인하지 않음)
+**Error**: `OAUTH_PROVIDER_UNAVAILABLE`
 
 #### 8-1. 간편 로그인 가입 정보 확인
 
@@ -793,7 +794,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 본인 확인 뒤 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 비밀번호가 있는 회원은 현재 비밀번호(`password`)로 확인한다. **비밀번호가 없는 간편 로그인 회원은 `password` 없이 요청하며**, 먼저 API 8 을 `purpose=reauth` 로 불러 같은 제공자로 다시 로그인해 확인을 마친 세션이어야 한다(5분 안, 한 번만 사용). 확인이 없으면 `SOCIAL_REAUTH_REQUIRED`. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
+| 설명 | 본인 확인 뒤 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 비밀번호가 있는 회원은 현재 비밀번호(`password`)로 확인한다. **비밀번호가 없는 간편 로그인 회원은 `password` 없이 요청하며**, 먼저 API 17-1·17-2 로 가입 이메일로 받은 코드를 확인한 세션이어야 한다(확인 뒤 5분 안, 한 번만 사용). 확인이 없으면 `WITHDRAW_VERIFICATION_REQUIRED`. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -807,7 +808,49 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`, `SOCIAL_REAUTH_REQUIRED`, `FORBIDDEN`
+**Error**: `PASSWORD_WRONG`, `WITHDRAW_VERIFICATION_REQUIRED`, `FORBIDDEN`
+
+#### 17-1. 탈퇴 본인 확인 코드 요청 (간편 로그인 회원)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification/request` |
+| Method | `POST` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #232 |
+| 설명 | 비밀번호가 없는 간편 로그인(구글·카카오) 회원이 탈퇴(API 17) 전에 본인임을 확인하려고, **가입한 이메일**로 6자리 인증번호를 보낸다. 받는 이메일은 서버가 로그인한 회원의 가입 이메일로 정하므로 요청으로 받지 않는다. 제공자에게 다시 로그인하게 하는 방식은 서버가 "다시 로그인했는가"를 확인할 증거를 받을 수 없어서(제공자 요청의 `prompt` 값은 브라우저가 보내는 값이라 지울 수 있다) 쓰지 않는다. 코드 규칙은 가입 중 본인인증(API 5·5-1)과 같다: 5분 안에 쓰고, 5번 틀리면 폐기하고, 같은 회원은 60초에 한 번만 받을 수 있다(세션을 새로 만들어도 같다). 새 코드를 받으면 이전 코드는 쓸 수 없다. 비밀번호가 있는 회원은 이 방식을 쓰지 않으므로 `FORBIDDEN`(현재 비밀번호로 탈퇴한다). 진행 상태는 세션에만 두고 DB 테이블은 만들지 않는다. |
+
+**Request**: 본문 없음
+
+**Response**
+
+- 202 Accepted (메일은 비동기로 보낸다)
+
+**Error**: `FORBIDDEN`(비밀번호가 있는 회원), `IDENTITY_CODE_TOO_SOON`(60초 안에 다시 요청), `IDENTITY_MAIL_UNAVAILABLE`, `UNAUTHORIZED`
+
+#### 17-2. 탈퇴 본인 확인 (받은 코드 확인)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification` |
+| Method | `POST` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #232 |
+| 설명 | 받은 6자리 코드가 맞으면 이 세션에서 그 회원의 탈퇴 본인 확인을 마친 것으로 기록한다. 확인은 **5분 동안 탈퇴 요청(API 17) 한 번**에 쓸 수 있고, 다른 회원이거나 시간이 지났으면 쓸 수 없다. 다른 이메일의 코드, 5분이 지난 코드, 이미 5번 틀린 코드는 구분하지 않고 `IDENTITY_CODE_EXPIRED` 로 알린다. |
+
+**Request**
+
+```json
+{ "code": "123456" }
+```
+
+- `code`: 숫자 6자리(아니면 400).
+
+**Response**
+
+- 204 No Content
+
+**Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`(코드를 받은 적이 없거나 만료·5회 실패), `FORBIDDEN`(비밀번호가 있는 회원), `UNAUTHORIZED`
 
 #### 18. 다른 회원 공개 프로필
 
@@ -3885,8 +3928,7 @@ email=admin@moneybeetle.kr&password=...
 | 회원 | `OAUTH_FAILED` | 502 | 간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요 |
 | 회원 | `OAUTH_PROVIDER_UNAVAILABLE` | 503 | 지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요 |
 | 회원 | `OAUTH_SESSION_EXPIRED` | 400 | 간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요 |
-| 회원 | `SOCIAL_REAUTH_REQUIRED` | 400 | 구글·카카오로 다시 로그인해 본인 확인을 해 주세요 |
-| 회원 | `OAUTH_REAUTH_MISMATCH` | 400 | 지금 로그인한 계정과 다른 계정으로 확인했어요. 같은 계정으로 다시 시도해 주세요 |
+| 회원 | `WITHDRAW_VERIFICATION_REQUIRED` | 400 | 가입한 이메일로 받은 인증번호를 확인해 주세요 |
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |

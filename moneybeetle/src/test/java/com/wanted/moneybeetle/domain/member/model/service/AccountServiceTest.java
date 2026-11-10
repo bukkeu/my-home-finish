@@ -41,7 +41,7 @@ class AccountServiceTest {
     private MemberRepository memberRepository;
     private PasswordResetTokenRepository tokenRepository;
     private PasswordEncoder passwordEncoder;
-    private SocialReauthVerifier reauthVerifier;
+    private WithdrawVerifier withdrawVerifier;
     private final org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
     private AccountService service;
     private Member member;
@@ -52,8 +52,8 @@ class AccountServiceTest {
         tokenRepository = mock(PasswordResetTokenRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         Clock clock = Clock.fixed(Instant.parse("2026-11-09T00:00:00Z"), ZoneId.of("Asia/Seoul"));
-        reauthVerifier = mock(SocialReauthVerifier.class);
-        service = new AccountService(memberRepository, tokenRepository, passwordEncoder, clock, reauthVerifier);
+        withdrawVerifier = mock(WithdrawVerifier.class);
+        service = new AccountService(memberRepository, tokenRepository, passwordEncoder, clock, withdrawVerifier);
 
         member = Member.signup("minji@gmail.com", "old-hash", "민지", LocalDate.of(1999, 4, 12), "FEMALE", TODAY);
         ReflectionTestUtils.setField(member, "memberId", 1L);
@@ -246,26 +246,26 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("비밀번호가 없는 간편 로그인 회원은 다시 로그인으로 본인 확인을 마친 세션이면 탈퇴한다 (비밀번호는 보지 않는다)")
-    void socialMemberWithdrawsAfterReauth() {
+    @DisplayName("비밀번호가 없는 간편 로그인 회원은 가입 이메일로 받은 코드를 확인한 세션이면 탈퇴한다 (비밀번호는 보지 않는다)")
+    void socialMemberWithdrawsAfterEmailCode() {
         ReflectionTestUtils.setField(member, "passwordHash", null);
-        when(reauthVerifier.consumeRecentReauth(1L, session)).thenReturn(true);
+        when(withdrawVerifier.consumeVerified(1L, session)).thenReturn(true);
 
         service.withdraw(1L, null, session);
 
         assertThat(member.getStatus()).isEqualTo(Member.STATUS_WITHDRAWN);
         assertThat(member.getWithdrawnAt()).isEqualTo(NOW);
-        verify(reauthVerifier).consumeRecentReauth(1L, session);
+        verify(withdrawVerifier).consumeVerified(1L, session);
     }
 
     @Test
-    @DisplayName("비밀번호가 없는 회원이 본인 확인 없이 탈퇴하면 SOCIAL_REAUTH_REQUIRED 이고 계정은 그대로다. 비밀번호를 보내도 소용없다")
-    void socialMemberWithoutReauthCannotWithdraw() {
+    @DisplayName("비밀번호가 없는 회원이 본인 확인 없이 탈퇴하면 WITHDRAW_VERIFICATION_REQUIRED 이고 계정은 그대로다. 비밀번호를 보내도 소용없다")
+    void socialMemberWithoutVerificationCannotWithdraw() {
         ReflectionTestUtils.setField(member, "passwordHash", null);
-        when(reauthVerifier.consumeRecentReauth(1L, session)).thenReturn(false);
+        when(withdrawVerifier.consumeVerified(1L, session)).thenReturn(false);
 
         assertThatThrownBy(() -> service.withdraw(1L, "beetle1234", session))
-                .satisfies(e -> assertCode(e, MemberErrorCode.SOCIAL_REAUTH_REQUIRED));
+                .satisfies(e -> assertCode(e, MemberErrorCode.WITHDRAW_VERIFICATION_REQUIRED));
         assertThat(member.isActive()).isTrue();
     }
 
@@ -274,7 +274,7 @@ class AccountServiceTest {
     void passwordMemberIgnoresReauth() {
         service.withdraw(1L, "beetle1234", session);
 
-        org.mockito.Mockito.verifyNoInteractions(reauthVerifier);
+        org.mockito.Mockito.verifyNoInteractions(withdrawVerifier);
     }
 
     @Test

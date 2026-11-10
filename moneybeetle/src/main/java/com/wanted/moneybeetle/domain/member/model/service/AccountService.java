@@ -36,8 +36,8 @@ public class AccountService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final Clock clock;
-    /** 비밀번호가 없는 간편 로그인 회원의 탈퇴 본인 확인 (auth.SocialLoginService 가 구현) */
-    private final SocialReauthVerifier socialReauthVerifier;
+    /** 비밀번호가 없는 간편 로그인 회원의 탈퇴 본인 확인: 가입 이메일로 받은 코드 (auth.WithdrawVerificationService 가 구현) */
+    private final WithdrawVerifier withdrawVerifier;
 
     /**
      * 아이디(이메일) 찾기 (API 9). 닉네임과 생년월일이 모두 맞는 정상 회원의 이메일을 일부 가려서 돌려준다.
@@ -126,8 +126,8 @@ public class AccountService {
 
     /**
      * 회원 탈퇴 (API 17). 본인 확인을 한 뒤 계정을 비활성화(WITHDRAWN)한다 (DP-06).
-     * 비밀번호가 있는 회원은 현재 비밀번호로, 비밀번호가 없는 간편 로그인 회원은 구글·카카오로 다시 로그인해 확인한 세션이어야 한다
-     * (확인이 없으면 SOCIAL_REAUTH_REQUIRED). 개인정보는 30일 뒤 파기 배치가 지운다. 관리자 계정은 이 API 로 탈퇴할 수 없다.
+     * 비밀번호가 있는 회원은 현재 비밀번호로, 비밀번호가 없는 간편 로그인 회원은 가입 이메일로 받은 코드를 확인한 세션이어야 한다
+     * (확인이 없으면 WITHDRAW_VERIFICATION_REQUIRED). 개인정보는 30일 뒤 파기 배치가 지운다. 관리자 계정은 이 API 로 탈퇴할 수 없다.
      */
     @Transactional
     public void withdraw(Long memberId, String password, HttpSession session) {
@@ -136,8 +136,8 @@ public class AccountService {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
         if (member.getPasswordHash() == null) {
-            if (!socialReauthVerifier.consumeRecentReauth(memberId, session)) {
-                throw new BusinessException(MemberErrorCode.SOCIAL_REAUTH_REQUIRED);
+            if (!withdrawVerifier.consumeVerified(memberId, session)) {
+                throw new BusinessException(MemberErrorCode.WITHDRAW_VERIFICATION_REQUIRED);
             }
         } else {
             checkCurrentPassword(member, password);
