@@ -36,7 +36,6 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -215,9 +214,9 @@ public class TradingService {
      */
     public NextTurnCheckDTO checkNextTurn(TradingSeason season) {
         // 관리자가 휴장(HOLIDAY)으로 바꾸지 않았어도 서울 기준 일요일이면 휴장일이다 (SP-50, 휴장일에는 턴이 잠긴다)
-        boolean holiday = season.isHoliday() || LocalDate.now(clock).getDayOfWeek() == DayOfWeek.SUNDAY;
+        boolean holiday = season.isHoliday() || TradingSeason.isClosedDay(today());
         if (season.isLastTurn()) {
-            return new NextTurnCheckDTO(false, null, List.of(), 0, holiday, isPreviousSeasonSettled(season),
+            return new NextTurnCheckDTO(false, null, null, List.of(), 0, holiday, isPreviousSeasonSettled(season),
                     isAfterMarketClose(season));
         }
         int nextTurn = season.getCurrentTurn() + 1;
@@ -237,7 +236,8 @@ public class TradingService {
         boolean afterClose = isAfterMarketClose(season);
         boolean ready = season.isRunning() && !holiday && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0
                 && previousSettled && afterClose;
-        return new NextTurnCheckDTO(ready, nextTurn, missingPrices, newsCount, holiday, previousSettled, afterClose);
+        return new NextTurnCheckDTO(ready, nextTurn, season.tradeDateOf(nextTurn), missingPrices, newsCount,
+                holiday, previousSettled, afterClose);
     }
 
     /**
@@ -263,13 +263,19 @@ public class TradingService {
         return seasonRepository.findFirstByStatusInOrderByStartDateDesc(
                         List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
                 .map(season -> {
-                    LocalDate today = LocalDate.now(clock);
+                    LocalDate today = today();
                     long todayOrders = orderRepository.countOrdersBetween(season.getTradingSeasonId(),
                             today.atStartOfDay(), today.plusDays(1).atStartOfDay());
                     NextTurnCheckDTO check = checkNextTurn(season);
+                    // 다음 턴이 있는데 그 턴 뉴스가 하나도 없으면 "뉴스 누락" 1건
+                    int missingNews = check.nextTurn() != null && check.newsCount() == 0 ? 1 : 0;
                     return new TradingDashboardSummaryDTO(season.getTradingSeasonId(), todayOrders, check.ready(),
-                            new TradingDashboardSummaryDTO.Missing(check.missingPrices().size(),
-                                    check.nextTurn() != null && check.newsCount() == 0 ? 1 : 0));
+                            new TradingDashboardSummaryDTO.Missing(check.missingPrices().size(), missingNews));
                 });
+    }
+
+    /** 오늘 날짜 (서울 시계 Clock 기준, TimeConfig) */
+    private LocalDate today() {
+        return LocalDate.now(clock);
     }
 }

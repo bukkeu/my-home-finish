@@ -4,6 +4,8 @@ import com.wanted.moneybeetle.domain.trading.model.entity.SeasonParticipant;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -48,4 +50,13 @@ public interface SeasonParticipantRepository extends JpaRepository<SeasonPartici
     @Query("select p from SeasonParticipant p where p.tradingSeasonId = :seasonId and p.memberId = :memberId")
     Optional<SeasonParticipant> findForUpdateBySeasonAndMember(@Param("seasonId") Long tradingSeasonId,
             @Param("memberId") Long memberId);
+
+    /** 정산으로 순자산 순위가 확정된 참가자 (시즌 랭킹 조회 #26) */
+    Page<SeasonParticipant> findByTradingSeasonIdAndAssetRankIsNotNull(Long tradingSeasonId, Pageable pageable);
+
+    /** 정산으로 수익률 순위가 확정된 참가자 (시즌 랭킹 조회 #26) */
+    Page<SeasonParticipant> findByTradingSeasonIdAndReturnRankIsNotNull(Long tradingSeasonId, Pageable pageable);
+
+    /** 시즌의 모든 참가자 (관리자 참가자 목록·랭킹 미리보기 #45, 정산 #46) */
+    List<SeasonParticipant> findByTradingSeasonIdOrderBySeasonParticipantIdAsc(Long tradingSeasonId);
 }

@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
 import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -19,13 +20,14 @@ import java.util.Objects;
 /* comment.
  *   담당 : DBA ① (강의·퀴즈)
  *   테이블 course (DRAFT -> REVIEW -> APPROVED/REJECTED, is_public, Soft Delete)
+ *   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#157)
  *  */
 @Entity
 @Table(name = "course")
 @DynamicUpdate      // 바뀐 컬럼만 UPDATE: 검수 요청·수정과 관리자 삭제가 동시에 저장돼도 서로의 값을 옛 값으로 덮어쓰지 않는다 (#32 리뷰)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Course {
+public class Course extends BaseTimeEntity {
 
     // 상태값은 Entity가 상수로 가진다 (컨벤션 4장)
     public static final String STATUS_DRAFT = "DRAFT";
@@ -144,10 +146,7 @@ public class Course {
         this.description = description;
         this.infoBaseDate = infoBaseDate;
         this.infoSource = infoSource;
-        if (isApproved()) {
-            this.status = STATUS_REVIEW;
-            this.submittedAt = now;
-        }
+        reReviewIfApproved(now);
     }
 
     /* 썸네일 주소 바꾸기 (API 77). 검수 중에는 못 바꾼다.
@@ -155,6 +154,18 @@ public class Course {
     public void changeThumbnail(String thumbnailUrl, LocalDateTime now) {
         checkEditable();
         this.thumbnailUrl = thumbnailUrl;
+        reReviewIfApproved(now);
+    }
+
+    /* 영상·요약글·테스트 퀴즈·퀴즈를 바꿨을 때 (API 78~80, #31). 검수 중에는 못 바꾼다.
+     * 허가된 강의의 내용을 바꾸면 정보 수정과 같이 다시 검수(REVIEW, SP-31) */
+    public void markContentChanged(LocalDateTime now) {
+        checkEditable();
+        reReviewIfApproved(now);
+    }
+
+    /* 허가된 강의를 고치면 다시 검수 → 허가 전까지 사용자에게 보이지 않는다 (SP-31) */
+    private void reReviewIfApproved(LocalDateTime now) {
         if (isApproved()) {
             this.status = STATUS_REVIEW;
             this.submittedAt = now;

@@ -14,7 +14,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #207 시즌 순서 : PREVIOUS_SEASON_NOT_SETTLED, SEASON_PERIOD_OVERLAP
 *   - #208 정규장 시간 : MARKET_CLOSED, MARKET_STILL_OPEN
 *   - #25 매수·매도 : NOT_JOINED, NOT_ENOUGH_CASH, NOT_ENOUGH_QUANTITY, REASON_REQUIRED, STALE_TURN_PRICE
-*   - 앞으로 추가 : RANKING_NOT_PUBLISHED
+*   - #26 시즌 랭킹 : RANKING_NOT_PUBLISHED
 *  */
 
 import com.wanted.moneybeetle.global.exception.ErrorCode;
@@ -52,7 +52,8 @@ public enum TradingErrorCode implements ErrorCode {
     MARKET_CLOSED(HttpStatus.CONFLICT, "지금은 장이 열리지 않았어요. 오전 8시에 다시 거래할 수 있어요"),                  // 409 (08:00~20:00 밖)
     PREVIOUS_SEASON_NOT_SETTLED(HttpStatus.CONFLICT, "이전 시즌 정산을 먼저 마쳐 주세요"),                              // 409
     SEASON_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요"),               // 409
-    MARKET_STILL_OPEN(HttpStatus.CONFLICT, "장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요");  // 409
+    MARKET_STILL_OPEN(HttpStatus.CONFLICT, "장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요"),  // 409
+    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요");                                       // 403
 
     private final HttpStatus status;
     private final String message;

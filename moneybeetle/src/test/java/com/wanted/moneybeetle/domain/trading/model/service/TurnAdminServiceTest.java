@@ -86,7 +86,7 @@ class TurnAdminServiceTest {
 
     private void givenCheck(boolean ready) {
         when(tradingService.checkNextTurn(season))
-                .thenReturn(new NextTurnCheckDTO(ready, season.getCurrentTurn() + 1, List.of(), 1, false, true, true));
+                .thenReturn(new NextTurnCheckDTO(ready, season.getCurrentTurn() + 1, null, List.of(), 1, false, true, true));
     }
 
     @Test
@@ -184,7 +184,7 @@ class TurnAdminServiceTest {
 
     @Test
     void 다음_턴_점검은_TradingService_의_계산을_그대로_돌려준다() {
-        NextTurnCheckDTO check = new NextTurnCheckDTO(false, 1, List.of("모아모빌리티"), 0, false, true, true);
+        NextTurnCheckDTO check = new NextTurnCheckDTO(false, 1, null, List.of("모아모빌리티"), 0, false, true, true);
         when(tradingService.checkNextTurn(season)).thenReturn(check);
 
         assertThat(service.checkNextTurn(SEASON_ID)).isSameAs(check);
@@ -217,7 +217,7 @@ class TurnAdminServiceTest {
     @Test
     void 일요일_휴장은_시즌_상태가_진행_중이어도_MARKET_HOLIDAY_로_거절한다() {
         when(tradingService.checkNextTurn(season))
-                .thenReturn(new NextTurnCheckDTO(false, 1, List.of(), 1, true, true, true));
+                .thenReturn(new NextTurnCheckDTO(false, 1, null, List.of(), 1, true, true, true));
 
         assertThatThrownBy(() -> service.advanceTurn(SEASON_ID, 0, ADMIN_ID))
                 .isInstanceOfSatisfying(BusinessException.class,

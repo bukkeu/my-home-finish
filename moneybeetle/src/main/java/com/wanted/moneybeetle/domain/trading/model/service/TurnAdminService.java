@@ -14,7 +14,6 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -108,7 +107,7 @@ public class TurnAdminService {
     private List<LocalDate> holidays(TradingSeason season) {
         List<LocalDate> holidays = new ArrayList<>();
         for (LocalDate date = season.getStartDate(); !date.isAfter(season.getEndDate()); date = date.plusDays(1)) {
-            if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            if (TradingSeason.isClosedDay(date)) {
                 holidays.add(date);
             }
         }

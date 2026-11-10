@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.auditing.DateTimeProvider;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ContextConfiguration;
@@ -64,8 +65,8 @@ class TradingSeasonLockRepositoryTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("공유 잠금 조회는 보이는 상태 중 시작일이 가장 최근인 시즌 하나를 돌려준다")
-    void findFirstForShare_returnsLatestVisibleSeason() {
+    @DisplayName("보이는 시즌 번호 조회는 시작일이 가장 최근인 시즌 하나를, 공유 잠금 조회는 그 시즌을 돌려준다")
+    void shareLockedLatestVisibleSeason() {
         TradingSeason older = TradingSeason.create("시즌 1", LocalDate.of(2026, 10, 19), 1L);
         older.changeStatus(TradingSeason.STATUS_RUNNING);
         older.changeStatus(TradingSeason.STATUS_SETTLING);
@@ -76,9 +77,13 @@ class TradingSeasonLockRepositoryTest {
         entityManager.flush();
         entityManager.clear();
 
-        Optional<TradingSeason> found = seasonRepository.findFirstForShareByStatusInOrderByStartDateDesc(
+        List<Long> ids = seasonRepository.findSeasonIdsByStatusIn(
                 List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY,
-                        TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED));
+                        TradingSeason.STATUS_SETTLING, TradingSeason.STATUS_ENDED),
+                PageRequest.of(0, 1));
+        assertThat(ids).containsExactly(running.getTradingSeasonId());
+
+        Optional<TradingSeason> found = seasonRepository.findByIdForShare(ids.get(0));
 
         assertThat(found).map(TradingSeason::getName).contains("시즌 2");
     }
