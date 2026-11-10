@@ -90,10 +90,10 @@ git push -u origin feat/be-12-login-api
 | --- | --- |
 | 제목 | 커밋 제목과 같은 형식 (예: `feat(be): 로그인 API (#12)`) |
 | 크기 | 한 PR = 한 이슈. 대략 400줄 이하 |
-| 승인 | **작성자를 뺀 팀원 1명의 승인** 필수. 본인 PR은 본인이 병합하지 않음 |
+| 승인 | **`P1` PR**은 코드 오너(SCM 서수영, 보조 PM 이재성) 중 작성자가 아닌 1명의 승인 필수(`.github/CODEOWNERS`, `p1-approval` 체크) — 승인한 사람이 병합한다. **`P2`·`P3`·우선순위 없는 PR**은 승인 없이 누구나(작성자 포함) 병합할 수 있다. `dev` → `main` 릴리스 PR은 우선순위와 상관없이 코드 오너 1명 승인 필수 |
 | 병합 방식 | 작업 브랜치 → `dev`은 Squash and merge, `dev` → `main`은 Create a merge commit |
 | 릴리스 PR 제목 | `dev` → `main` PR도 허용된 타입(`chore` 등)을 쓴다. 예: `chore: dev → main (보상 서비스·공통 레이아웃 반영)`. `release:` 같은 타입은 쓰지 않는다 |
-| PR 대상 | 작업 브랜치는 `dev`으로 (`main`으로 바로 올리지 않음). `hotfix`만 `main` |
+| PR 대상 | 작업 브랜치는 `dev`으로 (`main`으로 바로 올리지 않음). `hotfix`만 `main`. `main`으로 온 PR은 `main-source` 체크가 출발 브랜치를 확인한다(6장) |
 | 리뷰 기한 | 24시간 안에 확인 (어려우면 댓글로 미리 알림) |
 | 병합 조건 | 빌드·테스트 통과 + 승인 + 충돌 없음 |
 | 이슈 연결 | 본문에 `Closes #번호` → 병합 시 이슈 자동 종료 |
@@ -114,7 +114,7 @@ PR을 올리면 CodeRabbit(`.coderabbit.yaml`)이 변경 요약과 줄 단위 �
 | 리뷰 시작 | PR을 올리거나 푸시한 뒤 리뷰가 시작됐는지 확인한다. 자동으로 시작되지 않으면(Public 저장소 스타 10개 미만 등) PR 코멘트에 `@coderabbitai review` 한 줄만 적는다. CodeRabbit이 이미 리뷰한 커밋이 쌓이면(기본 5개) 푸시해도 자동 증분 리뷰가 잠시 멈출 수 있으니, 그때도 같은 코멘트로 요청한다 |
 | 리뷰 대상 | `dev`·`main`을 향한 PR. Draft PR은 리뷰하지 않음 |
 | AI 코멘트 처리 | 각 코멘트에 **반영 / 반영하지 않는 이유를 답글로 설명 / 질문** 셋 중 하나로 답한다. 반영·설명은 답글을 단 뒤, 질문은 AI의 답을 확인하고 납득한 뒤 스레드를 닫는다. 답 없이 Resolve하거나 무시하고 병합하지 않는다 |
-| 병합 조건 | 리뷰 대상 변경은 **푸시한 최신 커밋**의 CodeRabbit 리뷰가 끝났고(진행 중이면 기다림, 시작되지 않았으면 요청한 뒤 기다림) 새로 달린 코멘트까지 위 방식으로 모두 처리 + 작성자를 뺀 팀원 1명 이상 승인 + 빌드·테스트 통과. 경로 필터(`.coderabbit.yaml`의 `path_filters`)로 제외된 변경은 제외 사유를 확인하고 팀원이 직접 리뷰한다. 최신 커밋의 변경이 **모두** 제외돼 그 증분 리뷰가 건너뛰어졌으면, 이전에 리뷰된 변경의 CodeRabbit 리뷰와 코멘트 처리를 마친 뒤 제외된 최신 변경은 팀원이 직접 리뷰한다(최신 커밋 리뷰 완료 조건은 이 직접 리뷰가 대신한다). PR 전체가 **모두** 제외돼 CodeRabbit 리뷰가 없는 경우에는 이 팀원 직접 리뷰가 CodeRabbit 리뷰 완료 조건을 대신한다 |
+| 병합 조건 | 리뷰 대상 변경은 **푸시한 최신 커밋**의 CodeRabbit 리뷰가 끝났고(진행 중이면 기다림, 시작되지 않았으면 요청한 뒤 기다림) 새로 달린 코멘트까지 위 방식으로 모두 처리 + `P1`이면 코드 오너 중 작성자가 아닌 1명 이상 승인(3장) + 빌드·테스트 통과. 경로 필터(`.coderabbit.yaml`의 `path_filters`)로 제외된 변경은 제외 사유를 확인하고 팀원이 직접 리뷰한다. 최신 커밋의 변경이 **모두** 제외돼 그 증분 리뷰가 건너뛰어졌으면, 이전에 리뷰된 변경의 CodeRabbit 리뷰와 코멘트 처리를 마친 뒤 제외된 최신 변경은 팀원이 직접 리뷰한다(최신 커밋 리뷰 완료 조건은 이 직접 리뷰가 대신한다). PR 전체가 **모두** 제외돼 CodeRabbit 리뷰가 없는 경우에는 이 팀원 직접 리뷰가 CodeRabbit 리뷰 완료 조건을 대신한다 |
 | AI 제안 코드 | 내가 설명할 수 있는 코드만 커밋하고, 반영한 뒤에는 로컬에서 실행해 확인한다 |
 | 비밀번호·키 지적 | 가장 먼저 처리한다. 커밋에서 지우는 것만으로는 부족하고 해당 비밀번호·키를 바꾼다 |
 | 질문·반박 | 코멘트에 `@coderabbitai 질문` 형식으로 답글을 달면 된다. AI 말에 동의하지 않으면 이유를 답글로 남긴다 |
@@ -189,7 +189,10 @@ PR을 올리면 CodeRabbit(`.coderabbit.yaml`)이 변경 요약과 줄 단위 �
 저장소 Settings → Branches에서 **`main`과 `dev` 두 브랜치 모두** 보호 규칙을 설정합니다. 기본(default) 브랜치는 `dev`으로 바꿔 두면 PR이 자동으로 `dev`을 향합니다.
 
 - [ ] Require a pull request before merging
-- [ ] Required approvals: **1**
+- [ ] `dev`: Required approvals **0**, Require status checks에 `p1-approval` 추가. `P1` PR만 서수영(`tjtndud2`)·이재성(`godgeul-glitch`) 중 작성자가 아닌 사람의 승인이 있어야 체크가 통과한다(`.github/workflows/auto-label.yml`, #186). 서수영의 P1 PR은 이재성이 승인한다
+- [ ] `main`: Required approvals **1** + Require review from Code Owners (릴리스 PR은 항상 코드 오너 승인)
+- [ ] Do not allow bypassing the above settings: 팀원 모두 저장소 admin이라 이것을 켜야 규칙을 건너뛰지 못한다
+- [ ] `main`만: Require status checks에 `main-source` 추가. `.github/workflows/main-source-check.yml`이 PR의 출발 브랜치가 `dev` 또는 `hotfix/…`인지 확인해, 다른 브랜치에서 `main`으로 온 PR은 병합되지 않는다
 - [ ] Require status checks to pass (CI 구성 후)
 - [ ] 병합 방식은 Squash merge와 Merge commit을 허용 (Settings → General)
 - [ ] Default branch를 `dev`으로 변경
