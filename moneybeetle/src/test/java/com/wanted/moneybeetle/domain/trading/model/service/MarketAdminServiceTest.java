@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -322,34 +323,25 @@ class MarketAdminServiceTest {
 
     // ===== 턴 진행과 같은 시즌 행 잠금 =====
 
-    private com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason runningSeason() {
-        var season = com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.create("시즌 7",
-                java.time.LocalDate.of(2026, 11, 2), 1L);
-        ReflectionTestUtils.setField(season, "tradingSeasonId", 7L);
-        season.changeStatus(com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.STATUS_RUNNING);
-        return season;
-    }
-
     @Test
-    void 진행_중인_시즌이_있으면_분야_종목_변경이_그_시즌_행을_잠근다() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any()))
-                .thenReturn(java.util.Optional.of(runningSeason()));
+    void 분야_종목_변경은_READY_RUNNING_HOLIDAY_시즌을_직접_잠금_조회한다() {
         when(sectorRepository.existsByName("핀테크")).thenReturn(false);
         when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(sectorRepository.findById(1L)).thenReturn(Optional.of(sector(1L, "반도체", 1)));
+        when(stockRepository.findById(1L)).thenReturn(Optional.of(stock(1L, 1L, "한빛반도체")));
+        when(stockRepository.saveAndFlush(any(Stock.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // 네 변경 메서드가 각각 잠금을 잡는지 누적 횟수로 확인한다 (하나라도 빠지면 횟수가 어긋난다)
         service.createSector(new SectorSaveDTO("핀테크", 15, null));
+        verify(seasonRepository, times(1)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
 
-        verify(seasonRepository).findByIdForUpdate(7L);
-    }
+        service.changeSector(1L, new SectorSaveDTO("시스템반도체", null, null));
+        verify(seasonRepository, times(2)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
 
-    @Test
-    void 진행_중인_시즌이_없으면_잠그지_않는다() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any())).thenReturn(java.util.Optional.empty());
-        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
-        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        service.createStock(new StockSaveDTO(1L, "새반도체", 10_000, null, null, null, null));
+        verify(seasonRepository, times(3)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
 
-        service.createSector(new SectorSaveDTO("핀테크", 15, null));
-
-        verify(seasonRepository, never()).findByIdForUpdate(any());
+        service.changeStock(1L, new StockSaveDTO(1L, "한빛반도체", 10_000, null, null, null, null));
+        verify(seasonRepository, times(4)).findAllByStatusInForUpdate(List.of("READY", "RUNNING", "HOLIDAY"));
     }
 }

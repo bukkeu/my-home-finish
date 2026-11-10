@@ -108,6 +108,7 @@ class TradingServiceTurnCheckTest {
 
         assertThat(check.ready()).isTrue();
         assertThat(check.nextTurn()).isEqualTo(6);
+        assertThat(check.nextTradeDate()).isEqualTo(LocalDate.of(2026, 11, 7));   // 6턴 = 월~토 6일째(토요일)
         assertThat(check.missingPrices()).isEmpty();   // 사용 안 함 분야의 종목은 세지 않는다
         assertThat(check.newsCount()).isEqualTo(2);
         assertThat(check.isHoliday()).isFalse();
@@ -162,6 +163,7 @@ class TradingServiceTurnCheckTest {
 
         assertThat(check.ready()).isFalse();
         assertThat(check.nextTurn()).isNull();
+        assertThat(check.nextTradeDate()).isNull();
     }
 
     @Test

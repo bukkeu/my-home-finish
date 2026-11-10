@@ -166,6 +166,7 @@ class SeasonAdminServiceTest {
     void 설정과_상태를_바꾼다() {
         TradingSeason season = savedSeason(7L, "시즌 7");
         when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
         service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), null, 9));
         service.changeStatus(7L, new SeasonStatusDTO("RUNNING"));
@@ -190,7 +191,7 @@ class SeasonAdminServiceTest {
 
     @Test
     void 없는_시즌의_상태를_바꾸면_NOT_FOUND() {
-        when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.changeStatus(99L, new SeasonStatusDTO("RUNNING")))
                 .extracting(e -> ((BusinessException) e).getErrorCode())

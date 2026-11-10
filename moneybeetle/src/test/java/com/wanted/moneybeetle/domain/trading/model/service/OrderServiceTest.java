@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -93,6 +94,7 @@ class OrderServiceTest {
             season.advanceTurn();
         }
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
+        when(seasonRepository.findTopByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
 
         participant = SeasonParticipant.create(SEASON_ID, MEMBER_ID, 1_000_000, 0);
@@ -124,6 +126,15 @@ class OrderServiceTest {
 
     private OrderRequestDTO order(String type, int quantity, int turnNo, Long reasonId) {
         return new OrderRequestDTO(STOCK_ID, type, quantity, turnNo, reasonId);
+    }
+
+    @Test
+    void 주문은_시즌_행을_먼저_잠근_뒤_참가자_행을_잠근다() {
+        service.placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID));
+
+        var order = inOrder(seasonRepository, participantRepository);
+        order.verify(seasonRepository).findTopByStatusInOrderByStartDateDesc(TradingService.VISIBLE_STATUSES);
+        order.verify(participantRepository).findForUpdateBySeasonAndMember(SEASON_ID, MEMBER_ID);
     }
 
     private Holding givenHolding(int quantity, int avgPrice) {
@@ -247,13 +258,13 @@ class OrderServiceTest {
 
     @Test
     void 첫_턴이_시작되기_전이거나_보이는_시즌이_없으면_NO_RUNNING_SEASON() {
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
+        when(seasonRepository.findTopByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
 
         assertRejected(order("BUY", 1, 5, REASON_ID), TradingErrorCode.NO_RUNNING_SEASON);
 
         TradingSeason notStarted = TradingSeason.create("시즌 8", LocalDate.of(2026, 11, 16), 1L);
         notStarted.changeStatus(TradingSeason.STATUS_RUNNING);
-        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(notStarted));
+        when(seasonRepository.findTopByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(notStarted));
 
         assertRejected(order("BUY", 1, 0, REASON_ID), TradingErrorCode.NO_RUNNING_SEASON);
     }

@@ -162,7 +162,9 @@ public class OrderService {
 
     /** 지금 주문할 수 있는 시즌 : 진행 중이고, 화면이 본 턴이 현재 턴이어야 한다 */
     private TradingSeason getOrderableSeason(int requestedTurn) {
-        TradingSeason season = getVisibleSeason();
+        TradingSeason season = seasonRepository
+                .findTopByStatusInOrderByStartDateDesc(TradingService.VISIBLE_STATUSES)
+                .orElseThrow(() -> new BusinessException(TradingErrorCode.NO_RUNNING_SEASON));
         if (season.isSettlingOrEnded()) {
             throw new BusinessException(TradingErrorCode.SEASON_CLOSED);
         }

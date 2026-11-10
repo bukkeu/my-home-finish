@@ -160,12 +160,12 @@ public class MarketAdminService {
     /**
      * 분야·종목 변경은 턴 진행(TurnAdminService.advanceTurn)과 같은 시즌 행 잠금을 잡고 시작한다.
      * 점검 직후 분야 활성화·종목 등록·이동이 끼어들어 가격이 없는 종목을 둔 채 턴이 넘어가지 않게 한다.
-     * 진행 중·휴장 중인 시즌이 없으면(시즌 준비 중) 턴 진행과 경합할 일이 없으므로 잠그지 않는다
+     * 준비·진행·휴장 시즌을 한 번에 잠금 조회해 READY → RUNNING 전환과 조회-잠금 사이의 틈도 막는다.
+     * 대상 시즌이 없으면 잠글 행이 없으므로 그대로 진행한다
      */
     private void lockRunningSeason() {
-        seasonRepository.findFirstByStatusInOrderByStartDateDesc(
-                        List.of(TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY))
-                .ifPresent(season -> seasonRepository.findByIdForUpdate(season.getTradingSeasonId()));
+        seasonRepository.findAllByStatusInForUpdate(List.of(TradingSeason.STATUS_READY,
+                TradingSeason.STATUS_RUNNING, TradingSeason.STATUS_HOLIDAY));
     }
 
     private Sector getSector(Long sectorId) {
