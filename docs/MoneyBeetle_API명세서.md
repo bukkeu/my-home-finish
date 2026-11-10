@@ -1124,7 +1124,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-06 |
-| 설명 | 최근 본 영상 순. |
+| 설명 | 최근 본 영상 순. 마지막 시청 시각이 같으면 시청 기록 ID 역순으로 순서를 고정한다(페이지 경계 중복·누락 방지, #157). 목록 응답 형식(1-3). |
 
 **Request**
 
@@ -1144,7 +1144,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-06~07 |
-| 설명 | 학습 완료한 강의. |
+| 설명 | 학습 완료한 강의. 완료 시각 최신순, 같으면 학습 기록 ID 역순(#157). 목록 응답 형식(1-3). |
 
 **Request**
 

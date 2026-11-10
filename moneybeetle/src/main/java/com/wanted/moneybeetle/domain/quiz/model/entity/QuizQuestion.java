@@ -1,28 +1,26 @@
 package com.wanted.moneybeetle.domain.quiz.model.entity;
 
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 /* comment.
 *   담당 : DBA ① (강의·퀴즈)
 *   테이블 quiz_question (quiz_type TEST / MAIN)
+*   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#157)
 *  */
 
 @Entity
 @Table(name = "quiz_question")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class QuizQuestion {
+public class QuizQuestion extends BaseTimeEntity {
 
     public static final String QUIZ_TYPE_TEST = "TEST";       // 영상 전 OX 5문제
     public static final String QUIZ_TYPE_MAIN = "MAIN";       // 영상 후 4지선다
@@ -40,8 +38,6 @@ public class QuizQuestion {
     private String content;
     private String explanation;
     private int sortOrder;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     /* 강사가 새 문항을 만든다 (API 79·80). 개수·형식 검사는 서비스가 끝낸 뒤 부른다 */
     public static QuizQuestion create(Long courseId, String quizType, String questionType,
@@ -68,18 +64,5 @@ public class QuizQuestion {
         this.content = content;
         this.explanation = explanation;
         this.sortOrder = sortOrder;
-    }
-
-    // TODO 공통 설정(SCM)의 BaseTimeEntity가 생기면 상속으로 바꾸기
-    @PrePersist
-    void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
     }
 }

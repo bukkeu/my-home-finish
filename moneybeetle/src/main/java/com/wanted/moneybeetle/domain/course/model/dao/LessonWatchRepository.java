@@ -28,7 +28,7 @@ public interface LessonWatchRepository extends JpaRepository<LessonWatch, Long> 
             where w.lessonId = l.lessonId and l.courseId = c.courseId
               and w.memberId = :memberId
               and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
-            order by w.lastWatchedAt desc
+            order by w.lastWatchedAt desc, w.lessonWatchId desc
             """,
             countQuery = """
             select count(w) from LessonWatch w, Lesson l, Course c
