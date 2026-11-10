@@ -274,9 +274,20 @@ public class CourseService {
                 .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
     }
 
-    /* 이재성: 통합 검색 */
-    public List<CourseListDTO> search(String keyword) {
-        return List.of(); // TODO 제목 검색 (허가 + 공개만)
+    /* 이재성: 통합 검색 (#15). 보이는 강의(허가+공개+미삭제)만, 제목에 키워드가 들어간 것을 최근 강의부터 */
+    public List<CourseLabelDTO> search(String keyword) {
+        List<Course> courses = courseRepository
+                .findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
+                        keyword, Course.STATUS_APPROVED);
+        if (courses.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+        return courses.stream()
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPath(course.getCategoryId(), categories)))
+                .toList();
     }
 
     /* ===== 내부 도우미 ===== */

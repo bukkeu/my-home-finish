@@ -51,6 +51,10 @@ public class TradingSeason {
     /** 시즌 기간: 시작일(월) 포함 14일, 종료일 = 시작일 + 13일 (SP-50) */
     public static final int SEASON_DAYS = 14;
     public static final int DEFAULT_TOTAL_TURNS = 12;
+    /**
+     * 해금 레벨 기본값. schema.sql 의 system_setting UNLOCK_LEVEL_TRADING 기본값(8)과 같다.
+     * TODO 운영 설정(SystemSettingService)에 값을 읽는 메서드가 생기면 시즌 생성 때 그 값을 create(...)에 넘긴다 (#111)
+     */
     public static final int DEFAULT_UNLOCK_LEVEL = 8;
     /** 이월 비율 기본값: 최종 순자산 전액 이월 (SP-63, #76 확정) */
     public static final BigDecimal DEFAULT_CARRYOVER_RATE = new BigDecimal("100.00");
@@ -156,15 +160,36 @@ public class TradingSeason {
         return dates;
     }
 
+    /**
+     * 다음 턴으로 넘긴다 (SP-59). 진행 중(RUNNING)일 때만, 마지막 턴(totalTurns) 이후에는 넘길 수 없다.
+     * 휴장(HOLIDAY)에는 MARKET_HOLIDAY, 그 밖의 상태에서는 INVALID_STATUS_TRANSITION 으로 거절한다
+     */
     public void advanceTurn() {
+        if (isHoliday()) {
+            throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
+        }
+        if (!isRunning()) {
+            throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (isLastTurn()) {
+            throw new BusinessException(TradingErrorCode.LAST_TURN_REACHED);
+        }
         this.currentTurn++;
     }
 
+    /** 정산을 마쳤다고 기록한다. 정산 중(SETTLING)에만 */
     public void completeSettlement(LocalDateTime settledAt) {
+        if (!STATUS_SETTLING.equals(this.status)) {
+            throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        }
         this.settledAt = settledAt;
     }
 
+    /** 랭킹을 공개하고 시즌을 끝낸다. 정산 중(SETTLING)이고 정산을 마친 뒤에만 (SP-62, SP-65) */
     public void publishRanking(LocalDateTime publishedAt) {
+        if (!STATUS_SETTLING.equals(this.status) || this.settledAt == null) {
+            throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        }
         this.rankingPublishedAt = publishedAt;
         this.status = STATUS_ENDED;
     }
