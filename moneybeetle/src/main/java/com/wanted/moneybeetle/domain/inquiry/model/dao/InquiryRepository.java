@@ -46,6 +46,24 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
     /* 강사 문의함의 답변 대기 수 (삭제·숨김 제외) */
     long countByCourseIdInAndStatusAndDeletedAtIsNullAndIsHiddenFalse(Collection<Long> courseIds, String status);
 
+    /* 강사 내 강의 목록 (API 72)의 강의별 답변 대기 수 (삭제·숨김 제외). 강의마다 세지 않고 한 번에 */
+    @Query("""
+            select i.courseId as courseId, count(i) as waiting
+            from Inquiry i
+            where i.courseId in :courseIds
+              and i.status = :status
+              and i.deletedAt is null
+              and i.isHidden = false
+            group by i.courseId
+            """)
+    List<CourseWaitingCount> countByCourse(@Param("courseIds") Collection<Long> courseIds,
+                                           @Param("status") String status);
+
+    interface CourseWaitingCount {
+        Long getCourseId();
+        long getWaiting();
+    }
+
     /* 하루 작성 수 (DP-30). 지운 글도 센다: 썼다 지웠다 반복해서 한도를 피하지 못하게 */
     long countByMemberIdAndCreatedAtGreaterThanEqual(Long memberId, LocalDateTime from);
 

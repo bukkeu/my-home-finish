@@ -24,6 +24,7 @@ import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
 import com.wanted.moneybeetle.domain.course.model.entity.Scrap;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,6 +33,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +58,8 @@ public class CourseService {
     private final LessonWatchRepository lessonWatchRepository;
     private final ScrapRepository scrapRepository;
     private final CourseReviewRepository courseReviewRepository;
+    private final Clock clock;                          // Asia/Seoul 공통 시계 (학습 완료 시각)
+    private final MemberService memberService;          // member 도메인 (DBA②) - 회원 행 잠금
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -118,9 +123,12 @@ public class CourseService {
         return LessonPlayDTO.from(lesson, positionSeconds);
     }
 
-    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38) */
+    /* API 33. 시청 위치 저장 (LRN-05, LRN-06, SP-38).
+     * 퀴즈 제출(QuizService.submitQuiz)과 같은 회원 행 잠금을 먼저 잡아, 학습 완료 상태를 오래된 값으로 덮어쓰지 않는다.
+     * 영상 완료 여부는 화면의 completed 값이 아니라 서버 시계로 확인한 본 시간으로 정한다 (LessonWatch.record) */
     @Transactional
     public void saveProgress(Long memberId, Long courseId, Long lessonId, ProgressDTO request) {
+        memberService.lockBalance(memberId);
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
@@ -128,9 +136,10 @@ public class CourseService {
                 .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
         progress.moveTo(lessonId, lesson.clampSeconds(request.getPositionSeconds()));
 
+        LocalDateTime now = LocalDateTime.now(clock);
         LessonWatch watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
-                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId)));
-        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), request.isCompleted());
+                .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId, now)));
+        watch.record(lesson.clampSeconds(request.getWatchedSeconds()), lesson.getDurationSeconds(), now);
         // 수정은 save()를 다시 부르지 않는다. 트랜잭션이 끝날 때 변경 감지로 UPDATE된다
     }
 
@@ -187,9 +196,9 @@ public class CourseService {
         scrapRepository.deleteByMemberIdAndCourseId(memberId, courseId);
     }
 
-    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11) */
+    /* API 38. 내 스크랩 목록: 최근 스크랩 순 (LRN-08, USR-11). 재검수·비공개·삭제된 강의는 숨긴다 (SP-31) */
     public Page<ScrapListDTO> findScraps(Long memberId, Pageable pageable) {
-        Page<Scrap> scraps = scrapRepository.findByMemberIdOrderByCreatedAtDescScrapIdDesc(memberId, pageable);
+        Page<Scrap> scraps = scrapRepository.findVisibleScraps(memberId, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 scraps.getContent().stream().map(Scrap::getCourseId).toList());
@@ -274,9 +283,42 @@ public class CourseService {
                 .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
     }
 
-    /* 이재성: 통합 검색 */
-    public List<CourseListDTO> search(String keyword) {
-        return List.of(); // TODO 제목 검색 (허가 + 공개만)
+    /* 퀴즈(quiz 도메인, API 41·42): 이 강의의 영상을 모두 끝까지 봤는지 (QST-02 "영상을 모두 본 뒤 퀴즈").
+     * 영상이 없는 강의는 퀴즈를 열지 않는다 */
+    public boolean hasWatchedAllLessons(Long memberId, Long courseId) {
+        List<Long> lessonIds = lessonRepository.findByCourseIdOrderBySortOrderAsc(courseId).stream()
+                .map(Lesson::getLessonId)
+                .toList();
+        if (lessonIds.isEmpty()) {
+            return false;
+        }
+        return lessonWatchRepository.countByMemberIdAndLessonIdInAndIsCompletedTrue(memberId, lessonIds)
+                == lessonIds.size();
+    }
+
+    /* 퀴즈(quiz 도메인, API 42): 퀴즈 통과 → 학습 완료 (SP-34, LRN-07).
+     * 이번에 처음 완료됐으면 true (보상은 이때만), 이미 완료였으면 false */
+    @Transactional
+    public boolean completeLearning(Long memberId, Long courseId) {
+        LearningProgress progress = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
+        return progress.complete(LocalDateTime.now(clock));
+    }
+
+    /* 이재성: 통합 검색 (#15). 보이는 강의(허가+공개+미삭제)만, 제목에 키워드가 들어간 것을 최근 강의부터 */
+    public List<CourseLabelDTO> search(String keyword) {
+        List<Course> courses = courseRepository
+                .findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
+                        keyword, Course.STATUS_APPROVED);
+        if (courses.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Category> categories = categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+        return courses.stream()
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPath(course.getCategoryId(), categories)))
+                .toList();
     }
 
     /* ===== 내부 도우미 ===== */

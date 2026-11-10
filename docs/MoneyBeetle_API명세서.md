@@ -35,6 +35,8 @@
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
 | 중복 요청 | 퀴즈 제출, 주문, 청약 납입, 강의 영상·요약글 저장(API 78)은 `Idempotency-Key` 헤더로 한 번만 처리 (DP-37). 키는 로그인 회원별로 구분하고 24시간 보관한다. 같은 키·같은 내용이 다시 오면 처음 결과(상태 코드·본문)를 그대로 돌려주고 응답 헤더 `Idempotent-Replayed: true`를 붙인다. 같은 키·다른 내용이면 `IDEMPOTENCY_KEY_CONFLICT`, 처음 요청이 아직 처리 중이면 `DUPLICATE_REQUEST`. 거절된 4xx 응답은 보관하지 않아 같은 키로 다시 시도할 수 있다. 5xx 응답은 처리 여부를 알 수 없어 보관하고 같은 키로 다시 오면 그 응답을 돌려준다(이미 저장된 주문·납입이 다시 실행되지 않게). 5xx를 받은 화면은 자동으로 다시 보내지 않고, 내역(거래 내역·청약통장·퀴즈 결과)을 다시 조회해 처리됐는지 먼저 확인한 뒤 처리되지 않았을 때만 새 키로 시도한다(새 키는 기존 기록이 적용되지 않아 그대로 다시 실행된다). 응답을 만들지 못하고 필터 밖으로 예외·Error가 전파된 경우도 처리 여부를 알 수 없으므로 5xx와 같게 500(`INTERNAL_ERROR`) 결과로 보관한다(같은 키로 다시 와도 재실행되지 않고, "처리 중"으로 남아 `DUPLICATE_REQUEST`가 계속되지도 않는다). 헤더가 없으면 막지 않고 그대로 처리한다. 키는 100자까지이고(UUID 36자), 넘으면 처리하지 않고 400 `IDEMPOTENCY_KEY_TOO_LONG` (`IdempotencyFilter`, #65) |
+| 요청 ID | 모든 응답에 `X-Request-Id` 헤더(8자리)를 붙인다. 화면에서 오류를 알릴 때 이 값을 함께 남기면 서버 로그에서 같은 요청을 찾을 수 있다. 요청에 영문·숫자·하이픈 36자 이내의 `X-Request-Id` 를 보내면 그 값을 그대로 쓴다 (`RequestLogFilter`, #84) |
+| 서버 상태 확인 | `GET /actuator/health` → `{ "status": "UP" }`, `GET /actuator/info` → 앱 이름. 로그인 없이 호출하며 `/api/v1` 응답 형식(`success`·`data`)을 쓰지 않는다. 그 외 actuator 주소는 열지 않는다 (발표 전 로컬 점검용, #84) |
 
 ### 1-2 응답 형식
 
@@ -975,7 +977,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, INV-06 |
-| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. |
+| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. 키워드는 앞뒤 공백을 빼고 비어 있으면 세 목록 모두 빈 결과. 강의는 보이는 강의(허가·공개·미삭제) 중 제목에 키워드가 들어간 것을 최근 강의부터, 종목은 모의투자 해금(Lv.8) 회원에게만 사용 중 분야·종목 중 이름에 키워드가 들어간 것(`stockId`, `name`, `sectorName`). 경제 용어는 경제 용어 담당 검색 메서드가 생기면 채운다(그전에는 빈 목록). 로그인 회원 번호는 세션에서 꺼내며, 로그인 정보가 없으면 종목은 빈 목록 (#15) |
 
 **Request**
 
@@ -1102,7 +1104,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `PUT` |
 | 권한 | 회원 |
 | 관련 | LRN-05~06, SP-38 |
-| 설명 | 재생 중 주기적으로(예: 15초) 저장. 끝까지 보면 completed=true. |
+| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
 
 **Request**
 
@@ -1200,7 +1202,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-08, USR-11 |
-| 설명 | 마이페이지 스크랩 목록. |
+| 설명 | 마이페이지 스크랩 목록. 최근 스크랩 순. 지금 사용자에게 보이는 강의(허가 + 공개 + 삭제 안 됨)만 보여 준다. 재검수 중·비공개·삭제된 강의는 숨기지만 스크랩 기록은 남아서, 다시 허가·공개되면 목록에 돌아온다(SP-31). |
 
 **Request**
 
@@ -1268,7 +1270,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-02, SP-35 |
-| 설명 | 4지선다 5~15문제. 영상을 모두 본 뒤 열린다. 정답은 보내지 않는다. |
+| 설명 | 4지선다 5~15문제. 이 강의의 영상을 모두 끝까지 본 뒤 열린다(lesson_watch.is_completed). 정답·해설은 보내지 않는다. passScore는 system_setting QUIZ_PASS_SCORE(없거나 1~100 밖이면 70). |
 
 **Request**
 
@@ -1280,7 +1282,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "passScore": 70, "questions": [ { "questionId": 201, "content": "청약 가점 항목이 아닌 것은?", "choices": [ { "choiceId": 11, "content": "무주택 기간" }, { "choiceId": 12, "content": "연 소득" } ] } ] }
 ```
 
-**Error**: `QUIZ_LOCKED`
+**Error**: `QUIZ_LOCKED`(403), `COURSE_NOT_PUBLIC`, `NOT_FOUND`(퀴즈 문항 없음)
 
 #### 42. 퀴즈 제출·채점
 
@@ -1290,7 +1292,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | QST-02~05, LRN-07, GRW-03~06, SP-34~36, NFR-06 |
-| 설명 | 서버에서 채점하고 오답을 오답노트에 저장한다. 최초 통과 때만 학습 완료 + 경험치·캐시 지급(레벨업 포함, 한 트랜잭션). 같은 요청은 한 번만 처리. |
+| 설명 | 서버에서 채점(점수 = 맞힌 수 / 문항 수 × 100, 소수점 이하 버림, passScore 이상 통과)하고 응시·답안을 저장한다. 틀린 문제는 오답노트에 저장(같은 문제는 한 번, 또 틀리면 마지막 오답만 갱신). 통과했고 처음 학습 완료일 때만 학습 완료 + 보상(COURSE_COMPLETE, 만점이면 QUIZ_PERFECT 추가, 원인 ID = 강의 ID, 레벨업 포함) — 모두 한 트랜잭션. 안 푼 문제·이 문항의 보기가 아닌 답은 오답. 같은 Idempotency-Key 재요청은 처음 결과를 그대로 돌려준다(IdempotencyFilter). |
 
 **Request**
 
@@ -1310,7 +1312,9 @@ Header: Idempotency-Key: 7c1e...
 }
 ```
 
-**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`
+**Error**: `QUIZ_LOCKED`, `DUPLICATE_REQUEST`, `IDEMPOTENCY_KEY_CONFLICT`, `COURSE_NOT_PUBLIC`, `NOT_FOUND`
+
+- 미통과·이미 완료한 강의면 `rewards`는 `{ "firstPass": false, "exp": 0, "cash": 0, "levelUp": null }`. 레벨이 오르지 않았으면 `levelUp`은 null.
 
 #### 43. 퀴즈 결과
 
@@ -1328,9 +1332,9 @@ Header: Idempotency-Key: 7c1e...
 
 **Response**
 
-- (퀴즈 제출 응답과 같은 구조)
+- 퀴즈 제출 응답과 같은 구조. 보상은 이미 지급돼서 `rewards`는 null. 결과는 문항 순서대로.
 
-**Error**: `FORBIDDEN`, `NOT_FOUND`
+**Error**: `FORBIDDEN`(남의 응시), `NOT_FOUND`
 
 #### 44. 오답노트
 
@@ -1746,23 +1750,27 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-16~18, SP-62 |
-| 설명 | 관리자가 공개한 뒤에만. type=ASSET(순자산) |
+| 설명 | 관리자가 공개한 뒤에만. type=ASSET(순자산, 기본) 또는 RETURN(수익률) |
 
 **Request**
 
-- Query: type=ASSET&page=0&size=10
+- Query: type=ASSET&page=0&size=10 (type 기본 ASSET, page 기본 0, size 기본 10·최대 50)
 
 **Response**
 
 ```json
 {
-  "seasonName": "시즌 6", "type": "ASSET",
+  "seasonName": "시즌 6", "type": "ASSET", "totalCount": 1240,
   "items": [ { "rank": 1, "nickname": "초록개미", "title": "내 집", "netAsset": 8920400, "returnRate": 42.8, "hasBadge": true } ],
   "me": { "rank": 23, "netAsset": 4610000, "returnRate": 6.5 }
 }
 ```
 
-**Error**: `RANKING_NOT_PUBLISHED`
+- `rank`는 정산 때 확정한 순위다 (SP-62). 동점은 같은 순위이고, 같은 순위 안에서는 참가한 순서다. `type`에 맞는 순위(순자산 순위 / 수익률 순위)로 정렬한다
+- `title`·`hasBadge`: 그 랭킹 종류에서 상위 3위 수상(뱃지·칭호)이 있으면 뱃지 이름과 `true`, 없으면 `null`과 `false`
+- `me`: 이 시즌에 참가해 정산된 회원 자신의 순위. 참가하지 않았거나 정산 전이면 `null`
+
+**Error**: `RANKING_NOT_PUBLISHED`(403, 공개 전), `NOT_FOUND`(404, 없는 시즌), `INVALID_INPUT`(400, type·page·size가 올바르지 않음)
 
 ### 모의 청약
 
@@ -2004,16 +2012,16 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-06 |
-| 설명 | 검수 상태 포함. |
+| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). |
 
 **Request**
 
-- Query: status=DRAFT|REVIEW|APPROVED|REJECTED
+- Query: status=DRAFT|REVIEW|APPROVED|REJECTED (선택)
 
 **Response**
 
 ```json
-{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
+{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
 ```
 
 #### 73. 강의 생성
@@ -2024,7 +2032,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | 카테고리·소주제, 제목, 소개로 강의를 만든다(DRAFT). |
+| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
 
 **Request**
 
@@ -2039,7 +2047,7 @@ Header: Idempotency-Key: 31aa...
 { "courseId": 7, "status": "DRAFT" }
 ```
 
-**Error**: `FORBIDDEN_WORD`
+**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리)
 
 #### 74. 강의 편집 정보
 
@@ -2049,7 +2057,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-01~05 |
-| 설명 | 영상·요약글·퀴즈(정답 포함) 전체. |
+| 설명 | 본인 강의만. 강의 정보 + lessons(영상·요약글) + quizzes(테스트 퀴즈·퀴즈, 보기별 isCorrect·해설 포함) + rejectReason(가장 최근 반려 사유). |
 
 **Request**
 
@@ -2057,9 +2065,9 @@ Header: Idempotency-Key: 31aa...
 
 **Response**
 
-- (강의 상세 + lessons + testQuiz + quiz 정답 포함)
+- `{ courseId, categoryId, title, description, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
 
-**Error**: `FORBIDDEN`
+**Error**: `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 75. 강의 수정
 
@@ -2069,12 +2077,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `PUT` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-31 |
-| 설명 | 허가된 강의를 고치면 다시 검수(REVIEW). |
+| 설명 | 본인 강의만. 검수 중(REVIEW)에는 수정 불가. 허가된 강의를 고치면 다시 검수(REVIEW, submitted_at 갱신) → 허가 전까지 사용자에게 보이지 않음. 요청 형식·검사는 API 73과 같다. |
 
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "...", "description": "..." }
+{ "categoryId": 21, "title": "...", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2082,6 +2090,8 @@ Header: Idempotency-Key: 31aa...
 ```json
 { "courseId": 7, "status": "REVIEW" }
 ```
+
+**Error**: `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 76. 강의 삭제
 
@@ -2091,7 +2101,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `DELETE` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-32 |
-| 설명 | 학습 기록이 있으면 삭제 불가. |
+| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(비공개는 관리자에게 요청). 없으면 Soft Delete(deleted_at). |
 
 **Request**
 
@@ -2101,7 +2111,7 @@ Header: Idempotency-Key: 31aa...
 
 - 204 No Content
 
-**Error**: `COURSE_HAS_LEARNERS`
+**Error**: `COURSE_HAS_LEARNERS`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 77. 썸네일 업로드
 
@@ -2111,7 +2121,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | multipart/form-data. |
+| 설명 | 본인 강의만, 검수 중에는 불가. multipart/form-data(필드 file). 이미지 2MB·jpg·png(DP-32). 허가된 강의의 썸네일을 바꾸면 정보 수정(API 75)과 같이 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31). |
 
 **Request**
 
@@ -2120,10 +2130,10 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "thumbnailUrl": "/files/course/7.png" }
+{ "thumbnailUrl": "/uploads/3f2a....png" }
 ```
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 78. 영상·요약글 저장
 
@@ -2147,6 +2157,17 @@ Header: Idempotency-Key: 4d8e...
 
 첫 번째는 이미 저장된 영상(`lessonId` 있음), 두 번째는 새 영상(`lessonId` 없음)이다.
 
+**저장 규칙** (#31)
+
+- 본인 강의만(남의 강의 `FORBIDDEN`, 삭제된 강의 `NOT_FOUND`). 검수 중이면 `COURSE_IN_REVIEW`. 허가된 강의의 영상을 바꾸면 다시 검수(REVIEW, 제출 시각 갱신)로 바뀌어 허가 전까지 사용자에게 보이지 않는다(SP-31).
+- `sortOrder`는 1부터 영상 개수까지 빠짐없이 한 번씩(예: 2개면 1, 2). 아니면 `INVALID_INPUT`.
+- `videoUrl`은 "영상 파일 올리기"가 돌려준 파일 키(`/uploads/….mp4`)만 받고, 저장 폴더에 그 파일이 실제로 있어야 한다. 외부 링크·없는 파일은 `INVALID_INPUT`. 기존 영상(`lessonId` 있음)이 지금 저장된 키를 그대로 보내면 다시 올리지 않아도 통과한다.
+- `lessonId`가 이 강의의 영상이 아니면 `LESSON_NOT_FOUND`, 같은 `lessonId`를 두 번 보내면 `INVALID_INPUT`.
+- 요청에 없는 기존 영상은 지운다. 단 시청 기록이 있거나 수강생의 "마지막으로 본 영상"이면 지우지 않고 `LESSON_IN_USE`(409).
+- 기존 영상(`lessonId` 있음)의 `videoUrl`을 다른 파일로 바꾸면 예전 영상의 시청 기록이 새 영상에 적용되지 않게, 그 영상의 본 시간·완료와 이어보기 위치를 처음(0)으로 돌린다. 제목·요약글·순서만 바꾸면 시청 기록은 그대로다.
+- 기존 영상의 순서를 바꿀 수 있다. 다만 영상 3개가 모두 남은 채로 서로 자리를 바꾸면 빈 자리가 없어서 `LESSON_ORDER_LOCKED`(409).
+- 영상 제목·요약글은 금칙어 검사(DP-20, `FORBIDDEN_WORD`). 영상 제목 100자, 요약글 2,000자(`SUMMARY_TOO_LONG`).
+
 **Response**
 
 ```json
@@ -2155,7 +2176,7 @@ Header: Idempotency-Key: 4d8e...
 
 요청 `lessons`와 같은 순서다: 첫 번째 영상은 기존 ID 20, 두 번째 새 영상은 새로 만든 ID 21.
 
-**Error**: `TOO_MANY_LESSONS`, `SUMMARY_TOO_LONG`
+**Error**: `NO_LESSON`(0개), `TOO_MANY_LESSONS`(4개 이상), `SUMMARY_TOO_LONG`, `LESSON_NOT_FOUND`, `LESSON_IN_USE`, `LESSON_ORDER_LOCKED`, `COURSE_IN_REVIEW`, `FORBIDDEN_WORD`, `INVALID_INPUT`, `IDEMPOTENCY_KEY_CONFLICT`, `FORBIDDEN`, `NOT_FOUND`
 
 **영상 파일 올리기** (#78의 부속 요청, API 번호는 늘리지 않는다)
 
@@ -2165,17 +2186,17 @@ Header: Idempotency-Key: 4d8e...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-02, DP-33 |
-| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. |
+| 설명 | multipart/form-data. 영상 한 개씩 올린다. 한 요청에 파일 하나만 담으므로 요청 한도(510MB)로 충분하다. 본인 강의만, 검수 중에는 불가(파일을 저장하기 전에 확인한다). |
 
 - Form: file=(mp4, 500MB 이하)
 
 ```json
-{ "videoUrl": "lesson/7-1.mp4" }
+{ "videoUrl": "/uploads/3f2a....mp4" }
 ```
 
 응답의 `videoUrl`은 **만료되지 않는 파일 키**(스토리지 안의 경로)이고, 서명 주소가 아니다. 서버는 업로드 때 이 키를 받아 두었다가, 위 "영상·요약글 저장" 요청에 담긴 같은 값을 `lesson.video_url`(DB)에 그대로 저장한다. 영상을 보여 주는 응답(API 62 등)의 `videoUrl`은 저장된 키로 **조회할 때마다 새로 발급한 짧게 만료되는 서명 주소**다(local 환경은 서버가 `/files/` + 키로 로컬 파일을 직접 내려 준다). 그래서 서명 주소를 DB에 저장하거나 저장 요청에 담지 않는다.
 
-**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`
+**Error**: `FILE_TOO_LARGE`, `FILE_TYPE_NOT_ALLOWED`, `COURSE_IN_REVIEW`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 79. 테스트 퀴즈 저장
 
@@ -2185,7 +2206,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-04 |
-| 설명 | OX 5문제와 해설 일괄 저장. |
+| 설명 | OX 5문제와 해설 일괄 저장. 문제 500자, 해설은 UTF-8 기준 65,535바이트까지(넘으면 `INVALID_INPUT`). `answer`는 `"O"` 또는 `"X"`. 정확히 5문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). 저장 방식은 아래 "퀴즈 저장 방식" 참고. |
 
 **Request**
 
@@ -2199,7 +2220,7 @@ Header: Idempotency-Key: 4d8e...
 { "count": 5 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
 
 #### 80. 퀴즈 저장
 
@@ -2209,7 +2230,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `PUT` |
 | 권한 | 강사 |
 | 관련 | TCH-05 |
-| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. |
+| 설명 | 4지선다 5~15문제, 정답, 해설 일괄 저장. 문제 500자, 해설은 UTF-8 기준 65,535바이트까지. `choices`는 정확히 4개(각 200자), `answerIndex`는 정답 보기 위치 0~3. 5~15문제가 아니면 `QUIZ_COUNT_INVALID`. 본인 강의만, 검수 중이면 `COURSE_IN_REVIEW`, 허가된 강의를 바꾸면 다시 검수(SP-31). |
 
 **Request**
 
@@ -2223,7 +2244,9 @@ Header: Idempotency-Key: 4d8e...
 { "count": 10 }
 ```
 
-**Error**: `QUIZ_COUNT_INVALID`
+**Error**: `QUIZ_COUNT_INVALID`, `COURSE_IN_REVIEW`, `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`
+
+**퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
 #### 81. 검수 요청
 
@@ -2306,7 +2329,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-08 |
-| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. |
+| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `todayOrders`·`nextTurnReady`·`missing` 은 모의투자(trading) 조회 메서드가 공개되기 전까지 null 이다. |
 
 **Request**
 
@@ -2450,7 +2473,8 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, DP-43 |
-| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review·admin_log(action COURSE_APPROVE, 변경 전·후 상태) 기록. |
+| 설명 | 검수 중(REVIEW)인 강의만. 허가 + 공개, approved_at 기록. course_review 기록(admin_log는 후속). |
+
 
 - Path: courseId=9
 
@@ -2469,7 +2493,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-03, SP-31 |
-|설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, admin_log(action COURSE_REJECT, 변경 전·후 상태·사유) 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
+| 설명 | 검수 중(REVIEW)인 강의만. 사유 필수(500자). REJECTED + 비공개, course_review에 사유 기록, 강사에게 알림(type COURSE_REJECTED). 강사 화면의 rejectReason은 가장 최근 반려 사유. |
 **Request**
 
 ```json
