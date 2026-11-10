@@ -5,6 +5,8 @@ import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepositor
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.InstructorSignupDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.InstructorSignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
@@ -408,6 +410,44 @@ public class MemberService {
         saveAgreements(savedMember.getMemberId(), agreedTerms);
 
         return SignupResultDTO.from(savedMember);
+    }
+
+    /**
+     * 강사 가입 신청 (API 12, #30). 회원을 만들고 강사 정보를 승인 대기(PENDING)·신청 시각과 함께 저장한다 → 관리자 신청 목록(API 104).
+     * 순서: 이메일 → 강사명(닉네임 규칙·금칙어·중복) → 비밀번호 → 약관 → 저장(회원 → 약관 동의 기록 → 강사 정보).
+     * - 강사명을 닉네임으로 쓴다 (팀 결정). 이미 있는 닉네임이면 NICKNAME_DUPLICATED
+     * - 강사는 학습자 청약통장을 만들지 않는다 (그래서 MemberSignupService.signup 경로를 쓰지 않는다)
+     * - 본인인증을 마쳤는지 확인하는 일은 가입 흐름(MemberSignupService.signupInstructor)이 하고, 여기서는 결과만 저장한다
+     */
+    @Transactional
+    public InstructorSignupResultDTO signupInstructor(InstructorSignupDTO request, boolean identityVerified) {
+        if (request == null) {
+            throw new IllegalArgumentException("강사 가입 정보가 필요합니다.");
+        }
+
+        String email = SignupRules.normalizeEmail(request.getEmail());
+        validateEmail(request.getEmail(), email);
+
+        String nickname = request.getDisplayName();
+        validateNickname(nickname);
+        if (request.getField() != null) {
+            forbiddenWordService.check(request.getField());
+        }
+
+        validatePassword(request.getPassword(), request.getPasswordConfirm());
+
+        List<Terms> agreedTerms = findAgreedTerms(request.getAgreedTermsIds());
+
+        Member member = Member.signupInstructor(email, passwordEncoder.encode(request.getPassword()), nickname);
+        if (identityVerified) {
+            member.completeIdentityVerification();
+        }
+        Member savedMember = saveMember(member);
+        saveAgreements(savedMember.getMemberId(), agreedTerms);
+
+        InstructorProfile profile = instructorProfileRepository.save(InstructorProfile.apply(
+                savedMember.getMemberId(), nickname, request.getField(), LocalDateTime.now(clock)));
+        return InstructorSignupResultDTO.of(savedMember.getMemberId(), profile.getApprovalStatus());
     }
 
     /**

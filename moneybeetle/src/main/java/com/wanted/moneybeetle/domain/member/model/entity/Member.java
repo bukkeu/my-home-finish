@@ -173,6 +173,21 @@ public class Member {
         return member;
     }
 
+    /**
+     * 강사 가입 신청으로 회원을 만든다 (API 12, #30). 강사명을 닉네임으로 쓴다.
+     * 강사 신청 화면에는 생년월일·성별이 없어 비워 둔다 (member.birth_date 는 NULL 허용).
+     * 권한은 MEMBER 로 시작한다: 관리자가 승인하면(InstructorService.approve) INSTRUCTOR 로 바뀐다 (SP-07).
+     * 본인인증은 가입 흐름(MemberSignupService)이 확인하고, 마쳤으면 completeIdentityVerification 으로 남긴다.
+     *
+     * @param passwordHash 이미 BCrypt 로 만든 해시 (평문을 넘기지 않는다, DP-02)
+     */
+    public static Member signupInstructor(String email, String passwordHash, String nickname) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, null, null);
+    }
+
     /** 가입 중 본인인증(이메일 코드)을 마쳤다고 기록한다 (결과값만 저장한다, DB설계 member.is_identity_verified) */
     public void completeIdentityVerification() {
         this.identityVerified = true;

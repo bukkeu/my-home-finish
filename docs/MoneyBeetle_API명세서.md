@@ -669,7 +669,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-10, ADM-06 |
-| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. 학습자 가입(API 4)과 같게, 같은 브라우저 세션에서 그 이메일의 본인인증(API 5-1·5)을 마친 뒤에만 신청할 수 있고 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. 구현은 `IdentityVerificationService.requireVerified`(저장 전)·`clear`(성공 뒤)를 부른다(#30, DP-44). |
+| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. 학습자 가입(API 4)과 같게, 같은 브라우저 세션에서 그 이메일의 본인인증(API 5-1·5)을 마친 뒤에만 신청할 수 있고 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. 구현은 `IdentityVerificationService.requireVerified`(저장 전)·`clear`(성공 뒤)를 부른다(#30, DP-44). **강사명(`displayName`)을 회원 닉네임으로도 쓴다**(#30 팀 결정): 닉네임 규칙(2~12자 한글·영문·숫자, 금칙어)을 그대로 적용하고 이미 있는 닉네임이면 `NICKNAME_DUPLICATED`. 전문 분야(`field`)는 필수, 100자 이하. 생년월일·성별은 받지 않는다(member.birth_date NULL). 회원 권한은 MEMBER 로 시작하고 관리자 승인(API 103·105) 때 INSTRUCTOR 가 된다. 강사는 학습자 청약통장을 만들지 않는다. 신청 시각(`instructor_profile.applied_at`)을 남겨 관리자 신청 목록(API 104)에 나온다. |
 
 **Request**
 
@@ -687,7 +687,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "memberId": 31, "approvalStatus": "PENDING" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `PASSWORD_MISMATCH`, `IDENTITY_NOT_VERIFIED`
+**Error**: `INVALID_INPUT`(형식 오류·비밀번호 확인 불일치), `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`, `PASSWORD_INVALID`, `PASSWORD_MISMATCH`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `IDENTITY_NOT_VERIFIED`
 
 #### 13. 내 정보 (메뉴 프로필)
 
