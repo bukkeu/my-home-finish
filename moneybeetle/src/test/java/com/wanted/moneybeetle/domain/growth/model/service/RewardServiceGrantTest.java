@@ -482,6 +482,43 @@ class RewardServiceGrantTest {
     }
 
     @Test
+    @DisplayName("출석 경험치: 규칙 기본값에 배수를 곱해 경험치만 지급하고, 이력 원인은 ATTENDANCE (#205)")
+    void grantAttendanceDailyWithMultiplier() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 30)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 230, 1_000));
+
+        RewardResultDTO result = rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3);
+
+        assertThat(result.getGrantedExp()).isEqualTo(30);
+        assertThat(result.getGrantedCash()).isZero();
+        ArgumentCaptor<ExpHistory> exp = ArgumentCaptor.forClass(ExpHistory.class);
+        verify(expHistoryRepository).save(exp.capture());
+        assertThat(exp.getValue().getSourceType()).isEqualTo(ExpHistory.SOURCE_ATTENDANCE);
+        assertThat(exp.getValue().getSourceId()).isEqualTo(500L);
+        assertThat(exp.getValue().getAmount()).isEqualTo(30);
+        verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("배수가 1 보다 작으면 거절하고 아무것도 바꾸지 않는다")
+    void multiplierMustBePositive() {
+        assertThatThrownBy(() -> rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("findActiveExp: 사용 중인 규칙의 경험치, 없으면 0")
+    void findActiveExp() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        when(ruleRepository.findByCodeAndActiveTrue(RewardRule.QUIZ_PERFECT)).thenReturn(Optional.empty());
+
+        assertThat(rewardService.findActiveExp(RewardRule.ATTENDANCE_DAILY)).isEqualTo(10);
+        assertThat(rewardService.findActiveExp(RewardRule.QUIZ_PERFECT)).isZero();
+    }
+
+    @Test
     @DisplayName("사용 중인 보상 규칙이 없으면 REWARD_RULE_NOT_FOUND 이고 아무것도 바꾸지 않는다")
     void ruleNotFound() {
         when(ruleRepository.findByCodeAndActiveTrue("COURSE_COMPLETE")).thenReturn(Optional.empty());

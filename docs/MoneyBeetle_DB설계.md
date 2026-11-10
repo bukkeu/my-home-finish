@@ -476,7 +476,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `exp_history_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 내역 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE(member_id, source_type, source_id) | - | 회원 |
-| `source_type` | VARCHAR(30) | N | UNIQUE(member_id, source_type, source_id) | - | COURSE_COMPLETE / QUIZ_PERFECT |
+| `source_type` | VARCHAR(30) | N | UNIQUE(member_id, source_type, source_id) | - | COURSE_COMPLETE / QUIZ_PERFECT / ATTENDANCE |
 | `source_id` | BIGINT | N | UNIQUE(member_id, source_type, source_id) | - | 원인 강의 ID |
 | `reward_rule_id` | BIGINT | Y | FK → reward_rule.reward_rule_id | - | 적용한 보상 규칙 |
 | `amount` | INT | N | - | - | 지급 경험치 |

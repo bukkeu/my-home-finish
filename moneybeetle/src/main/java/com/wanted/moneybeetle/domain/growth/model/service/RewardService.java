@@ -55,7 +55,8 @@ public class RewardService {
     /** 보상 규칙 코드 -> 경험치 이력의 원인 종류. 여기에 없는 규칙은 경험치를 줄 수 없다 */
     private static final Map<String, String> EXP_SOURCE_BY_RULE = Map.of(
             RewardRule.COURSE_COMPLETE, ExpHistory.SOURCE_COURSE_COMPLETE,
-            RewardRule.QUIZ_PERFECT, ExpHistory.SOURCE_QUIZ_PERFECT);
+            RewardRule.QUIZ_PERFECT, ExpHistory.SOURCE_QUIZ_PERFECT,
+            RewardRule.ATTENDANCE_DAILY, ExpHistory.SOURCE_ATTENDANCE);
 
     /** 보상 규칙 코드 -> 캐시 이력의 원인 종류. 여기에 없는 규칙은 캐시를 줄 수 없다 */
     private static final Map<String, String> CASH_SOURCE_BY_RULE = Map.of(
@@ -86,6 +87,26 @@ public class RewardService {
      */
     @Transactional
     public RewardResultDTO grant(Long memberId, String ruleCode, Long sourceId) {
+        return grantInternal(memberId, ruleCode, sourceId, 1);
+    }
+
+    /**
+     * 규칙의 경험치를 expMultiplier 배로 지급한다 (예: 연속 출석 일수 구간에 따라 10~50 XP, SP-22).
+     * 캐시는 규칙 값 그대로이고, 이중 지급 방지·레벨업·해금 알림은 {@link #grant} 와 똑같이 처리한다.
+     * 배수는 호출하는 쪽이 정하고(출석은 AttendanceService), 규칙 표에는 기본값만 둔다.
+     *
+     * @param expMultiplier 경험치 배수 (1 이상)
+     * @throws IllegalArgumentException 배수가 1 보다 작을 때
+     */
+    @Transactional
+    public RewardResultDTO grantWithExpMultiplier(Long memberId, String ruleCode, Long sourceId, int expMultiplier) {
+        if (expMultiplier < 1) {
+            throw new IllegalArgumentException("경험치 배수는 1 이상이어야 합니다: " + expMultiplier);
+        }
+        return grantInternal(memberId, ruleCode, sourceId, expMultiplier);
+    }
+
+    private RewardResultDTO grantInternal(Long memberId, String ruleCode, Long sourceId, int expMultiplier) {
         if (memberId == null || sourceId == null) {
             throw new IllegalArgumentException("memberId 와 sourceId 가 필요합니다.");
         }
@@ -93,7 +114,7 @@ public class RewardService {
                 .orElseThrow(() -> new BusinessException(GrowthErrorCode.REWARD_RULE_NOT_FOUND));
 
         long cash = rule.getCashAmount();
-        int exp = rule.getExpAmount();
+        int exp = rule.getExpAmount() * expMultiplier;
         String expSource = EXP_SOURCE_BY_RULE.get(rule.getCode());
         String cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
         if ((exp > 0 && expSource == null) || (cash > 0 && cashSource == null)) {
@@ -264,6 +285,11 @@ public class RewardService {
     /** 사용 중인 보상 규칙이 주는 캐시. 규칙이 없거나 꺼져 있으면 0 (예: 출석 현황 화면이 보상 금액을 보여 줄 때) */
     public long findActiveCash(String ruleCode) {
         return rewardRuleRepository.findByCodeAndActiveTrue(ruleCode).map(RewardRule::getCashAmount).orElse(0);
+    }
+
+    /** 사용 중인 보상 규칙이 주는 경험치(기본값). 규칙이 없거나 꺼져 있으면 0 (예: 출석 경험치를 줄지 정할 때) */
+    public int findActiveExp(String ruleCode) {
+        return rewardRuleRepository.findByCodeAndActiveTrue(ruleCode).map(RewardRule::getExpAmount).orElse(0);
     }
 
     /** 회원의 현재 캐시 잔액을 조회한다. 없는 회원이면 MEMBER_NOT_FOUND */
