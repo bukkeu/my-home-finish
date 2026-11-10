@@ -189,4 +189,17 @@ class TurnAdminServiceTest {
 
         assertThat(service.checkNextTurn(SEASON_ID)).isSameAs(check);
     }
+
+    @Test
+    void 일요일_휴장은_시즌_상태가_진행_중이어도_MARKET_HOLIDAY_로_거절한다() {
+        when(tradingService.checkNextTurn(season))
+                .thenReturn(new NextTurnCheckDTO(false, 1, List.of(), 1, true));
+
+        assertThatThrownBy(() -> service.advanceTurn(SEASON_ID, 0, ADMIN_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_HOLIDAY));
+        assertThat(season.isRunning()).isTrue();
+        assertThat(season.getCurrentTurn()).isZero();
+        verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
+    }
 }

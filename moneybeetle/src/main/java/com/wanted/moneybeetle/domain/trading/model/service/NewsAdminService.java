@@ -82,7 +82,7 @@ public class NewsAdminService {
     /** API 132 뉴스 등록 : 다음 턴 이후에만 */
     @Transactional
     public Long createNews(Long seasonId, NewsSaveDTO request) {
-        TradingSeason season = getSeason(seasonId);
+        TradingSeason season = getSeasonForUpdate(seasonId);
         checkNotPastTurn(request.getTurnNo(), season);
         checkTagsExist(request);
 
@@ -96,7 +96,7 @@ public class NewsAdminService {
     @Transactional
     public void changeNews(Long newsId, NewsSaveDTO request) {
         News news = getNews(newsId);
-        TradingSeason season = getSeason(news.getTradingSeasonId());
+        TradingSeason season = getSeasonForUpdate(news.getTradingSeasonId());
 
         if (news.isPublishedBy(season.getCurrentTurn())) {
             if (news.getTurnNo() != request.getTurnNo() || !sameTags(newsTagRepository.findByNewsId(newsId), request)) {
@@ -118,7 +118,7 @@ public class NewsAdminService {
     @Transactional
     public void deleteNews(Long newsId) {
         News news = getNews(newsId);
-        TradingSeason season = getSeason(news.getTradingSeasonId());
+        TradingSeason season = getSeasonForUpdate(news.getTradingSeasonId());
         if (news.isPublishedBy(season.getCurrentTurn())) {
             throw new BusinessException(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         }
@@ -128,6 +128,15 @@ public class NewsAdminService {
 
     private TradingSeason getSeason(Long seasonId) {
         return seasonRepository.findById(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 뉴스를 바꾸는 작업은 턴 진행(TurnAdminService.advanceTurn)과 같은 시즌 행 잠금을 잡고 현재 턴을 확인한다.
+     * 점검 직후 다른 관리자가 다음 턴의 유일한 뉴스를 지워도 뉴스 없이 턴이 넘어가지 않는다
+     */
+    private TradingSeason getSeasonForUpdate(Long seasonId) {
+        return seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
