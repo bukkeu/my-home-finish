@@ -3088,7 +3088,11 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (분야 목록)
+```json
+{ "items": [ { "sectorId": 1, "name": "반도체", "sortOrder": 1, "isActive": true } ] }
+```
+
+- 정렬 순서(sortOrder) → 번호 순. 사용 안 함(isActive=false) 분야도 포함한다.
 
 #### 122. 분야 등록
 
@@ -3112,6 +3116,8 @@ email=admin@moneybeetle.kr&password=...
 { "sectorId": 15 }
 ```
 
+**Error**: `SECTOR_DUPLICATED`
+
 #### 123. 분야 수정
 
 | 항목 | 내용 |
@@ -3124,12 +3130,16 @@ email=admin@moneybeetle.kr&password=...
 **Request**
 
 ```json
-{ "name": "핀테크", "isActive": true }
+{ "name": "핀테크", "isActive": true, "sortOrder": 15 }
 ```
 
 **Response**
 
 - 204 No Content
+
+- isActive·sortOrder는 줄 때만 바꾼다.
+
+**Error**: `SECTOR_DUPLICATED`, `NOT_FOUND`
 
 #### 124. 종목 목록
 
@@ -3147,7 +3157,11 @@ email=admin@moneybeetle.kr&password=...
 
 **Response**
 
-- (종목 목록 + startPrice)
+```json
+{ "items": [ { "stockId": 1, "sectorId": 1, "sectorName": "반도체", "name": "한빛반도체", "startPrice": 76800, "intro": "...", "business": "...", "revenue": "1조 2,000억", "operatingProfit": "1,450억", "isActive": true } ] }
+```
+
+- 분야 정렬 순서 → 종목 번호 순.
 
 #### 125. 종목 등록
 
@@ -3157,7 +3171,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-17~18 |
-| 설명 | 이름, 분야, 시작 가격, 기업정보. |
+| 설명 | 이름, 분야, 시작 가격, 기업정보. 회사 소개(`intro`)는 16,000자 이하(DB `TEXT` 65,535바이트에 들어가게). |
 
 **Request**
 
@@ -3172,7 +3186,7 @@ email=admin@moneybeetle.kr&password=...
 { "stockId": 1 }
 ```
 
-**Error**: `STOCK_DUPLICATED`
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(그 분야에 사용 중 종목이 이미 2개), `NOT_FOUND`(없는 분야)
 
 #### 126. 종목·기업정보 수정
 
@@ -3190,6 +3204,8 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+
+**Error**: `STOCK_DUPLICATED`, `STOCK_LIMIT_EXCEEDED`(사용 중 종목을 이미 2개인 분야로 옮길 때), `NOT_FOUND`
 
 #### 127. 턴별 가격표
 
@@ -3707,6 +3723,9 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
+| 강사·관리자 | `SECTOR_DUPLICATED` | 409 | 이미 있는 분야 이름이에요 |
+| 강사·관리자 | `STOCK_DUPLICATED` | 409 | 이미 있는 종목 이름이에요 |
+| 강사·관리자 | `STOCK_LIMIT_EXCEEDED` | 409 | 한 분야에는 종목을 2개까지 둘 수 있어요 |
 | 강사·관리자 | `START_DATE_NOT_MONDAY` | 400 | 시즌 시작일은 월요일이어야 해요 |
 | 강사·관리자 | `INVALID_STATUS_TRANSITION` | 409 | 지금 상태에서는 그 상태로 바꿀 수 없어요 |
 | 모의 청약 | `NOT_IN_APPLY_PERIOD` | 409 | 신청 기간은 ○월 ○일 ~ ○월 ○일이에요 |
