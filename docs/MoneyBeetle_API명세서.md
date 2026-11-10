@@ -1548,7 +1548,7 @@ Header: Idempotency-Key: 7c1e...
 
 ```json
 {
-  "season": { "seasonId": 7, "name": "시즌 7", "status": "RUNNING", "currentTurn": 5, "totalTurns": 12, "endDate": "2026-11-14", "nextTurnAt": "2026-11-06T00:00:00",
+  "season": { "seasonId": 7, "name": "시즌 7", "status": "RUNNING", "currentTurn": 5, "totalTurns": 12, "endDate": "2026-11-14", "nextTurnAt": "2026-11-06T08:00:00",
     "calendar": [ { "date": "2026-11-02", "turnNo": 1, "state": "DONE" }, { "date": "2026-11-08", "turnNo": null, "state": "HOLIDAY" } ] },
   "participation": { "participantId": 120, "investAmount": 4820000, "cash": 2939000, "netAsset": 5134000, "returnRate": 6.5 },
   "holdings": [ { "stockId": 1, "stockName": "한빛반도체", "quantity": 12, "avgPrice": 79000, "evaluation": 1014000, "returnRate": 7.0 } ],
@@ -1720,10 +1720,11 @@ Header: Idempotency-Key: 9b2f...
 
 - `orderType`은 `BUY`·`SELL`, `quantity`는 1 이상의 정수. 수수료·세금은 없다 (SP-56)
 - 체결가는 현재 턴의 그 종목 가격이다 (SP-53). `holding`은 체결 뒤 그 종목의 보유다 (다 팔면 `quantity` 0, `avgPrice` 0)
-- 검사 순서: 매매 이유 → 시즌 상태(정산·종료 `SEASON_CLOSED`, 휴장 `MARKET_HOLIDAY`) → 턴(`STALE_TURN_PRICE`) → 참가 여부 → 종목 → 현금·수량
+- 검사 순서: 매매 이유 → 시즌 상태(정산·종료 `SEASON_CLOSED`, 휴장 `MARKET_HOLIDAY`) → 장 시간(`MARKET_CLOSED`) → 턴(`STALE_TURN_PRICE`) → 참가 여부 → 종목 → 현금·수량
+- 정규장은 **08:00 ~ 20:00(한국 시간)**이다. 08:00:00은 열림, 20:00:00은 닫힘(07:59:59 닫힘 / 19:59:59 열림). 장 시간 밖에는 매수·매도 모두 받지 않는다 (#208)
 - 같은 참가자의 주문은 참가자 행을 잠그고 처리하고, 현금·보유 수량·거래 내역은 한 트랜잭션이다. 어디서 실패해도 모두 되돌려진다 (DP-40)
 
-**Error**: `REASON_REQUIRED`(400, 이유가 없거나 없는/사용 안 하는 선택지), `NOT_ENOUGH_CASH`(400), `NOT_ENOUGH_QUANTITY`(400), `INVALID_INPUT`(400, 종목·종류·수량·턴이 올바르지 않음), `NOT_JOINED`(403), `STALE_TURN_PRICE`(409, `turnNo`가 현재 턴과 다름), `MARKET_HOLIDAY`(409), `SEASON_CLOSED`(409), `DUPLICATE_REQUEST`(409, 같은 Idempotency-Key), `NO_RUNNING_SEASON`(404, 보이는 시즌이 없거나 첫 턴이 시작되기 전), `NOT_FOUND`(404, 없거나 사용 안 하는 종목·분야, 그 턴 가격이 없음)
+**Error**: `MARKET_CLOSED`(409, 정규장 08:00~20:00 밖), `REASON_REQUIRED`(400, 이유가 없거나 없는/사용 안 하는 선택지), `NOT_ENOUGH_CASH`(400), `NOT_ENOUGH_QUANTITY`(400), `INVALID_INPUT`(400, 종목·종류·수량·턴이 올바르지 않음), `NOT_JOINED`(403), `STALE_TURN_PRICE`(409, `turnNo`가 현재 턴과 다름), `MARKET_HOLIDAY`(409), `SEASON_CLOSED`(409), `DUPLICATE_REQUEST`(409, 같은 Idempotency-Key), `NO_RUNNING_SEASON`(404, 보이는 시즌이 없거나 첫 턴이 시작되기 전), `NOT_FOUND`(404, 없거나 사용 안 하는 종목·분야, 그 턴 가격이 없음)
 
 #### 61. 내 거래 내역
 
@@ -3766,6 +3767,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
 | 모의투자 | `STALE_TURN_PRICE` | 409 | 가격이 바뀌었어요. 현재 가격을 확인해 주세요 |
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
+| 모의투자 | `MARKET_CLOSED` | 409 | 지금은 장이 열리지 않았어요. 오전 8시에 다시 거래할 수 있어요 |
 | 모의투자 | `LAST_TURN_REACHED` | 409 | 마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |

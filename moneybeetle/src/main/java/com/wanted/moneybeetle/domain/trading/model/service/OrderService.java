@@ -23,6 +23,8 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradeReason;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : PM (모의투자)
 *   #25 매수·매도 주문 (API 59~61, INV-09~13, INV-15, SP-53~58, DP-36, DP-40, NFR-05)
 *   - 그 턴의 고정 가격으로 즉시 체결한다 (SP-53). 화면이 본 턴(turnNo)이 현재 턴과 다르면 STALE_TURN_PRICE
-*   - 주문 불가 : 정산 중·종료 SEASON_CLOSED, 일요일 휴장 MARKET_HOLIDAY, 참가하지 않았으면 NOT_JOINED (SP-58)
+*   - 주문 불가 : 정산 중·종료 SEASON_CLOSED, 일요일 휴장 MARKET_HOLIDAY, 장 시간(08:00~20:00) 밖 MARKET_CLOSED, 참가하지 않았으면 NOT_JOINED (SP-58)
 *   - 매수는 보유 현금 안에서만(NOT_ENOUGH_CASH), 매도는 보유 수량 안에서만(NOT_ENOUGH_QUANTITY, 공매도 불가, SP-54·55)
 *   - 매매 이유는 반드시 골라야 한다 (REASON_REQUIRED, SP-57). 수수료·세금은 없다 (SP-56)
 *   - 현금·보유 수량·거래 내역은 한 트랜잭션이다. 어디서 실패해도 모두 되돌려진다 (DP-40)
@@ -61,6 +63,7 @@ public class OrderService {
     private final HoldingRepository holdingRepository;
     private final TradeOrderRepository orderRepository;
     private final TradeReasonRepository reasonRepository;
+    private final Clock clock;
 
     /** API 59 매매 이유 선택지 */
     public List<TradeReasonDTO> findTradeReasons() {
@@ -172,6 +175,10 @@ public class OrderService {
         if (season.getCurrentTurn() < 1) {
             // 시즌은 열렸지만 아직 첫 턴이 시작되지 않았다 (관리자가 첫 턴을 넘기기 전)
             throw new BusinessException(TradingErrorCode.NO_RUNNING_SEASON);
+        }
+        // 정규장 08:00~20:00 밖에는 주문을 받지 않는다 (#208, SP-58)
+        if (!MarketHours.isOpen(LocalDateTime.now(clock))) {
+            throw new BusinessException(TradingErrorCode.MARKET_CLOSED);
         }
         if (requestedTurn != season.getCurrentTurn()) {
             throw new BusinessException(TradingErrorCode.STALE_TURN_PRICE);

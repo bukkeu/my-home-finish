@@ -156,7 +156,7 @@ public class ParticipationService {
         LocalDateTime nextTurnAt = turns.stream()
                 .filter(turn -> turn.getTurnNo() == season.getCurrentTurn() + 1)
                 .findFirst()
-                .map(turn -> turn.getTradeDate().atStartOfDay())
+                .map(turn -> MarketHours.opensAt(turn.getTradeDate()))
                 .orElse(null);
         return new TradingHomeDTO.Season(season.getTradingSeasonId(), season.getName(), season.getStatus(),
                 season.getCurrentTurn(), season.getTotalTurns(), season.getEndDate(), nextTurnAt, calendar);

@@ -202,7 +202,7 @@ class ParticipationServiceTest {
         assertThat(calendar.get(5).getState()).isEqualTo(TradingHomeDTO.CalendarDay.UPCOMING);
         assertThat(calendar.get(6).getTurnNo()).isNull();   // 10-25 일요일
         assertThat(calendar.get(6).getState()).isEqualTo(TradingHomeDTO.CalendarDay.HOLIDAY);
-        assertThat(home.getSeason().getNextTurnAt()).isEqualTo(LocalDate.of(2026, 10, 24).atStartOfDay());
+        assertThat(home.getSeason().getNextTurnAt()).isEqualTo(LocalDate.of(2026, 10, 24).atTime(8, 0));
         // 로그인 회원이 없으면 참가 정보 없이 보인다
         assertThat(home.getParticipation()).isNull();
         assertThat(home.getHoldings()).isEmpty();

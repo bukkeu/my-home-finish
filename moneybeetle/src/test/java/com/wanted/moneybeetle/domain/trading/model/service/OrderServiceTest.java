@@ -36,6 +36,8 @@ import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +86,7 @@ class OrderServiceTest {
         orderRepository = mock(TradeOrderRepository.class);
         reasonRepository = mock(TradeReasonRepository.class);
         service = new OrderService(seasonRepository, participantRepository, sectorRepository, stockRepository,
-                priceRepository, holdingRepository, orderRepository, reasonRepository);
+                priceRepository, holdingRepository, orderRepository, reasonRepository, clockAt("2026-11-05T12:00:00"));
 
         season = TradingSeason.create("시즌 7", LocalDate.of(2026, 11, 2), 1L);
         ReflectionTestUtils.setField(season, "tradingSeasonId", SEASON_ID);
@@ -120,6 +122,12 @@ class OrderServiceTest {
             return order;
         });
         when(holdingRepository.save(any(Holding.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    /** 한국 시간 그 시각에 멈춘 시계 */
+    private static java.time.Clock clockAt(String localDateTime) {
+        ZoneId zone = ZoneId.of("Asia/Seoul");
+        return java.time.Clock.fixed(LocalDateTime.parse(localDateTime).atZone(zone).toInstant(), zone);
     }
 
     private OrderRequestDTO order(String type, int quantity, int turnNo, Long reasonId) {
@@ -356,5 +364,52 @@ class OrderServiceTest {
                     .isInstanceOfSatisfying(BusinessException.class,
                             e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
         }
+    }
+
+    // ===== #208 정규장 시간 08:00~20:00 =====
+
+    private OrderService serviceAt(String localDateTime) {
+        return new OrderService(seasonRepository, participantRepository, sectorRepository, stockRepository,
+                priceRepository, holdingRepository, orderRepository, reasonRepository, clockAt(localDateTime));
+    }
+
+    @Test
+    void 장_시간_안_경계_08시_정각과_19시_59분_59초에는_주문이_체결된다() {
+        when(holdingRepository.findBySeasonParticipantIdAndStockId(20L, STOCK_ID)).thenReturn(Optional.empty());
+
+        assertThat(serviceAt("2026-11-05T08:00:00").placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)).amount())
+                .isEqualTo(PRICE);
+        assertThat(serviceAt("2026-11-05T19:59:59").placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)).amount())
+                .isEqualTo(PRICE);
+    }
+
+    @Test
+    void 장_시간_밖_07시_59분_59초와_20시_정각과_한밤중에는_MARKET_CLOSED_이고_아무것도_바뀌지_않는다() {
+        for (String time : new String[] {"2026-11-05T07:59:59", "2026-11-05T20:00:00", "2026-11-05T00:00:00",
+                "2026-11-05T23:59:59"}) {
+            long cashBefore = participant.getCash();
+            assertThatThrownBy(() -> serviceAt(time).placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)))
+                    .isInstanceOfSatisfying(BusinessException.class,
+                            e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_CLOSED));
+            assertThat(participant.getCash()).isEqualTo(cashBefore);
+        }
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void 장이_닫혀_있으면_매도도_거절한다() {
+        givenHolding(3, 90_000);
+
+        assertThatThrownBy(() -> serviceAt("2026-11-05T21:00:00").placeOrder(MEMBER_ID, order("SELL", 1, 5, REASON_ID)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_CLOSED));
+    }
+
+    @Test
+    void 휴장과_정산_중_거절이_장_시간_거절보다_먼저다() {
+        season.changeStatus(TradingSeason.STATUS_HOLIDAY);
+        assertThatThrownBy(() -> serviceAt("2026-11-05T03:00:00").placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_HOLIDAY));
     }
 }
