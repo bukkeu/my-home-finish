@@ -89,12 +89,18 @@ public class IdentityVerificationService implements SignupIdentityVerifier {
         }
 
         String code = newCode();
+        Object previousState = session.getAttribute(SESSION_KEY);   // 발송이 거절되면 되돌린다
         session.setAttribute(SESSION_KEY, IdentityVerificationState.issued(email, hash(email, code), now.plus(CODE_TTL)));
         try {
             mailer.send(email, code);
         } catch (TaskRejectedException e) {
-            // 발송 대기열이 가득 찼다. 보낸 적 없는 코드는 버리고 바로 다시 시도할 수 있게 한다. 이메일·코드는 로그에 남기지 않는다
-            session.removeAttribute(SESSION_KEY);
+            // 발송 대기열이 가득 찼다. 보낸 적 없는 코드는 버리고 바로 다시 시도할 수 있게 하되, 이미 인증을 마친 상태였다면
+            // 그 상태는 그대로 돌려놓는다 (재발송 요청이 거절됐다고 완료한 인증이 사라지지 않게). 이메일·코드는 로그에 남기지 않는다
+            if (previousState != null) {
+                session.setAttribute(SESSION_KEY, previousState);
+            } else {
+                session.removeAttribute(SESSION_KEY);
+            }
             lastSentAt.remove(email);
             log.warn("본인인증 메일 대기열이 가득 차 요청을 건너뛰었어요.");
             throw new BusinessException(MemberErrorCode.IDENTITY_MAIL_UNAVAILABLE);
@@ -158,12 +164,14 @@ public class IdentityVerificationService implements SignupIdentityVerifier {
         }
         boolean[] reserved = {false};
         requestsByIp.compute(key, (ip, times) -> {
+            // 시각은 이 잠금 안에서 읽는다. 밖에서 읽은 시각을 쓰면 같은 주소의 동시 요청이 읽은 순서와 반대로 들어와 기록이 시간 순서를 잃는다
+            Instant at = clock.instant();
             java.util.Deque<Instant> recent = times == null ? new java.util.ArrayDeque<>() : times;
-            while (!recent.isEmpty() && !now.isBefore(recent.peekFirst().plus(IP_WINDOW))) {
+            while (!recent.isEmpty() && !at.isBefore(recent.peekFirst().plus(IP_WINDOW))) {
                 recent.pollFirst();
             }
             if (recent.size() < IP_LIMIT) {
-                recent.addLast(now);
+                recent.addLast(at);
                 reserved[0] = true;
             }
             return recent;
