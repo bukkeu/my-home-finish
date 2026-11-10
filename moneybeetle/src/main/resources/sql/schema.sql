@@ -476,7 +476,6 @@ CREATE TABLE IF NOT EXISTS `notification` (
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
     PRIMARY KEY (`notification_id`),
     KEY `idx_notification_1` (`member_id`,`is_read`,`created_at`),
-    KEY `idx_notification_2` (`member_id`,`created_at`),
     CONSTRAINT `fk_notification_member_id` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='알림';
 
@@ -699,7 +698,6 @@ CREATE TABLE IF NOT EXISTS `stock_price` (
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     PRIMARY KEY (`stock_price_id`),
     UNIQUE KEY `uk_stock_price_1` (`trading_season_id`,`stock_id`,`turn_no`),
-    KEY `idx_stock_price_1` (`trading_season_id`,`turn_no`),
     KEY `fk_stock_price_stock_id` (`stock_id`),
     CONSTRAINT `fk_stock_price_stock_id` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`stock_id`),
     CONSTRAINT `fk_stock_price_trading_season_id` FOREIGN KEY (`trading_season_id`) REFERENCES `trading_season` (`trading_season_id`),

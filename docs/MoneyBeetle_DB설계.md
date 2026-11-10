@@ -188,7 +188,6 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | 테이블 | 인덱스 | 컬럼 | 쓰는 곳 |
 | --- | --- | --- | --- |
 | `notification` | `idx_notification_1` | member_id, is_read, created_at | 안 읽은 알림 조회 |
-| `notification` | `idx_notification_2` | member_id, created_at | 내 알림 목록 최신순 (읽음 여부와 상관없이 정렬, #87) |
 | `cash_history` | `idx_cash_history_1` | member_id, created_at | 캐시 내역 최신순 |
 | `exp_history` | `idx_exp_history_1` | member_id, created_at | 경험치 내역 최신순 |
 | `course` | `idx_course_1` | category_id, status, is_public | 카테고리별 공개 강의 목록 |
@@ -197,7 +196,6 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `lesson_watch` | `idx_lesson_watch_1` | member_id, last_watched_at | 시청 기록 최신순 |
 | `inquiry` | `idx_inquiry_1` | course_id, created_at | 강의별 문의 목록 |
 | `inquiry` | `idx_inquiry_2` | member_id, created_at | 내 문의 목록 |
-| `stock_price` | `idx_stock_price_1` | trading_season_id, turn_no | 그 턴의 전 종목 가격 (시세 목록·검색·다음 턴 점검, #87) |
 | `news` | `idx_news_1` | trading_season_id, turn_no | 턴별 뉴스 |
 | `season_participant` | `idx_season_participant_1` | trading_season_id, final_net_asset | 순자산 랭킹 정렬 |
 | `season_participant` | `idx_season_participant_2` | trading_season_id, return_rate | 수익률 랭킹 정렬 |
