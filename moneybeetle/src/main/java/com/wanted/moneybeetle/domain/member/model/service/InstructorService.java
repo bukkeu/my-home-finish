@@ -15,9 +15,11 @@ import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (회원·인증) — 신청 목록·승인은 DBA ①가 #37 에서 추가 (DBA ② 확인)
 *   강사 가입 신청, 승인·권한 회수 (ADM-06)
 *   - API 104 강사 가입 신청 목록, API 105 강사 승인 (#37)
+*   - findDisplayNames: 강의 화면에 보일 강사 이름 (course 도메인용, #52)
 *   - API 12 강사 가입 신청은 본인인증(#210)이 들어온 뒤 #30 에서 이어서 더한다
 *  */
 @Service
@@ -45,6 +48,16 @@ public class InstructorService {
     private final AdminLogService adminLogService;      // operation 도메인 - 관리자 작업 기록
     private final ObjectMapper objectMapper;            // admin_log detail JSON
     private final Clock clock;                          // Asia/Seoul 공통 시계
+
+    /* 다른 도메인(course)이 강의 목록·상세에 보일 강사 이름 (강사 정보 display_name, #52). 강사 정보가 없으면 빠진다 */
+    public Map<Long, String> findDisplayNames(Collection<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Map.of();
+        }
+        return instructorProfileRepository.findByMemberIdIn(memberIds).stream()
+                .collect(Collectors.toMap(InstructorProfile::getMemberId, InstructorProfile::getDisplayName,
+                        (first, second) -> first));
+    }
 
     /* API 104 강사 가입 신청 목록. status 가 없거나 모르는 값이면 승인 대기(PENDING) */
     public PageResponse<InstructorApplicationDTO> findApplications(String status, Pageable pageable) {

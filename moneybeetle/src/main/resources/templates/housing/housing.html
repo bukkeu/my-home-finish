@@ -1,5 +1,435 @@
-<!-- comment.
-    담당 : SCM 서수영 (#58, 모의 청약 화면)
-    원본 디자인 : UserDemoHousingSubscription.dc.html
-    경로 : /user/demo-housing-subscription
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : SCM 서수영 (#58, 모의 청약 화면)
+  원본 디자인 : moneybeetle-page/UserDemoHousingSubscription.dc.html
+  경로 : /user/demo-housing-subscription (HousingViewController)
+  Model : page (HousingPageDTO) - level, unlockLevel, locked, today
+  구성 : 탭 3개 - 청약 홈(요약·잠금 안내·청약통장·모집 중 단지·캘린더) / 청약 단지 / 내 신청 내역
+         데이터는 static/js/housing.js 가 API(63~71)로 불러온다. Lv.12 미만이면 레벨이 필요한 영역을 흐리게 한다 (SP-24, NFR-09)
+  프로토타입과 다른 점 (확정 정책 기준) : 공공·민영 구분, 지역·회차 자격, 커트라인·예비 당첨, 혼인 정보는 쓰지 않는다
+         (가점 SP-71 실제 가점제 84점, 당첨 SP-75 가점 순위·WIN/LOSE)
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('모의 청약')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/housing.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('housing')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+
+    <main class="mb-main hs" id="hs"
+          th:attr="data-locked=${page.locked}, data-level=${page.level}, data-unlock-level=${page.unlockLevel},
+                   data-today=${page.today}">
+
+      <section class="hs-head">
+        <div class="hs-head__title">
+          <h1>모의 청약</h1>
+          <p>청약통장을 준비하고, 나에게 맞는 집에 도전해 보세요.</p>
+        </div>
+        <span class="hs-note"><span class="hs-note__i">i</span>실제 청약 신청이 아닌 교육용 시뮬레이션이에요</span>
+      </section>
+
+      <nav class="hs-tabs" role="tablist" aria-label="모의 청약 메뉴">
+        <button type="button" role="tab" class="hs-tab is-active" data-tab="home" aria-selected="true">청약 홈</button>
+        <button type="button" role="tab" class="hs-tab" data-tab="complexes" aria-selected="false">청약 단지</button>
+        <button type="button" role="tab" class="hs-tab" data-tab="history" aria-selected="false">내 신청 내역</button>
+      </nav>
+
+      <!--/* ===================== 청약 홈 ===================== */-->
+      <div class="hs-panel" data-panel="home">
+
+        <!--/* 요약 카드 */-->
+        <section class="hs-summary">
+          <div class="card hs-stat">
+            <span class="hs-kicker">현재 레벨</span>
+            <span class="hs-stat__value" th:text="|Lv.${page.level}|">Lv.1</span>
+            <span class="hs-stat__sub">최대 Lv.20</span>
+          </div>
+          <div class="card hs-stat">
+            <span class="hs-kicker">모의 청약</span>
+            <span class="hs-stat__value" th:text="${page.locked} ? '잠겨 있어요' : '이용 가능'">이용 가능</span>
+            <span class="hs-stat__sub" th:text="${page.locked} ? |Lv.${page.unlockLevel}부터 열려요| : '신청 기간 안에 단지마다 한 번 신청할 수 있어요'">설명</span>
+          </div>
+          <div class="card hs-stat">
+            <span class="hs-kicker">보유 캐시</span>
+            <span class="hs-stat__value"><span data-bind="cash">-</span> 캐시</span>
+            <span class="hs-stat__sub">출석·학습·레벨업으로 모은 캐시</span>
+          </div>
+          <div class="card hs-stat">
+            <span class="hs-kicker">청약통장</span>
+            <span class="hs-stat__value"><span data-bind="balance">-</span> 캐시</span>
+            <span class="hs-stat__sub">인정 납입 <span data-bind="paidCount">-</span>회차</span>
+          </div>
+        </section>
+
+        <!--/* Lv.12 미만 안내 (SP-24) */-->
+        <section class="card hs-lock" th:if="${page.locked}">
+          <div class="hs-lock__head">
+            <span class="hs-lock__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </span>
+            <h2 th:text="|모의 청약은 Lv.${page.unlockLevel}부터 이용할 수 있어요.|">모의 청약은 Lv.12부터 이용할 수 있어요.</h2>
+          </div>
+          <p>지금은 제도 소개를 미리 둘러볼 수 있어요. 청약통장 납입은 레벨과 상관없이 지금 바로 시작할 수 있어요.</p>
+          <div class="hs-lock__cond">
+            <span class="hs-lock__label">해금 조건</span>
+            <span th:text="|· 경험치를 모아 Lv.${page.unlockLevel} 달성 (현재 Lv.${page.level})|">· 경험치를 모아 Lv.12 달성</span>
+            <span>· 강의 학습 완료 150 XP · 퀴즈 만점 보너스 30 XP · 출석 10~50 XP</span>
+            <span>· 미리 청약통장에 납입해 두면 회차가 쌓여 가점에 반영돼요</span>
+          </div>
+          <div class="hs-actions">
+            <a class="btn btn-primary" th:href="@{/user/home}">학습하러 가기</a>
+            <a class="btn btn-secondary" href="#hs-account">청약통장 먼저 채우기</a>
+          </div>
+        </section>
+
+        <!--/* 가점·당첨 방식 안내 (SP-71, SP-75) - 프로토타입의 공공·민영 카드 대신 확정 정책을 소개한다 */-->
+        <section class="hs-section">
+          <h2>청약은 이렇게 진행돼요</h2>
+          <div class="hs-guide">
+            <div class="card hs-guide__item">
+              <span class="tag tag-accent">가점</span>
+              <strong>최대 84점</strong>
+              <span>무주택 기간 32점 · 부양가족 35점 · 청약통장 17점. 통장은 납입 1회를 1개월로 봐요.</span>
+            </div>
+            <div class="card hs-guide__item">
+              <span class="tag tag-gold">당첨</span>
+              <strong>가점 높은 순</strong>
+              <span>같으면 납입회차가 많은 순, 그래도 같으면 추첨이에요. 공급 세대 수만큼 당첨돼요.</span>
+            </div>
+            <div class="card hs-guide__item">
+              <span class="tag">일정</span>
+              <strong>공고 → 접수 → 발표</strong>
+              <span>신청 기간 안에 단지마다 한 번 신청하고, 발표일에 결과를 확인해요.</span>
+            </div>
+          </div>
+        </section>
+
+        <!--/* 청약통장 현황·납입 (API 65·66·67, SP-70) - 레벨과 상관없이 쓸 수 있다 */-->
+        <section class="hs-section" id="hs-account">
+          <div class="hs-section__head">
+            <h2>청약통장 현황</h2>
+          </div>
+          <div class="card hs-acc">
+            <div class="hs-acc__cell">
+              <span class="hs-kicker">청약통장 잔액</span>
+              <span class="hs-acc__value"><span data-bind="balance">-</span> 캐시</span>
+              <span class="hs-acc__sub">납입한 금액 전체</span>
+            </div>
+            <div class="hs-acc__cell">
+              <span class="hs-kicker">인정 납입 회차</span>
+              <span class="hs-acc__value"><span data-bind="paidCount">-</span>회차</span>
+              <span class="hs-acc__sub" data-bind="paidTodayText">-</span>
+            </div>
+            <div class="hs-acc__cell">
+              <span class="hs-kicker">누적 인정금액</span>
+              <span class="hs-acc__value"><span data-bind="recognizedAmount">-</span> 캐시</span>
+              <span class="hs-acc__sub" data-bind="limitText">하루 최대 250,000까지 반영</span>
+            </div>
+          </div>
+
+          <div class="hs-acc-grid">
+            <form class="card hs-deposit" id="hs-deposit-form" novalidate>
+              <h3>납입하기</h3>
+              <p class="hs-muted" data-bind="policyText">하루 1회, 1회 20,000 ~ 500,000 캐시</p>
+              <label class="hs-field">
+                <span>납입 금액</span>
+                <span class="hs-input">
+                  <input type="number" name="amount" inputmode="numeric" min="20000" max="500000" step="1000"
+                         placeholder="예) 100000" aria-describedby="hs-deposit-msg">
+                  <span>캐시</span>
+                </span>
+              </label>
+              <div class="hs-chips" role="group" aria-label="금액 빠르게 넣기">
+                <button type="button" class="hs-chip" data-amount="20000">2만</button>
+                <button type="button" class="hs-chip" data-amount="100000">10만</button>
+                <button type="button" class="hs-chip" data-amount="250000">25만</button>
+                <button type="button" class="hs-chip" data-amount="500000">50만</button>
+              </div>
+              <p class="hs-field-msg" id="hs-deposit-msg" aria-live="polite"></p>
+              <button type="submit" class="btn btn-primary" data-deposit-submit>납입하기</button>
+              <p class="hs-muted hs-small">보유 캐시에서 빠져나가요. 하루 250,000 캐시를 넘는 금액은 잔액에만 쌓이고 인정금액에는 반영되지 않아요.</p>
+            </form>
+
+            <div class="card hs-deposits">
+              <h3>최근 납입 내역</h3>
+              <ul class="hs-deposit-list" data-list="deposits">
+                <li class="hs-empty">불러오는 중이에요…</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!--/* 모집 중인 단지 (캘린더 API 의 이번 달 단지 중 접수 중) - Lv.12 미만은 흐리게 */-->
+        <section class="hs-section">
+          <div class="hs-section__head">
+            <h2>모집 중인 청약 단지</h2>
+            <button type="button" class="btn btn-secondary" data-go-tab="complexes">전체 단지 보기</button>
+          </div>
+          <div class="hs-lockable" th:classappend="${page.locked} ? 'is-locked'">
+            <div class="hs-open-grid" data-list="openComplexes"
+                 th:classappend="${page.locked} ? 'mb-blur'" th:attr="aria-hidden=${page.locked}">
+              <div class="card hs-empty-card">불러오는 중이에요…</div>
+            </div>
+            <div class="hs-lockable__msg" th:if="${page.locked}" th:text="|Lv.${page.unlockLevel}부터 볼 수 있어요|">Lv.12부터 볼 수 있어요</div>
+          </div>
+        </section>
+
+        <!--/* 청약 캘린더 (API 63) */-->
+        <section class="hs-section">
+          <div class="hs-section__head">
+            <h2>청약 캘린더</h2>
+            <div class="hs-cal-nav">
+              <button type="button" class="btn btn-ghost btn-icon" data-cal="prev" aria-label="이전 달">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 6-6 6 6 6"></path></svg>
+              </button>
+              <span class="hs-cal-title" data-bind="calTitle">-</span>
+              <button type="button" class="btn btn-ghost btn-icon" data-cal="next" aria-label="다음 달">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="hs-legend">
+            <span class="hs-legend__item is-notice"><i></i>청약 공고</span>
+            <span class="hs-legend__item is-close"><i></i>접수 마감</span>
+            <span class="hs-legend__item is-announce"><i></i>당첨자 발표</span>
+            <span class="hs-legend__today"><b>1</b>오늘</span>
+          </div>
+          <div class="hs-lockable" th:classappend="${page.locked} ? 'is-locked'">
+            <div th:classappend="${page.locked} ? 'mb-blur'" th:attr="aria-hidden=${page.locked}">
+              <div class="card hs-cal">
+                <div class="hs-cal__week">
+                  <span class="is-sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="is-sat">토</span>
+                </div>
+                <div class="hs-cal__grid" data-list="calendar"></div>
+              </div>
+              <div class="card hs-cal-day">
+                <span class="hs-cal-day__title" data-bind="selDateTitle">날짜를 눌러 일정을 확인해 보세요</span>
+                <div data-list="selEvents"></div>
+              </div>
+            </div>
+            <div class="hs-lockable__msg" th:if="${page.locked}" th:text="|Lv.${page.unlockLevel}부터 볼 수 있어요|">Lv.12부터 볼 수 있어요</div>
+          </div>
+        </section>
+      </div>
+
+      <!--/* ===================== 청약 단지 : 목록 → 상세(API 64) → 가점 계산·신청(API 68·69) ===================== */-->
+      <div class="hs-panel" data-panel="complexes" hidden>
+
+        <!--/* Lv.12 미만 : 단지 목록·신청은 열리지 않는다 (SP-24, 서버도 LEVEL_LOCKED) */-->
+        <section class="card hs-lock" th:if="${page.locked}">
+          <div class="hs-lock__head">
+            <span class="hs-lock__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </span>
+            <h2 th:text="|청약 단지는 Lv.${page.unlockLevel}부터 볼 수 있어요.|">청약 단지는 Lv.12부터 볼 수 있어요.</h2>
+          </div>
+          <p th:text="|지금은 Lv.${page.level}이에요. 학습으로 경험치를 모으면 단지 정보와 신청이 열려요.|">지금은 Lv.8이에요.</p>
+          <div class="hs-actions">
+            <a class="btn btn-primary" th:href="@{/user/home}">학습하러 가기</a>
+          </div>
+        </section>
+
+        <th:block th:unless="${page.locked}">
+          <!--/* 목록 */-->
+          <section class="hs-section" data-view="list">
+            <div class="hs-section__head">
+              <h2>청약 단지</h2>
+              <div class="hs-cal-nav">
+                <button type="button" class="btn btn-ghost btn-icon" data-list-month="prev" aria-label="이전 달">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 6-6 6 6 6"></path></svg>
+                </button>
+                <span class="hs-cal-title" data-bind="listTitle">-</span>
+                <button type="button" class="btn btn-ghost btn-icon" data-list-month="next" aria-label="다음 달">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"></path></svg>
+                </button>
+              </div>
+            </div>
+            <div class="hs-filter">
+              <label>모집 상태
+                <select data-filter="status">
+                  <option value="">전체</option>
+                  <option value="UPCOMING">모집 예정</option>
+                  <option value="OPEN">모집 중</option>
+                  <option value="CLOSED">모집 마감</option>
+                  <option value="ANNOUNCED">발표 완료</option>
+                </select>
+              </label>
+              <span class="hs-muted">그 달에 일정이 걸쳐 있는 단지예요 · <b data-bind="listCount">0</b>개</span>
+            </div>
+            <div class="hs-open-grid" data-list="complexList"></div>
+          </section>
+
+          <!--/* 상세 (API 64) */-->
+          <section class="hs-section" data-view="detail" hidden>
+            <button type="button" class="btn btn-ghost hs-back" data-back="list">← 단지 목록</button>
+            <div class="card hs-detail">
+              <div class="hs-detail__img">가상 아파트 이미지</div>
+              <div class="hs-detail__info">
+                <div class="hs-detail__tags"><span data-d="statusTag"></span></div>
+                <h2 data-d="name">-</h2>
+                <dl class="hs-cx__rows">
+                  <dt>소재지</dt><dd data-d="location">-</dd>
+                  <dt>공급 유형</dt><dd data-d="supplyType">-</dd>
+                  <dt>전용면적</dt><dd data-d="areaType">-</dd>
+                  <dt>가상 분양가</dt><dd data-d="salePrice">-</dd>
+                  <dt>공급 세대 수</dt><dd data-d="supplyUnits">-</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="hs-detail-grid">
+              <div class="card hs-box">
+                <h3>모집 일정</h3>
+                <dl class="hs-kv">
+                  <dt>청약 접수</dt><dd data-d="applyPeriod">-</dd>
+                  <dt>당첨자 발표</dt><dd data-d="announceDate">-</dd>
+                  <dt>경쟁률</dt><dd data-d="competition">-</dd>
+                </dl>
+                <p class="hs-muted hs-small">경쟁률은 접수가 끝난 뒤 공개돼요. 발표일에 결과를 확인할 수 있어요.</p>
+              </div>
+              <div class="card hs-box">
+                <h3>신청 가능 여부</h3>
+                <ul class="hs-checks" data-list="checks"></ul>
+                <p class="hs-applied-note" data-d="appliedNote" hidden></p>
+                <div class="hs-actions">
+                  <button type="button" class="btn btn-primary" data-start-apply>가점 계산하고 신청하기</button>
+                  <button type="button" class="btn btn-secondary" data-go-tab="history" data-d="historyBtn" hidden>내 신청 내역 보기</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!--/* 가점 계산·신청 (API 68·69, SP-71·SP-73) */-->
+          <section class="hs-section" data-view="apply" hidden>
+            <button type="button" class="btn btn-ghost hs-back" data-back="detail">← 공고로 돌아가기</button>
+            <div class="hs-section__head">
+              <div>
+                <h2>나의 청약 가점</h2>
+                <p class="hs-muted" data-bind="applyFor">-</p>
+              </div>
+            </div>
+            <div class="hs-detail-grid">
+              <form class="card hs-box" id="hs-score-form" novalidate>
+                <h3>내 정보 입력</h3>
+                <label class="hs-field">
+                  <span>무주택 기간 (년)</span>
+                  <span class="hs-input"><input type="number" name="homelessYears" min="0" max="50" step="1" inputmode="numeric" value="0"><span>년</span></span>
+                  <small class="hs-muted">1년 미만이면 0. 15년 이상은 모두 만점(32점)이에요.</small>
+                  <span class="hs-field-msg" data-msg="homelessYears"></span>
+                </label>
+                <label class="hs-field">
+                  <span>부양가족 수 (명)</span>
+                  <span class="hs-input"><input type="number" name="dependents" min="0" max="20" step="1" inputmode="numeric" value="0"><span>명</span></span>
+                  <small class="hs-muted">본인 제외. 6명 이상은 모두 만점(35점)이에요.</small>
+                  <span class="hs-field-msg" data-msg="dependents"></span>
+                </label>
+                <div class="hs-kv-row"><span>청약통장 납입 회차</span><b><span data-bind="paidCount">-</span>회차 (자동)</b></div>
+                <button type="submit" class="btn btn-secondary">가점 계산하기</button>
+              </form>
+
+              <div class="card hs-box">
+                <h3>예상 가점</h3>
+                <div data-score-empty class="hs-muted">정보를 넣고 "가점 계산하기"를 눌러 보세요.</div>
+                <div data-score hidden>
+                  <div class="hs-score-total"><b data-s="totalScore">0</b><span>/ <span data-s="maxScore">84</span>점</span></div>
+                  <ul class="hs-score-list">
+                    <li><span>무주택 기간</span><span class="hs-bar"><i data-bar="homeless"></i></span><b><span data-s="homelessScore">0</span> / 32</b></li>
+                    <li><span>부양가족</span><span class="hs-bar"><i data-bar="dependent"></i></span><b><span data-s="dependentScore">0</span> / 35</b></li>
+                    <li><span>청약통장</span><span class="hs-bar"><i data-bar="account"></i></span><b><span data-s="accountScore">0</span> / 17</b></li>
+                  </ul>
+                  <p class="hs-muted hs-small"><span data-s="baseDate">-</span> 기준 · 통장 점수는 납입 1회를 1개월로 봐요 (SP-71)</p>
+                  <div class="hs-confirm">
+                    <p>신청한 뒤에는 <b>취소하거나 고칠 수 없어요.</b> 이 점수로 신청할까요?</p>
+                    <button type="button" class="btn btn-primary" data-apply>이 점수로 신청하기</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!--/* 신청 완료 */-->
+          <section class="card hs-done" data-view="done" hidden>
+            <span class="hs-done__icon" aria-hidden="true">✓</span>
+            <h2>청약 신청이 완료됐어요</h2>
+            <dl class="hs-kv">
+              <dt>단지</dt><dd data-bind="doneName">-</dd>
+              <dt>접수번호</dt><dd data-bind="doneReceipt">-</dd>
+              <dt>신청 가점</dt><dd><span data-bind="doneScore">-</span>점</dd>
+              <dt>당첨자 발표</dt><dd data-bind="doneAnnounce">-</dd>
+            </dl>
+            <div class="hs-actions">
+              <button type="button" class="btn btn-primary" data-go-tab="history">내 신청 내역 보기</button>
+              <button type="button" class="btn btn-secondary" data-back="list">단지 목록으로</button>
+            </div>
+          </section>
+        </th:block>
+      </div>
+
+      <!--/* ===================== 내 신청 내역 (API 70) · 당첨 결과 (API 71) ===================== */-->
+      <div class="hs-panel" data-panel="history" hidden>
+
+        <!--/* Lv.12 미만 : 신청할 수 없으니 내역도 없다 (API 70 도 LEVEL_LOCKED) */-->
+        <section class="card hs-lock" th:if="${page.locked}">
+          <div class="hs-lock__head">
+            <span class="hs-lock__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </span>
+            <h2 th:text="|내 신청 내역은 Lv.${page.unlockLevel}부터 볼 수 있어요.|">내 신청 내역은 Lv.12부터 볼 수 있어요.</h2>
+          </div>
+          <p th:text="|지금은 Lv.${page.level}이에요. Lv.${page.unlockLevel}이 되면 단지에 신청하고 결과를 확인할 수 있어요.|">지금은 Lv.8이에요.</p>
+        </section>
+
+        <th:block th:unless="${page.locked}">
+          <!--/* 목록 */-->
+          <section class="hs-section" data-hview="list">
+            <div class="hs-section__head">
+              <div class="hs-head__title">
+                <h2>내 청약 신청 내역</h2>
+                <p class="hs-muted">신청할 때의 가점은 그대로 보관돼요. 결과는 당첨자 발표일 이후에 확인할 수 있어요.</p>
+              </div>
+            </div>
+            <div class="hs-history" data-list="history"></div>
+            <button type="button" class="btn btn-secondary hs-more" data-history-more hidden>더 보기</button>
+          </section>
+
+          <!--/* 결과 (발표 뒤에만. SP-75 : 당첨·낙첨 두 가지) */-->
+          <section class="hs-section" data-hview="result" hidden>
+            <button type="button" class="btn btn-ghost hs-back" data-hback>← 내 신청 내역</button>
+            <div class="card hs-result" data-r="card">
+              <span class="hs-result__kind" data-r="kind">-</span>
+              <h2 data-r="headline">-</h2>
+              <p data-r="name">-</p>
+            </div>
+            <dl class="card hs-result-stats">
+              <div><dt>나의 가점</dt><dd><span data-r="score">-</span>점</dd></div>
+              <div><dt>접수번호</dt><dd data-r="receipt">-</dd></div>
+              <div><dt>당첨자 발표</dt><dd data-r="announce">-</dd></div>
+            </dl>
+            <div class="card hs-box" data-r="lose" hidden>
+              <h3>다음 청약을 위한 안내</h3>
+              <ul class="hs-tips">
+                <li>당첨자는 가점 높은 순으로 정하고, 같으면 청약통장 납입 횟수가 많은 사람이 앞서요.</li>
+                <li>청약통장 납입 횟수가 쌓이면 청약통장 점수도 함께 올라가요.</li>
+                <li>모집 중인 다른 단지에도 신청해 보세요.</li>
+              </ul>
+              <div class="hs-actions">
+                <button type="button" class="btn btn-primary" data-go-account>청약통장 납입하기</button>
+                <button type="button" class="btn btn-secondary" data-go-tab="complexes">다른 단지 보기</button>
+              </div>
+            </div>
+            <p class="hs-muted hs-small">교육용 모의 청약 결과예요. 실제 청약·계약·주택 구매와는 관계없어요.</p>
+          </section>
+        </th:block>
+      </div>
+    </main>
+
+    <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/housing.js}"></script>
+</body>
+</html>

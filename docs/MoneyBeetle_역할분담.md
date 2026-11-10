@@ -287,6 +287,7 @@
 | 서수영 | `HousingService.openAccount(memberId)` | 김예린 | 회원가입 완료 |
 | 서수영 | `HousingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
 | 서수영 | `FileStorageService.save(file, dir)` | 신아림, 김예린 | 썸네일·영상 파일, 프로필 이미지 |
+| 김예린 | `RewardService.grantRankingReward(memberId, rank, rankingAwardId)` | 이재성 | 랭킹 공개 때 순자산·수익률 랭킹 각각 상위 3위에게 캐시 지급 (SP-64). 원인 ID = 수상 기록(`ranking_award_id`) |
 | 이재성 | `RankingService.findAwards(memberId)` | 김예린 | Drawer 수상 내역, 마이페이지 |
 | 이재성 | `TradingService.getDashboardSummary()` | 김예린 | 관리자 첫 화면 |
 | 이재성 | `IdempotencyFilter` (`Idempotency-Key` 헤더) | 전원 | 퀴즈 제출·매수·매도·청약통장 납입·강의 영상 저장(API 78) |

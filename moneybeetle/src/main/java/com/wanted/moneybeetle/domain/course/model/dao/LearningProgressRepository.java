@@ -46,6 +46,9 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
     /* 학습 기록이 하나라도 있는지 (홈 vr1/vr2 분기) */
     boolean existsByMemberId(Long memberId);
 
+    /* 강의 목록 한 페이지에서 내 학습 상태를 한 번에 (#52) */
+    List<LearningProgress> findByMemberIdAndCourseIdIn(Long memberId, Collection<Long> courseIds);
+
     /* 강의 삭제 가능 여부 (SP-32): 한 명이라도 학습 기록이 있으면 삭제 불가 */
     boolean existsByCourseId(Long courseId);
 
