@@ -165,6 +165,9 @@ class AdminParticipantServiceTest {
                     .isInstanceOfSatisfying(BusinessException.class,
                             e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
         }
+        // 이름대로 DB 는 읽지 않는다 (정렬·쪽 크기 검증이 먼저)
+        verify(seasonRepository, never()).findById(anyLong());
+        verify(participantRepository, never()).findByTradingSeasonIdOrderBySeasonParticipantIdAsc(anyLong());
     }
 
     @Test
