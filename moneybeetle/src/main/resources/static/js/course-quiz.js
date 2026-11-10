@@ -12,6 +12,16 @@
   var L = window.MBLec;
   var h = L.h;
 
+  /* 자식 요소를 바꿔 넣는다. 배열은 펼치고 null·false 는 건너뛴다 (replaceChildren 은 null 을 "null" 글자로 넣는다) */
+  function fill(el) {
+    var nodes = [];
+    [].slice.call(arguments, 1).forEach(function add(x) {
+      if (Array.isArray(x)) x.forEach(add);
+      else if (x !== null && x !== undefined && x !== false) nodes.push(x);
+    });
+    el.replaceChildren.apply(el, nodes);
+  }
+
   var UNLOCK_NAMES = { TRADING: '모의투자', HOUSING: '모의청약' };
 
   function newKey() {
@@ -25,7 +35,7 @@
   }
 
   function loading(box, text) {
-    box.replaceChildren(h('div', { class: 'lec-state', text: text }));
+    fill(box, h('div', { class: 'lec-state', text: text }));
   }
 
   /* ---------- 시청 전 테스트 (OX 5문제) ---------- */
@@ -41,14 +51,14 @@
         if (!st.questions.length) {
           // 강사가 테스트를 아직 안 만든 강의는 막지 않고 바로 영상을 연다
           opts.onUnlocked();
-          box.replaceChildren(h('div', { class: 'lec-state' }, [
+          fill(box, h('div', { class: 'lec-state' }, [
             '이 강의에는 시청 전 테스트가 없어요.', h('br'),
             h('button', { type: 'button', class: 'btn btn-primary', text: '영상 보러 가기', onclick: opts.onGoLessons })
           ]));
           return;
         }
         draw();
-      }).catch(function (err) { box.replaceChildren(L.errorBox(err, load)); });
+      }).catch(function (err) { fill(box, L.errorBox(err, load)); });
     }
 
     function answeredCount() {
@@ -101,7 +111,7 @@
       });
 
       var unlocked = st.result && st.result.lessonsUnlocked;
-      box.replaceChildren(
+      fill(box, 
         h('div', { class: 'lec-quiz__head' }, [
           h('span', { class: 'lec-quiz__chip lec-quiz__chip--test', text: '테스트 퀴즈' }),
           h('h2', { text: 'OX ' + st.questions.length + '문제' })
@@ -143,7 +153,7 @@
     }
 
     function locked(left) {
-      box.replaceChildren(head(0), h('div', { class: 'lec-quiz__locked' }, [
+      fill(box, head(0), h('div', { class: 'lec-quiz__locked' }, [
         h('span', { class: 'lec-quiz__lock', 'aria-hidden': 'true', text: '🔒' }),
         h('b', { text: '영상을 모두 본 뒤에 풀 수 있어요' }),
         left > 0 ? h('span', { class: 'lec-meta', text: '남은 영상 ' + left + '개' }) : null,
@@ -164,10 +174,10 @@
       }).catch(function (err) {
         if (err && err.code === 'QUIZ_LOCKED') { locked(opts.leftLessons()); return; }
         if (err && err.code === 'NOT_FOUND') {
-          box.replaceChildren(head(0), h('div', { class: 'lec-state', text: '아직 퀴즈 문제가 준비되지 않았어요. 강사가 문제를 올리면 풀 수 있어요.' }));
+          fill(box, head(0), h('div', { class: 'lec-state', text: '아직 퀴즈 문제가 준비되지 않았어요. 강사가 문제를 올리면 풀 수 있어요.' }));
           return;
         }
-        box.replaceChildren(head(0), L.errorBox(err, load));
+        fill(box, head(0), L.errorBox(err, load));
       });
     }
 
@@ -186,7 +196,7 @@
       var qs = questions();
       var q = qs[st.index];
       var all = answered() === qs.length;
-      box.replaceChildren(
+      fill(box, 
         head(qs.length, st.paper.passScore),
         h('nav', { class: 'lec-quiz__dots', 'aria-label': '문제 이동' }, qs.map(function (x, i) {
           return h('button', { type: 'button', class: 'lec-quiz__dot' + (st.picks[x.questionId] ? ' is-answered' : ''),
@@ -265,7 +275,7 @@
       var passScore = (st.paper && st.paper.passScore) || 70;
       var firstPass = r.rewards && r.rewards.firstPass;
 
-      box.replaceChildren(
+      fill(box, 
         head(r.questionCount, passScore),
         h('div', { class: 'lec-quiz__score' + (r.isPassed ? ' is-passed' : '') }, [
           h('span', { class: 'lec-quiz__points' }, [String(r.score), h('small', { text: '점' })]),

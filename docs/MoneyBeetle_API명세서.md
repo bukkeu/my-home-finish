@@ -118,10 +118,13 @@
 | 2 | `GET` | `/api/v1/auth/check-email` | 이메일 중복 확인 | 비회원 | USR-01, SP-01 |
 | 3 | `GET` | `/api/v1/auth/check-nickname` | 닉네임 중복·규칙 확인 | 비회원 | USR-01, SP-02, DP-21 |
 | 4 | `POST` | `/api/v1/auth/signup` | 회원가입 | 비회원 | USR-01~04, SP-01~05, SUB-04 |
-| 5 | `POST` | `/api/v1/auth/identity-verification` | 본인인증 | 비회원 | USR-05, EP-02 |
+| 5-1 | `POST` | `/api/v1/auth/identity-verification/request` | 본인인증 코드 요청 | 비회원 | USR-05, EP-02 |
+| 5 | `POST` | `/api/v1/auth/identity-verification` | 본인인증 (코드 확인) | 비회원 | USR-05, EP-02 |
 | 6 | `POST` | `/api/v1/auth/login` | 로그인 | 비회원 | USR-06, DP-10~11, GRW-01 |
 | 7 | `POST` | `/api/v1/auth/logout` | 로그아웃 | 회원 | USR-06 |
 | 8 | `GET` | `/api/v1/auth/oauth/{provider}` | 간편 로그인 시작 | 비회원 | USR-07, DP-13 |
+| 8-1 | `GET` | `/api/v1/auth/oauth-signup` | 간편 로그인 가입 정보 확인 | 비회원 | USR-07, DP-13 |
+| 8-2 | `POST` | `/api/v1/auth/oauth-signup` | 간편 로그인 가입 완료 | 비회원 | USR-07, DP-13 |
 | 9 | `POST` | `/api/v1/auth/find-email` | 아이디(이메일) 찾기 | 비회원 | USR-08 |
 | 10 | `POST` | `/api/v1/auth/password-reset/request` | 비밀번호 재설정 요청 | 비회원 | USR-09, DP-12 |
 | 11 | `POST` | `/api/v1/auth/password-reset/confirm` | 비밀번호 재설정 | 비회원 | USR-09, DP-12 |
@@ -394,7 +397,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-01~04, SP-01~05, SUB-04 |
-| 설명 | 가입과 동시에 청약통장을 만든다. |
+| 설명 | 가입과 동시에 청약통장을 만든다. 같은 브라우저 세션에서 그 이메일의 본인인증(API 5)을 마친 뒤에만 가입할 수 있고, 인증 결과는 회원에 저장된다(`is_identity_verified`). 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. |
 
 **Request**
 
@@ -417,12 +420,34 @@
 { "memberId": 1, "nickname": "민지" }
 ```
 
-**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`, `IDENTITY_NOT_VERIFIED`
 
 - `EMAIL_DUPLICATED`·`NICKNAME_DUPLICATED`는 두 요청이 동시에 같은 값으로 가입해 중복 확인을 함께 통과해도 DB 고유 제약(`uk_member_email`, `uk_member_nickname`)에서 걸러져 같은 409로 응답한다.
 - 청약통장 개설은 서수영의 `HousingService.openAccount` 연동 뒤에 붙는다(이슈 #5 남은 작업).
 
-#### 5. 본인인증
+#### 5-1. 본인인증 코드 요청
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/identity-verification/request` |
+| Method | `POST` |
+| 권한 | 비회원 |
+| 관련 | USR-05, EP-02 |
+| 설명 | 가입하려는 이메일로 6자리 인증번호를 보낸다(5분 안에 입력). 메일은 요청과 다른 스레드에서 보내 응답이 바로 돌아가고, 메일 서버 실패는 1회 자동 재시도한 뒤 서버 로그에만 남긴다(EP-02). 같은 이메일로는 60초에 한 번만 보낼 수 있다(브라우저·세션이 달라도 같다). 접속 주소(IP) 하나는 1분에 10번까지만 요청할 수 있다(이메일을 바꿔 가며 여러 주소로 메일을 보내게 하는 것을 막는다. 요청의 접속 주소만 쓰고 `X-Forwarded-For` 는 믿지 않으며, 한도는 서버 메모리에 있어 서버를 다시 켜면 지워진다). 이미 가입된 이메일이면 보내지 않는다. 새로 요청하면 이전 번호는 쓸 수 없다. 진행 상태는 HTTP 세션에 담아 두며 DB 테이블은 쓰지 않는다. |
+
+**Request**
+
+```json
+{ "email": "minji@gmail.com" }
+```
+
+**Response**
+
+- 202 Accepted (본문 없음)
+
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `IDENTITY_CODE_TOO_SOON`, `IDENTITY_REQUEST_LIMITED`, `IDENTITY_MAIL_UNAVAILABLE`
+
+#### 5. 본인인증 (코드 확인)
 
 | 항목 | 내용 |
 | --- | --- |
@@ -430,12 +455,12 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-05, EP-02 |
-| 설명 | 가입 중 본인인증 결과를 확인한다. 외부 연동 또는 가상 화면(팀 확인 필요). 실패 시 1회 자동 재시도. |
+| 설명 | 이메일로 받은 6자리 번호가 맞으면 이 세션에서 그 이메일을 인증된 것으로 표시한다. 표시는 30분 동안 가입(API 4)에 쓸 수 있고 가입이 끝나면 지워진다. 번호를 5번 틀리면 그 번호는 버려지고 다시 받아야 한다(`IDENTITY_CODE_EXPIRED`). 5분이 지났거나 번호를 받은 적이 없거나 다른 이메일의 번호이면 `IDENTITY_CODE_EXPIRED`로 같게 답한다. |
 
 **Request**
 
 ```json
-{ "signupToken": "a81c...", "provider": "PASS", "verificationToken": "..." }
+{ "email": "minji@gmail.com", "code": "123456" }
 ```
 
 **Response**
@@ -444,7 +469,7 @@
 { "verified": true }
 ```
 
-**Error**: `OAUTH_FAILED`
+**Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`
 
 #### 6. 로그인
 
@@ -512,19 +537,63 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | --- | --- |
 | Endpoint | `/api/v1/auth/oauth/{provider}` |
 | Method | `GET` |
-| 권한 | 비회원 |
+| 권한 | 비회원 (`purpose=reauth` 는 회원) |
 | 관련 | USR-07, DP-13 |
-| 설명 | 구글·카카오 인증 화면으로 보낸다. provider = google |
+| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. **본인 확인용 다시 로그인(`purpose=reauth`)**: 비밀번호가 없는 간편 로그인 회원이 탈퇴(API 17) 전에 같은 제공자로 다시 로그인해 본인을 확인한다. 로그인한 회원만 시작할 수 있고(아니면 `UNAUTHORIZED` 401) 시작하면 세션에 5분짜리 확인 대기 상태가 생긴다. 제공자의 로그인 세션이 살아 있어도 새 확인 없이 통과하지 않도록, 이 요청에만 제공자에게 로그인을 다시 요구하는 `prompt` 값을 붙인다(카카오 `login`, 구글 `select_account consent`. 구글은 비밀번호 입력까지 강제하지는 못한다. 카카오톡 인앱 브라우저는 `login` 을 지원하지 않을 수 있다). 일반 간편 로그인은 그대로다. 제공자에서 돌아오면 새 로그인이 아니라 본인 확인으로 처리한다: 연결된 계정이 지금 로그인한 회원의 계정과 같으면 확인을 기록하고(5분 안에 탈퇴 요청 한 번에 쓸 수 있다) 로그인 상태를 그대로 두고 `/user/my-page?reauth=done` 으로 이동(302)한다. 다른 계정이거나 확인이 만료됐으면 로그인 상태를 지우고 `/login?oauthError=OAUTH_REAUTH_MISMATCH`(만료는 `OAUTH_SESSION_EXPIRED`)로 이동한다. |
 
 **Request**
 
-- Path: provider=kakao
+- Path: provider=google | kakao
+- Query: purpose=reauth (선택. 탈퇴 본인 확인용 다시 로그인)
 
 **Response**
 
-- 302 Found → 제공자 로그인 화면
+- 302 Found → `/oauth2/authorization/{provider}` → 제공자 로그인 화면
 
-**Error**: `OAUTH_FAILED`
+**Error**: `OAUTH_PROVIDER_UNAVAILABLE`, `UNAUTHORIZED`(`purpose=reauth` 인데 로그인하지 않음)
+
+#### 8-1. 간편 로그인 가입 정보 확인
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/oauth-signup` |
+| Method | `GET` |
+| 권한 | 비회원 (간편 로그인으로 처음 온 세션) |
+| 관련 | USR-07, DP-13 |
+| 설명 | 간편 로그인으로 처음 온 사람의 제공자 정보를 돌려준다. 가입 화면(`/signup/social`)이 이메일·이름을 미리 채우는 용도이며, 제공자 쪽 사용자 ID 는 주지 않는다. 정보는 HTTP 세션에 담겨 있고(세션 만료 30분), 없으면 `OAUTH_SESSION_EXPIRED`. |
+
+**Response**
+
+```json
+{ "provider": "GOOGLE", "email": "minji@gmail.com", "nickname": "민지" }
+```
+
+**Error**: `OAUTH_SESSION_EXPIRED`
+
+#### 8-2. 간편 로그인 가입 완료
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/oauth-signup` |
+| Method | `POST` |
+| 권한 | 비회원 (간편 로그인으로 처음 온 세션) |
+| 관련 | USR-07, DP-13, SUB-04 |
+| 설명 | 나머지 가입 정보를 받아 가입하고 **바로 로그인 상태**로 만든다. 이메일은 요청으로 받지 않고 세션에 담긴, 제공자가 확인한 값을 쓴다. 비밀번호는 없다(간편 로그인으로만 쓰는 계정, `password_hash` NULL). 본인인증(이메일 코드, API 5)은 거치지 않고 인증 완료(`is_identity_verified`)로 저장한다(DP-44). 닉네임·생년월일·약관 규칙은 API 4 와 같고, 회원·약관 동의·간편 로그인 연결(`social_account`)과 청약통장이 한 트랜잭션으로 저장된다. 가입이 거절되면(닉네임 중복 등) 세션 정보는 남아 고쳐서 다시 보낼 수 있다. |
+
+**Request**
+
+```json
+{ "nickname": "민지", "birthDate": "1999-04-12", "gender": "FEMALE", "agreedTermsIds": [1, 2, 3] }
+```
+
+**Response**
+
+```json
+201 Created
+{ "memberId": 1, "nickname": "민지" }
+```
+
+**Error**: `OAUTH_SESSION_EXPIRED`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`, `OAUTH_FAILED`(같은 제공자 계정이 동시에 가입)
 
 #### 9. 아이디(이메일) 찾기
 
@@ -600,7 +669,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-10, ADM-06 |
-| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. |
+| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. 학습자 가입(API 4)과 같게, 같은 브라우저 세션에서 그 이메일의 본인인증(API 5-1·5)을 마친 뒤에만 신청할 수 있고 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. 구현은 `IdentityVerificationService.requireVerified`(저장 전)·`clear`(성공 뒤)를 부른다(#30, DP-44). |
 
 **Request**
 
@@ -618,7 +687,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "memberId": 31, "approvalStatus": "PENDING" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `PASSWORD_MISMATCH`
+**Error**: `EMAIL_DUPLICATED`, `PASSWORD_MISMATCH`, `IDENTITY_NOT_VERIFIED`
 
 #### 13. 내 정보 (메뉴 프로필)
 
@@ -724,7 +793,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
+| 설명 | 본인 확인 뒤 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 비밀번호가 있는 회원은 현재 비밀번호(`password`)로 확인한다. **비밀번호가 없는 간편 로그인 회원은 `password` 없이 요청하며**, 먼저 API 8 을 `purpose=reauth` 로 불러 같은 제공자로 다시 로그인해 확인을 마친 세션이어야 한다(5분 안, 한 번만 사용). 확인이 없으면 `SOCIAL_REAUTH_REQUIRED`. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -732,11 +801,13 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "password": "beetle1234" }
 ```
 
+- 간편 로그인 회원은 본문을 비우거나 `{}` 로 보낸다.
+
 **Response**
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`, `FORBIDDEN`
+**Error**: `PASSWORD_WRONG`, `SOCIAL_REAUTH_REQUIRED`, `FORBIDDEN`
 
 #### 18. 다른 회원 공개 프로필
 
@@ -3643,7 +3714,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-36 |
-| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수. 신청 시작일 최신순. |
+| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수, 산정 여부. 신청 시작일 최신순. |
 
 **Request**
 
@@ -3652,11 +3723,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3 } ] }
+{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3, "computed": false } ] }
 ```
 
 - `status`: `UPCOMING`(접수 전) · `OPEN`(접수 중) · `CLOSED`(마감, 발표 전) · `ANNOUNCED`(발표)
 - `applicants`가 1 이상이면 일정·공급 세대 수 수정(144)과 삭제(145)가 막힌다
+- `computed`: 당첨자 산정(147)을 했는지(`computed_at` 있음). 신청자가 0명이어도 산정하면 `true`. `true`면 일정·공급 세대 수 수정(144)이 막히고, 발표일부터 결과 발표(148)를 할 수 있다 (#63)
 
 #### 143. 공고 등록
 
@@ -3828,7 +3900,17 @@ email=admin@moneybeetle.kr&password=...
 | 회원 | `PASSWORD_MISMATCH` | 400 | 비밀번호가 서로 달라요 |
 | 회원 | `REQUIRED_TERMS_NOT_AGREED` | 400 | 필수 약관에 동의해 주세요 |
 | 회원 | `AGE_UNDER_14` | 400 | 만 14세 이상부터 가입할 수 있어요 |
+| 회원 | `IDENTITY_NOT_VERIFIED` | 400 | 본인인증을 먼저 해 주세요 |
+| 회원 | `IDENTITY_CODE_INVALID` | 400 | 인증번호가 맞지 않아요. 다시 확인해 주세요 |
+| 회원 | `IDENTITY_CODE_EXPIRED` | 400 | 인증번호가 만료되었거나 너무 많이 틀렸어요. 인증번호를 다시 받아 주세요 |
+| 회원 | `IDENTITY_CODE_TOO_SOON` | 429 | 인증번호는 1분에 한 번만 받을 수 있어요. 잠시 뒤에 다시 시도해 주세요 |
+| 회원 | `IDENTITY_REQUEST_LIMITED` | 429 | 요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
+| 회원 | `IDENTITY_MAIL_UNAVAILABLE` | 503 | 지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `OAUTH_FAILED` | 502 | 간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요 |
+| 회원 | `OAUTH_PROVIDER_UNAVAILABLE` | 503 | 지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요 |
+| 회원 | `OAUTH_SESSION_EXPIRED` | 400 | 간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요 |
+| 회원 | `SOCIAL_REAUTH_REQUIRED` | 400 | 구글·카카오로 다시 로그인해 본인 확인을 해 주세요 |
+| 회원 | `OAUTH_REAUTH_MISMATCH` | 400 | 지금 로그인한 계정과 다른 계정으로 확인했어요. 같은 계정으로 다시 시도해 주세요 |
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |

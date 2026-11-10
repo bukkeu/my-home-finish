@@ -96,6 +96,12 @@ class MemberSignupServiceTest {
     @MockitoBean
     private com.wanted.moneybeetle.domain.notification.model.service.NotificationService notificationService;
 
+    /** 본인인증 확인은 IdentityVerificationServiceTest 가 따로 본다. 여기서는 가입 흐름에서 언제 확인하고 지우는지만 본다 */
+    @MockitoBean
+    private SignupIdentityVerifier identityVerificationService;
+
+    private final org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+
     @MockitoBean
     private MemberRepository memberRepository;
     @MockitoBean
@@ -104,6 +110,8 @@ class MemberSignupServiceTest {
     private MemberTermsAgreementRepository memberTermsAgreementRepository;
     @MockitoBean
     private InstructorProfileRepository instructorProfileRepository;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
     @MockitoBean
@@ -155,7 +163,7 @@ class MemberSignupServiceTest {
     @Test
     @DisplayName("가입하면 회원을 저장한 뒤 그 회원의 청약통장을 같은 트랜잭션에서 만든다")
     void opensAccountAfterSignup() {
-        SignupResultDTO result = signupService.signup(request);
+        SignupResultDTO result = signupService.signup(request, session);
 
         assertThat(result.getMemberId()).isEqualTo(42L);
         InOrder order = inOrder(memberRepository, subscriptionAccountRepository);
@@ -172,7 +180,7 @@ class MemberSignupServiceTest {
         when(subscriptionAccountRepository.save(any(SubscriptionAccount.class)))
                 .thenThrow(new IllegalStateException("db down"));
 
-        assertThatThrownBy(() -> signupService.signup(request)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> signupService.signup(request, session)).isInstanceOf(IllegalStateException.class);
 
         // 가짜 관리자는 바깥·안쪽 트랜잭션을 구분하지 못해 "어딘가에서 되돌렸다"까지만 안다. 가입이 실제로 취소되는지(회원이 DB 에 남지 않는지)는
         // MemberSignupRollbackTest 가 H2 실제 DB 로 확인한다.
@@ -184,8 +192,38 @@ class MemberSignupServiceTest {
     void noAccountWhenSignupRejected() {
         when(memberRepository.existsByEmail("minji@gmail.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> signupService.signup(request)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> signupService.signup(request, session)).isInstanceOf(RuntimeException.class);
 
         verify(subscriptionAccountRepository, never()).save(any(SubscriptionAccount.class));
+    }
+
+    @Test
+    @DisplayName("본인인증을 하지 않았으면 회원도 통장도 만들지 않고 IDENTITY_NOT_VERIFIED 로 막는다")
+    void blocksWhenNotVerified() {
+        org.mockito.Mockito.doThrow(new com.wanted.moneybeetle.global.exception.BusinessException(
+                        com.wanted.moneybeetle.domain.member.exception.MemberErrorCode.IDENTITY_NOT_VERIFIED))
+                .when(identityVerificationService).requireVerified("minji@gmail.com", session);
+
+        assertThatThrownBy(() -> signupService.signup(request, session))
+                .isInstanceOfSatisfying(com.wanted.moneybeetle.global.exception.BusinessException.class,
+                        e -> assertThat(e.getErrorCode())
+                                .isEqualTo(com.wanted.moneybeetle.domain.member.exception.MemberErrorCode.IDENTITY_NOT_VERIFIED));
+
+        verify(memberRepository, never()).saveAndFlush(any(Member.class));
+        verify(subscriptionAccountRepository, never()).save(any(SubscriptionAccount.class));
+        verify(identityVerificationService, never()).clear(any());
+    }
+
+    @Test
+    @DisplayName("인증 표시는 가입이 성공한 뒤에만 지운다 (실패하면 다시 인증하지 않아도 된다)")
+    void clearsVerificationOnlyOnSuccess() {
+        signupService.signup(request, session);
+        verify(identityVerificationService).clear(session);
+
+        org.mockito.Mockito.clearInvocations(identityVerificationService);
+        when(memberRepository.existsByEmail("minji@gmail.com")).thenReturn(true);   // 이번에는 중복 이메일로 가입이 거절된다
+        assertThatThrownBy(() -> signupService.signup(request, session)).isInstanceOf(RuntimeException.class);
+
+        verify(identityVerificationService, never()).clear(any());
     }
 }
