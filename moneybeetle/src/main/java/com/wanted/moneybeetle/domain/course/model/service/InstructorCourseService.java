@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -111,7 +112,7 @@ public class InstructorCourseService {
     /* API 75 강의 수정: 검수 중에는 불가, 허가된 강의를 고치면 다시 검수(REVIEW) */
     @Transactional
     public CourseStatusDTO updateCourse(Long instructorId, Long courseId, CourseSaveDTO request) {
-        Course course = getMyCourse(instructorId, courseId);
+        Course course = getMyCourseForUpdate(instructorId, courseId);
         checkSelectableCategory(request.categoryId());
         checkForbiddenWords(request);
         course.change(request.categoryId(), request.title().strip(), request.description(),
@@ -122,7 +123,7 @@ public class InstructorCourseService {
     /* API 76 강의 삭제: 학습 기록이 있으면 삭제 불가 (SP-32), 없으면 Soft Delete */
     @Transactional
     public void deleteCourse(Long instructorId, Long courseId) {
-        Course course = getMyCourse(instructorId, courseId);
+        Course course = getMyCourseForUpdate(instructorId, courseId);
         if (learningProgressRepository.existsByCourseId(courseId)) {
             throw new BusinessException(CourseErrorCode.COURSE_HAS_LEARNERS);
         }
@@ -132,7 +133,7 @@ public class InstructorCourseService {
     /* API 77 썸네일 업로드: 이미지 2MB·jpg·png 검사는 FileStorageService가 한다 (DP-32) */
     @Transactional
     public ThumbnailDTO changeThumbnail(Long instructorId, Long courseId, MultipartFile file) {
-        Course course = getMyCourse(instructorId, courseId);
+        Course course = getMyCourseForUpdate(instructorId, courseId);
         course.checkEditable();                         // 검수 중이면 파일을 저장하기 전에 막는다 (고아 파일 방지)
         try {
             String thumbnailUrl = fileStorageService.saveImage(file);
@@ -146,7 +147,7 @@ public class InstructorCourseService {
     /* API 81 검수 요청: 본인 강의 → 작성 중·반려 상태 → 영상 1개 이상 + 테스트 퀴즈 5 + 퀴즈 5~15 (DP-34) */
     @Transactional
     public CourseStatusDTO requestReview(Long instructorId, Long courseId) {
-        Course course = getMyCourse(instructorId, courseId);
+        Course course = getMyCourseForUpdate(instructorId, courseId);
         course.checkRequestable();                      // 상태 오류(409)를 콘텐츠 오류보다 먼저
         if (lessonRepository.countByCourseId(courseId) < 1) {
             throw new BusinessException(CourseErrorCode.NO_LESSON);
@@ -160,8 +161,19 @@ public class InstructorCourseService {
 
     /* 본인 강의만 (삭제된 강의는 404, 남의 강의는 403) */
     private Course getMyCourse(Long instructorId, Long courseId) {
-        Course course = courseRepository.findById(courseId)
-                .filter(found -> !found.isDeleted())
+        return checkMine(courseRepository.findById(courseId), instructorId);
+    }
+
+    /* 수정·삭제·썸네일·검수 요청용: 행 잠금으로 읽어서 검사와 저장 사이에 상태가 바뀌지 않게 한다.
+     * 검수 요청·허가가 먼저 진행 중이면 끝날 때까지 기다린 뒤 바뀐 상태로 검사 → COURSE_IN_REVIEW.
+     * 썸네일은 잠금을 잡은 채 상태를 확인한 뒤 파일을 저장하므로, 충돌 롤백으로 파일만 남는 일이 없다 */
+    private Course getMyCourseForUpdate(Long instructorId, Long courseId) {
+        return checkMine(courseRepository.findByIdForUpdate(courseId), instructorId);
+    }
+
+    private Course checkMine(Optional<Course> found, Long instructorId) {
+        Course course = found
+                .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         if (!course.isOwnedBy(instructorId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
