@@ -3058,6 +3058,7 @@ email=admin@moneybeetle.kr&password=...
 
 - `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
 - `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
+- 휴장일 : 시즌 상태가 `HOLIDAY`이거나, 상태와 상관없이 **서울 기준 오늘이 일요일**이면 `isHoliday: true`, `ready: false`다 (SP-50, 휴장일에는 턴이 잠긴다)
 - 마지막 턴이면 `nextTurn`이 `null`, `ready`는 `false`
 - 관리자 대시보드(84)의 `nextTurnReady`·`missing`도 같은 계산이다 (`TradingService.getDashboardSummary()`)
 
@@ -3088,6 +3089,8 @@ email=admin@moneybeetle.kr&password=...
 - `expectedCurrentTurn`은 화면이 보고 있던 현재 턴이다. 서버의 현재 턴과 다르면 `TURN_CONFLICT`(다른 관리자가 먼저 넘긴 경우)
 - 넘기면 그 턴의 `progressedAt`·`progressedBy`를 남기고 admin_log(`TURN_ADVANCE`, 변경 전·후 턴)에도 기록한다 (같은 트랜잭션)
 - 같은 시즌을 두 관리자가 동시에 넘기지 못하게 시즌 행을 잠그고 처리한다
+- 휴장일(시즌 상태 `HOLIDAY` 또는 서울 기준 일요일)에는 점검 실패보다 먼저 `MARKET_HOLIDAY`로 거절한다
+- 뉴스 등록·수정·삭제와 분야·종목 변경도 같은 시즌 행 잠금을 잡고 처리해, 점검 직후 끼어들어 뉴스·가격이 빠진 채 턴이 넘어가지 않게 한다
 
 **Error**: `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 

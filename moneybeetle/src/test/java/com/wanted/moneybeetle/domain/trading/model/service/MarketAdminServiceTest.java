@@ -35,13 +35,15 @@ class MarketAdminServiceTest {
 
     private SectorRepository sectorRepository;
     private StockRepository stockRepository;
+    private com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository seasonRepository;
     private MarketAdminService service;
 
     @BeforeEach
     void setUp() {
         sectorRepository = mock(SectorRepository.class);
         stockRepository = mock(StockRepository.class);
-        service = new MarketAdminService(sectorRepository, stockRepository);
+        seasonRepository = org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository.class);
+        service = new MarketAdminService(sectorRepository, stockRepository, seasonRepository);
     }
 
     private Sector sector(long id, String name, int sortOrder) {
@@ -316,5 +318,38 @@ class MarketAdminServiceTest {
 
         assertThat(stocks).extracting(AdminStockDTO::getName).containsExactly("모아모빌리티", "한빛반도체");
         assertThat(stocks).extracting(AdminStockDTO::getSectorName).containsExactly("모빌리티", "반도체");
+    }
+
+    // ===== 턴 진행과 같은 시즌 행 잠금 =====
+
+    private com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason runningSeason() {
+        var season = com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.create("시즌 7",
+                java.time.LocalDate.of(2026, 11, 2), 1L);
+        ReflectionTestUtils.setField(season, "tradingSeasonId", 7L);
+        season.changeStatus(com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason.STATUS_RUNNING);
+        return season;
+    }
+
+    @Test
+    void 진행_중인_시즌이_있으면_분야_종목_변경이_그_시즌_행을_잠근다() {
+        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any()))
+                .thenReturn(java.util.Optional.of(runningSeason()));
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createSector(new SectorSaveDTO("핀테크", 15, null));
+
+        verify(seasonRepository).findByIdForUpdate(7L);
+    }
+
+    @Test
+    void 진행_중인_시즌이_없으면_잠그지_않는다() {
+        when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(any())).thenReturn(java.util.Optional.empty());
+        when(sectorRepository.existsByName("핀테크")).thenReturn(false);
+        when(sectorRepository.saveAndFlush(any(Sector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createSector(new SectorSaveDTO("핀테크", 15, null));
+
+        verify(seasonRepository, never()).findByIdForUpdate(any());
     }
 }

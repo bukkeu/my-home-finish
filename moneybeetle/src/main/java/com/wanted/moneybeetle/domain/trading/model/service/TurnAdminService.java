@@ -78,7 +78,12 @@ public class TurnAdminService {
             throw new BusinessException(TradingErrorCode.TURN_CONFLICT);
         }
         season.checkAdvanceable();
-        if (!tradingService.checkNextTurn(season).ready()) {
+        NextTurnCheckDTO check = tradingService.checkNextTurn(season);
+        if (check.isHoliday()) {
+            // 상태가 HOLIDAY 가 아니어도 일요일이면 잠근다. 되돌릴 수 없는 작업이라 점검 실패보다 먼저 알려 준다
+            throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
+        }
+        if (!check.ready()) {
             throw new BusinessException(TradingErrorCode.NEXT_TURN_NOT_READY);
         }
 
