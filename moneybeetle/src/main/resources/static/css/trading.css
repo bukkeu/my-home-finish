@@ -107,7 +107,7 @@
 .trd .live-dot::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--mint); margin-right: 5px; box-shadow: none; }
 .trd .stock-search { position: relative; z-index: 12; margin-top: 16px; }
 .trd .search-input { height: 44px; padding: 0 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-3); display: flex; align-items: center; gap: 9px; transition: border-color .2s, box-shadow .2s; }
-.trd .search-input.focused { border-color: var(--mint-dark); box-shadow: 0 0 0 3px var(--mint-soft); }
+.trd .search-input.focused, .trd .search-input:focus-within { border-color: var(--mint-dark); box-shadow: 0 0 0 3px var(--mint-soft); }
 .trd .search-input svg { flex: 0 0 auto; width: 17px; height: 17px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; }
 .trd .search-input input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 12px; }
 .trd .search-input input::placeholder { color: var(--muted); }
@@ -595,6 +595,7 @@
 .trd .quantity-input > span input { width: 5ch; padding: 0; border: 0; background: transparent; color: var(--text); font-size: 15px; font-weight: 700; text-align: right; -moz-appearance: textfield; appearance: textfield; }
 .trd .quantity-input > span input::-webkit-outer-spin-button, .trd .quantity-input > span input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .trd .quantity-input > span input:focus { outline: none; }
+.trd .quantity-input:focus-within { border-color: var(--mint-dark); box-shadow: 0 0 0 3px var(--mint-soft); }
 /* 상태 화면·잠금 (NFR-09) */
 .trd .trd-state { max-width: 520px; margin: 40px auto; padding: 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .trd .trd-state h1 { font-size: 22px; font-weight: 800; }

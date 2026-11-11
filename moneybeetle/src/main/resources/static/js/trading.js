@@ -492,8 +492,10 @@
   }
 
   function loadStock(stockId) {
+    var req = S.stockReq = (S.stockReq || 0) + 1;   // 늦게 온 이전 종목 응답이 화면을 덮지 않게 마지막 요청만 반영한다
     loadStockNews(stockId);
     return api('/stocks/' + encodeURIComponent(stockId)).then(function (d) {
+      if (req !== S.stockReq) return;
       S.stock = d;
       $('trd-d-initial').textContent = (d.name || '?').charAt(0);
       $('trd-d-name').textContent = d.name;
@@ -508,6 +510,7 @@
       renderNewsImpact();
       resetOrder();
     }).catch(function (err) {
+      if (req !== S.stockReq) return;
       if (fatal(err)) return;
       $('trd-d-name').textContent = '종목을 불러오지 못했어요';
       note($('trd-chart'), errText(err), true);
@@ -516,11 +519,17 @@
 
   function loadStockNews(stockId) {
     var list = $('trd-d-news');
+    var req = S.newsReq = (S.newsReq || 0) + 1;
     loading(list);
     api('/news?stockId=' + encodeURIComponent(stockId)).then(function (d) {
+      if (req !== S.newsReq) return;
       S.stockNews = d.items || [];
       renderNewsImpact();
-    }).catch(function (err) { S.stockNews = null; sectionError(list)(err); });
+    }).catch(function (err) {
+      if (req !== S.newsReq) return;
+      S.stockNews = null;
+      sectionError(list)(err);
+    });
   }
 
   /** 종목 뉴스 타임라인: 뉴스가 공개된 다음 턴의 가격 변화를 함께 보여 준다 (가격 흐름에서 계산) */
@@ -827,9 +836,11 @@
       // 응답을 못 받은 경우(네트워크·형식 없는 오류)만 결과를 모른다 -> 키를 남겨 둔다. 그 밖의 오류는 처리되지 않은 것
       if (err.code !== 'NETWORK_ERROR' && err.code !== 'ERROR') S.pendingOrder = null;
       if (fatal(err)) return;
-      orderError(errText(err));
+      // MSG 에 없는 코드(예: 500 INTERNAL_ERROR)는 서버가 주문을 저장했는지 알 수 없다 -> 내역을 다시 불러오고 확인을 안내한다
+      var unknown = err.code !== 'NETWORK_ERROR' && err.code !== 'ERROR' && !MSG[err.code];
+      orderError(unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err));
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
-      if (err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
+      if (unknown || err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
         return refreshAll(true, true);
       }
     }).then(function () { S.busy = false; updateOrder(); });
@@ -968,6 +979,9 @@
     ['trd-holdings', 'trd-trade-list', 'trd-market-list', 'trd-rank-list'].forEach(function (id) { loading($(id)); });
 
     loadHome().then(function () {
+      // 통합 검색(/user/search)의 종목 링크: ?stockId=숫자 이면 그 종목 상세를 바로 연다
+      var sid = new URLSearchParams(window.location.search).get('stockId');
+      if (sid && /^\d+$/.test(sid) && !S.locked) openStock(sid);
       loadTrades();
       loadMarket();
       loadRanking();
