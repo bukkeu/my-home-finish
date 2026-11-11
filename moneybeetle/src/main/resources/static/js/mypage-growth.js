@@ -112,7 +112,11 @@
     byId('mg-cash-more').addEventListener('click', function () {
       var button = byId('mg-cash-more');
       button.disabled = true;
-      fetchCashPage(cash.page + 1).then(renderCash, function (error) { setStatus(message(error)); }).then(function () { button.disabled = false; });
+      fetchCashPage(cash.page + 1).then(function () {
+        // 처음 조회가 실패해 막아 둔 필터도, 더 보기로 내역을 받아 오면 다시 쓸 수 있게 푼다
+        root.querySelectorAll('.mg-filter').forEach(function (filter) { filter.disabled = false; });
+        renderCash();
+      }, function (error) { setStatus(message(error)); }).then(function () { button.disabled = false; });
     });
   }
 

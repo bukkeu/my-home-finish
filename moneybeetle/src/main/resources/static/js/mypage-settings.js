@@ -62,12 +62,16 @@
       if (!nickname) return say('mg-profile-msg', '닉네임을 입력해 주세요.', false);
       if (!birthDate) return say('mg-profile-msg', '생년월일을 입력해 주세요.', false);
       say('mg-profile-msg', '저장하고 있어요…', true);
+      var sentGender = byId('mg-gender').value;
       busy(byId('mg-profile-save'), function () {
-        return api('/api/v1/members/me', { method: 'PATCH', body: { nickname: nickname, birthDate: birthDate, gender: byId('mg-gender').value || null } })
+        return api('/api/v1/members/me', { method: 'PATCH', body: { nickname: nickname, birthDate: birthDate, gender: sentGender || null } })
           .then(function (result) {
             me.nickname = (result && result.nickname) || nickname;
             me.birthDate = birthDate;
-            me.gender = byId('mg-gender').value || me.gender;
+            // 성별을 비워 보내면 서버는 기존 값을 그대로 둔다(API 14). 화면도 서버에 남은 값을 보여 준다
+            me.gender = sentGender || me.gender;
+            // 요청 중에 사용자가 선택을 바꿨다면 그 선택을 덮어쓰지 않는다
+            if (byId('mg-gender').value === sentGender) byId('mg-gender').value = me.gender || '';
             say('mg-profile-msg', '저장했어요.', true);
             refreshHeader();
             notifyChanged();

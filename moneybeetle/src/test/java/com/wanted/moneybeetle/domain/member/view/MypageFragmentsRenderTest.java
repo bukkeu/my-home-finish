@@ -168,6 +168,8 @@ class MypageFragmentsRenderTest {
         // 안내 요청(1)·인증 성공(2)·인증 오류(3)가 각각 보낸 창과 지금 창을 비교한다
         assertThat(settings.split("session !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(4);
         assertThat(growth).contains("mg-filter').forEach(function (button) { button.disabled = true; });");
+        assertThat(growth).contains("filter.disabled = false;");            // 더 보기로 내역을 받으면 막아 둔 필터를 푼다
+        assertThat(settings).contains("sentGender", "byId('mg-gender').value = me.gender");   // 성별을 비워 저장해도 서버에 남은 값을 보여 준다
     }
 
     @Test
