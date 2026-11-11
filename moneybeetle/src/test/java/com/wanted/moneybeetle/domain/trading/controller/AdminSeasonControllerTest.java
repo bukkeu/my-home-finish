@@ -120,7 +120,7 @@ class AdminSeasonControllerTest {
     @Test
     void 설정_변경은_204() throws Exception {
         mockMvc().perform(patch(BASE + "/7/settings").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"carryoverRate\":100.0,\"carryoverCap\":null,\"unlockLevel\":8}"))
+                        .content("{\"carryoverRate\":100.0,\"carryoverCap\":null}"))
                 .andExpect(status().isNoContent());
 
         verify(service).changeSetting(eq(7L), any());

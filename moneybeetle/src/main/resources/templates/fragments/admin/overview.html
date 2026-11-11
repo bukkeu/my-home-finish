@@ -1,0 +1,22 @@
+<!--/* comment.
+    담당 : DBA ② 김예린 (#61, 대시보드 탭)
+    내용 : 숫자 카드, 처리할 일, 최근 작업 기록
+    경로 : /admin/dashboard (view 없음)
+    데이터 : static/js/admin-overview.js 가 API 84(대시보드)와 API 113(작업 기록)으로 채운다
+*/-->
+<section class="adm-stats" id="adm-stats" aria-label="운영 현황">
+  <p class="adm-empty">불러오고 있어요…</p>
+</section>
+<section class="adm-grid">
+  <div class="adm-box">
+    <h2>처리할 일</h2>
+    <div class="adm-rows" id="adm-todos"></div>
+  </div>
+  <div class="adm-box">
+    <div class="adm-box__head">
+      <h2>최근 작업 기록</h2>
+      <a class="btn btn-ghost adm-btn-sm" th:href="@{/admin/dashboard(view='settings')}">전체 보기</a>
+    </div>
+    <div class="adm-rows" id="adm-recent-logs"><p class="adm-empty">불러오고 있어요…</p></div>
+  </div>
+</section>

@@ -51,11 +51,6 @@ public class TradingSeason {
     /** 시즌 기간: 시작일(월) 포함 14일, 종료일 = 시작일 + 13일 (SP-50) */
     public static final int SEASON_DAYS = 14;
     public static final int DEFAULT_TOTAL_TURNS = 12;
-    /**
-     * 해금 레벨 기본값. schema.sql 의 system_setting UNLOCK_LEVEL_TRADING 기본값(8)과 같다.
-     * TODO 운영 설정(SystemSettingService)에 값을 읽는 메서드가 생기면 시즌 생성 때 그 값을 create(...)에 넘긴다 (#111)
-     */
-    public static final int DEFAULT_UNLOCK_LEVEL = 8;
     /** 이월 비율 기본값: 최종 순자산 전액 이월 (SP-63, #76 확정) */
     public static final BigDecimal DEFAULT_CARRYOVER_RATE = new BigDecimal("100.00");
 
@@ -74,8 +69,6 @@ public class TradingSeason {
     private int currentTurn;
 
     private int totalTurns;
-
-    private int unlockLevel;
 
     private BigDecimal carryoverRate;
 
@@ -97,39 +90,35 @@ public class TradingSeason {
     private LocalDateTime updatedAt;
 
     private TradingSeason(String name, LocalDate startDate, BigDecimal carryoverRate,
-            Long carryoverCap, int unlockLevel, Long createdBy) {
+            Long carryoverCap, Long createdBy) {
         this.name = name;
         this.startDate = startDate;
         this.endDate = startDate.plusDays(SEASON_DAYS - 1);
         this.status = STATUS_READY;
         this.currentTurn = 0;
         this.totalTurns = DEFAULT_TOTAL_TURNS;
-        this.unlockLevel = unlockLevel;
         this.carryoverRate = carryoverRate;
         this.carryoverCap = carryoverCap;
         this.createdBy = createdBy;
     }
 
-    /** 기본 설정(이월 100%, 상한 없음, 해금 Lv.8)으로 만든다 */
+    /** 기본 설정(이월 100%, 상한 없음)으로 만든다. 모의투자 해금 레벨은 시즌이 아니라 운영 설정 하나다 (#242) */
     public static TradingSeason create(String name, LocalDate startDate, Long createdBy) {
-        return new TradingSeason(name, startDate, DEFAULT_CARRYOVER_RATE, null, DEFAULT_UNLOCK_LEVEL,
-                createdBy);
+        return new TradingSeason(name, startDate, DEFAULT_CARRYOVER_RATE, null, createdBy);
     }
 
     public static TradingSeason create(String name, LocalDate startDate, BigDecimal carryoverRate,
             Long carryoverCap, Long createdBy) {
-        return new TradingSeason(name, startDate, carryoverRate, carryoverCap, DEFAULT_UNLOCK_LEVEL,
-                createdBy);
+        return new TradingSeason(name, startDate, carryoverRate, carryoverCap, createdBy);
     }
 
-    /** 이월 비율·상한·해금 레벨 (ADM-11). 정산 중이거나 끝난 시즌은 바꿀 수 없다 */
-    public void changeSetting(BigDecimal carryoverRate, Long carryoverCap, int unlockLevel) {
+    /** 이월 비율·상한 (ADM-11). 정산 중이거나 끝난 시즌은 바꿀 수 없다 */
+    public void changeSetting(BigDecimal carryoverRate, Long carryoverCap) {
         if (isSettlingOrEnded()) {
             throw new BusinessException(TradingErrorCode.SEASON_CLOSED);
         }
         this.carryoverRate = carryoverRate;
         this.carryoverCap = carryoverCap;
-        this.unlockLevel = unlockLevel;
     }
 
     /** 정해진 순서로만 상태를 바꾼다 (SP-65) */

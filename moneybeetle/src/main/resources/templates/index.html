@@ -1,5 +1,191 @@
-<!-- comment.
-    담당 : DBA ② 김예린 (#51, 서비스 소개 메인)
-    원본 디자인 : Main.dc.html
-    경로 : /
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : DBA ② 김예린 (#51, 서비스 소개 메인)
+  원본 디자인 : moneybeetle-page/Main.dc.html
+  경로 : / (누구나 볼 수 있다. 로그인한 회원에게는 "내 홈으로" 버튼을 보인다)
+  구성 : 위쪽 소개(제목·무료로 시작하기·집 계단) / "내 집까지 가는 길" 로드맵 (스크롤하면 길이 그려진다)
+  움직임 : static/js/landing.js 가 로드맵이 화면에 들어오면 .is-shown 을 붙여 CSS 전환을 시작한다 (움직임 줄이기 설정이면 바로 보인다)
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('내 집 마련, 연습부터')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/landing.css}">
+</head>
+<body class="landing">
+<header class="landing__top">
+  <a class="landing__logo" th:href="@{/}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+  <div class="landing__space"></div>
+  <th:block sec:authorize="!isAuthenticated()">
+    <a class="landing__login" th:href="@{/login}">로그인</a>
+    <a class="landing__signup" th:href="@{/signup}">회원가입</a>
+  </th:block>
+  <th:block sec:authorize="isAuthenticated()">
+    <a class="landing__signup" th:href="@{/user/home}" sec:authorize="hasAuthority('MEMBER')">내 홈으로</a>
+    <a class="landing__signup" th:href="@{/instructor/dashboard}" sec:authorize="hasAuthority('INSTRUCTOR')">강사 대시보드</a>
+    <a class="landing__signup" th:href="@{/admin/dashboard}" sec:authorize="hasAuthority('ADMIN')">관리자 대시보드</a>
+  </th:block>
+</header>
+
+<main>
+<div class="intro" id="intro">
+  <ul class="intro__points">
+    <li><span class="intro__dot"><svg width="16" height="16" viewBox="0 0 24 24" fill="#263B1A" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg></span>영상 강의와 퀴즈로 배우기</li>
+    <li><span class="intro__dot intro__dot--won">₩</span>가상 캐시로 투자·청약 연습</li>
+    <li><span class="intro__dot"><svg width="16" height="16" viewBox="0 0 24 24" fill="#263B1A" aria-hidden="true"><path d="m12 2 3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg></span>레벨업하며 내 집까지</li>
+  </ul>
+
+  <h1 class="intro__title">내 집 마련,<br>연습부터.</h1>
+  <p class="intro__lead">월급 관리부터 청약까지, 영상 강의와 퀴즈로 배우고<br>가상 캐시로 실제 돈 쓰기 전에 안전하게 연습해요.</p>
+  <a class="intro__cta" th:href="@{/login}" sec:authorize="!isAuthenticated()">무료로 시작하기</a>
+  <a class="intro__cta" th:href="@{/user/home}" sec:authorize="hasAuthority('MEMBER')">내 홈으로 가기</a>
+
+  <div class="steps" aria-label="레벨별 집">
+      <div class="step" style="--h:150px;--bg:#EAF7D8;--sub:#4a6b2e">
+        <span class="step__name">고시원</span>
+        <span class="step__lv">Lv.1~3</span>
+      </div>
+      <div class="step" style="--h:200px;--bg:#B9EF8E;--sub:#3d6120">
+        <span class="step__name">원룸</span>
+        <span class="step__lv">Lv.4~7</span>
+      </div>
+      <div class="step" style="--h:250px;--bg:#B9EF8E;--sub:#263B1A">
+        <span class="step__name">투룸</span>
+        <span class="step__lv">Lv.8~11 · 모의투자 열림</span>
+      </div>
+      <div class="step" style="--h:300px;--bg:#9fe870;--sub:#263B1A">
+        <span class="step__name">아파트</span>
+        <span class="step__lv">Lv.12~16 · 모의 청약 열림</span>
+      </div>
+      <div class="step" style="--h:350px;--bg:#F2C14E;--sub:#263B1A">
+        <img class="step__house" th:src="@{/images/house-top-hd.png}" alt="">
+        <span class="step__name">내 집</span>
+        <span class="step__lv">Lv.17~</span>
+      </div>
+  </div>
+</div>
+
+<section class="road" id="road" aria-labelledby="road-title">
+  <h2 id="road-title">내 집까지 가는 길</h2>
+  <p class="road__sub">배우고, 모으고, 연습하면 어느새 내 집이에요.</p>
+
+  <div class="road__wide">
+        <svg viewBox="0 0 1000 760" aria-hidden="true" class="road__svg">
+          <defs><linearGradient id="railA" gradientUnits="userSpaceOnUse" x1="100" y1="120" x2="820" y2="120"><stop offset="0" stop-color="#EAF7D8"/><stop offset="1" stop-color="#B9EF8E"/></linearGradient><linearGradient id="haloA" gradientUnits="userSpaceOnUse" x1="100" y1="120" x2="820" y2="120"><stop offset="0" stop-color="#F5FBEE"/><stop offset="1" stop-color="#E2F6CF"/></linearGradient><linearGradient id="railB" gradientUnits="userSpaceOnUse" x1="820" y1="120" x2="680" y2="380"><stop offset="0" stop-color="#B9EF8E"/><stop offset="1" stop-color="#B9EF8E"/></linearGradient><linearGradient id="haloB" gradientUnits="userSpaceOnUse" x1="820" y1="120" x2="680" y2="380"><stop offset="0" stop-color="#E2F6CF"/><stop offset="1" stop-color="#E2F6CF"/></linearGradient><linearGradient id="railC" gradientUnits="userSpaceOnUse" x1="680" y1="380" x2="320" y2="380"><stop offset="0" stop-color="#B9EF8E"/><stop offset="1" stop-color="#9fe870"/></linearGradient><linearGradient id="haloC" gradientUnits="userSpaceOnUse" x1="680" y1="380" x2="320" y2="380"><stop offset="0" stop-color="#E2F6CF"/><stop offset="1" stop-color="#D6F4C0"/></linearGradient><linearGradient id="railD" gradientUnits="userSpaceOnUse" x1="320" y1="380" x2="320" y2="640"><stop offset="0" stop-color="#9fe870"/><stop offset="1" stop-color="#9fe870"/></linearGradient><linearGradient id="haloD" gradientUnits="userSpaceOnUse" x1="320" y1="380" x2="320" y2="640"><stop offset="0" stop-color="#D6F4C0"/><stop offset="1" stop-color="#D6F4C0"/></linearGradient><linearGradient id="railE" gradientUnits="userSpaceOnUse" x1="320" y1="640" x2="750" y2="640"><stop offset="0" stop-color="#9fe870"/><stop offset="1" stop-color="#F2C14E"/></linearGradient><linearGradient id="haloE" gradientUnits="userSpaceOnUse" x1="320" y1="640" x2="750" y2="640"><stop offset="0" stop-color="#D6F4C0"/><stop offset="1" stop-color="#FBEBC0"/></linearGradient></defs>
+          <path d="M 100 120 H 870 A 130 130 0 0 1 870 380 H 130 A 130 130 0 0 0 130 640 H 750" fill="none" stroke="#D5E1CC" stroke-width="37" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 100 120 H 820" fill="none" stroke="url(#haloA)" stroke-width="34" stroke-linecap="butt"/>
+          <path d="M 820 120 H 870 A 130 130 0 0 1 870 380 H 680" fill="none" stroke="url(#haloB)" stroke-width="34" stroke-linecap="butt"/>
+          <path d="M 680 380 H 320" fill="none" stroke="url(#haloC)" stroke-width="34" stroke-linecap="butt"/>
+          <path d="M 320 380 H 130 A 130 130 0 0 0 130 640 H 320" fill="none" stroke="url(#haloD)" stroke-width="34" stroke-linecap="butt"/>
+          <path d="M 320 640 H 750" fill="none" stroke="url(#haloE)" stroke-width="34" stroke-linecap="butt"/>
+          <circle cx="100" cy="120" r="17" fill="#F5FBEE"/><circle cx="750" cy="640" r="17" fill="#FBEBC0"/>
+          <path class="road__rail" d="M 100 120 H 820" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="round" style="--dur:0.586s;--del:0.0s"/>
+          <path class="road__rail" d="M 100 120 H 820" pathLength="1" fill="none" stroke="url(#railA)" stroke-width="14" stroke-linecap="round" style="--dur:0.586s;--del:0.0s"/>
+          <path class="road__rail" d="M 820 120 H 870 A 130 130 0 0 1 870 380 H 680" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="butt" style="--dur:0.528s;--del:0.586s"/>
+          <path class="road__rail" d="M 820 120 H 870 A 130 130 0 0 1 870 380 H 680" pathLength="1" fill="none" stroke="url(#railB)" stroke-width="14" stroke-linecap="butt" style="--dur:0.528s;--del:0.586s"/>
+          <path class="road__rail" d="M 680 380 H 320" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="butt" style="--dur:0.293s;--del:1.114s"/>
+          <path class="road__rail" d="M 680 380 H 320" pathLength="1" fill="none" stroke="url(#railC)" stroke-width="14" stroke-linecap="butt" style="--dur:0.293s;--del:1.114s"/>
+          <path class="road__rail" d="M 320 380 H 130 A 130 130 0 0 0 130 640 H 320" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="butt" style="--dur:0.642s;--del:1.408s"/>
+          <path class="road__rail" d="M 320 380 H 130 A 130 130 0 0 0 130 640 H 320" pathLength="1" fill="none" stroke="url(#railD)" stroke-width="14" stroke-linecap="butt" style="--dur:0.642s;--del:1.408s"/>
+          <path class="road__rail" d="M 320 640 H 750" pathLength="1" fill="none" stroke="#C9DDB8" stroke-width="16.5" stroke-linecap="round" style="--dur:0.35s;--del:2.05s"/>
+          <path class="road__rail" d="M 320 640 H 750" pathLength="1" fill="none" stroke="url(#railE)" stroke-width="14" stroke-linecap="round" style="--dur:0.35s;--del:2.05s"/>
+        </svg>
+        <div class="station" style="--x:18.0%;--y:15.7895%;--size:92px;--bg:#E4F6D2;--ring:#C9DDB8;--d:0.19s">
+          <div class="station__in">
+            <span class="station__icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="station__n">1</span></span>
+            <span class="station__text"><strong>맛보기 퀴즈</strong><span>가볍게 풀어 보고 시작해요</span></span>
+          </div>
+        </div>
+        <div class="station" style="--x:50.0%;--y:15.7895%;--size:92px;--bg:#D2F2B3;--ring:#C9DDB8;--d:0.48s">
+          <div class="station__in">
+            <span class="station__icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0"/><path d="M10 8l6 4-6 4z"/></svg><span class="station__n">2</span></span>
+            <span class="station__text"><strong>영상 + 요약</strong><span>짧은 영상과 핵심 요약으로 배워요</span></span>
+          </div>
+        </div>
+        <div class="station" style="--x:82.0%;--y:15.7895%;--size:92px;--bg:#B9EF8E;--ring:transparent;--d:0.77s">
+          <div class="station__in">
+            <span class="station__icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0"/><path d="m9 12 2 2 4-4"/></svg><span class="station__n">3</span></span>
+            <span class="station__text"><strong>마무리 퀴즈</strong><span>통과하면 캐시가 쌓여요</span></span>
+          </div>
+        </div>
+        <div class="station" style="--x:68.0%;--y:50.0%;--size:92px;--bg:#9fe870;--ring:transparent;--d:1.25s">
+          <div class="station__in">
+            <span class="station__icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg><span class="station__n">4</span></span>
+            <span class="station__text"><strong>레벨업</strong><span>고시원에서 원룸, 투룸으로</span></span>
+          </div>
+        </div>
+        <div class="station" style="--x:32.0%;--y:50.0%;--size:92px;--bg:#9fe870;--ring:transparent;--d:1.54s">
+          <div class="station__in">
+            <span class="station__icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="station__n">5</span></span>
+            <span class="station__text"><strong>Lv.8 모의 투자</strong><span>가상 캐시로 주식 투자 연습</span></span>
+          </div>
+        </div>
+        <div class="station" style="--x:32.0%;--y:84.2105%;--size:92px;--bg:#9fe870;--ring:transparent;--d:2.02s">
+          <div class="station__in">
+            <span class="station__icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg><span class="station__n">6</span></span>
+            <span class="station__text"><strong>Lv.12 모의 청약</strong><span>청약통장 모으고 분양에 도전</span></span>
+          </div>
+        </div>
+        <div class="station" style="--x:75.0%;--y:84.2105%;--size:132px;--bg:#F2C14E;--ring:transparent;--d:2.4s">
+          <div class="station__in">
+            <span class="station__icon"><img th:src="@{/images/house-top-hd.png}" alt=""></span>
+            <span class="station__text"><strong>내 집</strong><span>드디어 내 집 마련 완료!</span></span>
+          </div>
+        </div>
+  </div>
+
+  <div class="lane">
+    <span class="lane__track"><span class="lane__fill"></span></span>
+      <div class="lane__item" style="--d:0.0s">
+        <span class="lane__goal">배우기</span>
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#E4F6D2;--ring:#C9DDB8"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+          <span class="lane__text"><strong>맛보기 퀴즈</strong><span>가볍게 풀어 보고 시작해요</span></span>
+        </div>
+      </div>
+      <div class="lane__item" style="--d:0.34s">
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#D2F2B3;--ring:#C9DDB8"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0"/><path d="M10 8l6 4-6 4z"/></svg></span>
+          <span class="lane__text"><strong>영상 + 요약</strong><span>짧은 영상과 핵심 요약으로 배워요</span></span>
+        </div>
+      </div>
+      <div class="lane__item" style="--d:0.69s">
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#B9EF8E;--ring:transparent"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <span class="lane__text"><strong>마무리 퀴즈</strong><span>통과하면 캐시가 쌓여요</span></span>
+        </div>
+      </div>
+      <div class="lane__item" style="--d:1.03s">
+        <span class="lane__goal">성장하기</span>
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#9fe870;--ring:transparent"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg></span>
+          <span class="lane__text"><strong>레벨업</strong><span>고시원에서 원룸, 투룸으로</span></span>
+        </div>
+      </div>
+      <div class="lane__item" style="--d:1.37s">
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#9fe870;--ring:transparent"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
+          <span class="lane__text"><strong>Lv.8 모의 투자</strong><span>가상 캐시로 주식 투자 연습</span></span>
+        </div>
+      </div>
+      <div class="lane__item" style="--d:1.71s">
+        <span class="lane__goal">도전하기</span>
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#9fe870;--ring:transparent"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>
+          <span class="lane__text"><strong>Lv.12 모의 청약</strong><span>청약통장 모으고 분양에 도전</span></span>
+        </div>
+      </div>
+      <div class="lane__item" style="--d:2.06s">
+        <div class="lane__row">
+          <span class="lane__icon" style="--bg:#F2C14E;--ring:transparent"><img th:src="@{/images/house-top-hd.png}" alt=""></span>
+          <span class="lane__text"><strong>내 집</strong><span>드디어 내 집 마련 완료!</span></span>
+        </div>
+      </div>
+  </div>
+</section>
+</main>
+
+<div class="landing__notice"><b>안내</b><span>모든 투자·청약 화면은 가상 실습이며 실제 금융 거래가 아니에요</span></div>
+
+<script th:src="@{/js/landing.js}" defer></script>
+</body>
+</html>

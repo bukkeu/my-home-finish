@@ -6,7 +6,7 @@ package com.wanted.moneybeetle.domain.auth.config;
 *   - PasswordEncoder(BCrypt) Bean
 *   - URL 권한 : /api/v1/admin/** ADMIN, /api/v1/instructor/** INSTRUCTOR, 나머지 /api/v1/** 로그인
 *   - 경로는 도메인 단위로 미리 등록해 두고, 새 API 를 만들 때마다 고치지 않는다 (충돌 방지)
-*   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글·카카오)
+*   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글)
 *  */
 
 import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
@@ -90,7 +90,7 @@ public class SecurityConfig {
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
                     // 화면에 쓰는 정적 파일(CSS·JS·이미지): 로그인 전 화면(/login, /signup)도 그려야 하므로 누구나 (#230)
                     auth.requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();
-                    // 간편 로그인(구글·카카오, #9): 인증 시작·제공자가 돌려보내는 주소, 처음 온 사람의 추가 정보 화면
+                    // 간편 로그인(구글, #9): 인증 시작·제공자가 돌려보내는 주소, 처음 온 사람의 추가 정보 화면
                     auth.requestMatchers("/oauth2/**", "/login/oauth2/**", "/signup/social").permitAll();
                     // 서버 상태 확인(#84) : health·info 만 누구나. 나머지 actuator 주소는 웹에 열지 않아(application.yaml) 로그인해도 404
                     auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
@@ -124,7 +124,7 @@ public class SecurityConfig {
                     ex.accessDeniedHandler(securityErrorHandler);        // 권한 없음
                 });
 
-        // 간편 로그인(구글·카카오, #9): 키(환경변수)가 하나라도 있어 등록 정보가 만들어졌을 때만 켠다. 없으면 서버는 그대로 뜨고 이 로그인만 없다.
+        // 간편 로그인(구글, #9): GOOGLE_CLIENT_ID 와 GOOGLE_CLIENT_SECRET 이 모두 있어 등록 정보가 만들어졌을 때만 켠다. 하나라도 비면 서버는 그대로 뜨고 이 로그인만 없다.
         if (clientRegistrations.getIfAvailable() != null) {
             http.oauth2Login(oauth -> {
                 oauth.loginPage("/login");

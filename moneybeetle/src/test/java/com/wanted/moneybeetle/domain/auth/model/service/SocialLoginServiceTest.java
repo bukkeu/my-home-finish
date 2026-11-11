@@ -66,14 +66,12 @@ class SocialLoginServiceTest {
     }
 
     @org.junit.jupiter.api.Test
-    @org.junit.jupiter.api.DisplayName("키가 없어 등록되지 않은 제공자·지원하지 않는 제공자·등록 정보가 아예 없으면 OAUTH_PROVIDER_UNAVAILABLE")
+    @org.junit.jupiter.api.DisplayName("지원하지 않는 제공자·등록 정보가 아예 없으면 OAUTH_PROVIDER_UNAVAILABLE")
     void unavailableProviders() {
         givenGoogleRegistered();
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("kakao"))   // 카카오 키가 없다
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("naver"))   // 지원하지 않는 제공자
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> org.assertj.core.api.Assertions.assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE));
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("naver"))
-                .isInstanceOf(BusinessException.class);
 
         org.mockito.Mockito.when(clientRegistrations.getIfAvailable()).thenReturn(null);   // 키가 하나도 없어 등록 정보가 없다
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireAvailableProvider("google"))
@@ -86,7 +84,6 @@ class SocialLoginServiceTest {
         givenGoogleRegistered();
 
         org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("google")).isTrue();
-        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("kakao")).isFalse();
         org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("naver")).isFalse();
         org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable(null)).isFalse();
 
@@ -178,9 +175,9 @@ class SocialLoginServiceTest {
     @Test
     @DisplayName("가입을 마치면 세션의 이메일·제공자 정보로 가입하고, 세션 정보를 지운 뒤 로그인 기록을 남긴다")
     void completeSignup() {
-        session.setAttribute(SocialLoginService.SESSION_KEY, new SocialProfile("KAKAO", "k-9", "minji@kakao.com", "민지"));
+        session.setAttribute(SocialLoginService.SESSION_KEY, new SocialProfile("GOOGLE", "g-9", "minji@gmail.com", "민지"));
         SocialSignupDTO request = new SocialSignupDTO("민지", LocalDate.of(1999, 4, 12), "FEMALE", List.of(1L));
-        when(memberSignupService.signupSocial(request, "minji@kakao.com", "KAKAO", "k-9")).thenReturn(loginMember(Member.STATUS_ACTIVE));
+        when(memberSignupService.signupSocial(request, "minji@gmail.com", "GOOGLE", "g-9")).thenReturn(loginMember(Member.STATUS_ACTIVE));
 
         LoginMemberDTO member = service.completeSignup(request, session);
 

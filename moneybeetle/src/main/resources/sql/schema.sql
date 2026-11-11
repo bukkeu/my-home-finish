@@ -368,6 +368,7 @@ CREATE TABLE IF NOT EXISTS `lesson_watch` (
                                               `member_id` bigint NOT NULL COMMENT '회원',
                                               `lesson_id` bigint NOT NULL COMMENT '영상',
                                               `watched_seconds` int NOT NULL DEFAULT '0' COMMENT '본 시간(초)',
+                                              `position_seconds` int NOT NULL DEFAULT '0' COMMENT '이 영상의 마지막 재생 위치(초, 이어보기 #71)',
                                               `is_completed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '끝까지 시청 여부',
     `last_watched_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '마지막 시청 일시',
     PRIMARY KEY (`lesson_watch_id`),
@@ -663,7 +664,7 @@ CREATE TABLE IF NOT EXISTS `sector` (
 CREATE TABLE IF NOT EXISTS `social_account` (
                                                 `social_account_id` bigint NOT NULL AUTO_INCREMENT COMMENT '연결 ID',
                                                 `member_id` bigint NOT NULL COMMENT '회원',
-                                                `provider` varchar(20) NOT NULL COMMENT 'GOOGLE / KAKAO',
+                                                `provider` varchar(20) NOT NULL COMMENT 'GOOGLE',
     `provider_user_id` varchar(100) NOT NULL COMMENT '제공자 쪽 사용자 ID',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
     PRIMARY KEY (`social_account_id`),

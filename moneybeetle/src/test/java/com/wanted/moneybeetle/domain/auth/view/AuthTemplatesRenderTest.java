@@ -27,7 +27,7 @@ import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 *   담당 : DBA ② (회원·인증 화면, 이슈 #50)
 *   로그인·회원가입·간편 가입·이메일 찾기·비밀번호 재설정 화면(Thymeleaf 템플릿)이 실제로 그려지는지 서버·DB 없이 확인한다.
 *   - 템플릿에 문법 오류나 없는 조각 이름이 있으면 화면을 열 때 500 이 나므로, 각 템플릿을 실제 Thymeleaf 엔진으로 그려 본다.
-*   - 간편 로그인 버튼은 제공자 키가 있을 때만(모델 값 googleOAuthEnabled·kakaoOAuthEnabled) 보이는지 본다.
+*   - 간편 로그인 버튼은 제공자 키가 있을 때만(모델 값 googleOAuthEnabled) 보이는지 본다.
 *   - static/js/auth.js 가 byId('...') 로 찾는 요소가 템플릿에 모두 있는지 확인한다 (id 를 바꾸다 어긋나면 화면이 조용히 동작하지 않는다).
 *   - 화면 경로를 연결하는 컨트롤러(AuthPageController, #230)는 이 테스트와 무관하다. 여기서는 확인용 컨트롤러로 템플릿 이름만 연결한다.
 *  */
@@ -36,16 +36,14 @@ class AuthTemplatesRenderTest {
     @Controller
     static class TestPages {
         @GetMapping("/t/login")
-        String login(@RequestParam(defaultValue = "false") boolean google, @RequestParam(defaultValue = "false") boolean kakao, Model model) {
+        String login(@RequestParam(defaultValue = "false") boolean google, Model model) {
             model.addAttribute("googleOAuthEnabled", google);
-            model.addAttribute("kakaoOAuthEnabled", kakao);
             return "auth/login";
         }
 
         @GetMapping("/t/signup")
-        String signup(@RequestParam(defaultValue = "false") boolean google, @RequestParam(defaultValue = "false") boolean kakao, Model model) {
+        String signup(@RequestParam(defaultValue = "false") boolean google, Model model) {
             model.addAttribute("googleOAuthEnabled", google);
-            model.addAttribute("kakaoOAuthEnabled", kakao);
             return "member/signup";
         }
 
@@ -109,14 +107,11 @@ class AuthTemplatesRenderTest {
     @DisplayName("로그인 화면의 간편 로그인 버튼은 키가 있는 제공자만 보인다")
     void loginSocialButtonsFollowProviderFlags() throws Exception {
         String none = render("/t/login");
-        assertThat(none).doesNotContain("/api/v1/auth/oauth/google").doesNotContain("/api/v1/auth/oauth/kakao")
+        assertThat(none).doesNotContain("/api/v1/auth/oauth/google")
                 .doesNotContain("또는 간편하게 로그인").doesNotContain("auth-social");   // 빈 구분선·소셜 묶음도 없다
 
         String googleOnly = render("/t/login", "google", "true");
-        assertThat(googleOnly).contains("/api/v1/auth/oauth/google", "또는 간편하게 로그인").doesNotContain("/api/v1/auth/oauth/kakao");
-
-        String both = render("/t/login", "google", "true", "kakao", "true");
-        assertThat(both).contains("/api/v1/auth/oauth/google", "/api/v1/auth/oauth/kakao");
+        assertThat(googleOnly).contains("/api/v1/auth/oauth/google", "또는 간편하게 로그인");
     }
 
     @Test
@@ -134,11 +129,8 @@ class AuthTemplatesRenderTest {
         String none = render("/t/signup");
         assertThat(none).doesNotContain("/api/v1/auth/oauth/").doesNotContain("또는 간편하게 시작하기");
 
-        String kakaoOnly = render("/t/signup", "kakao", "true");
-        assertThat(kakaoOnly).contains("또는 간편하게 시작하기", "/api/v1/auth/oauth/kakao").doesNotContain("/api/v1/auth/oauth/google");
-
-        String both = render("/t/signup", "google", "true", "kakao", "true");
-        assertThat(both).contains("/api/v1/auth/oauth/google", "/api/v1/auth/oauth/kakao");
+        String googleOnly = render("/t/signup", "google", "true");
+        assertThat(googleOnly).contains("또는 간편하게 시작하기", "/api/v1/auth/oauth/google");
     }
 
     @Test

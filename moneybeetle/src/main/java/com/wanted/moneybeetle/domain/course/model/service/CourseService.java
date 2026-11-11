@@ -30,6 +30,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,8 +38,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -135,17 +138,22 @@ public class CourseService {
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
 
-    /* API 32. 영상 재생 정보 + 이어보기 위치 (LRN-03, LRN-05) */
+    /* API 32. 영상 재생 정보 + 이어보기 위치 (LRN-03, LRN-05).
+     * 위치는 영상마다 저장한 값(lesson_watch.position_seconds, #71)을 쓴다 → 같은 강의의 다른 영상을 본 뒤에도
+     * 마이페이지 이어보기로 이 영상을 열면 보던 위치부터 재생된다.
+     * 시청 기록이 아직 없으면(영상별 위치를 쓰기 전 데이터) 강의의 마지막 영상일 때만 진행 기록의 위치를 쓴다.
+     * 시청 기록이 있으면 0초도 그대로 쓴다 (처음으로 되감은 것도 유효한 위치) */
     public LessonPlayDTO getLessonPlay(Long memberId, Long courseId, Long lessonId) {
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
-        int positionSeconds = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
-                .map(progress -> progress.positionOf(lessonId))
-                .orElse(0);
-        int watchedSeconds = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
-                .map(LessonWatch::getWatchedSeconds)
-                .orElse(0);
+        Optional<LessonWatch> watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId);
+        int positionSeconds = watch.map(LessonWatch::getPositionSeconds)
+                .orElseGet(() -> learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                        .filter(progress -> lessonId.equals(progress.getLastLessonId()))
+                        .map(LearningProgress::getLastPositionSeconds)
+                        .orElse(0));
+        int watchedSeconds = watch.map(LessonWatch::getWatchedSeconds).orElse(0);
 
         return LessonPlayDTO.from(lesson, positionSeconds, watchedSeconds);
     }
@@ -159,14 +167,17 @@ public class CourseService {
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
+        int positionSeconds = lesson.clampSeconds(request.getPositionSeconds());
+        // 강의의 마지막 영상(처음 열 영상)은 진행 기록에, 이어보기 위치는 영상별 시청 기록에 남긴다 (#71)
         LearningProgress progress = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
                 .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
-        progress.moveTo(lessonId, lesson.clampSeconds(request.getPositionSeconds()));
+        progress.moveTo(lessonId, positionSeconds);
 
         LocalDateTime now = LocalDateTime.now(clock);
         LessonWatch watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
                 .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId, now)));
         watch.record(lesson.clampSeconds(request.getWatchedSeconds()), lesson.getDurationSeconds(), now);
+        watch.moveTo(positionSeconds);
         // 수정은 save()를 다시 부르지 않는다. 트랜잭션이 끝날 때 변경 감지로 UPDATE된다
     }
 
@@ -196,6 +207,32 @@ public class CourseService {
                 completed.getContent().stream().map(LearningProgress::getCourseId).toList());
 
         return completed.map(progress -> CompletedCourseDTO.from(progress, courses.get(progress.getCourseId())));
+    }
+
+    /* ===== 홈·내 정보용 개수·마지막 시청 기록 (#188, 호출부 변경은 #267) ===== */
+
+    /* 본 영상 수: 시청 기록(API 34, findWatchHistories)과 같은 조건(이 회원, 허가 + 공개 + 삭제 안 된 강의)으로 개수만 센다 */
+    public long countWatchedLessons(Long memberId) {
+        return lessonWatchRepository.countVisibleByMemberId(memberId, Course.STATUS_APPROVED);
+    }
+
+    /* 학습 완료한 강의 수: 학습 완료 목록(API 35, findCompletedCourses)과 같은 조건으로 개수만 센다 */
+    public long countCompletedCourses(Long memberId) {
+        return learningProgressRepository.countVisibleByMemberIdAndStatus(
+                memberId, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED);
+    }
+
+    /* 이 강의에서 가장 최근에 본 영상 기록 한 건 (홈 '이어서 볼 강의').
+     * 시청 기록(API 34)과 같은 조건·순서라 "최근 시청 목록에서 이 강의의 첫 항목"과 같다. 기록이 아무리 많아도 DB에서 바로 찾는다.
+     * 본 적 없거나 강의가 보이지 않으면(비공개·삭제) 빈 값 */
+    public Optional<WatchHistoryDTO> findLastWatched(Long memberId, Long courseId) {
+        return lessonWatchRepository.findLatestVisibleByMemberIdAndCourseId(
+                        memberId, courseId, Course.STATUS_APPROVED, PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .flatMap(watch -> lessonRepository.findById(watch.getLessonId())
+                        .flatMap(lesson -> courseRepository.findById(lesson.getCourseId())
+                                .map(course -> WatchHistoryDTO.from(watch, lesson, course))));
     }
 
     /* ===== 스크랩 (#18) ===== */
@@ -313,6 +350,16 @@ public class CourseService {
     public Map<Long, String> findCourseTitlesByInstructor(Long instructorId) {
         return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
                 .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
+    }
+
+    /* 문의(inquiry 도메인) 마이페이지 문의 모음(API 149, #71): 수강생에게 보이는 강의(허가+공개+미삭제)만 ID → 제목 */
+    public Map<Long, String> findVisibleCourseTitles(Collection<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Map.of();
+        }
+        return courseRepository.findAllById(courseIds).stream()
+                .filter(Course::isVisibleToLearner)
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle, (first, second) -> first));
     }
 
     /* 퀴즈(quiz 도메인, API 41·42): 이 강의의 영상을 모두 끝까지 봤는지 (QST-02 "영상을 모두 본 뒤 퀴즈").

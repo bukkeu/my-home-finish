@@ -26,20 +26,6 @@ class SocialProfileExtractorTest {
         return attributes;
     }
 
-    private static Map<String, Object> kakaoAttributes() {
-        Map<String, Object> profile = new HashMap<>();
-        profile.put("nickname", "민지");
-        Map<String, Object> account = new HashMap<>();
-        account.put("email", "minji@kakao.com");
-        account.put("is_email_valid", true);
-        account.put("is_email_verified", true);
-        account.put("profile", profile);
-        Map<String, Object> attributes = new HashMap<>();
-        attributes.put("id", 3456789012L);   // 카카오 사용자 ID 는 숫자다
-        attributes.put("kakao_account", account);
-        return attributes;
-    }
-
     private static void assertOauthFailed(Runnable action) {
         assertThatThrownBy(action::run).isInstanceOfSatisfying(BusinessException.class,
                 e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.OAUTH_FAILED));
@@ -70,50 +56,6 @@ class SocialProfileExtractorTest {
         Map<String, Object> noId = googleAttributes();
         noId.remove("sub");
         assertOauthFailed(() -> SocialProfileExtractor.extract("google", noId));
-    }
-
-    @Test
-    @DisplayName("카카오: 숫자 id 를 문자열로, kakao_account 의 email·nickname 을 꺼낸다")
-    void kakao() {
-        SocialProfile profile = SocialProfileExtractor.extract("kakao", kakaoAttributes());
-
-        assertThat(profile.provider()).isEqualTo("KAKAO");
-        assertThat(profile.providerUserId()).isEqualTo("3456789012");
-        assertThat(profile.email()).isEqualTo("minji@kakao.com");
-        assertThat(profile.nickname()).isEqualTo("민지");
-    }
-
-    @Test
-    @DisplayName("카카오: 닉네임이 없어도 로그인은 된다 (닉네임은 가입 화면에서 사용자가 정한다)")
-    void kakaoWithoutNickname() {
-        Map<String, Object> attributes = kakaoAttributes();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account");
-        account.remove("profile");
-
-        assertThat(SocialProfileExtractor.extract("kakao", attributes).nickname()).isNull();
-    }
-
-    @Test
-    @DisplayName("카카오: 이메일이 확인·유효하지 않거나 없으면 OAUTH_FAILED")
-    void kakaoRejectsUnverified() {
-        for (String flag : new String[] {"is_email_verified", "is_email_valid"}) {
-            Map<String, Object> attributes = kakaoAttributes();
-            @SuppressWarnings("unchecked")
-            Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account");
-            account.put(flag, false);
-            assertOauthFailed(() -> SocialProfileExtractor.extract("kakao", attributes));
-        }
-
-        Map<String, Object> noEmail = kakaoAttributes();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> account = (Map<String, Object>) noEmail.get("kakao_account");
-        account.remove("email");
-        assertOauthFailed(() -> SocialProfileExtractor.extract("kakao", noEmail));
-
-        Map<String, Object> noAccount = kakaoAttributes();
-        noAccount.remove("kakao_account");
-        assertOauthFailed(() -> SocialProfileExtractor.extract("kakao", noAccount));
     }
 
     @Test

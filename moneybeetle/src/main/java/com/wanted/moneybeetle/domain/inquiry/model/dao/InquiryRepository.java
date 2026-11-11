@@ -64,6 +64,21 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
         long getWaiting();
     }
 
+    /* 마이페이지 Q&A·문의 모음 (API 149, #71): 내가 쓴 글 전체(사이트·강의). 삭제한 글만 빼고 최신순.
+     * 숨긴 글도 내 글이라 목록에는 두고, 제목은 서비스에서 안내 문구로 가린다 (상세와 같은 기준, DP-22) */
+    @Query(value = """
+            select i from Inquiry i
+            where i.memberId = :memberId
+              and i.deletedAt is null
+            order by i.createdAt desc, i.inquiryId desc
+            """,
+            countQuery = """
+            select count(i) from Inquiry i
+            where i.memberId = :memberId
+              and i.deletedAt is null
+            """)
+    Page<Inquiry> findMine(@Param("memberId") Long memberId, Pageable pageable);
+
     /* 하루 작성 수 (DP-30). 지운 글도 센다: 썼다 지웠다 반복해서 한도를 피하지 못하게 */
     long countByMemberIdAndCreatedAtGreaterThanEqual(Long memberId, LocalDateTime from);
 

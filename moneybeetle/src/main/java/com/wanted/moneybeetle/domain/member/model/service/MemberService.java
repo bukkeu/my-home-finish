@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 public class MemberService {
 
     /** DB 고유 키 이름 (schema.sql). 동시 가입의 중복을 알아보는 데 쓴다 */
+    private static final String LOGIN_PROVIDER_EMAIL = "EMAIL";
     private static final String UK_MEMBER_EMAIL = "uk_member_email";
     private static final String UK_MEMBER_NICKNAME = "uk_member_nickname";
 
@@ -246,6 +247,13 @@ public class MemberService {
     /** 회원의 프로필 원본 값 (member.MemberProfileService 용). 없는 회원이면 MEMBER_NOT_FOUND */
     public MemberProfileDTO getProfile(Long memberId) {
         return MemberProfileDTO.from(getMember(memberId));
+    }
+
+    /** 로그인 방식 (내 정보 API 13). social_account 에 연결이 있으면 그 provider(GOOGLE), 없으면 이메일 가입이라 EMAIL */
+    public String getLoginProvider(Long memberId) {
+        return socialAccountRepository.findFirstByMemberIdOrderBySocialAccountIdAsc(memberId)
+                .map(SocialAccount::getProvider)
+                .orElse(LOGIN_PROVIDER_EMAIL);
     }
 
     /** 다른 회원에게 보여 줄 프로필 원본 값. 탈퇴·정지 회원은 없는 회원처럼 MEMBER_NOT_FOUND (DP-03) */
@@ -451,11 +459,11 @@ public class MemberService {
     }
 
     /**
-     * 간편 로그인(구글·카카오)으로 처음 온 사람의 가입 (API 8-2, DP-13, 이슈 #9). 이메일은 제공자가 확인해 준 값(세션)이고 비밀번호는 없다.
+     * 간편 로그인(구글)으로 처음 온 사람의 가입 (API 8-2, DP-13, 이슈 #9). 이메일은 제공자가 확인해 준 값(세션)이고 비밀번호는 없다.
      * 순서: 이메일 → 닉네임(형식·금칙어·중복) → 생년월일·만 14세 → 약관 → 저장(회원 → 약관 동의 기록 → 간편 로그인 연결).
      * 같은 제공자 계정이 동시에 가입하면 DB 고유 제약(uk_social_account_1)이 한쪽을 거르고 그쪽은 OAUTH_FAILED 가 된다.
      *
-     * @param provider       GOOGLE / KAKAO
+     * @param provider       GOOGLE
      * @param providerUserId 제공자 쪽 사용자 ID
      */
     @Transactional
