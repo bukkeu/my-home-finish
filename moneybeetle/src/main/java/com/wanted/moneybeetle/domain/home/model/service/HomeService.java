@@ -55,6 +55,9 @@ public class HomeService {
     /** 마지막 영상을 찾을 때 넘겨 볼 최대 쪽 수 (20개씩 50쪽 = 최근 1,000건) */
     static final int MAX_WATCH_PAGES = 50;
 
+    /** 청약 단지 상태 중 접수 중인 값. housing 의 ComplexDTO.status 가 이 문자열로 내려온다 (다른 도메인의 Entity 를 쓰지 않으려고 여기에 따로 둔다) */
+    private static final String HOUSING_STATUS_OPEN = "OPEN";
+
     private final TermService termService;
     private final CourseService courseService;
     private final GrowthService growthService;
@@ -109,7 +112,7 @@ public class HomeService {
     private HomeDTO.HousingSummary findHousingSummary(Long memberId) {
         try {
             int open = (int) housingService.findCalendar(YearMonth.now(clock), memberId).stream()
-                    .filter(complex -> "OPEN".equals(complex.getStatus()))
+                    .filter(complex -> HOUSING_STATUS_OPEN.equals(complex.getStatus()))
                     .count();
             return new HomeDTO.HousingSummary(open, findPaidCount(memberId));
         } catch (BusinessException e) {
