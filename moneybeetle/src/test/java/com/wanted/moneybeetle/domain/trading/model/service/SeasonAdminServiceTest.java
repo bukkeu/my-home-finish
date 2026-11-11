@@ -172,10 +172,11 @@ class SeasonAdminServiceTest {
         when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
         when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
-        service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), null));
+        service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), 300_000L));
         service.changeStatus(7L, new SeasonStatusDTO("RUNNING"));
 
         assertThat(season.getCarryoverRate()).isEqualByComparingTo("80.00");
+        assertThat(season.getCarryoverCap()).isEqualTo(300_000L);   // 기본값(상한 없음 = null)과 다른 값으로 바뀌는지 확인
         assertThat(season.isRunning()).isTrue();
     }
 
