@@ -168,6 +168,10 @@
       renderLevelTable(levels, me.level);
       loadCash().catch(function (error) {
         setStatus(message(error));
+        // 실패한 것과 내역이 없는 것을 구분하려고 목록에도 오류 안내를 보여 준다
+        var list = byId('mg-cash-list');
+        Array.prototype.slice.call(list.querySelectorAll('.mg-row, .mg-empty')).forEach(function (node) { node.remove(); });
+        list.appendChild(el('p', 'mg-empty', '캐시 내역을 불러오지 못했어요.'));
       });
       loadExpHistory();
     }).catch(function (error) {

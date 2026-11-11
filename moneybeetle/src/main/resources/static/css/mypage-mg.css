@@ -36,6 +36,7 @@ select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36p
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; background-size: 14px; }
 .mg-help { color: var(--color-neutral-700); font-size: 12px; }
+.mg-caption { text-align: left; padding-bottom: 8px; }
 .mg-pw { position: relative; }
 .mg-pw .mg-input { padding-right: 56px; }
 .mg-pw button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--color-neutral-700); font: inherit; font-size: 13px; cursor: pointer; }
@@ -44,6 +45,8 @@ select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36p
 .mg-msg:empty { display: none; }
 .mg-msg.is-ok { color: #27663a; }
 .mg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mg-actions--nowrap { flex-wrap: nowrap; }
+.mg-btn-fixed { flex: none; }
 .mg .btn { padding: 9px 18px; border: 0; cursor: pointer; font: inherit; font-weight: 700; }
 .mg .btn:disabled { opacity: .5; cursor: not-allowed; }
 .mg-danger { color: #b3261e; }

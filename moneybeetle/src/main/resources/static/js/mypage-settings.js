@@ -119,8 +119,10 @@
     var opener = null;
     var codeMode = false;
     var timer = null;
+    var dialogSession = 0;   // 창을 열고 닫을 때마다 바뀐다. 이전 창에서 보낸 요청의 응답을 가려내는 데 쓴다
 
     function reset() {
+      dialogSession += 1;
       codeMode = false;
       stepPassword.hidden = false;
       stepCode.hidden = true;
@@ -159,7 +161,9 @@
 
     send.addEventListener('click', function () {
       send.disabled = true;
+      var session = dialogSession;
       api('/api/v1/members/me/withdraw-verification/request', { method: 'POST' }).then(function () {
+        if (session !== dialogSession) return;   // 요청 중에 창을 닫았다 다시 열었으면 이 응답은 무시한다
         say('mg-wd-msg', '가입한 이메일로 인증번호를 보냈어요. 5분 안에 입력해 주세요.', true);
         byId('mg-wd-code').focus();
         var seconds = 60;
@@ -176,6 +180,7 @@
           send.textContent = '다시 받기 (' + seconds + '초)';
         }, 1000);
       }, function (error) {
+        if (session !== dialogSession) return;
         send.disabled = false;
         say('mg-wd-msg', errorText(error), false);
       });
