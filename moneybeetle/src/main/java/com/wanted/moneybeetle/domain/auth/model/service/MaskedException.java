@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.auth.model.service;
 
 import java.util.regex.Pattern;
+import org.springframework.mail.MailSendException;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
@@ -12,7 +13,8 @@ import java.util.regex.Pattern;
 *  */
 public final class MaskedException extends RuntimeException {
 
-    private static final Pattern EMAIL = Pattern.compile("[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}");
+    private static final Pattern EMAIL = Pattern.compile(
+            "(?:\"(?:\\\\.|[^\"\\\\])+\"|[A-Za-z0-9._%+\\-]+)@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}");
     private static final int MAX_DEPTH = 5;
     static final String MASK = "***";
 
@@ -30,6 +32,14 @@ public final class MaskedException extends RuntimeException {
         MaskedException maskedCause = cause != null && cause != original && depth < MAX_DEPTH ? copy(cause, depth + 1) : null;
         MaskedException masked = new MaskedException(original.getClass().getName() + ": " + mask(original.getMessage()), maskedCause);
         masked.setStackTrace(original.getStackTrace());
+        // MailSendException 은 원인(cause) 없이 건별 실패를 getMessageExceptions() 에 따로 담는다. 그 예외들도 가려서 suppressed 로 남긴다
+        if (original instanceof MailSendException mailFailure && depth < MAX_DEPTH) {
+            for (Exception failure : mailFailure.getMessageExceptions()) {
+                if (failure != null && failure != original && failure != cause) {
+                    masked.addSuppressed(copy(failure, depth + 1));
+                }
+            }
+        }
         return masked;
     }
 

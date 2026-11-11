@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.auth.model.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.MailSendException;
@@ -72,6 +73,32 @@ class MaskedExceptionTest {
             depth++;
         }
         assertThat(depth).isLessThanOrEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("따옴표로 감싼 로컬 파트(\"minji\"@example.com)의 주소도 가린다")
+    void masksQuotedLocalPart() {
+        MailSendException original = new MailSendException("Invalid Addresses: <\"minji kim\"@example.com> rejected");
+
+        MaskedException masked = MaskedException.of(original);
+
+        assertThat(masked.getMessage()).doesNotContain("minji", "example.com").contains("<***> rejected");
+    }
+
+    @Test
+    @DisplayName("MailSendException 의 건별 실패 예외도 가려서 suppressed 로 남기고 스택·원인을 보존한다")
+    void keepsMailSendFailures() {
+        IllegalStateException smtpCause = new IllegalStateException("550 <minji@gmail.com> user unknown");
+        RuntimeException failure = new RuntimeException("send to minji@gmail.com failed", smtpCause);
+        MailSendException original = new MailSendException(Map.of("message-1", failure));
+
+        MaskedException masked = MaskedException.of(original);
+
+        assertThat(masked.getSuppressed()).hasSize(1);
+        Throwable suppressed = masked.getSuppressed()[0];
+        assertThat(suppressed.getMessage()).doesNotContain("minji", "gmail").contains("java.lang.RuntimeException: send to ***");
+        assertThat(suppressed.getStackTrace()).isEqualTo(failure.getStackTrace());
+        assertThat(suppressed.getCause().getMessage()).doesNotContain("minji").contains("<***>");
     }
 
     @Test
