@@ -68,9 +68,7 @@ public class TurnAdminService {
     /** API 120 다음 턴 진행 (되돌릴 수 없다) */
     @Transactional
     public TurnAdvancedDTO advanceTurn(Long seasonId, int expectedCurrentTurn, Long adminId) {
-        if (adminId == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
+        TradingAdminCheck.requireAdmin(adminId);
         TradingSeason season = seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         if (season.getCurrentTurn() != expectedCurrentTurn) {
