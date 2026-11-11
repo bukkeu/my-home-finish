@@ -181,11 +181,15 @@
   // ------------------------------------------------------------------ 시작
   function load() {
     setupCash();
-    // 내 정보와 레벨 표는 서로 독립으로 불러온다. 한쪽이 실패해도 다른 쪽은 계속 보여 준다
+    // 내 정보와 레벨 표는 서로 독립으로 불러온다. 한쪽이 실패하거나 늦어져도 다른 쪽은 먼저 보여 준다
+    var levelRows = null;   // 레벨 표를 받았으면 그 행들
+    var myLevel;            // 내 정보를 받았으면 내 레벨 (두 값이 모두 있어야 내 줄을 강조한다)
     var mePromise = api('/api/v1/members/me');
     var levelsPromise = api('/api/v1/levels');
     mePromise.then(function (me) {
       me = me || {};
+      myLevel = me.level;
+      if (levelRows) renderLevelTable(levelRows, myLevel);   // 레벨 표가 먼저 왔으면 내 줄만 다시 강조한다
       setStatus('');
       byId('mg-cash').textContent = won(me.cash);
       loadCash().catch(function (error) {
@@ -201,20 +205,18 @@
     }, function (error) {
       setStatus(message(error));
     });
-    // 레벨 표: 내 레벨을 알면 내 줄을 표시하고, 내 정보가 실패해도 표 자체는 보여 준다. 레벨 표가 실패하면 표에만 오류를 보여 준다
-    Promise.all([levelsPromise.then(function (data) { return { ok: true, data: data }; }, function () { return { ok: false }; }),
-      mePromise.then(function (me) { return me || {}; }, function () { return {}; })]).then(function (results) {
-      if (!results[0].ok) {
-        var body = byId('mg-level-table');
-        body.textContent = '';
-        var tr = el('tr');
-        var td = el('td', 'mg-empty', '레벨 표를 불러오지 못했어요.');
-        td.colSpan = 4;
-        tr.appendChild(td);
-        body.appendChild(tr);
-        return;
-      }
-      renderLevelTable((results[0].data && results[0].data.levels) || [], results[1].level);
+    // 레벨 표: 받는 즉시 그린다(내 정보를 기다리지 않는다). 실패하면 표에만 오류를 보여 준다
+    levelsPromise.then(function (data) {
+      levelRows = (data && data.levels) || [];
+      renderLevelTable(levelRows, myLevel);
+    }, function () {
+      var body = byId('mg-level-table');
+      body.textContent = '';
+      var tr = el('tr');
+      var td = el('td', 'mg-empty', '레벨 표를 불러오지 못했어요.');
+      td.colSpan = 4;
+      tr.appendChild(td);
+      body.appendChild(tr);
     });
   }
 
