@@ -900,17 +900,24 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "todayTerms": [ { "economicTermId": 3, "term": "복리", "description": "이자에 이자가 붙는 방식" } ],
-  "continueCourse": { "courseId": 7, "title": "청약통장 기초와 가점 계산", "lessonId": 21, "lessonTitle": "가점은 어떻게 계산할까", "positionSeconds": 312 },
+  "continueCourse": { "courseId": 7, "title": "청약통장 기초와 가점 계산", "lessonId": 21, "lessonTitle": "가점은 어떻게 계산할까", "positionSeconds": 312,
+                      "durationSeconds": 870, "lessonNumber": 2, "lessonCount": 3, "categoryName": "청약" },
   "learning": { "watchedLessons": 14, "completedCourses": 5 },
   "training": {
     "trading": { "unlocked": true, "requiredLevel": 8 },
-    "housing": { "unlocked": false, "requiredLevel": 12 }
+    "housing": { "unlocked": false, "requiredLevel": 12 },
+    "tradingSeason": { "seasonId": 6, "name": "시즌 6", "status": "RUNNING", "currentTurn": 3, "totalTurns": 12, "daysLeft": 12 },
+    "housingSummary": null
   }
 }
 ```
 
 - `todayTerms` 는 오늘(KST) 지정된 용어 5개로, 같은 날에는 모든 사용자에게 같은 값이다(API 20과 같은 값, 사용 중인 용어가 5개 미만이면 있는 만큼, 하나도 없으면 빈 배열).
-- `continueCourse` 는 가장 최근에 본 진행 중 강의다. 이어서 볼 강의가 없으면 `null`이고, 강의는 있지만 그 강의에서 본 영상 기록이 없으면 `lessonId`·`lessonTitle`·`positionSeconds` 가 `null`이다. 마지막 영상은 최근 시청 기록 1,000건 안에서 찾는다.
+- `continueCourse` 는 가장 최근에 본 진행 중 강의다. 이어서 볼 강의가 없으면 `null`이고, 강의는 있지만 그 강의에서 본 영상 기록이 없으면 `lessonId`·`lessonTitle`·`positionSeconds`·`durationSeconds`·`lessonNumber`·`lessonCount`·`categoryName` 이 `null`이다. 마지막 영상은 최근 시청 기록 1,000건 안에서 찾는다.
+- `continueCourse` 의 `durationSeconds` 는 마지막으로 본 영상의 길이(초), `lessonNumber` 는 그 영상이 강의의 영상 목록(재생 순서)에서 몇 번째인지(1부터, 목록에 없으면 `null`), `lessonCount` 는 강의의 영상 수, `categoryName` 은 강의의 소주제 이름이다. 홈 화면이 "08:24 / 14:30", "3강 중 2강"을 보여 주는 데 쓴다(이슈 #261).
+- `training.tradingSeason` 은 모의투자가 열려 있을 때(`training.trading.unlocked`)만 값이 있고, 지금 보이는 시즌의 이름·상태·현재 턴·전체 턴·종료일까지 남은 일수(`daysLeft`, 서울 날짜 기준, 0 아래로 내려가지 않는다)다. 해금되지 않았거나 시즌이 없으면 `null`이다.
+- `training.housingSummary` 는 모의 청약이 열려 있을 때(`training.housing.unlocked`)만 값이 있고, 이번 달에 걸친 단지 중 접수 중(`OPEN`)인 공고 수(`openComplexes`)와 내 청약통장 납입 횟수(`paidCount`, 통장이 없으면 `null`)다. 해금되지 않았거나 공고를 읽지 못하면 `null`이다.
+- 요약(`tradingSeason`·`housingSummary`)을 만들지 못해도 오류가 아니다. 홈 전체가 실패하지 않고 그 요약만 `null`이다. 참가자 수는 학습자용으로 열린 값이 없어 아직 주지 않는다.
 - `learning` 은 본 영상 수와 학습 완료한 강의 수다.
 - `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다. `requiredLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값이라 레벨 검사(`LEVEL_LOCKED`)와 같은 기준이다(#238).
 
