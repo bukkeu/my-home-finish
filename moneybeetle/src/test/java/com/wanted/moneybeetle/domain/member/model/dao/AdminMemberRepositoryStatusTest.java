@@ -85,7 +85,8 @@ class AdminMemberRepositoryStatusTest {
         entityManager.persistAndFlush(InstructorProfile.apply(withdrawn.getMemberId(), "탈퇴 강사", "청약", appliedAt));
         entityManager.clear();
 
-        Page<InstructorApplicationDTO> page = adminMemberRepository.findApplications(InstructorProfile.PENDING, PageRequest.of(0, 10));
+        // 페이지 크기를 결과 수(1)와 같게 해야 Spring Data 가 count 쿼리도 실행해 countQuery 의 탈퇴 제외 조건까지 검증된다
+        Page<InstructorApplicationDTO> page = adminMemberRepository.findApplications(InstructorProfile.PENDING, PageRequest.of(0, 1));
 
         assertThat(page.getContent()).extracting(InstructorApplicationDTO::memberId).containsExactly(active.getMemberId());
         assertThat(page.getTotalElements()).isEqualTo(1);
