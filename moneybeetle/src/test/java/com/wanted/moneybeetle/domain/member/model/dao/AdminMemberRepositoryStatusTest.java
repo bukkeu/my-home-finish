@@ -17,7 +17,10 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.Page;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -25,7 +28,10 @@ import org.springframework.test.context.ContextConfiguration;
 *   담당 : DBA ② (회원·인증)
 *   Member.status 를 enum 으로 바꾼 뒤(#288)에도 AdminMemberRepository(관리자 회원 목록, #37)의 JPQL 이 문자열 상태 값으로
 *   그대로 동작하는지 H2 에서 확인한다. 그 Repository 는 상태를 String 파라미터("ACTIVE")와 문자열 리터럴('WITHDRAWN')로 비교한다.
+*   - InstructorProfile 의 created_at·updated_at 은 JPA 감사(BaseTimeEntity)가 채우는데, @DataJpaTest 는 JpaConfig 를 띄우지 않는다.
+*     그래서 테스트 설정에서 감사를 켠다 (#320. 없으면 강사 신청을 저장할 때 created_at NULL 로 실패한다)
 *  */
+@Import(AdminMemberRepositoryStatusTest.AuditingConfig.class)
 @EntityScan(basePackages = "com.wanted.moneybeetle.domain.member.model.entity")
 @EnableJpaRepositories(basePackages = "com.wanted.moneybeetle.domain.member.model.dao")
 @ContextConfiguration(classes = MoneyBeetleApplication.class)
@@ -39,6 +45,11 @@ import org.springframework.test.context.ContextConfiguration;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class AdminMemberRepositoryStatusTest {
+
+    @TestConfiguration
+    @EnableJpaAuditing   // created_at·updated_at 을 채워 주는 감시 기능 (운영은 global.config.JpaConfig 가 켠다)
+    static class AuditingConfig {
+    }
 
     @Autowired
     private MemberRepository memberRepository;
