@@ -176,7 +176,8 @@
   function loadCategories() {
     var box = byId('hm-cats');
     api('/api/v1/categories').then(function (data) {
-      var groups = (data && data.categories) || [];
+      // API 29 는 MB.api 가 data 를 풀어 주면 배열이다. { categories: [...] } 로 감싼 응답도 받아 준다
+      var groups = Array.isArray(data) ? data : ((data && data.categories) || []);
       box.textContent = '';
       groups.forEach(function (group) {
         var cat = el('div', 'hm-cat');

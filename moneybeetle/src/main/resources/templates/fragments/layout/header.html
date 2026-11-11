@@ -71,7 +71,7 @@
             </label>
         </form>
         <!--/* 용어 5개 팝업: static/js/words.js 가 data-mb-words 버튼에 연결한다 (#51) */-->
-        <button type="button" class="btn btn-secondary mb-words" data-mb-words>오늘의 경제단어</button>
+        <button type="button" class="btn btn-secondary" data-mb-words>오늘의 경제단어</button>
         <span class="tag mb-cash" title="보유 캐시">
             <img th:src="@{/images/cash-coin.png}" alt="캐시"><span th:text="${#numbers.formatInteger(cash, 0, 'COMMA')}">0</span>
         </span>

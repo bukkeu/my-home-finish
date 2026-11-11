@@ -12,9 +12,16 @@
   window.__mbWords = true;
 
   var HIDE_KEY = 'mb-words-hide';
-  var backdrop, list, loaded = false, opener;
+  var backdrop, list, titleEl, loaded = false, opener;
 
-  function today() { return new Date().toDateString(); }
+  // 기기 시간대와 관계없이 서울 날짜(YYYY-MM-DD)를 키로 쓴다. 서버의 오늘의 용어도 서울 기준이다 (DP-42)
+  function today() {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+    } catch (e) {
+      return new Date().toDateString();   // Intl 시간대를 못 쓰는 환경은 기기 날짜로
+    }
+  }
   function hiddenToday() {
     try { return localStorage.getItem(HIDE_KEY) === today(); } catch (e) { return false; }
   }
@@ -40,6 +47,8 @@
     var head = el('div', 'mb-words__head');
     var title = el('span', 'tag tag-accent mb-words__title', '오늘의 경제단어');
     title.id = 'mb-words-title';
+    title.setAttribute('tabindex', '-1');   // 열릴 때 제목으로 포커스를 보낸다 (확인 버튼으로 바로 보내면 내용을 건너뛴다)
+    titleEl = title;
     var close = el('button', 'btn btn-ghost btn-icon');
     close.type = 'button';
     close.setAttribute('aria-label', '닫기');
@@ -130,14 +139,22 @@
     opener = trigger || null;
     backdrop.hidden = false;
     load();
-    var ok = backdrop.querySelector('.btn-primary');
-    if (ok) ok.focus();
+    if (titleEl) titleEl.focus();
   }
 
   function close_() {
     if (!backdrop) return;
     backdrop.hidden = true;
-    if (opener && opener.focus) opener.focus();   // 열었던 버튼으로 포커스를 돌려준다
+    if (opener && opener.focus) {
+      opener.focus();   // 열었던 버튼으로 포커스를 돌려준다
+    } else {
+      // 화면이 열릴 때 자동으로 열린 경우(opener 없음)는 본문으로 돌려줘 포커스가 사라지지 않게 한다
+      var main = document.querySelector('main, [role="main"]');
+      if (main) {
+        if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+        main.focus();
+      }
+    }
     opener = null;
   }
 
