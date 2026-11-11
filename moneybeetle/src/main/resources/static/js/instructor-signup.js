@@ -24,7 +24,7 @@
 
   var st = {
     step: 0, email: '', codeSent: false, verified: false, password: '', password2: '',
-    terms: null, agreed: {}, displayName: '', field: '', done: false, busy: false, error: '', cooldown: 0
+    terms: null, agreed: {}, displayName: '', field: '', done: false, busy: false, error: '', cooldown: 0, code: ''
   };
   var timer = null;
 
@@ -98,13 +98,14 @@
   function drawEmail() {
     var email = h('input', { class: 'ins-input', type: 'email', autocomplete: 'email', placeholder: 'teacher@moneybeetle.kr', value: st.email,
       disabled: st.verified, oninput: function () { st.email = email.value.trim(); } });
-    var code = h('input', { class: 'ins-input', inputmode: 'numeric', maxlength: '6', placeholder: '6자리 인증번호', autocomplete: 'one-time-code' });
-    var sendLabel = st.cooldown > 0 ? '다시 받기 (' + st.cooldown + '초)' : st.codeSent ? '인증번호 다시 받기' : '인증번호 받기';
+    // 입력한 인증번호는 st.code 에 남겨, 오류 안내 등으로 화면을 다시 그려도 지워지지 않게 한다
+    var code = h('input', { class: 'ins-input', inputmode: 'numeric', maxlength: '6', placeholder: '6자리 인증번호', autocomplete: 'one-time-code',
+      value: st.code, oninput: function () { st.code = code.value.trim(); } });
 
     return h('div', { class: 'ins-stack' }, [
       field('먼저 이메일 주소를 입력해 주세요', email, '이 이메일이 강사 계정 아이디가 돼요'),
       st.verified ? h('p', { class: 'ins-ok', text: '✓ 이메일 인증을 마쳤어요' }) : h('button', { type: 'button', class: 'btn btn-secondary',
-        text: sendLabel, disabled: st.busy || st.cooldown > 0, onclick: function () { sendCode(); } }),
+        'data-ins-send': '', text: sendLabel(), disabled: st.busy || st.cooldown > 0, onclick: function () { sendCode(); } }),
       st.codeSent && !st.verified ? h('div', { class: 'ins-code' }, [
         field('메일로 받은 인증번호', code, '5분 안에 입력해 주세요. 메일이 안 보이면 스팸함도 확인해 주세요'),
         h('button', { type: 'button', class: 'btn btn-primary', text: '확인', disabled: st.busy, onclick: function () { verify(code.value.trim()); } })
@@ -113,13 +114,25 @@
     ]);
   }
 
+  function sendLabel() {
+    return st.cooldown > 0 ? '다시 받기 (' + st.cooldown + '초)' : st.codeSent ? '인증번호 다시 받기' : '인증번호 받기';
+  }
+
+  /* 타이머는 '다시 받기' 버튼만 고친다. 화면 전체를 다시 그리면 입력 중인 인증번호와 포커스가 사라진다 */
+  function updateSendButton() {
+    var btn = box.querySelector('[data-ins-send]');
+    if (!btn) return;
+    btn.textContent = sendLabel();
+    btn.disabled = st.busy || st.cooldown > 0;
+  }
+
   function startCooldown(sec) {
     st.cooldown = sec;
     clearInterval(timer);
     timer = setInterval(function () {
       st.cooldown -= 1;
       if (st.cooldown <= 0) { st.cooldown = 0; clearInterval(timer); }
-      if (st.step === 0 && !st.done) draw();
+      if (st.step === 0 && !st.done) updateSendButton();
     }, 1000);
   }
 
@@ -128,6 +141,7 @@
     st.busy = true; st.error = ''; draw();
     MB.api('/api/v1/auth/identity-verification/request', { method: 'POST', body: { email: st.email } }).then(function () {
       st.codeSent = true;
+      st.code = '';   // 새 번호를 보냈으니 이전에 쓰던 번호는 지운다
       startCooldown(60);   // 같은 이메일은 60초에 한 번 (API 5-1)
       MB.toast('인증번호를 보냈어요. 메일을 확인해 주세요.');
     }).catch(function (err) {
