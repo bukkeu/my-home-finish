@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
@@ -24,6 +25,15 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     @Query("select s from TradingSeason s where s.status in :statuses order by s.startDate desc")
     List<TradingSeason> findAllByStatusInForUpdate(@Param("statuses") List<String> statuses);
 
+    /**
+     * 시즌 생성 전에 모든 시즌 행을 쓰기 잠금으로 읽는다 (#207). 동시에 들어온 생성 요청이 차례로 처리돼
+     * 둘 다 기간 겹침 확인을 통과해 겹치는 시즌을 저장하지 못한다.
+     * findAllByStatusInForUpdate 와 같은 순서(시작일 최신순)로 잠가 서로 기다리다 막히는 일(교착)이 없다
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from TradingSeason s order by s.startDate desc")
+    List<TradingSeason> findAllForUpdate();
+
     /** 관리자 시즌 목록 : 최근 시작한 시즌부터 */
     List<TradingSeason> findAllByOrderByStartDateDesc();
 
@@ -43,4 +53,10 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from TradingSeason s where s.tradingSeasonId = :seasonId")
     Optional<TradingSeason> findByIdForUpdate(@Param("seasonId") Long seasonId);
+
+    /** 이 시작일보다 먼저 시작한 시즌 중 가장 최근 시즌 = "이전 시즌" (#207) */
+    Optional<TradingSeason> findFirstByStartDateBeforeOrderByStartDateDesc(LocalDate startDate);
+
+    /** 기간(시작일~종료일)이 주어진 기간과 하루라도 겹치는 시즌이 있는가 (#207) */
+    boolean existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate periodEnd, LocalDate periodStart);
 }
