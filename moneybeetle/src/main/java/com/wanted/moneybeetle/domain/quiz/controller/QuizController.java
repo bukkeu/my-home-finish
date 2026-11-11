@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.quiz.model.dto.TestQuizResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.WrongNoteDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.WrongNoteRetryResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.service.QuizService;
+import com.wanted.moneybeetle.domain.quiz.model.service.WrongNoteService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -44,6 +45,7 @@ public class QuizController {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final QuizService quizService;
+    private final WrongNoteService wrongNoteService;   // 오답노트 (API 44~46, #294에서 분리)
 
     /* ===== 테스트 퀴즈 (#19) ===== */
 
@@ -101,7 +103,7 @@ public class QuizController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
         return ApiResponse.success(PageResponse.from(
-                quizService.findWrongNotes(memberIdOf(me), categoryId, courseId, toPageable(page, size))));
+                wrongNoteService.findWrongNotes(memberIdOf(me), categoryId, courseId, toPageable(page, size))));
     }
 
     /* API 45. 오답 다시 풀기 채점 (기록하지 않으므로 200) */
@@ -109,14 +111,14 @@ public class QuizController {
     @ResponseBody
     public ApiResponse<WrongNoteRetryResultDTO> retryWrongNotes(@AuthenticationPrincipal AuthDetails me,
                                                                 @Valid @RequestBody QuizSubmitDTO request) {
-        return ApiResponse.success(quizService.retryWrongNotes(memberIdOf(me), request));
+        return ApiResponse.success(wrongNoteService.retryWrongNotes(memberIdOf(me), request));
     }
 
     /* API 46. 오답 삭제 → 204 No Content */
     @DeleteMapping("/api/v1/members/me/wrong-notes/{wrongNoteId}")
     public ResponseEntity<Void> deleteWrongNote(@AuthenticationPrincipal AuthDetails me,
                                                 @PathVariable Long wrongNoteId) {
-        quizService.deleteWrongNote(memberIdOf(me), wrongNoteId);
+        wrongNoteService.deleteWrongNote(memberIdOf(me), wrongNoteId);
         return ResponseEntity.noContent().build();
     }
 
