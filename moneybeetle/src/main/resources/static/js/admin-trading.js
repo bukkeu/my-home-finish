@@ -1019,14 +1019,19 @@
     if (!err || (err.code !== 'INVALID_STATUS_TRANSITION' && err.code !== 'NOT_SETTLED')) { toastError(err); return; }
     return loadSeasons(currentSeasonId()).then(function () {
       var now = state.seasons.filter(function (x) { return String(x.seasonId) === String(id); })[0];
-      if (err.code === 'NOT_SETTLED') {
+      if (!now) {
+        // 시즌 목록을 다시 받지 못했으면 원인을 알 수 없다 -> 하나로 단정하지 않고 두 가능성을 함께 안내한다
+        MB.toast(err.code === 'NOT_SETTLED' ? '아직 정산하지 않은 시즌일 수 있어요. 시즌을 다시 확인해 주세요'
+          : kind === 'settle' ? '이미 정산했거나 시즌 상태가 바뀌었어요. 시즌을 다시 확인해 주세요'
+            : '이미 공개했거나 시즌 상태가 바뀌었어요. 시즌을 다시 확인해 주세요', 'error');
+      } else if (err.code === 'NOT_SETTLED') {
         delete state.settledIds[id];
         MB.toast('아직 정산하지 않은 시즌이에요. 정산을 먼저 실행해 주세요', 'error');
-      } else if (kind === 'settle' && now && now.status === 'SETTLING') {
+      } else if (kind === 'settle' && now.status === 'SETTLING') {
         state.settledIds[id] = true;   // 정산 상태인데 정산이 거절됨 = 이미 정산을 마쳤다
         MB.toast('이미 정산을 마친 시즌이에요. 결과를 확인한 뒤 랭킹을 공개해 주세요', 'error');
       } else {
-        MB.toast('시즌 상태가 바뀌었어요 (지금 ' + (now ? statusLabel(now.status) : '확인할 수 없음') + '). 화면을 새 상태로 바꿨어요', 'error');
+        MB.toast('시즌 상태가 바뀌었어요 (지금 ' + statusLabel(now.status) + '). 화면을 새 상태로 바꿨어요', 'error');
       }
     }).then(loadRanking);
   }
