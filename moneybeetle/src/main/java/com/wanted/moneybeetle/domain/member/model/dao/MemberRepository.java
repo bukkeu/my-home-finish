@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.member.model.dao;
 
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,7 +27,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     long countByRole(String role);
 
     /** 역할·상태별 회원 수 (관리자 대시보드, #33) */
-    long countByRoleAndStatus(String role, String status);
+    long countByRoleAndStatus(String role, MemberStatus status);
 
     /** 닉네임 중복 확인 (SP-02) */
     boolean existsByNickname(String nickname);
@@ -36,7 +37,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
      * 번호 순으로 돌려준다. 간편 로그인 연결(social_account)이 남은 회원도 대상이다 (제공자 계정 ID 도 개인정보라 함께 지운다).
      * 지운 회원은 값이 모두 NULL 이고 연결도 없어 다음 조회에 나오지 않는다.
      */
-    @Query("select m from Member m where m.status = 'WITHDRAWN' and m.withdrawnAt <= :cutoff "
+    @Query("select m from Member m where m.status = com.wanted.moneybeetle.domain.member.model.entity.MemberStatus.WITHDRAWN "
+            + "and m.withdrawnAt <= :cutoff "
             + "and (m.email is not null or m.passwordHash is not null or m.birthDate is not null "
             + "or m.gender is not null or m.profileImageUrl is not null "
             + "or exists (select 1 from SocialAccount s where s.memberId = m.memberId)) order by m.memberId asc")
