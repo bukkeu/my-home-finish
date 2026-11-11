@@ -47,6 +47,12 @@
   box.setAttribute('aria-label', '추천 검색어');
   anchor.appendChild(box);
 
+  // 찾는 중·결과 건수·결과 없음·실패를 스크린 리더에 알리는 상태 영역. 목록 바깥에 두고 화면에서는 숨긴다
+  var status = el('div', 'mb-suggest__status');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-atomic', 'true');
+  anchor.appendChild(status);
+
   input.setAttribute('role', 'combobox');
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-expanded', 'false');
@@ -87,6 +93,7 @@
 
   function open() { box.hidden = false; input.setAttribute('aria-expanded', 'true'); }
   function close() {
+    status.textContent = '';
     box.hidden = true;
     input.setAttribute('aria-expanded', 'false');
     input.removeAttribute('aria-activedescendant');
@@ -110,6 +117,7 @@
     var note = el('div', 'mb-suggest__note' + (isError ? ' is-error' : ''));
     if (typeof node === 'string') note.textContent = node; else note.appendChild(node);
     box.replaceChildren(note);
+    status.textContent = note.textContent;
     options = [];
     active = -1;
     input.removeAttribute('aria-activedescendant');
@@ -161,6 +169,7 @@
     all.classList.add('mb-suggest__all');
     nodes.push(all);
     box.replaceChildren.apply(box, nodes);
+    status.textContent = '추천 ' + (options.length - 1) + '개. 위아래 화살표로 고를 수 있어요';
     open();
   }
 

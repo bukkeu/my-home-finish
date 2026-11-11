@@ -107,6 +107,7 @@ button { font-family: inherit; }
 .mb-suggest__all .mb-suggest__title { font-size: 13px; font-weight: 700; }
 .mb-suggest__note { padding: 16px; font-size: 14px; color: var(--color-neutral-700); }
 .mb-suggest__note.is-error { color: #b3261e; }
+.mb-suggest__status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .mb-header__spacer { flex: 1; }
 .mb-hamburger { flex: none; color: var(--color-text); }
 @media (min-width: 768px) { .mb-hamburger--admin { display: none; } }
