@@ -1023,6 +1023,9 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "levels": [ { "level": 1, "requiredExp": 0, "title": "고시원", "levelupCash": 0 }, { "level": 8, "requiredExp": 1250, "title": "투룸", "levelupCash": 80000, "unlocks": ["TRADING"] } ] }
 ```
 
+- `unlocks`: 그 레벨에 올라서 새로 열리는 기능. **운영 설정의 해금 레벨**(API 112, `UNLOCK_LEVEL_TRADING` 기본 8, `UNLOCK_LEVEL_HOUSING` 기본 12)이 그 레벨일 때만 붙는다. 관리자가 해금 레벨을 바꾸면 청약·모의투자 API·화면과 같은 기준으로 바로 바뀐다 (#266)
+- 레벨업 해금 알림("모의투자가 열렸어요", "모의 청약이 열렸어요")도 같은 기준이다: 기능마다 올리기 전에는 해금 레벨에 못 미쳤고 올린 뒤에는 닿았을 때만 한 번 보낸다 (여러 레벨을 한 번에 올라도 한 번)
+
 #### 25. 알림 목록
 
 | 항목 | 내용 |

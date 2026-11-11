@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.home.controller;
 
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -49,7 +51,7 @@ import org.springframework.web.context.WebApplicationContext;
 *   - 로그인은 AuthDetails 를 세션에 넣은 것으로 대신한다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, HomeController.class, HomeService.class,
-        GrowthService.class, StockSearchService.class, GlobalExceptionHandler.class})
+        GrowthService.class, UnlockLevelProvider.class, StockSearchService.class, GlobalExceptionHandler.class})
 @MockSecurityServices
 class HomeSearchLevelFlowTest {
 
@@ -57,6 +59,9 @@ class HomeSearchLevelFlowTest {
 
     @MockitoBean
     private LevelPolicyRepository levelPolicyRepository;
+    /** 해금 레벨 운영 설정(#266)은 이 테스트가 보지 않는다. 설정이 없는 것으로 두면 기본 해금 레벨을 쓴다 */
+    @MockitoBean
+    private SystemSettingService systemSettingService;
     @MockitoBean
     private CourseService courseService;
     @MockitoBean

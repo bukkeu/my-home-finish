@@ -4,7 +4,6 @@ import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceStatusDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.LevelDTO;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
-import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
 import com.wanted.moneybeetle.domain.home.model.dto.LayoutDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
@@ -12,6 +11,8 @@ import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import com.wanted.moneybeetle.global.security.UnlockFeature;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import org.springframework.stereotype.Service;
 
 /* comment.
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Service;
 *     연속 출석과 보상까지 남은 일수는 growth 의 출석 현황(API 21)에서 가져온다. 다른 도메인은 Service 메서드만 부른다.
 *   - 경험치 막대는 "이번 레벨에서 얼마나 모았나"(내 경험치 - 이번 레벨 시작 경험치) / (다음 레벨 시작 경험치 - 이번 레벨 시작 경험치) 이다.
 *     최대 레벨이면 막대 계산에 쓸 다음 레벨이 없어 0 / 0 으로 두고, 다음 레벨업 캐시도 0 이다.
-*   - 해금 레벨은 지금은 UnlockRules 상수(모의투자 8, 모의 청약 12)다. 운영 설정(system_setting) 반영은 #238 에서 이 한 곳만 바꾸면 된다.
+*   - 해금 레벨은 운영 설정(system_setting)에서 UnlockLevelProvider 로 읽는다 (모의투자 기본 8, 모의 청약 기본 12, #266).
 *   - 이 클래스는 트랜잭션을 열지 않는다. 각 서비스 호출이 자기 읽기 전용 트랜잭션을 연다.
 *  */
 @Service
@@ -31,6 +32,7 @@ public class LayoutService {
     private final MemberService memberService;
     private final GrowthService growthService;
     private final AttendanceService attendanceService;
+    private final UnlockLevelProvider unlockLevelProvider;
 
     public LayoutDTO getLayout(Long memberId) {
         MemberProfileDTO profile = memberService.getActiveProfile(memberId);
@@ -54,7 +56,7 @@ public class LayoutService {
 
         return new LayoutDTO(profile.nickname(), level, current.getTitle(), profile.cash(), expInLevel, expPerLevel,
                 nextLevelCash, attendance.getStreak(), attendanceHint(attendance),
-                UnlockRules.TRADING_LEVEL, UnlockRules.HOUSING_LEVEL);
+                unlockLevelProvider.getLevel(UnlockFeature.TRADING), unlockLevelProvider.getLevel(UnlockFeature.HOUSING));
     }
 
     /** 사이드 메뉴의 연속 출석 안내 문구. 보상 규칙이 꺼져 있으면(보상 캐시 0) 캐시 이야기를 하지 않는다 */
