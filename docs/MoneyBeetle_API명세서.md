@@ -2974,7 +2974,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-29, NFR-13 |
-| 설명 | 금액 변경은 admin_log 기록. |
+| 설명 | 금액 변경은 admin_log 기록. 사용 중(`isActive: true`)으로 둘 규칙은 그 규칙이 지급할 수 있는 금액만 받는다(#244): `ATTENDANCE_DAILY`·`QUIZ_PERFECT` 는 경험치만, `ATTENDANCE_STREAK`·`RANKING_RANK_1~3` 은 캐시만, `COURSE_COMPLETE` 는 둘 다. 끄는 요청(`isActive: false`)은 금액과 상관없이 저장한다. |
 
 **Request**
 
@@ -2985,6 +2985,8 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 - 204 No Content
+
+**Error**: `INVALID_REWARD_RULE_AMOUNTS`(400, 사용 중으로 둘 규칙에 그 규칙이 줄 수 없는 캐시·경험치가 있음), `INVALID_INPUT`(400, 금액이 비었거나 음수), `NOT_FOUND`(404, 없는 규칙)
 
 #### 110. 캐시 수동 지급·회수
 
@@ -4015,6 +4017,7 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `PRICE_OUT_OF_RANGE` | 400 | 변동률이 너무 커서 가격을 계산할 수 없어요 |
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
+| 강사·관리자 | `INVALID_REWARD_RULE_AMOUNTS` | 400 | 이 보상 규칙은 지급할 수 없는 캐시 또는 경험치가 있습니다 |
 
 ---
 
