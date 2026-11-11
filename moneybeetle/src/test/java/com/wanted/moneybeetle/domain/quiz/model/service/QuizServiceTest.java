@@ -9,12 +9,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.wanted.moneybeetle.domain.course.model.dto.CourseLabelDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
@@ -31,7 +29,6 @@ import com.wanted.moneybeetle.domain.quiz.model.dao.WrongAnswerNoteRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSubmitDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.TestQuizResultDTO;
-import com.wanted.moneybeetle.domain.quiz.model.dto.WrongNoteRetryResultDTO;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizAnswer;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizAttempt;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizChoice;
@@ -56,14 +53,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 *   다음 이슈에서 채점 코드를 옮기기 전에, 지금 동작을 그대로 확인해 둔다 (main 코드는 바꾸지 않음).
 *   - 테스트 퀴즈 채점(gradeTestQuiz) : 정답·오답·미응답·다른 문항의 보기·같은 문항 두 번
 *   - 본 퀴즈 제출(submitQuiz)      : 통과 점수 경계(69·70·71점, 설정 70), 오답노트 저장, 처음 통과할 때만 보상
-*   - 오답 다시 풀기(retryWrongNotes) : 내 오답노트에 있고 보이는 강의의 문제만 채점, 기록 없음
+*   - 오답 다시 풀기는 #294에서 WrongNoteService 로 옮겨 WrongNoteServiceTest 에 있다 (검증 내용은 그대로)
 *   저장소와 다른 도메인 서비스는 Mockito 가짜로 둔다 (DB 없이)
 *  */
 class QuizServiceTest {
 
     private static final Long MEMBER = 8L;
     private static final Long COURSE = 15L;
-    private static final Long OTHER_COURSE = 16L;
 
     private CourseService courseService;
     private QuizQuestionRepository questionRepository;
@@ -403,64 +399,6 @@ class QuizServiceTest {
                     .extracting("errorCode").isEqualTo(QuizErrorCode.QUIZ_LOCKED);
             verify(memberService).lockBalance(MEMBER);
             verifyNoInteractions(attemptRepository, answerRepository, wrongNoteRepository, rewardService);
-        }
-    }
-
-    /* ===================== 오답 다시 풀기 (API 45) ===================== */
-
-    @Nested
-    @DisplayName("오답 다시 풀기 (retryWrongNotes)")
-    class RetryWrongNotes {
-
-        @Test
-        @DisplayName("내 오답노트에 있고 보이는 강의의 문제만 채점한다 (비공개 강의·오답노트에 없는 문제는 빠진다)")
-        void gradesOnlyMyVisibleNotes() {
-            QuizQuestion mine = question(1, COURSE, QuizQuestion.QUIZ_TYPE_MAIN, 1);
-            QuizQuestion hiddenCourse = question(2, OTHER_COURSE, QuizQuestion.QUIZ_TYPE_MAIN, 1);
-            when(courseService.findVisibleCourseLabels(null, null))
-                    .thenReturn(List.of(CourseLabelDTO.of(COURSE, "청약통장 기초", "부동산 › 청약")));
-            when(wrongNoteRepository.findByMemberIdAndQuizQuestionIdIn(eq(MEMBER), anyList()))
-                    .thenReturn(List.of(WrongAnswerNote.create(MEMBER, 1L, wrong(1)), WrongAnswerNote.create(MEMBER, 2L, wrong(2))));
-            when(questionRepository.findAllById(any())).thenReturn(List.of(mine, hiddenCourse));
-            when(choiceRepository.findByQuizQuestionIdInOrderBySortOrderAsc(anyList())).thenReturn(List.of(
-                    choice(correct(1), 1, true, 1), choice(wrong(1), 1, false, 2)));
-
-            // 3번은 내 오답노트에 없는 문제
-            WrongNoteRetryResultDTO result = quizService.retryWrongNotes(MEMBER,
-                    answers(1L, correct(1), 2L, correct(2), 3L, correct(3)));
-
-            assertThat(result.getResults()).extracting(TestQuizResultDTO.ResultItem::getQuestionId).containsExactly(1L);
-            assertThat(result.getResults().get(0).isCorrect()).isTrue();
-            assertThat(result.getResults().get(0).getCorrectChoiceId()).isEqualTo(correct(1));
-        }
-
-        @Test
-        @DisplayName("오답을 고르면 틀림으로 채점하고, 다시 풀기는 아무것도 저장하지 않는다")
-        void wrongAndNoRecord() {
-            when(courseService.findVisibleCourseLabels(null, null))
-                    .thenReturn(List.of(CourseLabelDTO.of(COURSE, "청약통장 기초", "부동산 › 청약")));
-            when(wrongNoteRepository.findByMemberIdAndQuizQuestionIdIn(eq(MEMBER), anyList()))
-                    .thenReturn(List.of(WrongAnswerNote.create(MEMBER, 1L, wrong(1))));
-            when(questionRepository.findAllById(any())).thenReturn(List.of(question(1, COURSE, QuizQuestion.QUIZ_TYPE_MAIN, 1)));
-            when(choiceRepository.findByQuizQuestionIdInOrderBySortOrderAsc(anyList())).thenReturn(List.of(
-                    choice(correct(1), 1, true, 1), choice(wrong(1), 1, false, 2)));
-
-            WrongNoteRetryResultDTO result = quizService.retryWrongNotes(MEMBER, answers(1L, wrong(1)));
-
-            assertThat(result.getResults().get(0).isCorrect()).isFalse();
-            verify(wrongNoteRepository, never()).saveAll(anyList());
-            verify(wrongNoteRepository, never()).deleteByWrongAnswerNoteIdAndMemberId(anyLong(), anyLong());
-            verifyNoInteractions(attemptRepository, answerRepository, rewardService);
-        }
-
-        @Test
-        @DisplayName("보낸 답이 없으면 빈 결과이고 저장소를 조회하지 않는다")
-        void emptyAnswers() {
-            WrongNoteRetryResultDTO result = quizService.retryWrongNotes(MEMBER, answers());
-
-            assertThat(result.getResults()).isEmpty();
-            verifyNoInteractions(wrongNoteRepository, questionRepository, courseService);
-            verify(choiceRepository, times(0)).findByQuizQuestionIdInOrderBySortOrderAsc(anyList());
         }
     }
 }
