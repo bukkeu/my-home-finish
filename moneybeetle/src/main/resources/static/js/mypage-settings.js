@@ -17,6 +17,7 @@
   var api = MB.api;
   var PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/;
   var me = null;
+  var onMeReady = null;   // 내 정보를 받은 뒤 해야 할 일 (탈퇴 창이 먼저 열렸을 때)
 
   function byId(id) { return document.getElementById(id); }
   function say(id, text, ok) {
@@ -141,6 +142,7 @@
       window.clearInterval(timer);
       send.disabled = false;
       send.textContent = '인증번호 받기';
+      submit.disabled = !me;   // 내 정보를 받기 전에는 제출하지 못한다
     }
     /** 비밀번호가 없는 회원인가 (API 13 의 loginProvider 가 EMAIL 이 아니면 간편 로그인 회원). 값을 모르면 false 라서 예전처럼 서버가 알려 준다 */
     function noPassword() {
@@ -158,6 +160,15 @@
       // 비밀번호 없는 회원은 비밀번호를 비운 요청을 보내지 않고 바로 인증번호 단계로 간다.
       // 서버에 비워 보내는 탈퇴 요청은 이 창에서 방금 인증번호를 확인했을 때만 보낸다 (이전에 닫은 창의 인증이 남아 있어도 쓰이지 않게)
       if (noPassword()) enterCodeMode();
+      if (!me) {
+        // 비밀번호가 있는 회원인지 모르는 채로는 탈퇴 요청을 보내지 않는다. 내 정보를 받으면 풀어 준다
+        say('mg-wd-msg', '내 정보를 불러오는 중이에요. 잠시만 기다려 주세요.', false);
+        onMeReady = function () {
+          if (dialog.hidden) return;
+          submit.disabled = false;
+          if (noPassword()) enterCodeMode(); else say('mg-wd-msg', '', false);
+        };
+      }
       dialog.hidden = false;
       (codeMode ? send : byId('mg-wd-password')).focus();
     }
@@ -212,8 +223,11 @@
       busy(submit, function () {
         if (!codeMode) {
           // 비밀번호로 확인한다. 비워 두면 서버가 비밀번호 없는 간편 로그인 회원인지 알려 준다 (WITHDRAW_VERIFICATION_REQUIRED)
+          var password = byId('mg-wd-password').value;
+          // 비밀번호를 비운 탈퇴 요청은 보내지 않는다 (인증번호를 방금 확인한 뒤에만 비운 요청을 보낸다). 서버에 남은 이전 인증이 쓰이지 않게 하려는 것이다
+          if (!password) return say('mg-wd-msg', '현재 비밀번호를 입력해 주세요.', false);
           var passwordSession = dialogSession;   // 확인을 보낸 창. 거절 응답이 올 때 창이 닫혔거나 다시 열렸으면 새 창의 상태를 바꾸지 않는다
-          return withdraw(byId('mg-wd-password').value).then(done, function (error) {
+          return withdraw(password).then(done, function (error) {
             if (passwordSession !== dialogSession) return;
             if (error && error.code === 'WITHDRAW_VERIFICATION_REQUIRED') {
               enterCodeMode();
@@ -246,6 +260,11 @@
     me = data || {};
     byId('mg-settings-status').textContent = '';
     fillProfile();
+    if (onMeReady) {
+      var ready = onMeReady;
+      onMeReady = null;
+      ready();
+    }
   }, function (error) {
     byId('mg-settings-status').textContent = errorText(error);
   });

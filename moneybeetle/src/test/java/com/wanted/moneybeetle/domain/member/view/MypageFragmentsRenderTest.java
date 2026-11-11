@@ -182,7 +182,9 @@ class MypageFragmentsRenderTest {
         // loginProvider 로 비밀번호 없는 회원을 알아보고, 창을 열 때 바로 인증번호 단계로 간다
         assertThat(script).contains("me.loginProvider !== 'EMAIL'").containsPattern("if \\(noPassword\\(\\)\\) enterCodeMode\\(\\);");
         // 비밀번호 확인의 거절 응답은 코드(주석이 아닌) 안에서 창 세션이 같을 때만 단계를 바꾼다
-        assertThat(script).containsPattern("withdraw\\(byId\\('mg-wd-password'\\)\\.value\\)\\.then\\(done, function \\(error\\) \\{\\s*if \\(passwordSession !== dialogSession\\) return;");
+        assertThat(script).containsPattern("withdraw\\(password\\)\\.then\\(done, function \\(error\\) \\{\\s*if \\(passwordSession !== dialogSession\\) return;");
+        // 비밀번호를 비운 채로는 비밀번호 단계에서 서버에 탈퇴를 보내지 않고, 내 정보를 받기 전에는 제출하지 못한다
+        assertThat(script).containsPattern("if \\(!password\\) return say\\('mg-wd-msg'").contains("submit.disabled = !me;");
         // 비운 탈퇴 요청은 인증번호 확인(17-2)이 이 창에서 방금 성공한 뒤에만 보낸다
         assertThat(script).containsPattern("if \\(session !== dialogSession\\) return null;\\s*return withdraw\\(''\\)\\.then\\(done\\);");
     }
