@@ -24,6 +24,10 @@
 | 관리자 | AdminDashboard.dc.html | /admin/dashboard (?view=…) | 관리자 로그인 성공 |
 | 관리자 | AdminTradingManagement.dc.html | /admin/trading-management | 관리자 메뉴 트레이닝 운영 |
 | 관리자 | AdminHousingManagement.dc.html | /admin/housing-management | 관리자 메뉴 트레이닝 운영 |
+| 공통 | 400.dc.html | 오류 화면 (400, 잘못된 요청) | 화면 요청의 입력 오류·업로드 용량 초과 |
+| 공통 | 403.dc.html | 오류 화면 (403, 권한 없음) | 권한 없는 주소 접근 |
+| 공통 | 404.dc.html | 오류 화면 (404, 없는 주소) | 없는 주소 접근 |
+| 공통 | 500.dc.html | 오류 화면 (500, 서버 오류) | 예상하지 못한 서버 오류 |
 
 ## 주요 이동 흐름
 - 사용자: Main → UserLogin → (이력 없음) UserHome-vr1 / (이력 있음) UserHome-vr2 → UserLectureCategory → UserLectureDetail → UserInquiry
@@ -31,6 +35,7 @@
 - 강사: InstructorLogin → InstructorDashboard (Q&A 관리는 대시보드 안 탭) → InstructorCourseCreate → InstructorDashboard
 - 관리자: AdminLogin → AdminDashboard (?view=board 문의 게시판) → AdminTradingManagement / AdminHousingManagement
 - 문의 데이터는 역할 간 공유되지 않음 (화면 이동만 연결, 백엔드 연동 필요)
+- 오류 화면(400·403·404·500): "홈으로 가기" → UserHome-vr2 (서버 구현은 역할별 첫 화면), "이전 페이지" → 브라우저 뒤로 가기 (기록이 없으면 홈)
 
 ## 공통 스크립트
 - `mb-config.js` — 레벨·칭호·해금·출석·청약 납입 설정값 (팀 확정 시 이 파일만 수정)
