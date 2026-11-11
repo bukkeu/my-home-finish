@@ -59,9 +59,10 @@ class HomeControllerTest {
     void getsHome() throws Exception {
         when(service.getHome(8L)).thenReturn(new HomeDTO(
                 List.of(new EconomicTermDTO(3L, "복리", "이자에 이자가 붙는 방식")),
-                new HomeDTO.ContinueCourse(7L, "청약통장 기초와 가점 계산", 21L, "가점은 어떻게 계산할까", 312),
+                new HomeDTO.ContinueCourse(7L, "청약통장 기초와 가점 계산", 21L, "가점은 어떻게 계산할까", 312, 870, 2, 3, "청약"),
                 new HomeDTO.Learning(14, 5),
-                new HomeDTO.Training(new HomeDTO.Unlock(true, 8), new HomeDTO.Unlock(false, 12))));
+                new HomeDTO.Training(new HomeDTO.Unlock(true, 8), new HomeDTO.Unlock(false, 12),
+                        new HomeDTO.TradingSeason(6L, "시즌 6", "RUNNING", 3, 12, 12), null)));
 
         mockMvc.perform(get("/api/v1/home"))
                 .andExpect(status().isOk())
@@ -70,6 +71,14 @@ class HomeControllerTest {
                 .andExpect(jsonPath("$.data.continueCourse.courseId").value(7))
                 .andExpect(jsonPath("$.data.continueCourse.lessonId").value(21))
                 .andExpect(jsonPath("$.data.continueCourse.positionSeconds").value(312))
+                .andExpect(jsonPath("$.data.continueCourse.durationSeconds").value(870))
+                .andExpect(jsonPath("$.data.continueCourse.lessonNumber").value(2))
+                .andExpect(jsonPath("$.data.continueCourse.lessonCount").value(3))
+                .andExpect(jsonPath("$.data.continueCourse.categoryName").value("청약"))
+                .andExpect(jsonPath("$.data.training.tradingSeason.name").value("시즌 6"))
+                .andExpect(jsonPath("$.data.training.tradingSeason.daysLeft").value(12))
+                .andExpect(jsonPath("$.data.training.tradingSeason.totalTurns").value(12))
+                .andExpect(jsonPath("$.data.training.housingSummary").doesNotExist())
                 .andExpect(jsonPath("$.data.learning.watchedLessons").value(14))
                 .andExpect(jsonPath("$.data.learning.completedCourses").value(5))
                 .andExpect(jsonPath("$.data.training.trading.unlocked").value(true))

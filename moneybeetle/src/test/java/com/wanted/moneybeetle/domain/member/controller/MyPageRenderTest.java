@@ -38,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *   - 탭 7개(합의한 탭 이름)와 탭 영역이 있고, 아직 없는 담당 조각은 "준비 중" 자리로 대신 그려진다 (화면이 깨지지 않는다)
 *   - 화면 스크립트·스타일이 들어간다
 *   - 프로필 카드 경험치는 공통 레이아웃 값(LayoutInterceptor, #249)의 지금 레벨 경험치·레벨 구간을 쓴다
+*   - 나의 청약통장 탭(#70)은 자기 조각(fragments/mypage/housing)으로 그려진다
+*   - 학습 탭 4개(#71: wrong·scrap·learning·qna)는 신아림 조각(fragments/mypage/learning)으로 그려진다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, MyPageViewController.class, HomeWebConfig.class, LayoutInterceptor.class})
 @MockSecurityServices
@@ -101,9 +103,8 @@ class MyPageRenderTest {
     void 아직_없는_탭_조각은_준비_중_자리로_대신_그린다() throws Exception {
         String html = render();
 
-        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth)와 파일 자체가 없는 경우(housing) 모두.
-        // 학습 탭 4개(wrong·scrap·learning·qna)는 #71 에서 조각을 만들어 "준비 중" 자리가 아니다
-        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - LEARNING_TABS.size());
+        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth) — 이미 만든 housing(#70)·학습 탭 4개(#71)만 빼고 모두
+        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 1 - LEARNING_TABS.size());
     }
 
     @Test
@@ -116,6 +117,19 @@ class MyPageRenderTest {
         }
         assertThat(html.split("/js/mypage-learning.js", -1).length - 1).isEqualTo(1);
         assertThat(html).contains("/css/mypage-learning.css");
+    }
+
+    @Test
+    void 나의_청약통장_탭은_자기_조각으로_그린다() throws Exception {
+        String html = render();
+
+        // 틀의 housing 패널 안에 #70 조각(통장 현황·납입하기·납입 내역·납입 확인창)과 그 스타일·스크립트가 들어간다
+        String panel = html.substring(html.indexOf("id=\"mp-panel-housing\""), html.indexOf("id=\"mp-panel-wrong\""));
+        assertThat(panel).contains("id=\"mh\"").contains("나의 청약통장").contains("청약통장 잔액").contains("누적 인정금액")
+                .contains("납입하기").contains("납입 내역").contains("id=\"mh-confirm\"")
+                .contains("/css/mypage-mh.css").contains("/js/mypage-housing.js")
+                .contains("가상 실습이며 실제 금융 거래가 아니에요")          // NFR-12 공통 안내 띠
+                .doesNotContain("이 탭은 준비 중이에요.");
     }
 
     @Test

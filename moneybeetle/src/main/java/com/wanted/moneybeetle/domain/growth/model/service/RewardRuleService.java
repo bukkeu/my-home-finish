@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.growth.model.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
 import com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardRuleDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardRuleListDTO;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   - findRules : 꺼진 규칙까지 모두 돌려준다
 *   - updateRule : 지급 캐시·경험치·사용 여부를 바꾸고, 값이 실제로 바뀌었을 때만 admin_log 에 변경 전·후를 남긴다 (DP-43).
 *       기록은 같은 트랜잭션이라 수정이 되돌려지면 기록도 사라진다.
+*       사용 중으로 둘 규칙에 그 규칙이 줄 수 없는 금액이 있으면 INVALID_REWARD_RULE_AMOUNTS(400)로 거절한다 (#244, 끄는 것은 허용)
 *  */
 @Service
 @RequiredArgsConstructor
@@ -47,6 +49,11 @@ public class RewardRuleService {
     public void updateRule(Long adminId, Long ruleId, RewardRuleUpdateDTO request) {
         RewardRule rule = rewardRuleRepository.findByIdForUpdate(ruleId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+        // 사용 중으로 둘 규칙은 그 규칙이 실제로 줄 수 있는 금액만 받는다 (#244). 끄는 경우는 지급하지 않으므로 그대로 저장한다
+        if (request.isActive()
+                && !RewardService.canGrant(rule.getCode(), request.cashAmount(), request.expAmount())) {
+            throw new BusinessException(GrowthErrorCode.INVALID_REWARD_RULE_AMOUNTS);
+        }
         Map<String, Object> before = snapshot(rule);
 
         rule.changeAmounts(request.cashAmount(), request.expAmount());
