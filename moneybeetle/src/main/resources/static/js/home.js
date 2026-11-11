@@ -94,10 +94,21 @@
     }, function () { /* 상세를 못 받아도 카드는 그대로 보인다 */ });
   }
 
+  /** 강의 목록 API(30)는 categoryId 가 필수라서, 카테고리(29)를 앞에서부터 하나씩 조회해 3개가 모일 때까지 모은다 */
+  function fetchStarterCourses(categories, collected) {
+    if (collected.length >= 3 || !categories.length) return Promise.resolve(collected.slice(0, 3));
+    var url = '/api/v1/courses?categoryId=' + encodeURIComponent(categories[0].categoryId) + '&page=0&size=3';
+    return api(url).then(function (data) {
+      return fetchStarterCourses(categories.slice(1), collected.concat((data && data.items) || []));
+    });
+  }
+
   function loadStarters() {
     var box = byId('hm-starters');
-    api('/api/v1/courses?page=0&size=3').then(function (data) {
-      var items = (data && data.items) || [];
+    api('/api/v1/categories').then(function (data) {
+      var groups = Array.isArray(data) ? data : ((data && data.categories) || []);
+      return fetchStarterCourses(groups, []);
+    }).then(function (items) {
       box.textContent = '';
       if (!items.length) {
         box.appendChild(el('p', 'hm-empty', '아직 공개된 강의가 없어요.'));
