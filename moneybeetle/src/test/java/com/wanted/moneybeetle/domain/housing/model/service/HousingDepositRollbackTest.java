@@ -71,6 +71,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         com.wanted.moneybeetle.domain.growth.model.service.RewardService.class,
         com.wanted.moneybeetle.domain.growth.model.service.GrowthService.class,
         UnlockLevelProvider.class,
+        com.wanted.moneybeetle.domain.housing.model.policy.DepositLimitPolicy.class,   // 납입 한도 (설정이 없으면 기본값, #327)
         com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService.class,
         HousingDepositRollbackTest.TestBeans.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)   // 테스트가 감싸는 트랜잭션 없이, 서비스가 여는 트랜잭션이 실제로 커밋·롤백되게 한다

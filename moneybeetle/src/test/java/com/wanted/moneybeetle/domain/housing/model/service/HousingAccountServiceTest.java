@@ -12,6 +12,8 @@ import com.wanted.moneybeetle.domain.housing.model.dto.AccountDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.entity.SubscriptionAccount;
 import com.wanted.moneybeetle.domain.housing.model.entity.SubscriptionDeposit;
+import com.wanted.moneybeetle.domain.housing.model.policy.DepositLimitPolicy;
+import com.wanted.moneybeetle.domain.housing.model.policy.DepositLimits;
 import com.wanted.moneybeetle.global.config.TimeConfig;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.ErrorCode;
@@ -50,6 +52,7 @@ class HousingAccountServiceTest {
     private SubscriptionAccountRepository accountRepository;
     private SubscriptionDepositRepository depositRepository;
     private RewardService rewardService;
+    private DepositLimitPolicy depositLimitPolicy;
     private HousingService service;
 
     @BeforeEach
@@ -57,9 +60,11 @@ class HousingAccountServiceTest {
         accountRepository = mock(SubscriptionAccountRepository.class);
         depositRepository = mock(SubscriptionDepositRepository.class);
         rewardService = mock(RewardService.class);
+        depositLimitPolicy = mock(DepositLimitPolicy.class);
+        when(depositLimitPolicy.getLimits()).thenReturn(DepositLimits.DEFAULT);   // 운영 설정이 기본값 (20,000 / 500,000 / 250,000)
         Clock fixed = Clock.fixed(TODAY.atStartOfDay(TimeConfig.SEOUL).toInstant(), TimeConfig.SEOUL);
         service = new HousingService(mock(HousingComplexRepository.class), mock(HousingApplicationRepository.class),
-                fixed, accountRepository, depositRepository, rewardService);
+                fixed, accountRepository, depositRepository, rewardService, depositLimitPolicy);
 
         // 저장하면 번호(id)가 매겨진 것처럼 돌려준다
         when(depositRepository.save(any(SubscriptionDeposit.class))).thenAnswer(call -> {
@@ -100,7 +105,7 @@ class HousingAccountServiceTest {
 
         SubscriptionAccountRepository another = mock(SubscriptionAccountRepository.class);
         when(another.findByMemberId(MEMBER_ID)).thenReturn(Optional.of(account(null)));
-        new HousingService(null, null, null, another, null, null).openAccount(MEMBER_ID);
+        new HousingService(null, null, null, another, null, null, null).openAccount(MEMBER_ID);
         verify(another, never()).save(any());
     }
 

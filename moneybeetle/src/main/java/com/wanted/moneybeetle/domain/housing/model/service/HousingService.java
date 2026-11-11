@@ -11,6 +11,7 @@ import com.wanted.moneybeetle.domain.housing.model.entity.HousingApplication;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
 import com.wanted.moneybeetle.domain.housing.model.entity.SubscriptionAccount;
 import com.wanted.moneybeetle.domain.housing.model.entity.SubscriptionDeposit;
+import com.wanted.moneybeetle.domain.housing.model.policy.DepositLimitPolicy;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -44,6 +45,7 @@ public class HousingService {
     private final SubscriptionAccountRepository accountRepository;
     private final SubscriptionDepositRepository depositRepository;
     private final RewardService rewardService;   // 캐시 차감·조회 (김예린, growth 도메인)
+    private final DepositLimitPolicy depositLimitPolicy;   // 납입 한도 (운영 설정, #327)
 
     // API 63 청약 캘린더 : 그 달에 일정이 걸친 단지 + 내가 신청했는지
     public List<ComplexDTO> findCalendar(YearMonth month, Long memberId) {
@@ -108,7 +110,7 @@ public class HousingService {
     public AccountDTO getAccount(Long memberId) {
         SubscriptionAccount account = getAccountOf(memberId);
         long cash = rewardService.getBalance(memberId);
-        return AccountDTO.from(account, LocalDate.now(clock), cash);
+        return AccountDTO.from(account, LocalDate.now(clock), cash, depositLimitPolicy.getLimits());
     }
 
     // API 66 청약통장 납입 : 통장 반영 + 내역 저장 + 캐시 차감을 한 트랜잭션으로 (하나라도 실패하면 모두 취소)
@@ -121,7 +123,7 @@ public class HousingService {
         LocalDate today = LocalDate.now(clock);
 
         // ② 통장 반영 : 규칙 확인(금액 범위 → 하루 1회) 후 잔액·인정금액·회차·납입일 (save 안 해도 변경 감지로 저장된다)
-        long recognized = account.deposit(amount, today);
+        long recognized = account.deposit(amount, today, depositLimitPolicy.getLimits());
 
         // ③ 내역 저장 (먼저 저장해야 내역 번호를 캐시 사용 기록의 원인 번호로 쓸 수 있다). 회차는 ② 로 늘어난 값
         SubscriptionDeposit deposit = depositRepository.save(SubscriptionDeposit.create(

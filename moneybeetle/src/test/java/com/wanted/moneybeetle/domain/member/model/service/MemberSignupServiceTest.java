@@ -67,7 +67,8 @@ import org.springframework.transaction.TransactionStatus;
 *     통장 개설이 실패하면 트랜잭션이 되돌려지는지를 확인한다.
 *  */
 @SpringBootTest(classes = {MemberSignupServiceTest.TestApp.class, MemberSignupService.class, MemberService.class,
-        HousingService.class, RewardService.class, GrowthService.class, UnlockLevelProvider.class})
+        HousingService.class, RewardService.class, GrowthService.class, UnlockLevelProvider.class,
+        com.wanted.moneybeetle.domain.housing.model.policy.DepositLimitPolicy.class})   // HousingService 의 납입 한도 (#327)
 class MemberSignupServiceTest {
 
     @Configuration

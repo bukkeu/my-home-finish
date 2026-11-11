@@ -59,7 +59,7 @@ class HousingServiceTest {
         // 통장 관련 의존성(#28)은 이 테스트에서 쓰지 않아 가짜만 넣는다
         return new HousingService(complexRepository, applicationRepository, fixed,
                 mock(SubscriptionAccountRepository.class), mock(SubscriptionDepositRepository.class),
-                mock(RewardService.class));
+                mock(RewardService.class), mock(com.wanted.moneybeetle.domain.housing.model.policy.DepositLimitPolicy.class));
     }
 
     // 신청 11/3 ~ 11/10, 발표 11/17, 120세대 단지 (엔티티 생성 메서드는 #47 에서 만들므로 테스트에서는 값을 직접 넣는다)

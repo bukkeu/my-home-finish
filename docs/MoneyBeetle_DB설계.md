@@ -1085,7 +1085,9 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 
 해금 레벨, 퀴즈 통과 점수 등 코드 수정 없이 바꾸는 값.
 
-관련: ADM-11, SP-24, SP-34, NFR-13
+관련: ADM-11, SP-24, SP-34, SP-70, NFR-13
+
+청약통장 납입 한도 키(#327) : `DEPOSIT_MIN_AMOUNT`(20000, 1회 최소), `DEPOSIT_MAX_AMOUNT`(500000, 1회 최대), `DEPOSIT_DAILY_RECOGNIZED_LIMIT`(250000, 하루 인정금액 한도). 없거나 숫자가 아니면 그 값만 기본값, 1 미만이거나 최소 > 최대이면 세 값 모두 기본값을 쓴다. 기존 DB 는 `sql/migration/2026-11-11_system_setting_deposit_limits.sql`.
 
 | 컬럼명 | 데이터 타입 | Null | 제약 조건 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- |

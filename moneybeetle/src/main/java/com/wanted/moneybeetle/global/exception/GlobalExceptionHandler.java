@@ -39,7 +39,8 @@ public class GlobalExceptionHandler {
     public Object handleBusinessException(BusinessException e, HttpServletRequest request) {
         ErrorCode errorCode = e.getErrorCode();
         log.warn("업무 예외 : {} ({})", errorCode.getCode(), request.getRequestURI());
-        return makeResponse(errorCode, null, request);
+        // 문구는 예외가 가진 것 (기본은 ErrorCode 문구, 바뀌는 값을 넣은 문구가 있으면 그것, #327)
+        return makeResponse(errorCode, e.getMessage(), null, request);
     }
 
     // @Valid 검증 실패 → 400 + 입력칸별 안내
@@ -93,18 +94,22 @@ public class GlobalExceptionHandler {
 
     // 주소를 보고 JSON 상자 or 에러 페이지
     private Object makeResponse(ErrorCode errorCode, List<FieldMessage> fields, HttpServletRequest request) {
+        return makeResponse(errorCode, errorCode.getMessage(), fields, request);
+    }
+
+    private Object makeResponse(ErrorCode errorCode, String message, List<FieldMessage> fields, HttpServletRequest request) {
 
         // 1) API 요청이면 JSON 상자 ("/api/" 로 비교해야 /apple 같은 화면 주소를 API로 잘못 보지 않음)
         if (request.getRequestURI().startsWith("/api/")) {
             return ResponseEntity
                     .status(errorCode.getStatus())
-                    .body(ApiResponse.fail(errorCode, fields));
+                    .body(ApiResponse.fail(errorCode, message, fields));
         }
 
         // 2) 화면 요청이면 에러 페이지
         ModelAndView mv = new ModelAndView(errorPage(errorCode.getStatus()));
         mv.setStatus(errorCode.getStatus());
-        mv.addObject("message", errorCode.getMessage());
+        mv.addObject("message", message);
         return mv;
     }
 

@@ -4,6 +4,7 @@ import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.housing.model.dto.AccountDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositPolicyDTO;
+import com.wanted.moneybeetle.domain.housing.model.policy.DepositLimits;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingApplicationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
@@ -123,7 +124,7 @@ class HousingSecurityFlowTest {
     void 청약통장은_Lv1_이어도_로그인_회원_번호로_조회한다() throws Exception {
         when(growthService.getLevel(MEMBER_ID)).thenReturn(1);
         when(housingService.getAccount(MEMBER_ID)).thenReturn(new AccountDTO(
-                1L, 0L, 0L, 0, null, false, DepositPolicyDTO.current(), 12_000L));
+                1L, 0L, 0L, 0, null, false, DepositPolicyDTO.from(DepositLimits.DEFAULT), 12_000L));
 
         mockMvc.perform(get("/api/v1/housing/account").with(user(member())))
                 .andExpect(status().isOk())

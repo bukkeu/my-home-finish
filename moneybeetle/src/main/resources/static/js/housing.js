@@ -100,6 +100,7 @@
       bind('paidTodayText', acc.paidToday ? '오늘 납입 완료' : '오늘 납입할 수 있어요');
       bind('limitText', '하루 최대 ' + fmt(policy.dailyRecognizedLimit) + '까지 반영');
       bind('policyText', '하루 1회, 1회 ' + fmt(policy.minAmount) + ' ~ ' + fmt(policy.maxAmount) + ' 캐시');
+      bind('limitAmount', fmt(policy.dailyRecognizedLimit));   // 납입 안내 문구의 하루 인정 한도 (운영 설정, #327)
       amountInput.min = policy.minAmount;
       amountInput.max = policy.maxAmount;
       setPaidToday(acc.paidToday);
