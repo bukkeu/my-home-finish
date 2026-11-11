@@ -87,11 +87,12 @@ class CourseSearchRepositoryTest {
     }
 
     @Test
-    @DisplayName("비공개·삭제 강의는 Limit 안에 자리를 차지하지 않는다")
+    @DisplayName("비공개·삭제·검수 전(DRAFT) 강의는 Limit 안에 자리를 차지하지 않는다")
     void hiddenAndDeletedExcludedBeforeLimit() {
         Course visible = course("청약 가점", true, false);
         course("청약 비공개", false, false);
         course("청약 삭제", true, true);
+        courseRepository.saveAndFlush(Course.create(2L, 21L, "청약 검수 전", "소개", null, null));   // 가장 최근이지만 DRAFT
 
         assertThat(search("청약", 1)).extracting(Course::getCourseId).containsExactly(visible.getCourseId());
     }

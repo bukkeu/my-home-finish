@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -181,8 +182,19 @@ class CategoryPathServiceTest {
 
         CompletableFuture<Map<Long, String>> first = CompletableFuture.supplyAsync(categoryPathService::findCategoryPaths);
         assertThat(firstReading.await(5, TimeUnit.SECONDS)).isTrue();
-        CompletableFuture<Map<Long, String>> second = CompletableFuture.supplyAsync(categoryPathService::findCategoryPaths);
-        Thread.sleep(200);                                                 // 두 번째 요청이 잠금 앞에서 기다리게 둔다
+        AtomicReference<Thread> secondThread = new AtomicReference<>();
+        CompletableFuture<Map<Long, String>> second = CompletableFuture.supplyAsync(() -> {
+            secondThread.set(Thread.currentThread());
+            return categoryPathService.findCategoryPaths();
+        });
+        // 두 번째 요청이 정말로 잠금(loadLock) 앞에서 기다리는 것을 확인한 뒤에 첫 요청을 끝낸다. 2초 안에 못 오면 실패
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (secondThread.get() == null || secondThread.get().getState() != Thread.State.BLOCKED) {
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("두 번째 조회가 잠금에 도달하지 않음");
+            }
+            Thread.sleep(5);
+        }
         releaseFirst.countDown();
 
         assertThat(first.get(5, TimeUnit.SECONDS)).containsEntry(11L, "부동산 › 청약");
