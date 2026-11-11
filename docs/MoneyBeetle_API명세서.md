@@ -718,6 +718,8 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 }
 ```
 
+- `unlocks` 의 해금 여부와 `housingLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값으로 판단한다(#238).
+
 #### 14. 설정 수정
 
 | 항목 | 내용 |
@@ -910,7 +912,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 - `todayTerms` 는 오늘(KST) 지정된 용어 5개로, 같은 날에는 모든 사용자에게 같은 값이다(API 20과 같은 값, 사용 중인 용어가 5개 미만이면 있는 만큼, 하나도 없으면 빈 배열).
 - `continueCourse` 는 가장 최근에 본 진행 중 강의다. 이어서 볼 강의가 없으면 `null`이고, 강의는 있지만 그 강의에서 본 영상 기록이 없으면 `lessonId`·`lessonTitle`·`positionSeconds` 가 `null`이다. 마지막 영상은 최근 시청 기록 1,000건 안에서 찾는다.
 - `learning` 은 본 영상 수와 학습 완료한 강의 수다.
-- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다.
+- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다. `requiredLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값이라 레벨 검사(`LEVEL_LOCKED`)와 같은 기준이다(#238).
 
 #### 20. 오늘의 경제 용어
 

@@ -14,7 +14,10 @@ import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.home.model.dto.SearchResultDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSearchDTO;
 import com.wanted.moneybeetle.domain.trading.model.service.StockSearchService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.util.List;
+import java.util.OptionalInt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,13 +25,14 @@ import org.junit.jupiter.api.Test;
 *   담당 : PM (#15)
 *   HomeService 통합 검색 확인 (다른 도메인 서비스는 가짜(mock))
 *   - 키워드 앞뒤 공백 제거, 빈 키워드는 빈 결과
-*   - 종목은 모의투자 해금(Lv.8) 회원에게만, 로그인 회원이 없으면 찾지 않는다
+*   - 종목은 모의투자 해금(운영 설정, 기본 Lv.8) 회원에게만, 로그인 회원이 없으면 찾지 않는다
 *  */
 class HomeSearchServiceTest {
 
     private CourseService courseService;
     private StockSearchService stockSearchService;
     private GrowthService growthService;
+    private SystemSettingService systemSettingService;
     private HomeService service;
 
     @BeforeEach
@@ -36,7 +40,9 @@ class HomeSearchServiceTest {
         courseService = mock(CourseService.class);
         stockSearchService = mock(StockSearchService.class);
         growthService = mock(GrowthService.class);
-        service = new HomeService(null, courseService, growthService, stockSearchService);
+        systemSettingService = mock(SystemSettingService.class);   // 설정이 없으면 기본 모의투자 해금 Lv.8
+        service = new HomeService(null, courseService, growthService, stockSearchService,
+                new UnlockLevelProvider(systemSettingService));
         when(courseService.search("청약")).thenReturn(List.of(CourseLabelDTO.of(7L, "청약통장 기초", "부동산 › 청약")));
         when(stockSearchService.searchStocks("청약")).thenReturn(List.of(StockSearchDTO.of(1L, "청약종목", "부동산")));
     }
@@ -62,6 +68,18 @@ class HomeSearchServiceTest {
         when(growthService.getLevel(3L)).thenReturn(7);
 
         assertThat(service.search("청약", 8L).getStocks()).extracting(StockSearchDTO::getName).containsExactly("청약종목");
+        assertThat(service.search("청약", 3L).getStocks()).isEmpty();
+    }
+
+    @Test
+    void 모의투자_해금_레벨을_바꾸면_종목_검색도_그_값을_따른다() {   // #238
+        when(growthService.getLevel(8L)).thenReturn(7);
+        when(growthService.getLevel(3L)).thenReturn(9);
+
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(6));
+        assertThat(service.search("청약", 8L).getStocks()).extracting(StockSearchDTO::getName).containsExactly("청약종목");
+
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(10));
         assertThat(service.search("청약", 3L).getStocks()).isEmpty();
     }
 

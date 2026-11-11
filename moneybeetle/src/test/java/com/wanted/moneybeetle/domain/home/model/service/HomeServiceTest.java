@@ -19,8 +19,11 @@ import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.term.model.dto.EconomicTermDTO;
 import com.wanted.moneybeetle.domain.term.model.dto.TodayTermsDTO;
 import com.wanted.moneybeetle.domain.term.model.service.TermService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.OptionalInt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +39,7 @@ class HomeServiceTest {
     private TermService termService;
     private CourseService courseService;
     private GrowthService growthService;
+    private SystemSettingService systemSettingService;
     private HomeService service;
 
     @BeforeEach
@@ -43,7 +47,9 @@ class HomeServiceTest {
         termService = mock(TermService.class);
         courseService = mock(CourseService.class);
         growthService = mock(GrowthService.class);
-        service = new HomeService(termService, courseService, growthService, null);
+        systemSettingService = mock(SystemSettingService.class);   // 설정이 없으면(빈 값) 기본 해금 레벨 8·12
+        service = new HomeService(termService, courseService, growthService, null,
+                new UnlockLevelProvider(systemSettingService));
 
         when(termService.getToday()).thenReturn(new TodayTermsDTO(LocalDate.of(2026, 11, 9),
                 List.of(new EconomicTermDTO(3L, "복리", "이자에 이자가 붙는 방식"))));
@@ -266,5 +272,34 @@ class HomeServiceTest {
 
         when(growthService.getLevel(MEMBER)).thenReturn(12);
         assertThat(service.getHome(MEMBER).training().housing().unlocked()).isTrue();
+    }
+
+    @Test
+    @DisplayName("#238 관리자가 해금 레벨을 바꾸면 홈도 그 값으로 해금 여부·필요 레벨을 안내한다 (청약 8·15, 모의투자 6·10)")
+    void trainingUnlocksFollowOperationSettings() {
+        // 청약 8, 모의투자 6 : Lv.8 회원은 둘 다 열림
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_HOUSING")).thenReturn(OptionalInt.of(8));
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(6));
+        when(growthService.getLevel(MEMBER)).thenReturn(8);
+        var lowered = service.getHome(MEMBER).training();
+        assertThat(lowered.housing().unlocked()).isTrue();
+        assertThat(lowered.housing().requiredLevel()).isEqualTo(8);
+        assertThat(lowered.trading().unlocked()).isTrue();
+        assertThat(lowered.trading().requiredLevel()).isEqualTo(6);
+
+        // 청약 15, 모의투자 10 : Lv.9 회원은 기본값(8)이면 모의투자가 열리지만, 올린 설정에서는 둘 다 잠김. Lv.12 는 모의투자만 열림
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_HOUSING")).thenReturn(OptionalInt.of(15));
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(10));
+        when(growthService.getLevel(MEMBER)).thenReturn(9);
+        var raised = service.getHome(MEMBER).training();
+        assertThat(raised.housing().unlocked()).isFalse();
+        assertThat(raised.housing().requiredLevel()).isEqualTo(15);
+        assertThat(raised.trading().unlocked()).isFalse();
+        assertThat(raised.trading().requiredLevel()).isEqualTo(10);
+
+        when(growthService.getLevel(MEMBER)).thenReturn(12);
+        var lv12 = service.getHome(MEMBER).training();
+        assertThat(lv12.housing().unlocked()).isFalse();
+        assertThat(lv12.trading().unlocked()).isTrue();
     }
 }

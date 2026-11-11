@@ -5,13 +5,13 @@ import com.wanted.moneybeetle.domain.course.model.dto.CourseListDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
-import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
 import com.wanted.moneybeetle.domain.home.model.dto.HomeDTO;
 import com.wanted.moneybeetle.domain.home.model.dto.SearchResultDTO;
 import com.wanted.moneybeetle.domain.term.model.service.TermService;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSearchDTO;
 import com.wanted.moneybeetle.domain.trading.model.service.StockSearchService;
 import com.wanted.moneybeetle.global.security.UnlockFeature;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 /* comment.
 *   담당 : DBA ② (홈 API, #13) · PM (통합 검색 API, #15)
 *   course / term / trading 서비스의 조회 메서드만 모아서 보여 준다 (다른 도메인 테이블 직접 조회 금지)
-*   - 통합 검색(#15, API 28) : 강의(보이는 강의만), 경제 용어, 종목(모의투자 해금 Lv.8 이상일 때만)
+*   - 통합 검색(#15, API 28) : 강의(보이는 강의만), 경제 용어, 종목(모의투자 해금 레벨 이상일 때만. 운영 설정, 기본 Lv.8)
 *     키워드는 앞뒤 공백을 빼고, 비어 있으면 빈 결과
 *     TODO(DBA ② TermService) 경제 용어 검색 메서드가 생기면 terms 를 채운다 (지금은 빈 목록)
 *   - 홈 화면 (API 19): 오늘의 경제 용어(term), 이어서 볼 강의·학습 기록(course), 트레이닝 해금(growth 의 레벨)을 한 번에 모은다.
@@ -46,6 +46,8 @@ public class HomeService {
     private final CourseService courseService;
     private final GrowthService growthService;
     private final StockSearchService stockSearchService;
+    /** 해금 레벨은 운영 설정(관리자 API 112)에서 읽는다 → 모의투자·모의 청약 API·화면과 같은 기준 (#238) */
+    private final UnlockLevelProvider unlockLevelProvider;
 
     public HomeDTO getHome(Long memberId) {
         var todayTerms = termService.getToday().terms();
@@ -53,14 +55,17 @@ public class HomeService {
 
         long watchedLessons = courseService.findWatchHistories(memberId, PageRequest.of(0, 1)).getTotalElements();
         long completedCourses = courseService.findCompletedCourses(memberId, PageRequest.of(0, 1)).getTotalElements();
+        // 한 번 읽어 해금 여부·필요 레벨 두 필드에 같이 쓴다 (중간에 설정이 바뀌어도 한 응답 안에서는 어긋나지 않게)
+        int tradingLevel = unlockLevelProvider.getLevel(UnlockFeature.TRADING);
+        int housingLevel = unlockLevelProvider.getLevel(UnlockFeature.HOUSING);
 
         return new HomeDTO(
                 todayTerms,
                 findContinueCourse(memberId),
                 new HomeDTO.Learning(watchedLessons, completedCourses),
                 new HomeDTO.Training(
-                        new HomeDTO.Unlock(level >= UnlockRules.TRADING_LEVEL, UnlockRules.TRADING_LEVEL),
-                        new HomeDTO.Unlock(level >= UnlockRules.HOUSING_LEVEL, UnlockRules.HOUSING_LEVEL)));
+                        new HomeDTO.Unlock(level >= tradingLevel, tradingLevel),
+                        new HomeDTO.Unlock(level >= housingLevel, housingLevel)));
     }
 
     /** 가장 최근에 본 진행 중인 강의 하나와 그 강의에서 마지막으로 본 영상·위치. 이어서 볼 강의가 없거나 그 사이 비공개가 되었으면 null */
@@ -125,8 +130,8 @@ public class HomeService {
 
     /** 종목은 모의투자가 해금된 회원에게만 보여 준다 (INV-01) */
     private List<StockSearchDTO> searchStocksIfUnlocked(String keyword, Long memberId) {
-        // TODO(SCM #4) 해금 레벨을 system_setting 에서 읽게 되면 같은 값을 쓴다 (LevelCheckInterceptor 와 동일)
-        if (memberId == null || growthService.getLevel(memberId) < UnlockFeature.TRADING.getDefaultLevel()) {
+        // 모의투자 해금 레벨은 운영 설정 값 (LevelCheckInterceptor 와 같은 UnlockLevelProvider, #238)
+        if (memberId == null || growthService.getLevel(memberId) < unlockLevelProvider.getLevel(UnlockFeature.TRADING)) {
             return List.of();
         }
         return stockSearchService.searchStocks(keyword);

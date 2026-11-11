@@ -26,7 +26,9 @@ import com.wanted.moneybeetle.domain.trading.model.dao.StockRepository;
 import com.wanted.moneybeetle.domain.trading.model.entity.Sector;
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
 import com.wanted.moneybeetle.domain.trading.model.service.StockSearchService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import com.wanted.moneybeetle.support.MockSecurityServices;
 import com.wanted.moneybeetle.support.SecurityTestApp;
 import java.util.List;
@@ -49,7 +51,7 @@ import org.springframework.web.context.WebApplicationContext;
 *   - 로그인은 AuthDetails 를 세션에 넣은 것으로 대신한다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, HomeController.class, HomeService.class,
-        GrowthService.class, StockSearchService.class, GlobalExceptionHandler.class})
+        GrowthService.class, StockSearchService.class, UnlockLevelProvider.class, GlobalExceptionHandler.class})
 @MockSecurityServices
 class HomeSearchLevelFlowTest {
 
@@ -67,6 +69,8 @@ class HomeSearchLevelFlowTest {
     private SectorRepository sectorRepository;
     @MockitoBean
     private PlatformTransactionManager transactionManager;
+    @MockitoBean
+    private SystemSettingService systemSettingService;   // 해금 레벨 운영 설정 (#238). 비워 두면 기본 모의투자 Lv.8
     @Autowired
     private MemberService memberService;     // @MockSecurityServices 의 가짜 : 계정 상태·레벨(getBalance)을 정해 둔다
 
