@@ -3101,7 +3101,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `POST` |
 | 권한 | 관리자 |
 | 관련 | ADM-09, ADM-12, SP-50 |
-| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력(일요일 제외)을 자동 생성. 기본 설정은 이월 100%·상한 없음·해금 Lv.8(SP-63). copyFromSeasonId를 주면 그 시즌의 이월 비율·상한·해금 레벨을 그대로 가져온다(분야·종목은 시즌과 상관없이 공통이라 복사할 것이 없다). 없는 시즌이면 `NOT_FOUND`. 만든 관리자(`created_by`)는 로그인한 관리자 번호이고, 로그인 정보가 없으면 401 `UNAUTHORIZED` (#40) |
+| 설명 | 이름과 시작일(월요일)로 14일·12턴 달력(일요일 제외)을 자동 생성. 기본 설정은 이월 100%·상한 없음(SP-63). 모의투자 해금 레벨은 시즌이 아니라 운영 설정 `UNLOCK_LEVEL_TRADING` 하나다(SP-24, #242). copyFromSeasonId를 주면 그 시즌의 이월 비율·상한을 그대로 가져온다(분야·종목은 시즌과 상관없이 공통이라 복사할 것이 없다). 없는 시즌이면 `NOT_FOUND`. 만든 관리자(`created_by`)는 로그인한 관리자 번호이고, 로그인 정보가 없으면 401 `UNAUTHORIZED` (#40) |
 
 **Request**
 
@@ -3126,12 +3126,12 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-11 |
-| 설명 | 이월 비율(0~100%, 소수 둘째 자리까지)·상한(없으면 null), 참가 해금 레벨(1~20). 정산 중·종료된 시즌은 바꿀 수 없다. |
+| 설명 | 이월 비율(0~100%, 소수 둘째 자리까지)·상한(없으면 null). 정산 중·종료된 시즌은 바꿀 수 없다. 해금 레벨은 시즌 설정이 아니라 운영 설정(`UNLOCK_LEVEL_TRADING`, API 111·112)에서 바꾼다(#242). 상태 변경(117)처럼 시즌 행을 잠그고 처리해, 동시에 바뀐 상태가 옛 값으로 되돌아가지 않는다. |
 
 **Request**
 
 ```json
-{ "carryoverRate": 100.0, "carryoverCap": null, "unlockLevel": 8 }
+{ "carryoverRate": 100.0, "carryoverCap": null }
 ```
 
 **Response**

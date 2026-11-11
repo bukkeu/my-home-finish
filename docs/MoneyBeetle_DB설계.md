@@ -772,7 +772,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `status` | VARCHAR(20) | N | - | READY | READY / RUNNING / HOLIDAY / SETTLING / ENDED |
 | `current_turn` | TINYINT | N | - | 0 | 현재 턴 0~12 |
 | `total_turns` | TINYINT | N | - | 12 | 전체 턴 |
-| `unlock_level` | TINYINT | N | - | 8 | 참가 해금 레벨 |
+| `unlock_level` | TINYINT | N | - | 8 | **사용하지 않음** (#242). 모의투자 해금은 운영 설정 `UNLOCK_LEVEL_TRADING` 하나로 정해서 Entity·API가 이 컬럼을 읽거나 쓰지 않는다(INSERT 때는 기본값 8이 들어간다). 컬럼을 지울지는 DBA와 결정 |
 | `carryover_rate` | DECIMAL(5,2) | N | - | 100.00 | 이월 비율(%). 기본 100(전액), 관리자가 시즌 설정(ADM-11)에서 바꿀 수 있다 |
 | `carryover_cap` | BIGINT | Y | - | - | 이월 상한. 기본 NULL(상한 없음), 관리자가 시즌 설정에서 정한다 |
 | `settled_at` | DATETIME | Y | - | - | 정산 일시 |

@@ -30,7 +30,6 @@ class TradingSeasonTest {
 
         assertThat(season.getCarryoverRate()).isEqualByComparingTo("100.00");
         assertThat(season.getCarryoverCap()).isNull();
-        assertThat(season.getUnlockLevel()).isEqualTo(8);
         assertThat(season.getEndDate()).isEqualTo(LocalDate.of(2026, 11, 29));
         assertThat(season.isReady()).isTrue();
     }
@@ -96,15 +95,14 @@ class TradingSeasonTest {
     @Test
     void 설정은_바꿀_수_있지만_정산_중에는_SEASON_CLOSED() {
         TradingSeason season = season();
-        season.changeSetting(new BigDecimal("50.00"), 300_000L, 10);
+        season.changeSetting(new BigDecimal("50.00"), 300_000L);
         assertThat(season.getCarryoverRate()).isEqualByComparingTo("50.00");
         assertThat(season.getCarryoverCap()).isEqualTo(300_000L);
-        assertThat(season.getUnlockLevel()).isEqualTo(10);
 
         season.changeStatus(TradingSeason.STATUS_RUNNING);
         season.changeStatus(TradingSeason.STATUS_SETTLING);
 
-        assertThatThrownBy(() -> season.changeSetting(new BigDecimal("100.00"), null, 8))
+        assertThatThrownBy(() -> season.changeSetting(new BigDecimal("100.00"), null))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.SEASON_CLOSED);
     }

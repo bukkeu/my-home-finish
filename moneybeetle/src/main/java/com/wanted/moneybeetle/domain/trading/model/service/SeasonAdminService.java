@@ -4,7 +4,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   담당 : PM (모의투자)
 *   관리자 시즌 관리 (#40, API 114~117)
 *   - 시즌 생성 : 시작일 월요일 확인 -> 시즌 저장 -> 12턴 달력(일요일 제외) 저장. 이전 시즌의 이월·해금 설정 복사
-*   - 설정 변경 : 이월 비율·상한·해금 레벨 (정산 중·종료 시즌은 막음)
+*   - 설정 변경 : 이월 비율·상한 (정산 중·종료 시즌은 막음). 해금 레벨은 시즌 설정이 아니라 운영 설정이다 (#242)
 *   - 상태 변경 : SP-65 순서만 허용 (규칙은 TradingSeason 엔티티)
 *   다음 턴 점검·진행(#44)은 이 서비스에 이어서 추가한다
 *  */
@@ -67,7 +67,7 @@ public class SeasonAdminService {
         TradingSeason season = TradingSeason.create(request.getName(), request.getStartDate(), adminId);
         if (request.getCopyFromSeasonId() != null) {
             TradingSeason source = getSeason(request.getCopyFromSeasonId());
-            season.changeSetting(source.getCarryoverRate(), source.getCarryoverCap(), source.getUnlockLevel());
+            season.changeSetting(source.getCarryoverRate(), source.getCarryoverCap());
         }
         TradingSeason saved = seasonRepository.save(season);
 
@@ -83,8 +83,10 @@ public class SeasonAdminService {
     /** API 116 시즌 설정 */
     @Transactional
     public void changeSetting(Long seasonId, SeasonSettingDTO request) {
-        getSeason(seasonId).changeSetting(request.getCarryoverRate(), request.getCarryoverCap(),
-                request.getUnlockLevel());
+        // 상태 변경과 같은 시즌 행 잠금. 잠금 없이 읽고 저장하면 그 사이 커밋된 상태(예: 정산 중)가 옛 값으로 되돌아간다
+        seasonRepository.findByIdForUpdate(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND))
+                .changeSetting(request.getCarryoverRate(), request.getCarryoverCap());
     }
 
     /** API 117 시즌 상태 변경 */

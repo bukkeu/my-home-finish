@@ -99,9 +99,9 @@ class SeasonAdminServiceTest {
     }
 
     @Test
-    void 이전_시즌을_고르면_이월_해금_설정을_복사한다() {
+    void 이전_시즌을_고르면_이월_설정을_복사한다() {
         TradingSeason previous = savedSeason(7L, "시즌 7");
-        previous.changeSetting(new BigDecimal("50.00"), 300_000L, 10);
+        previous.changeSetting(new BigDecimal("50.00"), 300_000L);
         when(seasonRepository.findById(7L)).thenReturn(Optional.of(previous));
 
         service.createSeason(new SeasonSaveDTO("시즌 8", MONDAY, 7L), ADMIN_ID);
@@ -109,7 +109,6 @@ class SeasonAdminServiceTest {
         verify(seasonRepository).save(org.mockito.ArgumentMatchers.argThat(season ->
                 season.getCarryoverRate().compareTo(new BigDecimal("50.00")) == 0
                         && Long.valueOf(300_000L).equals(season.getCarryoverCap())
-                        && season.getUnlockLevel() == 10
                         && "시즌 8".equals(season.getName())));
     }
 
@@ -168,11 +167,10 @@ class SeasonAdminServiceTest {
         when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
         when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
-        service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), null, 9));
+        service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), null));
         service.changeStatus(7L, new SeasonStatusDTO("RUNNING"));
 
         assertThat(season.getCarryoverRate()).isEqualByComparingTo("80.00");
-        assertThat(season.getUnlockLevel()).isEqualTo(9);
         assertThat(season.isRunning()).isTrue();
     }
 
@@ -181,12 +179,32 @@ class SeasonAdminServiceTest {
         TradingSeason season = savedSeason(7L, "시즌 7");
         season.changeStatus(TradingSeason.STATUS_RUNNING);
         season.changeStatus(TradingSeason.STATUS_SETTLING);
-        when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
         assertThatThrownBy(() -> service.changeSetting(7L,
-                new SeasonSettingDTO(new BigDecimal("80.00"), null, 9)))
+                new SeasonSettingDTO(new BigDecimal("80.00"), null)))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.SEASON_CLOSED);
+    }
+
+    @Test
+    void 설정_변경은_상태_변경처럼_시즌_행을_잠그고_읽는다() {
+        TradingSeason season = savedSeason(7L, "시즌 7");
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
+
+        service.changeSetting(7L, new SeasonSettingDTO(new BigDecimal("80.00"), null));
+
+        verify(seasonRepository).findByIdForUpdate(7L);
+        verify(seasonRepository, never()).findById(7L);
+    }
+
+    @Test
+    void 없는_시즌의_설정을_바꾸면_NOT_FOUND() {
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.changeSetting(99L, new SeasonSettingDTO(new BigDecimal("80.00"), null)))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.NOT_FOUND);
     }
 
     @Test
