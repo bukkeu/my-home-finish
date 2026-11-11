@@ -20,7 +20,7 @@
     READY: [['RUNNING', '진행 시작']],
     RUNNING: [['HOLIDAY', '휴장으로 바꾸기'], ['SETTLING', '정산 시작']],
     HOLIDAY: [['RUNNING', '휴장 끝내기'], ['SETTLING', '정산 시작']],
-    SETTLING: [['ENDED', '시즌 종료']],
+    SETTLING: [],   // 종료는 정산 → 랭킹 공개(API 139)로만 한다. 상태 변경으로 바로 끝내면 정산·공개를 할 수 없게 된다
     ENDED: []
   };
   var TABS = ['season', 'turn', 'stocks', 'prices', 'news', 'people', 'ranking'];
@@ -254,6 +254,20 @@
       || latest.filter(function (s) { return s.status === 'READY'; })[0] || latest[0] || null;
   }
 
+  /**
+   * 고른 시즌이 바뀌었을 때 이전 시즌에 묶인 편집 상태를 비운다.
+   * (이전 시즌의 뉴스 편집폼이 남아 있으면 새 시즌 화면에서 저장해도 PUT /news/{이전 시즌 뉴스} 로 나가 그 뉴스를 고친다)
+   */
+  function resetSeasonScoped() {
+    state.peoplePage = 0;
+    req.turn += 1;          // 이전 시즌으로 보낸 턴 점검 응답은 버린다 (A → B → A 도)
+    state.edits = {};
+    state.prices = null;    // 새 가격표를 받기 전에는 이전 시즌 가격표로 저장 버튼이 켜져 있지 않게 한다
+    updatePriceStatus();
+    state.newsTurn = null;
+    closeNewsForm();
+  }
+
   function loadSeasons(wantedId) {
     var before = currentSeasonId();   // 목록을 요청할 때 고른 시즌
     var seq = ++seasonsSeq;           // 턴 진행 전후 조회가 엇갈려 도착해도 마지막 조회만 반영한다
@@ -265,6 +279,11 @@
       var changed = String(currentSeasonId()) !== String(before);
       state.season = pickSeason(state.seasons, changed ? currentSeasonId() : wantedId);
       renderSeasonSelect();
+      // 시즌 만들기 뒤처럼 드롭다운을 거치지 않고 다른 시즌이 골라졌으면 이전 시즌의 편집 상태를 비운다 (처음 불러올 때는 비울 것이 없다)
+      if (before != null && String(currentSeasonId()) !== String(before)) {
+        resetSeasonScoped();
+        refreshSideCheck();
+      }
     }, function (err) {
       if (seq !== seasonsSeq) return;   // 이전 조회의 실패가 새로 받은 목록을 지우지 않게
       state.seasonsError = true;
@@ -306,16 +325,7 @@
     go.then(function (ok) {
       if (!ok) { seasonSelect.value = previous; return; }
       state.season = pickSeason(state.seasons, wanted);
-      if (String(currentSeasonId()) !== previous) {
-        // A → B → A 처럼 돌아와도 A 의 이전 페이지·이전 점검 응답이 남지 않게 한다
-        state.peoplePage = 0;
-        req.turn += 1;
-      }
-      state.edits = {};
-      state.prices = null;   // 새 가격표를 받기 전에는 이전 시즌 가격표로 저장 버튼이 켜져 있지 않게 한다
-      updatePriceStatus();
-      state.newsTurn = null;
-      closeNewsForm();
+      if (String(currentSeasonId()) !== previous) resetSeasonScoped();
       renderHeader();
       refreshSideCheck();   // 턴 진행 메뉴 밖에서도 사이드바 점검이 이전 시즌 값으로 남지 않게
       loadTab();
@@ -349,7 +359,10 @@
       var next = NEXT_STATUS[s.status] || [];
       fill(actions, next.length ? next.map(function (n) {
         return el('button', { type: 'button', class: 'at-btn ' + (n[0] === 'SETTLING' ? 'soft' : 'primary'), text: n[1], onclick: function (e) { changeStatus(n[0], e.currentTarget); } });
-      }) : [el('span', { class: 'at-muted', text: '마지막 상태예요' })]);
+      }) : s.status === 'SETTLING' ? [
+        el('span', { class: 'at-muted', text: '정산 중이에요. 정산을 실행하고 랭킹을 공개하면 시즌이 종료돼요' }),
+        el('button', { type: 'button', class: 'at-btn soft sm', text: '정산·랭킹으로 가기', onclick: function () { openTab('ranking'); } })
+      ] : [el('span', { class: 'at-muted', text: '마지막 상태예요' })]);
     }
     // 설정 폼: 시즌 목록 응답에 설정값이 있으면 채운다 (없으면 비워 두고 안내 문구를 placeholder 로 보여 준다)
     var f = $('at-settings-form');
