@@ -30,11 +30,15 @@
   }
 
   var boardSeq = 0;      // 한 화면에 게시판이 여러 개여도 탭·목록 id 가 겹치지 않게
-  var meRequest = null;   // 내 회원 ID (수정·삭제 버튼을 내 글에만 보이려고). 한 번만 받는다
+  var meRequest = null;   // 내 회원 ID (수정·삭제 버튼을 내 글에만 보이려고). 성공하면 한 번만 받는다
+  /* 실패하면 저장한 요청을 지우고 오류를 그대로 넘긴다 → 게시판의 '다시 시도'로 다시 조회된다 (#245) */
   function loadMe() {
     if (!meRequest) {
       meRequest = MB.api('/api/v1/members/me').then(function (me) { return me && me.memberId; })
-        .catch(function () { return null; });
+        .catch(function (err) {
+          meRequest = null;
+          throw err;
+        });
     }
     return meRequest;
   }
@@ -300,9 +304,10 @@
 
       if (d.isHidden) {
         // 관리자가 숨긴 글: 서버가 제목·본문을 안내 문구로 바꿔 보낸다(DP-22). 화면은 내용 대신 안내만 보이고 답글을 막는다
+        // 숨긴 글은 수정할 수 없고(서버도 INQUIRY_HIDDEN 으로 막음, #245) 작성자는 삭제만 할 수 있다
         fill(detailBox, h('div', { class: 'inq-waiting inq-hidden', role: 'note' }, [
-          '🔒 관리자에 의해 숨김 처리된 문의예요.', h('br'), '내용과 답변은 볼 수 없고, 댓글도 남길 수 없어요.'
-        ]), mine ? renderOwnerActions(d) : null);
+          '🔒 관리자에 의해 숨김 처리된 문의예요.', h('br'), '내용과 답변은 볼 수 없고, 수정·댓글도 할 수 없어요.'
+        ]), mine ? renderOwnerActions(d, { deleteOnly: true }) : null);
         return;
       }
 
@@ -361,11 +366,13 @@
       return h('div', { class: 'inq-reply' }, [input, send]);
     }
 
-    function renderOwnerActions(d) {
+    /* 작성자 버튼. options.deleteOnly 면(숨긴 글) 수정 없이 삭제만 */
+    function renderOwnerActions(d, options) {
+      var canEdit = d.status === 'WAITING' && !d.isHidden && !(options && options.deleteOnly);
       var bar = h('div', { class: 'inq-owner' });
       function idle() {
         fill(bar, 
-          d.status === 'WAITING' ? h('button', { type: 'button', class: 'btn btn-ghost', text: '수정', onclick: function () { edit(); } }) : null,
+          canEdit ? h('button', { type: 'button', class: 'btn btn-ghost', text: '수정', onclick: function () { edit(); } }) : null,
           h('button', { type: 'button', class: 'btn btn-ghost inq-danger', text: '문의 삭제', onclick: confirmDelete })
         );
       }
