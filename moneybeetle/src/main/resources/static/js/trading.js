@@ -917,6 +917,9 @@
       if (noReply) return Promise.all([refreshAll(false), refreshStockHolding(d.stockId)]);
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
       if (unknown || err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
+        // 처리 여부를 모르는 오류(5xx)는 이미 체결됐을 수 있다. 새로고침이 실패해도 같은 주문이 새 키로 바로 다시 나가지 않게
+        // 매매 이유를 먼저 지워 내역을 확인한 뒤 이유를 다시 골라야 제출할 수 있게 한다
+        if (unknown) S.reasonId = null;
         return refreshAll(true, true);
       }
     }).then(function () { S.busy = false; updateOrder(); });
