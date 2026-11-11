@@ -357,6 +357,8 @@
       var rows = [
         ['시즌 상태', s.status === 'RUNNING', s.status === 'RUNNING' ? '진행 중' : statusLabel(s.status) + ' · 진행 중일 때만 넘길 수 있어요'],
         ['휴장일', !check.isHoliday, check.isHoliday ? '오늘은 휴장일이라 잠겨 있어요' : '거래일'],
+        ['이전 시즌 정산', check.previousSeasonSettled !== false, check.previousSeasonSettled === false ? '이전 시즌을 정산하고 종료해야 해요' : '완료 또는 이전 시즌 없음'],
+        ['장 마감', check.afterMarketClose !== false, check.afterMarketClose === false ? '현재 턴 거래일의 장이 닫힌 뒤(20시 이후)에 넘길 수 있어요' : '턴 진행 가능'],
         [next + '턴 가격', missing.length === 0, missing.length ? '비어 있는 종목 ' + missing.length + '개' : '모두 입력됨'],
         [next + '턴 뉴스', news > 0, news + '개 등록 · 턴당 2~3개']
       ];
@@ -374,6 +376,8 @@
       if (next > TURNS) block = '남은 턴이 없어요';
       else if (s.status !== 'RUNNING') block = '시즌이 진행 중일 때만 턴을 넘길 수 있어요';
       else if (check.isHoliday) block = '휴장일에는 턴을 넘길 수 없어요';
+      else if (check.previousSeasonSettled === false) block = '이전 시즌을 정산하고 종료해 주세요';
+      else if (check.afterMarketClose === false) block = '장이 닫힌 뒤(20시 이후)에 턴을 넘길 수 있어요';
       else if (missing.length) block = '다음 턴에 가격이 비어 있는 종목이 ' + missing.length + '개 있어요';
       else if (!news) block = '다음 턴 뉴스를 먼저 등록해 주세요';
       else if (check.ready !== true) block = '다음 턴 준비가 끝나지 않았어요';
