@@ -7,20 +7,19 @@
 <body>
 <!--/* comment.
     담당 : DBA ② 김예린 (#69, 성장·캐시 내역 탭)
-    내용 : 마이페이지 - 캐시 내역, 경험치·레벨, 수상 내역 (청약통장은 이 탭이 아니라 housing 탭에서 다룬다, #70)
+    내용 : 마이페이지 - 캐시 내역, 경험치 내역, 레벨·칭호 표 (청약통장은 이 탭이 아니라 housing 탭에서 다룬다, #70)
     경로 : /user/my-page#growth
-    원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 "캐시 내역" 탭 (경험치·레벨·수상 내역은 헤더 프로필과 사이드 메뉴의 값을 한 곳에 모은 것)
+    원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 "캐시 내역" 탭 (내 레벨·경험치·수상 내역·사진은 틀 #54 의 프로필 카드가 보여 주므로 이 탭에 두지 않는다)
 
     사용 (마이페이지 틀 member/mypage.html):
-        <div th:replace="~{fragments/mypage/growth :: growthTabFragment}"></div>
+        틀 member/mypage.html 이 th:insert 로 부른다 (fragments/mypage/growth :: growthTabFragment, 주소 끝 #growth)
     - 이 조각 안의 <link>(mypage-mg.css)와 <script>(mypage-growth.js)가 스타일·데이터 불러오기를 맡는다. 틀은 탭 전환만 하면 된다.
     - class·id 는 모두 mg- 로 시작한다 (설정 탭과 같은 접두어. 청약통장 mh-, 학습 ml- 과 겹치지 않는다).
     데이터 (모두 로그인한 회원 본인의 값):
-        GET /api/v1/members/me                    API 13 : 레벨·칭호·경험치·다음 레벨까지·캐시·연속 출석, memberId
+        GET /api/v1/members/me                    API 13 : 보유 캐시, 지금 레벨(레벨 표에서 내 줄을 표시)
         GET /api/v1/members/me/cash-histories     API 22 : 캐시 적립·사용 내역 (이번 달 합계도 이 값으로 계산)
         GET /api/v1/members/me/exp-histories      API 23 : 최근 경험치 내역
         GET /api/v1/levels                        API 24 : 레벨·칭호 표
-        GET /api/v1/members/{memberId}/profile    API 18 : 수상 내역 (1~3위만 메달로 보인다)
 */-->
 <th:block th:fragment="growthTabFragment">
   <link rel="stylesheet" th:href="@{/css/mypage-mg.css}">
@@ -58,19 +57,9 @@
       <div class="mg-actions"><button type="button" class="btn btn-secondary" id="mg-cash-more" hidden>더 보기</button></div>
     </section>
 
-    <!--/* ===== 경험치·레벨 ===== */-->
+    <!--/* ===== 경험치 내역·레벨 표 (내 레벨·경험치 요약은 틀의 프로필 카드가 보여 준다) ===== */-->
     <section class="mg-sec" aria-labelledby="mg-level-title">
-      <h2 id="mg-level-title">경험치·레벨</h2>
-      <div class="card blueprint mg-level">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div class="mg-level__head">
-          <span class="mg-level__now" id="mg-level-now">Lv.-</span>
-          <span class="mg-level__tier" id="mg-level-tier"></span>
-          <span class="mg-level__note" id="mg-level-streak"></span>
-        </div>
-        <div class="mg-bar" role="progressbar" aria-label="이번 레벨 경험치" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mg-level-bar"><i></i></div>
-        <span class="mg-level__note" id="mg-level-note"></span>
-      </div>
+      <h2 id="mg-level-title">경험치 내역·레벨 표</h2>
       <div class="card blueprint mg-levels">
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
         <table class="mg-table">
@@ -84,11 +73,6 @@
       </div>
     </section>
 
-    <!--/* ===== 수상 내역 ===== */-->
-    <section class="mg-sec" aria-labelledby="mg-award-title">
-      <h2 id="mg-award-title">수상 내역</h2>
-      <div class="mg-award-list" id="mg-awards"><p class="mg-empty">불러오고 있어요…</p></div>
-    </section>
   </div>
   <script th:src="@{/js/mypage-growth.js}" defer></script>
 </th:block>

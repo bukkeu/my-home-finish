@@ -7,18 +7,17 @@
 <body>
 <!--/* comment.
     담당 : DBA ② 김예린 (#69, 설정 탭)
-    내용 : 마이페이지 - 프로필 이미지, 개인정보 설정, 비밀번호 변경, 탈퇴
+    내용 : 마이페이지 - 개인정보 설정, 비밀번호 변경, 탈퇴 (프로필 사진 변경은 틀 #54 의 프로필 카드가 맡는다)
     경로 : /user/my-page#settings
     원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 "계정 설정" 탭
 
     사용 (마이페이지 틀 member/mypage.html):
-        <div th:replace="~{fragments/mypage/settings :: settingsTabFragment}"></div>
+        틀 member/mypage.html 이 th:insert 로 부른다 (fragments/mypage/settings :: settingsTabFragment, 주소 끝 #settings)
     - 이 조각 안의 <link>(mypage-mg.css)와 <script>(mypage-settings.js)가 스타일·동작을 맡는다. 틀은 탭 전환만 하면 된다.
     - class·id 는 모두 mg- 로 시작한다 (성장 탭과 같은 접두어).
     데이터·동작:
-        GET    /api/v1/members/me                                   API 13 : 이메일·닉네임·생년월일·성별·프로필 이미지
+        GET    /api/v1/members/me                                   API 13 : 이메일·닉네임·생년월일·성별
         PATCH  /api/v1/members/me                                   API 14 : 닉네임·생년월일·성별 수정
-        POST   /api/v1/members/me/profile-image                     API 15 : 프로필 이미지 (jpg·png, 2MB 이하)
         PATCH  /api/v1/members/me/password                          API 16 : 비밀번호 변경
         DELETE /api/v1/members/me                                   API 17 : 탈퇴. 비밀번호가 있으면 password 로, 없으면(간편 로그인) 이메일 코드로 확인
         POST   /api/v1/members/me/withdraw-verification/request     API 17-1 : 탈퇴 확인 코드 메일 요청
@@ -31,22 +30,10 @@
     <p class="mg-status" id="mg-settings-status" role="status" aria-live="polite">불러오고 있어요…</p>
 
     <div class="mg-settings-grid">
-      <!--/* ===== 프로필 이미지 + 개인정보 ===== */-->
+      <!--/* ===== 개인정보 ===== */-->
       <div class="card blueprint">
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
         <div class="card-title">개인정보 설정</div>
-
-        <div class="mg-photo">
-          <span class="mg-avatar" id="mg-avatar" aria-hidden="true">?</span>
-          <div class="mg-photo__text">
-            <span class="mg-help">프로필 이미지는 2MB 이하 jpg·png만 올릴 수 있어요.</span>
-            <div class="mg-actions">
-              <label class="btn btn-secondary" for="mg-photo-input" style="cursor:pointer">사진 변경</label>
-              <input class="mg-file" id="mg-photo-input" type="file" accept="image/jpeg,image/png">
-            </div>
-            <p class="mg-msg" id="mg-photo-msg" role="status" aria-live="polite"></p>
-          </div>
-        </div>
 
         <form id="mg-profile-form" class="mg" novalidate>
           <div class="mg-field">

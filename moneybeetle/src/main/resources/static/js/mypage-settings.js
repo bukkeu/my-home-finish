@@ -4,11 +4,10 @@
  * 서버가 준 글은 textContent 로만 넣고, 오류 문구는 서버의 오류 메시지({ code, message })를 그대로 보여 준다.
  * - GET   /api/v1/members/me                                (API 13)
  * - PATCH /api/v1/members/me                                (API 14) 닉네임·생년월일·성별
- * - POST  /api/v1/members/me/profile-image                  (API 15) multipart, jpg·png 2MB 이하
  * - PATCH /api/v1/members/me/password                       (API 16)
  * - DELETE /api/v1/members/me                               (API 17) 비밀번호가 있으면 { password }, 없으면(간편 로그인) 이메일 코드 확인 뒤
  * - POST  /api/v1/members/me/withdraw-verification/request  (API 17-1), /withdraw-verification (API 17-2)
- * 프로필을 바꾸면 document 에 mg:profile-changed 이벤트를 보낸다 (같은 화면의 프로필 요약이 값을 다시 그린다).
+ * 프로필을 바꾸면 document 에 mg:profile-changed 이벤트를 보내고 헤더의 닉네임도 바로 바꾼다. 사진 변경은 틀(#54)의 프로필 카드가 맡는다.
  */
 (function () {
   'use strict';
@@ -16,8 +15,6 @@
   if (!root || !window.MB) return;
 
   var api = MB.api;
-  var MAX_IMAGE = 2 * 1024 * 1024;
-  var ALLOWED_IMAGE = ['image/jpeg', 'image/png'];
   var PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/;
   var me = null;
 
@@ -37,29 +34,15 @@
     Promise.resolve().then(task).then(function () { button.disabled = false; }, function () { button.disabled = false; });
   }
   function notifyChanged() {
-    document.dispatchEvent(new CustomEvent('mg:profile-changed', { detail: { nickname: me.nickname, profileImageUrl: me.profileImageUrl } }));
+    document.dispatchEvent(new CustomEvent('mg:profile-changed', { detail: { nickname: me.nickname } }));
   }
 
-  // ------------------------------------------------------------------ 프로필 이미지 · 개인정보
-  function drawAvatar() {
-    var avatar = byId('mg-avatar');
-    avatar.textContent = '';
-    if (me.profileImageUrl) {
-      var img = document.createElement('img');
-      img.setAttribute('src', me.profileImageUrl);
-      img.setAttribute('alt', '프로필 사진');
-      avatar.appendChild(img);
-    } else {
-      avatar.textContent = me.nickname ? me.nickname.charAt(0) : '?';
-    }
-  }
-
+  // ------------------------------------------------------------------ 개인정보
   function fillProfile() {
     byId('mg-email').value = me.email || '';
     byId('mg-nickname').value = me.nickname || '';
     byId('mg-birth').value = me.birthDate || '';
     byId('mg-gender').value = me.gender || '';
-    drawAvatar();
   }
 
   /** 헤더의 닉네임·프로필 글자도 바로 바꿔 준다 (서버가 그린 값이라 새로고침 전까지는 그대로이기 때문) */
@@ -86,30 +69,11 @@
             me.birthDate = birthDate;
             me.gender = byId('mg-gender').value || me.gender;
             say('mg-profile-msg', '저장했어요.', true);
-            drawAvatar();
             refreshHeader();
             notifyChanged();
           })
           .catch(function (error) { say('mg-profile-msg', errorText(error), false); });
       });
-    });
-
-    byId('mg-photo-input').addEventListener('change', function (event) {
-      var input = event.target;
-      var file = input.files && input.files[0];
-      input.value = '';
-      if (!file || !me) return;
-      if (ALLOWED_IMAGE.indexOf(file.type) < 0) return say('mg-photo-msg', 'jpg 또는 png 파일만 올릴 수 있어요.', false);
-      if (file.size > MAX_IMAGE) return say('mg-photo-msg', '2MB 이하의 사진만 올릴 수 있어요.', false);
-      var form = new FormData();
-      form.append('file', file);
-      say('mg-photo-msg', '올리고 있어요…', true);
-      api('/api/v1/members/me/profile-image', { method: 'POST', body: form }).then(function (result) {
-        me.profileImageUrl = result && result.profileImageUrl;
-        drawAvatar();
-        say('mg-photo-msg', '프로필 사진을 바꿨어요.', true);
-        notifyChanged();
-      }, function (error) { say('mg-photo-msg', errorText(error), false); });
     });
   }
 

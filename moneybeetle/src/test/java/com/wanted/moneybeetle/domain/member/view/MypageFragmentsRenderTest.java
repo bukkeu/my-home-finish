@@ -36,11 +36,11 @@ import org.springframework.web.context.WebApplicationContext;
 
 /* comment.
 *   담당 : DBA ② (마이페이지 설정·성장 탭, 이슈 #69)
-*   내가 만든 마이페이지 조각 3개(프로필 요약·성장 탭·설정 탭)가 실제 Thymeleaf 엔진으로 그려지는지 DB 없이 확인한다.
+*   내가 만든 마이페이지 조각 2개(캐시 내역 성장 탭·설정 탭)가 실제 Thymeleaf 엔진으로 그려지는지 DB 없이 확인한다.
 *   - 마이페이지 틀(member/mypage.html, #54)과 주소 연결은 이 테스트와 무관하다. 여기서는 확인용 컨트롤러가 조각을 하나씩 직접 그린다.
 *   - 각 조각의 스크립트(static/js)가 byId('...') 로 찾는 요소가 그 조각에 모두 있는지 확인한다 (id 를 바꾸다 어긋나면 화면이 조용히 동작하지 않는다).
 *   - 틀·다른 탭과 겹치지 않게 조각 안의 모든 id 가 mg- 로 시작하는지 확인한다 (서수영 안내: 예린 mg-, 서수영 mh-, 신아림 ml-).
-*   - 성장 탭에는 청약통장을 넣지 않는다 (청약통장은 housing 탭, #70).
+*   - 성장 탭에는 청약통장을, 두 탭 모두 프로필 요약·수상 내역·사진 변경을 넣지 않는다 (틀의 프로필 카드가 맡는다 #54, 청약통장은 housing 탭 #70).
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, MypageFragmentsRenderTest.TestPages.class})
 @MockSecurityServices
@@ -48,11 +48,6 @@ class MypageFragmentsRenderTest {
 
     @Controller
     static class TestPages {
-        @GetMapping("/user/t/profile")
-        String profile() {
-            return "fragments/mypage/profile :: profileSummaryFragment";
-        }
-
         @GetMapping("/user/t/growth")
         String growth() {
             return "fragments/mypage/growth :: growthTabFragment";
@@ -66,7 +61,6 @@ class MypageFragmentsRenderTest {
 
     /** 조각 이름 / 화면 확인용 주소 / 조각 파일 / 그 조각의 스크립트 */
     private static final String[][] FRAGMENTS = {
-            {"profile", "/user/t/profile", "/templates/fragments/mypage/profile.html", "/static/js/mypage-profile.js"},
             {"growth", "/user/t/growth", "/templates/fragments/mypage/growth.html", "/static/js/mypage-growth.js"},
             {"settings", "/user/t/settings", "/templates/fragments/mypage/settings.html", "/static/js/mypage-settings.js"}};
 
@@ -112,22 +106,24 @@ class MypageFragmentsRenderTest {
     }
 
     @Test
-    @DisplayName("프로필 요약·성장 탭·설정 탭 조각이 각자 그려지고, 자기 스타일·스크립트를 함께 불러온다")
+    @DisplayName("성장 탭·설정 탭 조각이 각자 그려지고, 자기 스타일·스크립트를 함께 불러온다")
     void fragmentsRender() throws Exception {
-        String profile = render("/user/t/profile");
         String growth = render("/user/t/growth");
         String settings = render("/user/t/settings");
 
-        assertThat(profile).contains("id=\"mg-profile\"", "/css/mypage-mg.css", "/js/mypage-profile.js", "수상내역");
-        assertThat(growth).contains("id=\"mg-growth\"", "/css/mypage-mg.css", "/js/mypage-growth.js", "캐시 내역", "경험치·레벨", "수상 내역", "레벨·칭호 표");
+        assertThat(growth).contains("id=\"mg-growth\"", "/css/mypage-mg.css", "/js/mypage-growth.js", "캐시 내역", "경험치 내역·레벨 표", "레벨·칭호 표");
         assertThat(settings).contains("id=\"mg-settings\"", "/css/mypage-mg.css", "/js/mypage-settings.js", "개인정보 설정", "비밀번호 변경",
                 "id=\"mg-profile-form\"", "id=\"mg-pw-form\"", "id=\"mg-wd\"", "탈퇴하기");
     }
 
     @Test
-    @DisplayName("성장 탭에는 청약통장이 없다 (청약통장은 housing 탭에서 다룬다)")
-    void growthHasNoHousingAccount() throws Exception {
-        assertThat(render("/user/t/growth")).doesNotContain("청약통장");
+    @DisplayName("성장 탭에는 청약통장·수상 내역이, 설정 탭에는 사진 변경이 없다 (틀의 프로필 카드·housing 탭이 맡는다)")
+    void notMyScope() throws Exception {
+        String growth = render("/user/t/growth");
+        String settings = render("/user/t/settings");
+
+        assertThat(growth).doesNotContain("청약통장", "수상 내역", "mg-awards", "mg-level-now");
+        assertThat(settings).doesNotContain("mg-photo", "사진 변경", "프로필 이미지");
     }
 
     @Test
@@ -159,14 +155,15 @@ class MypageFragmentsRenderTest {
         String script = read("/static/js/mypage-settings.js");
 
         assertThat(script).contains("/api/v1/members/me/withdraw-verification/request", "/api/v1/members/me/withdraw-verification",
-                "WITHDRAW_VERIFICATION_REQUIRED", "/api/v1/members/me/password", "/api/v1/members/me/profile-image");
+                "WITHDRAW_VERIFICATION_REQUIRED", "/api/v1/members/me/password");
+        assertThat(script).doesNotContain("/profile-image");
     }
 
     @Test
     @DisplayName("화면이 쓰는 스타일·스크립트·이미지 파일이 모두 있다")
     void staticFilesExist() {
-        for (String path : new String[] {"/static/css/mypage-mg.css", "/static/js/mypage-profile.js", "/static/js/mypage-growth.js",
-                "/static/js/mypage-settings.js", "/static/images/medals.png", "/static/images/cash-coin.png"}) {
+        for (String path : new String[] {"/static/css/mypage-mg.css", "/static/js/mypage-growth.js",
+                "/static/js/mypage-settings.js", "/static/images/cash-coin.png"}) {
             assertThat(MypageFragmentsRenderTest.class.getResource(path)).as(path).isNotNull();
         }
     }
