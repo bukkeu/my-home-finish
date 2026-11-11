@@ -151,6 +151,9 @@
   input.addEventListener('keydown', function (e) {
     if (e.isComposing) return;        // 한글 조합 중에는 Enter·화살표를 가로채지 않는다
     if (e.key === 'Escape') {
+      // 닫기 전에 시작한 대기 중 요청(타이머·응답)이 목록을 다시 열지 못하게 함께 무효로 한다
+      clearTimeout(timer);
+      requestNo++;
       if (!box.hidden) { close(); e.preventDefault(); }
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (!options.length) return;
