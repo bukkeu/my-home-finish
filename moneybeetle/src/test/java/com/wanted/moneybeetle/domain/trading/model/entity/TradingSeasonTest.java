@@ -178,11 +178,18 @@ class TradingSeasonTest {
 
         TradingSeason season = runningSeason();
         season.changeStatus(TradingSeason.STATUS_SETTLING);
+        // 정산 중이지만 아직 정산 전이면 NOT_SETTLED (#293 : SettlementService 에서 엔티티로 옮김)
         assertThatThrownBy(() -> season.publishRanking(now))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.NOT_SETTLED));
 
         season.completeSettlement(now);
+        // 정산은 한 번만 (#293)
+        assertThatThrownBy(() -> season.completeSettlement(now.plusMinutes(1)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION));
+        assertThat(season.getSettledAt()).isEqualTo(now);
+
         season.publishRanking(now.plusMinutes(1));
 
         assertThat(season.isEnded()).isTrue();

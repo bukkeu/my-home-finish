@@ -85,11 +85,11 @@ public class SettlementService {
     /** API 138 정산 실행. 정산은 한 번만 : 정산 중이 아니거나 이미 정산했으면 INVALID_STATUS_TRANSITION */
     @Transactional
     public SettleResultDTO settle(Long seasonId, Long adminId) {
-        requireAdmin(adminId);
+        TradingAdminCheck.requireAdmin(adminId);
         TradingSeason season = lockSeason(seasonId);
-        if (!TradingSeason.STATUS_SETTLING.equals(season.getStatus()) || season.isSettled()) {
-            throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
-        }
+        // 정산 중이 아니거나 이미 정산했으면 엔티티가 거절한다. 계산 전에 먼저 기록해 헛계산을 하지 않는다
+        LocalDateTime now = LocalDateTime.now(clock);
+        season.completeSettlement(now);
 
         List<SeasonParticipant> participants =
                 participantRepository.findByTradingSeasonIdOrderBySeasonParticipantIdAsc(seasonId);
@@ -107,8 +107,6 @@ public class SettlementService {
                     returnRanks.get(participant.getSeasonParticipantId()));
         }
 
-        LocalDateTime now = LocalDateTime.now(clock);
-        season.completeSettlement(now);
         adminLogService.record(adminId, ACTION_SETTLE, TARGET_TYPE_SEASON, seasonId,
                 "{\"participants\":" + participants.size() + "}");
         return new SettleResultDTO(participants.size(), now);
@@ -117,15 +115,9 @@ public class SettlementService {
     /** API 139 랭킹 공개 : 정산 뒤에만. 공개하면 시즌이 끝나고 상위 3위 보상을 함께 지급한다 */
     @Transactional
     public RankingPublishedDTO publishRanking(Long seasonId, Long adminId) {
-        requireAdmin(adminId);
+        TradingAdminCheck.requireAdmin(adminId);
         TradingSeason season = lockSeason(seasonId);
-        if (!TradingSeason.STATUS_SETTLING.equals(season.getStatus())) {
-            // 이미 공개해 끝난 시즌이거나 아직 정산 단계가 아니다
-            throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
-        }
-        if (!season.isSettled()) {
-            throw new BusinessException(TradingErrorCode.NOT_SETTLED);
-        }
+        // 정산 중이 아니면 INVALID_STATUS_TRANSITION, 정산 전이면 NOT_SETTLED (엔티티가 거절한다)
         LocalDateTime now = LocalDateTime.now(clock);
         season.publishRanking(now);
 
@@ -138,7 +130,7 @@ public class SettlementService {
     /** API 140 랭킹 보상 지급 : 공개된 시즌만. 이미 지급한 수상은 건너뛴다 (다시 눌러도 안전) */
     @Transactional
     public RankingRewardResultDTO grantRankingRewards(Long seasonId, Long adminId) {
-        requireAdmin(adminId);
+        TradingAdminCheck.requireAdmin(adminId);
         TradingSeason season = lockSeason(seasonId);
         if (!season.isRankingPublished()) {
             throw new BusinessException(TradingErrorCode.RANKING_NOT_PUBLISHED);
@@ -302,11 +294,5 @@ public class SettlementService {
     private TradingSeason lockSeason(Long seasonId) {
         return seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
-    }
-
-    private static void requireAdmin(Long adminId) {
-        if (adminId == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
     }
 }

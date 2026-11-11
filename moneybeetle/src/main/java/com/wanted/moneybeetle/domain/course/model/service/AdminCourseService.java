@@ -12,7 +12,9 @@ import com.wanted.moneybeetle.domain.course.model.dto.AdminCourseListItemDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseReviewResultDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.CourseReview;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.quiz.model.service.QuizService;
@@ -31,7 +33,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /* comment.
@@ -44,9 +45,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class AdminCourseService {
 
-    private static final Set<String> STATUSES = Set.of(
-            Course.STATUS_DRAFT, Course.STATUS_REVIEW, Course.STATUS_APPROVED, Course.STATUS_REJECTED);
-    private static final String NOTIFICATION_TYPE_REJECTED = "COURSE_REJECTED";  // TODO: Notification.TYPE_COURSE_REJECTED가 생기면 교체
+    private static final NotificationType NOTIFICATION_TYPE_REJECTED = NotificationType.COURSE_REJECTED;
     private static final String NOTIFICATION_TITLE_REJECTED = "강의 검수 결과: 반려됐어요";
 
     /* admin_log 값 (AdminLogService 주석의 예시와 같은 이름) */
@@ -67,8 +66,7 @@ public class AdminCourseService {
 
     /* API 89 상태별 강의 목록. 모르는 status 값은 필터 없이 전체 */
     public PageResponse<AdminCourseListItemDTO> findCourses(String status, Pageable pageable) {
-        String statusFilter = status != null && STATUSES.contains(status) ? status : null;
-        Page<Course> page = courseRepository.searchForAdmin(statusFilter, pageable);
+        Page<Course> page = courseRepository.searchForAdmin(CourseStatus.filterOf(status), pageable);
 
         List<Long> courseIds = page.getContent().stream().map(Course::getCourseId).toList();
         Map<Long, Long> learners = countLearners(courseIds);

@@ -18,6 +18,7 @@ import com.wanted.moneybeetle.domain.course.model.dto.VideoUploadDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.CourseReview;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.inquiry.model.service.InstructorInquiryService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
@@ -65,8 +66,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Transactional(readOnly = true)
 public class InstructorCourseService {
 
-    private static final Set<String> STATUSES = Set.of(
-            Course.STATUS_DRAFT, Course.STATUS_REVIEW, Course.STATUS_APPROVED, Course.STATUS_REJECTED);
     private static final int MAX_LESSONS = 3;               // 강의당 영상 1~3개 (SP-30, TCH-02)
     private static final int SUMMARY_MAX_LENGTH = 2000;     // 요약글 2,000자 (DP-31)
     private static final String VIDEO_KEY_PREFIX = "/uploads/";   // FileStorageService가 돌려주는 파일 키
@@ -89,8 +88,7 @@ public class InstructorCourseService {
 
     /* API 72 내 강의 목록: 검수 상태 포함, 수강생 수·답변 대기 문의 수·최근 반려 사유는 강의 여러 개를 한 번에 조회 */
     public MyCourseListDTO findMyCourses(Long instructorId, String status) {
-        String statusFilter = status != null && STATUSES.contains(status) ? status : null;
-        List<Course> courses = courseRepository.findMyCourses(instructorId, statusFilter);
+        List<Course> courses = courseRepository.findMyCourses(instructorId, CourseStatus.filterOf(status));
         if (courses.isEmpty()) {
             return new MyCourseListDTO(List.of());
         }
@@ -107,8 +105,7 @@ public class InstructorCourseService {
                 .map(course -> MyCourseItemDTO.of(course,
                         learners.getOrDefault(course.getCourseId(), 0L),
                         waiting.getOrDefault(course.getCourseId(), 0L),
-                        course.getStatus().equals(Course.STATUS_REJECTED)
-                                ? rejectReasons.get(course.getCourseId()) : null))
+                        course.isRejected() ? rejectReasons.get(course.getCourseId()) : null))
                 .toList());
     }
 

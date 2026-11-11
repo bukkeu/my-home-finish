@@ -26,14 +26,14 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
             select s from Scrap s, Course c
             where c.courseId = s.courseId
               and s.memberId = :memberId
-              and c.status = 'APPROVED' and c.isPublic = true and c.deletedAt is null
+              and c.status = com.wanted.moneybeetle.domain.course.model.entity.CourseStatus.APPROVED and c.isPublic = true and c.deletedAt is null
             order by s.createdAt desc, s.scrapId desc
             """,
             countQuery = """
             select count(s) from Scrap s, Course c
             where c.courseId = s.courseId
               and s.memberId = :memberId
-              and c.status = 'APPROVED' and c.isPublic = true and c.deletedAt is null
+              and c.status = com.wanted.moneybeetle.domain.course.model.entity.CourseStatus.APPROVED and c.isPublic = true and c.deletedAt is null
             """)
     Page<Scrap> findVisibleScraps(@Param("memberId") Long memberId, Pageable pageable);
 

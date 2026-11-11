@@ -61,9 +61,7 @@ public class SeasonAdminService {
     @Transactional
     public SeasonCreatedDTO createSeason(SeasonSaveDTO request, Long adminId) {
         // trading_season.created_by 는 NOT NULL + FK 라, 로그인한 관리자 번호가 없으면 저장 단계에서 500 이 난다
-        if (adminId == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
+        TradingAdminCheck.requireAdmin(adminId);
         request.checkStartDate();
         // 생성 요청을 차례로 처리한다. 기존 시즌 행을 모두 잠근 뒤 겹침을 확인해야 동시에 들어온 두 요청이
         // 같이 통과하지 못한다. 시즌이 하나도 없으면 잠글 행이 없다(맨 처음 시즌을 동시에 두 번 만드는 경우만 남는다)
