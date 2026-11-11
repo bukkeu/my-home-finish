@@ -283,7 +283,30 @@
       if (event.target === dialog || event.target.closest('[data-close]')) closeDialog();
     });
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && !dialog.hidden) closeDialog();
+      if (dialog.hidden) return;
+      if (event.key === 'Escape') {
+        closeDialog();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      // 대화상자가 열려 있는 동안 Tab 이 배경으로 빠져나가지 않게, 보이는 버튼·링크 사이에서만 돌린다
+      var items = Array.prototype.filter.call(
+        dialog.querySelectorAll('button:not([disabled]), a[href]'),
+        function (node) { return node.getClientRects().length > 0; }
+      );
+      if (!items.length) return;
+      var first = items[0];
+      var last = items[items.length - 1];
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     });
 
     root.querySelectorAll('[data-train]').forEach(function (card) {
