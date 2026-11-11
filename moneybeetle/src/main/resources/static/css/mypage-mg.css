@@ -90,7 +90,8 @@ select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36p
 .mg-empty { margin: 0; padding: 18px 0; color: var(--color-neutral-700); font-size: 14px; }
 
 /* ---------- 경험치 내역·레벨 표 ---------- */
-.mg-levels { overflow-x: auto; }
+/* .mg .blueprint 가 overflow: visible 로 덮어쓰므로 같은 무게로 다시 지정한다. 좁은 화면에서 레벨 표만 가로로 스크롤되고 페이지는 넘치지 않는다 */
+.mg .mg-levels { overflow-x: auto; display: block; }
 .mg-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .mg-table th, .mg-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-divider); text-align: left; white-space: nowrap; }
 .mg-table th { color: var(--color-neutral-700); font-size: 12px; font-weight: 700; }
