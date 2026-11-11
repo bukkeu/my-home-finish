@@ -100,7 +100,7 @@ class LearningCountRepositoryTest {
         courseService = new CourseService(categoryRepository, courseRepository, lessonRepository, progressRepository,
                 watchRepository, scrapRepository, courseReviewRepository,
                 Clock.fixed(NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
-                mock(MemberService.class), mock(InstructorService.class), new CategoryPathService(categoryRepository));
+                mock(MemberService.class), mock(InstructorService.class), mock(CategoryPathService.class));
         visible = course("보이는 강의", true, false);
         other = course("다른 보이는 강의", true, false);
         hidden = course("비공개 강의", false, false);

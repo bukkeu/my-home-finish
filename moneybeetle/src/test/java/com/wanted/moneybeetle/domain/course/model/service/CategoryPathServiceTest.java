@@ -13,22 +13,52 @@ import com.wanted.moneybeetle.global.config.CacheConfig;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.CacheManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /* comment.
 *   담당 : DBA ① 신아림 (#296)
-*   카테고리 표시 이름 캐시: 이름 만들기, 두 번째부터는 DB 를 읽지 않음, 관리자가 바꾸면 다시 읽음
-*   스프링 캐시 프록시가 실제로 동작해야 해서 CacheConfig·두 서비스만 올린 작은 스프링 컨텍스트로 확인한다 (저장소는 가짜)
+*   카테고리 표시 이름 캐시: 이름 만들기, 두 번째부터는 DB 를 읽지 않음, 관리자 변경이 커밋되면 다시 읽음
+*   - 캐시 프록시와 트랜잭션(커밋·롤백 뒤 동작)이 실제로 돌아야 해서, CacheConfig·두 서비스·실제 트랜잭션 관리자(H2 메모리 DB)만 올린
+*     작은 스프링 컨텍스트로 확인한다. 저장소는 가짜라 findAll 이 몇 번 불렸는지로 "DB 를 읽었는지" 본다
 *  */
-@SpringJUnitConfig(classes = {CacheConfig.class, CategoryPathService.class, AdminCategoryService.class})
+@SpringJUnitConfig(classes = {CacheConfig.class, CategoryPathService.class, AdminCategoryService.class,
+        CategoryPathServiceTest.TxConfig.class})
 class CategoryPathServiceTest {
+
+    @Configuration
+    @EnableTransactionManagement
+    static class TxConfig {
+        @Bean
+        DataSource dataSource() {
+            return new DriverManagerDataSource("jdbc:h2:mem:category-path-cache-test;DB_CLOSE_DELAY=-1", "sa", "");
+        }
+
+        @Bean
+        PlatformTransactionManager transactionManager(DataSource dataSource) {
+            return new DataSourceTransactionManager(dataSource);
+        }
+
+        @Bean
+        TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+            return new TransactionTemplate(transactionManager);
+        }
+    }
 
     @MockitoBean
     private CategoryRepository categoryRepository;
@@ -40,18 +70,22 @@ class CategoryPathServiceTest {
     @Autowired
     private AdminCategoryService adminCategoryService;
     @Autowired
-    private CacheManager cacheManager;
+    private TransactionTemplate tx;
 
     private Category realEstate;
+    private List<Category> categories;
 
     @BeforeEach
     void setUp() {
-        cacheManager.getCache(CacheConfig.CATEGORY_PATHS).clear();   // 테스트끼리 캐시가 섞이지 않게
+        categoryPathService.markChanged();   // 트랜잭션 밖이라 바로 버전이 올라간다 → 테스트끼리 캐시가 섞이지 않는다
         realEstate = category(Category.createCategory("부동산", 1), 1L);
         Category subscription = category(Category.createSubCategory(realEstate, "청약", 1), 11L);
         Category closed = category(Category.createSubCategory(realEstate, "경매", 2), 12L);
         closed.deactivate();
-        when(categoryRepository.findAll()).thenReturn(List.of(realEstate, subscription, closed));
+        categories = List.of(realEstate, subscription, closed);
+        when(categoryRepository.findAll()).thenReturn(categories);
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(realEstate));
+        when(courseRepository.existsByCategoryId(1L)).thenReturn(true);   // 강의가 있어 삭제 대신 비활성 처리
     }
 
     private static Category category(Category category, long id) {
@@ -81,15 +115,51 @@ class CategoryPathServiceTest {
     }
 
     @Test
-    @DisplayName("관리자가 카테고리를 바꾸면 캐시를 비워서 다음 조회는 새로 읽는다")
-    void evictedWhenAdminChangesCategory() {
-        categoryPathService.findCategoryPaths();
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(realEstate));
-        when(courseRepository.existsByCategoryId(1L)).thenReturn(true);   // 강의가 있어 비활성 처리
-
-        adminCategoryService.delete(1L);
+    @DisplayName("관리자 변경이 커밋되기 전에는 캐시를 그대로 쓰고, 커밋된 뒤의 조회는 새로 읽는다")
+    void reloadsOnlyAfterCommit() {
         categoryPathService.findCategoryPaths();
 
+        tx.executeWithoutResult(status -> {
+            adminCategoryService.delete(1L);
+            categoryPathService.findCategoryPaths();
+            verify(categoryRepository, times(1)).findAll();   // 아직 커밋 전: 캐시 사용
+        });
+        categoryPathService.findCategoryPaths();
+
+        verify(categoryRepository, times(2)).findAll();       // 커밋 뒤: 새로 읽음
+    }
+
+    @Test
+    @DisplayName("관리자 변경이 롤백되면 캐시를 그대로 쓴다")
+    void keepsCacheOnRollback() {
+        categoryPathService.findCategoryPaths();
+
+        tx.executeWithoutResult(status -> {
+            adminCategoryService.delete(1L);
+            status.setRollbackOnly();
+        });
+        categoryPathService.findCategoryPaths();
+
+        verify(categoryRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("옛 데이터를 읽던 조회가 관리자 변경 커밋 뒤에 끝나도, 다음 조회는 그 옛 값을 쓰지 않고 새로 읽는다")
+    void slowReaderDoesNotOverwriteNewerData() {
+        Category renamed = category(Category.createCategory("집", 1), 1L);
+        AtomicInteger reads = new AtomicInteger();
+        when(categoryRepository.findAll()).thenAnswer(invocation -> {
+            if (reads.incrementAndGet() == 1) {
+                // 이 조회가 옛 데이터를 읽은 직후, 다른 요청(다른 스레드·다른 트랜잭션)에서 관리자 변경이 커밋된다
+                CompletableFuture.runAsync(() -> tx.executeWithoutResult(status -> adminCategoryService.delete(1L))).join();
+                return categories;
+            }
+            return List.of(renamed);
+        });
+
+        assertThat(categoryPathService.findCategoryPaths()).containsEntry(1L, "부동산");   // 늦게 끝난 조회는 옛 값
+
+        assertThat(categoryPathService.findCategoryPaths()).containsEntry(1L, "집");      // 다음 조회는 새 값
         verify(categoryRepository, times(2)).findAll();
     }
 }
