@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.ExpHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
@@ -33,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   다른 도메인이 부르는 보상 창구 (역할분담 문서 §7 연동 약속)
 *   - grant(memberId, ruleCode, sourceId)             : 경험치·캐시 지급   [호출: 신아림 학습 완료·퀴즈, 출석]
 *   - grantRankingReward(memberId, rank, awardId)     : 시즌 랭킹 1~3위 캐시 지급 (SP-64) [호출: 이재성 랭킹 공개]
-*   - spendCash(memberId, sourceType, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]
+*   - spendCash(memberId, CashSource, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입] (String 버전은 @Deprecated)
 *   - adjustByAdmin(adminId, memberId, give, amt, why): 관리자 수동 지급·회수 [호출: growth.CashAdjustService, 이슈 #39]
 *   - getBalance(memberId) / getBalanceSnapshot       : 회원 캐시 잔액·성장 정보 조회
 *   - findCashHistories / findExpHistories            : 내역 조회 (API 22, 23)
@@ -63,12 +64,12 @@ public class RewardService {
             RewardRule.ATTENDANCE_DAILY, ExpHistory.SOURCE_ATTENDANCE);
 
     /** 보상 규칙 코드 -> 캐시 이력의 원인 종류. 여기에 없는 규칙은 캐시를 줄 수 없다 */
-    private static final Map<String, String> CASH_SOURCE_BY_RULE = Map.of(
-            RewardRule.COURSE_COMPLETE, CashHistory.SOURCE_COURSE_COMPLETE,
-            RewardRule.ATTENDANCE_STREAK, CashHistory.SOURCE_ATTENDANCE,
-            RewardRule.RANKING_RANK_1, CashHistory.SOURCE_RANKING,
-            RewardRule.RANKING_RANK_2, CashHistory.SOURCE_RANKING,
-            RewardRule.RANKING_RANK_3, CashHistory.SOURCE_RANKING);
+    private static final Map<String, CashSource> CASH_SOURCE_BY_RULE = Map.of(
+            RewardRule.COURSE_COMPLETE, CashSource.COURSE_COMPLETE,
+            RewardRule.ATTENDANCE_STREAK, CashSource.ATTENDANCE,
+            RewardRule.RANKING_RANK_1, CashSource.RANKING,
+            RewardRule.RANKING_RANK_2, CashSource.RANKING,
+            RewardRule.RANKING_RANK_3, CashSource.RANKING);
 
     /**
      * 이 규칙 코드가 이 캐시·경험치를 지급할 수 있는가. 0 인 쪽은 항상 지급할 수 있다 (줄 것이 없으므로).
@@ -84,8 +85,8 @@ public class RewardService {
     public static final int ATTENDANCE_DAILY_EXP_CAP = 50;
 
     /** 캐시를 쓸 수 있는 원인 종류 (SP-16) */
-    private static final List<String> USE_SOURCES = List.of(
-            CashHistory.SOURCE_SEASON_JOIN, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT);
+    private static final List<CashSource> USE_SOURCES = List.of(
+            CashSource.SEASON_JOIN, CashSource.SUBSCRIPTION_DEPOSIT);
 
     private final RewardRuleRepository rewardRuleRepository;
     private final CashHistoryRepository cashHistoryRepository;
@@ -148,7 +149,7 @@ public class RewardService {
         long cash = rule.getCashAmount();
         int exp = scaledExp(rule, expMultiplier);
         String expSource = EXP_SOURCE_BY_RULE.get(rule.getCode());
-        String cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
+        CashSource cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
         if (!canGrant(rule.getCode(), cash, exp)) {
             throw new BusinessException(GrowthErrorCode.REWARD_NOT_SUPPORTED);
         }
@@ -270,7 +271,7 @@ public class RewardService {
             if (levelCash > 0) {
                 balance += levelCash;
                 cashHistoryRepository.save(CashHistory.earn(
-                        memberId, CashHistory.SOURCE_LEVEL_UP, (long) level, null, levelCash, balance));
+                        memberId, CashSource.LEVEL_UP, (long) level, null, levelCash, balance));
             }
         }
     }
@@ -278,17 +279,17 @@ public class RewardService {
     /**
      * 캐시를 사용한다 (시즌 참가, 청약통장 납입). 잔액은 0 미만이 될 수 없다 (SP-15).
      *
-     * @param sourceType CashHistory.SOURCE_SEASON_JOIN, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT
-     * @param sourceId   시즌 ID, 납입 ID 등. 같은 (회원, 원인 종류, 원인 ID)로는 한 번만 쓸 수 있다
-     * @param amount     사용할 금액 (양수)
+     * @param source   CashSource.SEASON_JOIN, CashSource.SUBSCRIPTION_DEPOSIT 만 쓸 수 있다
+     * @param sourceId 시즌 ID, 납입 ID 등. 같은 (회원, 원인 종류, 원인 ID)로는 한 번만 쓸 수 있다
+     * @param amount   사용할 금액 (양수)
      * @return 사용 후 잔액
      * @throws BusinessException INVALID_AMOUNT(금액이 0 이하), NOT_ENOUGH_CASH(잔액 부족),
      *                           ALREADY_USED(같은 원인으로 이미 사용), MEMBER_NOT_FOUND(없는 회원)
      */
     @Transactional
-    public long spendCash(Long memberId, String sourceType, Long sourceId, long amount) {
-        if (memberId == null || sourceId == null || !USE_SOURCES.contains(sourceType)) {
-            throw new IllegalArgumentException("memberId, sourceId 와 사용 가능한 sourceType 이 필요합니다: " + sourceType);
+    public long spendCash(Long memberId, CashSource source, Long sourceId, long amount) {
+        if (memberId == null || sourceId == null || !USE_SOURCES.contains(source)) {
+            throw new IllegalArgumentException("memberId, sourceId 와 사용 가능한 source 가 필요합니다: " + source);
         }
         if (amount <= 0) {
             throw new BusinessException(GrowthErrorCode.INVALID_AMOUNT);
@@ -296,7 +297,7 @@ public class RewardService {
 
         MemberBalanceDTO before = memberService.lockBalance(memberId);
         // grant 와 같은 이유로 잠금 조회로 확인한다 (바깥 트랜잭션의 스냅샷이 아니라 최신 커밋 이력을 본다)
-        if (cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, sourceType, sourceId).isPresent()) {
+        if (cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, source, sourceId).isPresent()) {
             throw new BusinessException(GrowthErrorCode.ALREADY_USED);
         }
         if (before.getCash() < amount) {
@@ -304,8 +305,26 @@ public class RewardService {
         }
 
         MemberBalanceDTO after = memberService.deductCash(memberId, amount);
-        cashHistoryRepository.save(CashHistory.use(memberId, sourceType, sourceId, amount, after.getCash()));
+        cashHistoryRepository.save(CashHistory.use(memberId, source, sourceId, amount, after.getCash()));
         return after.getCash();
+    }
+
+    /**
+     * 캐시를 사용한다 (옛 문자열 버전). {@link #spendCash(Long, CashSource, Long, long)} 로 옮겨 가는 동안만 남겨 둔다.
+     * 문자열은 CashSource 이름과 같아야 하고, 모르는 문자열은 예전처럼 IllegalArgumentException 이다. 마지막 정리 이슈(#301)에서 지운다.
+     *
+     * @deprecated 원인 종류를 CashSource 로 넘기는 spendCash 를 쓴다
+     */
+    @Deprecated
+    @Transactional
+    public long spendCash(Long memberId, String sourceType, Long sourceId, long amount) {
+        CashSource source = null;
+        for (CashSource candidate : CashSource.values()) {
+            if (candidate.name().equals(sourceType)) {
+                source = candidate;
+            }
+        }
+        return spendCash(memberId, source, sourceId, amount);
     }
 
     /**

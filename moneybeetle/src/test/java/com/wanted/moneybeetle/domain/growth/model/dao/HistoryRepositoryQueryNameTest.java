@@ -3,6 +3,7 @@ package com.wanted.moneybeetle.domain.growth.model.dao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import jakarta.persistence.LockModeType;
 import java.lang.reflect.Method;
@@ -33,8 +34,8 @@ class HistoryRepositoryQueryNameTest {
     @Test
     @DisplayName("잠금 조회에는 PESSIMISTIC_WRITE 가 붙어 있다")
     void lockingReadsAreLocked() throws NoSuchMethodException {
-        assertThat(lockModeOf(CashHistoryRepository.class)).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
-        assertThat(lockModeOf(ExpHistoryRepository.class)).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+        assertThat(lockModeOf(CashHistoryRepository.class, CashSource.class)).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+        assertThat(lockModeOf(ExpHistoryRepository.class, String.class)).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
     }
 
     private static List<String> propertiesOf(String methodName, Class<?> entity) {
@@ -44,8 +45,8 @@ class HistoryRepositoryQueryNameTest {
                 .toList();
     }
 
-    private static LockModeType lockModeOf(Class<?> repository) throws NoSuchMethodException {
-        Method method = repository.getMethod(METHOD, Long.class, String.class, Long.class);
+    private static LockModeType lockModeOf(Class<?> repository, Class<?> sourceType) throws NoSuchMethodException {
+        Method method = repository.getMethod(METHOD, Long.class, sourceType, Long.class);
         return method.getAnnotation(Lock.class).value();
     }
 }
