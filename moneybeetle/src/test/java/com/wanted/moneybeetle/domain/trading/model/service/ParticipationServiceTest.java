@@ -275,6 +275,51 @@ class ParticipationServiceTest {
     }
 
     @Test
+    void 홈은_먼저_시작해_랭킹을_공개한_가장_최근_시즌을_지난_시즌으로_알려_준다() {
+        season(5);
+        givenTurns();
+        TradingSeason previous = TradingSeason.create("시즌 6", MONDAY.minusWeeks(2), new BigDecimal("100.00"), null, 1L);
+        ReflectionTestUtils.setField(previous, "tradingSeasonId", 6L);
+        when(seasonRepository.findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.of(previous));
+
+        TradingHomeDTO home = service.getHome(null);
+
+        assertThat(home.getSeason().getPreviousSeasonId()).isEqualTo(6L);
+        verify(seasonRepository).findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(MONDAY);
+    }
+
+    @Test
+    void 랭킹을_공개한_지난_시즌이_없으면_지난_시즌_번호는_null() {
+        season(5);
+        givenTurns();
+        when(seasonRepository.findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.empty());
+
+        TradingHomeDTO home = service.getHome(null);
+
+        assertThat(home.getSeason().getPreviousSeasonId()).isNull();
+    }
+
+    @Test
+    void 홈의_참가_정보에_시작_자금_구성_모은_캐시와_이월금이_들어간다() {
+        season(5);
+        givenTurns();
+        SeasonParticipant participant = SeasonParticipant.create(SEASON_ID, MEMBER_ID, 3_200_000L, 1_620_000L);
+        ReflectionTestUtils.setField(participant, "seasonParticipantId", 120L);
+        when(participantRepository.findByTradingSeasonIdAndMemberId(SEASON_ID, MEMBER_ID))
+                .thenReturn(Optional.of(participant));
+        when(holdingRepository.findBySeasonParticipantIdAndQuantityGreaterThanOrderByStockIdAsc(120L, 0))
+                .thenReturn(List.of());
+
+        TradingHomeDTO.Participation p = service.getHome(MEMBER_ID).getParticipation();
+
+        assertThat(p.getSavedCash()).isEqualTo(3_200_000L);
+        assertThat(p.getCarryoverIn()).isEqualTo(1_620_000L);
+        assertThat(p.getInvestAmount()).isEqualTo(4_820_000L);   // = 모은 캐시 + 이월금
+    }
+
+    @Test
     void 보이는_시즌이_없으면_홈은_NO_RUNNING_SEASON() {
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.empty());
 
