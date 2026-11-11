@@ -26,6 +26,7 @@
   var TABS = ['season', 'turn', 'stocks', 'prices', 'news', 'people', 'ranking'];
 
   var state = {
+    settledIds: {},   // 이 화면에서 정산에 성공한 시즌 번호 -> 정산 버튼을 다시 켜지 않는다
     seasons: [], season: null, tab: 'season',
     sectors: [], stocks: [], marketLoaded: false,
     prices: null, edits: {}, mode: 'price',
@@ -84,6 +85,11 @@
     if (btn) btn.disabled = true;
     return promise.then(function (v) { if (btn) btn.disabled = false; return v; },
       function (e) { if (btn) btn.disabled = false; throw e; });
+  }
+  /** 되돌릴 수 없는 작업용: 실패하면 버튼을 다시 켜고, 성공하면 끈 채로 둔다 (화면을 새로 그릴 때 상태에 맞게 다시 정한다) */
+  function busyOnce(btn, promise) {
+    if (btn) btn.disabled = true;
+    return promise.then(null, function (e) { if (btn) btn.disabled = false; throw e; });
   }
   function noSeasonText() {
     if (state.seasonsError) return '시즌을 불러오지 못해서 보여 줄 수 없어요';
@@ -942,10 +948,15 @@
    * ===================================================================== */
   function loadRanking() {
     var s = state.season, settle = $('at-settle-btn'), publish = $('at-publish-btn');
-    settle.disabled = !s || s.status !== 'SETTLING';
-    publish.disabled = !s || (s.status !== 'SETTLING' && s.status !== 'ENDED');
-    $('at-settle-hint').textContent = !s ? noSeasonText() : s.status === 'SETTLING' || s.status === 'ENDED'
-      ? '랭킹 공개는 정산을 마친 뒤에만 할 수 있어요' : '시즌 상태가 ‘정산’일 때 실행할 수 있어요 · 현재 ' + statusLabel(s.status);
+    // 서버 규칙(SettlementService): 정산 = 정산 상태이고 아직 정산 전, 랭킹 공개 = 정산 상태이고 정산을 마친 뒤(공개하면 종료)
+    // 시즌 목록에는 정산 여부가 없어서 정산 상태면 공개 버튼을 켜 두고, 정산 전에 누르면 서버 안내(NOT_SETTLED)를 보여 준다
+    var settledHere = !!(s && state.settledIds[s.seasonId]);
+    settle.disabled = !s || s.status !== 'SETTLING' || settledHere;
+    publish.disabled = !s || s.status !== 'SETTLING';
+    $('at-settle-hint').textContent = !s ? noSeasonText()
+      : s.status === 'ENDED' ? '랭킹을 공개해 끝난 시즌이에요'
+      : s.status === 'SETTLING' ? (settledHere ? '정산을 마쳤어요. 결과를 확인한 뒤 랭킹을 공개해 주세요' : '랭킹 공개는 정산을 마친 뒤에만 할 수 있어요')
+      : '시즌 상태가 ‘정산’일 때 실행할 수 있어요 · 현재 ' + statusLabel(s.status);
     loadRankPreview();
     var stats = $('at-stats'), t = begin('stats');
     if (!s) return emptyBox(stats, noSeasonText());
@@ -993,7 +1004,9 @@
     var btn = e.currentTarget, s = state.season;
     confirmModal({ title: '정산을 실행할까요?', body: '최종 순자산·수익률·순위·이월금을 한 번에 확정해요. 실행한 뒤에는 되돌릴 수 없어요.', ok: '정산 실행' }).then(function (ok) {
       if (!ok) return;
-      return busy(btn, api(seasonPath('/settle'), { method: 'POST' })).then(function (d) {
+      var id = s.seasonId;
+      return busyOnce(btn, api(seasonPath('/settle'), { method: 'POST' })).then(function (d) {
+        state.settledIds[id] = true;
         MB.toast((d && d.participants != null ? fmt(d.participants) + '명의 ' : '') + '정산을 마쳤어요');
         return loadSeasons(currentSeasonId()).then(loadRanking);
       }, toastError);
@@ -1003,7 +1016,7 @@
     var btn = e.currentTarget, s = state.season;
     confirmModal({ title: '랭킹을 공개할까요?', body: '모든 사용자에게 ' + s.name + ' 순자산·수익률 랭킹이 공개돼요. 되돌릴 수 없어요.', ok: '랭킹 공개' }).then(function (ok) {
       if (!ok) return;
-      return busy(btn, api(seasonPath('/rankings/publish'), { method: 'POST' })).then(function () {
+      return busyOnce(btn, api(seasonPath('/rankings/publish'), { method: 'POST' })).then(function () {
         MB.toast('랭킹을 공개했어요');
         // 시즌은 서버에서 종료로 바뀐다 -> 머리 알약·상태 버튼·정산 탭을 새 상태로 다시 그린다 (정산 버튼과 같다)
         return loadSeasons(currentSeasonId()).then(loadRanking);
