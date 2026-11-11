@@ -3,7 +3,6 @@ package com.wanted.moneybeetle.domain.inquiry.model.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -103,11 +102,19 @@ class InquiryDailyLimitTest {
     }
 
     @Test
-    @DisplayName("설정이 0 이하로 잘못 들어가도 아무도 못 쓰게 되지 않고 10을 쓴다")
+    @DisplayName("설정이 0·음수로 잘못 들어가면 10을 쓴다: 9개면 쓸 수 있고 10개면 막힌다")
     void nonPositiveSettingFallsBackToTen() {
-        when(systemSettingService.findIntValue(eq(KEY))).thenReturn(OptionalInt.of(0));
-        writtenToday(5);
+        for (int invalidLimit : new int[] {0, -1}) {
+            when(systemSettingService.findIntValue(KEY)).thenReturn(OptionalInt.of(invalidLimit));
 
-        assertThat(inquiryService.createInquiry(MEMBER_ID, request())).isEqualTo(100L);
+            writtenToday(9);
+            assertThat(inquiryService.createInquiry(MEMBER_ID, request())).isEqualTo(100L);
+
+            writtenToday(10);
+            assertThatThrownBy(() -> inquiryService.createInquiry(MEMBER_ID, request()))
+                    .as("설정 %d", invalidLimit)
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(InquiryErrorCode.INQUIRY_DAILY_LIMIT);
+        }
     }
 }
