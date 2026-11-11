@@ -84,19 +84,16 @@
   }
 
   // 시안의 "{exp} / 150 XP" = 지금 레벨에서 쌓은 경험치 / 다음 레벨까지 필요한 경험치.
-  // 내 정보 API 의 exp 는 누적값이라, 레벨 표(API 24 GET /api/v1/levels)의 필요 경험치로 지금 레벨 구간을 구한다
+  // 서버가 화면을 그릴 때 넣어 준 공통 레이아웃 값(layout.expInLevel·expPerLevel, #249)을 쓴다 → 헤더·메뉴와 같은 값.
+  // 최고 레벨(구간 0)이거나 레이아웃 값이 없으면 누적 경험치만 보인다
   function showExp(me) {
-    return MB.api('/api/v1/levels').then(function (data) {
-      var levels = (data && data.levels) || [];
-      var cur = levels.filter(function (l) { return l.level === me.level; })[0];
-      var next = levels.filter(function (l) { return l.level === me.level + 1; })[0];
-      if (!cur) throw new Error('no level');
-      var inLevel = me.exp - cur.requiredExp;
-      var gap = next ? next.requiredExp - cur.requiredExp : inLevel;   // 최고 레벨이면 쌓은 값만
-      setP('exp', fmt(inLevel) + ' / ' + fmt(gap) + ' XP');
-    }).catch(function () {
+    var tag = root.querySelector('[data-p="exp"]');
+    var per = Number(tag.dataset.expPer || 0);
+    if (per > 0) {
+      setP('exp', fmt(tag.dataset.expIn) + ' / ' + fmt(per) + ' XP');
+    } else {
       setP('exp', fmt(me.exp) + ' XP');
-    });
+    }
   }
 
   function showPhoto(url) {

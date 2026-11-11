@@ -1,6 +1,10 @@
 package com.wanted.moneybeetle.domain.member.controller;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
+import com.wanted.moneybeetle.domain.home.config.HomeWebConfig;
+import com.wanted.moneybeetle.domain.home.config.LayoutInterceptor;
+import com.wanted.moneybeetle.domain.home.model.dto.LayoutDTO;
+import com.wanted.moneybeetle.domain.home.model.service.LayoutService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.support.MockSecurityServices;
 import com.wanted.moneybeetle.support.SecurityTestApp;
@@ -9,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -32,8 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *   - 로그인 회원만 들어온다
 *   - 탭 7개(합의한 탭 이름)와 탭 영역이 있고, 아직 없는 담당 조각은 "준비 중" 자리로 대신 그려진다 (화면이 깨지지 않는다)
 *   - 화면 스크립트·스타일이 들어간다
+*   - 프로필 카드 경험치는 공통 레이아웃 값(LayoutInterceptor, #249)의 지금 레벨 경험치·레벨 구간을 쓴다
 *  */
-@SpringBootTest(classes = {SecurityTestApp.class, MyPageViewController.class})
+@SpringBootTest(classes = {SecurityTestApp.class, MyPageViewController.class, HomeWebConfig.class, LayoutInterceptor.class})
 @MockSecurityServices
 class MyPageRenderTest {
 
@@ -41,6 +47,8 @@ class MyPageRenderTest {
 
     @Autowired
     private MemberService memberService;
+    @MockitoBean
+    private LayoutService layoutService;
     @Autowired
     private WebApplicationContext context;
     private MockMvc mockMvc;
@@ -48,6 +56,9 @@ class MyPageRenderTest {
     @BeforeEach
     void setUp() {
         when(memberService.isActiveMember(anyLong())).thenReturn(true);
+        // 민지 Lv.8 투룸 : 지금 레벨에서 90 XP, 레벨 구간 150 XP
+        when(layoutService.getLayout(8L)).thenReturn(new LayoutDTO("민지", 8, "투룸", 12000L, 90, 150, 90000L, 2,
+                null, 8, 12));
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
@@ -91,6 +102,14 @@ class MyPageRenderTest {
 
         // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth·learning)와 파일 자체가 없는 경우(housing) 모두
         assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size());
+    }
+
+    @Test
+    void 프로필_카드_경험치는_공통_레이아웃_값을_쓴다() throws Exception {
+        String html = render();
+
+        assertThat(html).contains("data-exp-in=\"90\"").contains("data-exp-per=\"150\"")
+                .contains("12,000");                              // 헤더 캐시도 같은 레이아웃 값
     }
 
     @Test

@@ -47,7 +47,9 @@
           <div class="mp-tags">
             <span class="tag tag-accent" data-p="level">Lv.-</span>
             <span class="tag mp-house" data-p="title"></span>
-            <span class="tag tag-neutral" data-p="exp">- / - XP</span>
+            <!--/* 시안 "90 / 150 XP" : 공통 레이아웃 값(LayoutInterceptor, #249)의 지금 레벨 경험치 / 레벨 구간. 헤더와 같은 값 */-->
+            <span class="tag tag-neutral" data-p="exp"
+                  th:attr="data-exp-in=${layout != null ? layout.expInLevel : null}, data-exp-per=${layout != null ? layout.expPerLevel : null}">- / - XP</span>
             <span class="tag tag-neutral mp-cash">
               <img th:src="@{/images/cash-coin2.png}" alt="캐시"><span data-p="cash">-</span>
             </span>
