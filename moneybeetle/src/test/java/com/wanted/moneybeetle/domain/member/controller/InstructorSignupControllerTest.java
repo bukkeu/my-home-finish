@@ -35,7 +35,7 @@ class InstructorSignupControllerTest {
     private final MemberSignupService memberSignupService = mock(MemberSignupService.class);
 
     private MockMvc mockMvc() {
-        return MockMvcBuilders.standaloneSetup(new MemberController(mock(MemberService.class), mock(AccountService.class),
+        return MockMvcBuilders.standaloneSetup(new MemberController(mock(MemberService.class), mock(AccountService.class), mock(com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier.class),
                         mock(MemberProfileService.class), memberSignupService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))

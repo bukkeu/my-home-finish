@@ -7,13 +7,8 @@ import com.wanted.moneybeetle.domain.member.model.dto.SocialSignupDTO;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberSignupService;
-import com.wanted.moneybeetle.domain.member.model.service.SocialReauthVerifier;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.servlet.http.HttpSession;
-import java.io.Serializable;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -35,32 +30,28 @@ import org.springframework.stereotype.Service;
 *  */
 @Service
 @RequiredArgsConstructor
-public class SocialLoginService implements SocialReauthVerifier {
+public class SocialLoginService {
 
     static final String SESSION_KEY = "socialSignupPending";
-    /** 로그인한 회원이 구글·카카오로 다시 로그인하러 간 상태 (탈퇴 본인 확인). 제공자에서 돌아오면 completeReauth 가 확인한다 */
-    static final String REAUTH_PENDING_KEY = "socialReauthPending";
-    /** 다시 로그인해 본인 확인을 마친 상태. 탈퇴 요청이 한 번 쓰고 지운다 */
-    static final String REAUTH_DONE_KEY = "socialReauthDone";
-    /** 다시 로그인으로 시작한 확인, 마친 확인이 모두 유효한 시간 */
-    static final Duration REAUTH_VALID = Duration.ofMinutes(5);
-
     private final MemberService memberService;
     private final MemberSignupService memberSignupService;
     private final AuthService authService;
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrations;
-    private final Clock clock;
 
-    /** 세션에 두는 본인 확인 상태: 어느 회원이고 언제까지 유효한가 */
-    record Reauth(Long memberId, Instant expiresAt) implements Serializable {
+    /**
+     * 간편 로그인을 시작할 수 있는 제공자인가 (지원하는 제공자이고 ID·시크릿이 있어 등록돼 있는가). 로그인·가입 화면이 버튼을 보일지 정할 때 쓴다.
+     * 화면과 API 8 이 같은 기준(등록 정보)을 쓰므로, 버튼이 보이는데 눌러서 실패하는 일이 없다.
+     */
+    public boolean isProviderAvailable(String provider) {
+        ClientRegistrationRepository repository = clientRegistrations.getIfAvailable();
+        boolean supported = SocialProfileExtractor.REGISTRATION_GOOGLE.equals(provider)
+                || SocialProfileExtractor.REGISTRATION_KAKAO.equals(provider);
+        return repository != null && supported && repository.findByRegistrationId(provider) != null;
     }
 
     /** 간편 로그인을 시작할 수 있는 제공자인가 확인한다. 지원하지 않거나 키가 없어 등록되지 않은 제공자면 OAUTH_PROVIDER_UNAVAILABLE */
     public void requireAvailableProvider(String provider) {
-        ClientRegistrationRepository repository = clientRegistrations.getIfAvailable();
-        boolean supported = SocialProfileExtractor.REGISTRATION_GOOGLE.equals(provider)
-                || SocialProfileExtractor.REGISTRATION_KAKAO.equals(provider);
-        if (repository == null || !supported || repository.findByRegistrationId(provider) == null) {
+        if (!isProviderAvailable(provider)) {
             throw new BusinessException(MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE);
         }
     }
@@ -96,68 +87,6 @@ public class SocialLoginService implements SocialReauthVerifier {
         }
         session.setAttribute(SESSION_KEY, new SocialProfile(profile.provider(), profile.providerUserId(), email, profile.nickname()));
         return new Result(null);
-    }
-
-    /** 로그인한 회원이 제공자로 다시 로그인해 본인 확인을 하러 간다. 이전에 마친 확인은 지우고 새로 시작한다 */
-    public void beginReauth(Long memberId, HttpSession session) {
-        session.removeAttribute(REAUTH_DONE_KEY);
-        session.setAttribute(REAUTH_PENDING_KEY, new Reauth(memberId, clock.instant().plus(REAUTH_VALID)));
-    }
-
-    /** 본인 확인을 하러 간 상태를 지운다 (일반 간편 로그인을 시작하거나 확인이 실패·취소됐을 때) */
-    public void cancelReauth(HttpSession session) {
-        if (session != null) {
-            session.removeAttribute(REAUTH_PENDING_KEY);
-        }
-    }
-
-    /** 세션에 본인 확인을 하러 간 상태가 있는가 (유효 시간은 보지 않는다. 제공자에게 다시 로그인을 요구하는 쪽에서 쓰며, 만료는 completeReauth 가 막는다) */
-    public static boolean hasPendingReauth(HttpSession session) {
-        return session != null && session.getAttribute(REAUTH_PENDING_KEY) instanceof Reauth;
-    }
-
-    /**
-     * 이 세션이 본인 확인을 하러 간 상태인가 (제공자에서 돌아온 로그인을 일반 로그인이 아니라 본인 확인으로 처리해야 하는지).
-     * 시간이 지났어도 시작한 상태가 남아 있으면 true 다. 그래야 만료된 확인이 일반 로그인으로 처리되지 않고 completeReauth 가
-     * OAUTH_SESSION_EXPIRED 로 막는다.
-     */
-    public boolean isReauthPending(HttpSession session) {
-        return hasPendingReauth(session);
-    }
-
-    /**
-     * 제공자에서 돌아온 계정이 본인 확인을 시작한 회원과 같은 계정이면 본인 확인을 마친 것으로 기록하고 그 회원을 돌려준다.
-     * 시작한 적이 없거나 시간이 지났으면 OAUTH_SESSION_EXPIRED, 연결되지 않은 계정이거나 다른 회원의 계정이면 OAUTH_REAUTH_MISMATCH.
-     */
-    public LoginMemberDTO completeReauth(SocialProfile profile, HttpSession session) {
-        if (session == null) {
-            throw new BusinessException(MemberErrorCode.OAUTH_SESSION_EXPIRED);
-        }
-        Object attribute = session.getAttribute(REAUTH_PENDING_KEY);
-        session.removeAttribute(REAUTH_PENDING_KEY);   // 한 번만 쓴다
-        Instant now = clock.instant();
-        if (!(attribute instanceof Reauth pending) || !now.isBefore(pending.expiresAt())) {
-            throw new BusinessException(MemberErrorCode.OAUTH_SESSION_EXPIRED);
-        }
-        LoginMemberDTO linked = memberService.findLoginMemberBySocial(profile.provider(), profile.providerUserId())
-                .orElseThrow(() -> new BusinessException(MemberErrorCode.OAUTH_REAUTH_MISMATCH));
-        if (!linked.getMemberId().equals(pending.memberId())) {
-            throw new BusinessException(MemberErrorCode.OAUTH_REAUTH_MISMATCH);
-        }
-        session.setAttribute(REAUTH_DONE_KEY, new Reauth(pending.memberId(), now.plus(REAUTH_VALID)));
-        return linked;
-    }
-
-    @Override
-    public boolean consumeRecentReauth(Long memberId, HttpSession session) {
-        if (session == null || !(session.getAttribute(REAUTH_DONE_KEY) instanceof Reauth done)) {
-            return false;
-        }
-        if (!done.memberId().equals(memberId) || !clock.instant().isBefore(done.expiresAt())) {
-            return false;
-        }
-        session.removeAttribute(REAUTH_DONE_KEY);
-        return true;
     }
 
     /** 가입을 이어서 하는 중인 사람의 제공자 정보. 세션에 없으면(만료·처음부터 안 함) OAUTH_SESSION_EXPIRED */

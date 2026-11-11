@@ -3,7 +3,7 @@
   담당 : SCM 서수영 (#63, 모의 청약 운영 화면)
   원본 디자인 : moneybeetle-page/AdminHousingManagement.dc.html (화면 구성·모양은 이 시안이 기준)
   경로 : /admin/housing-management (AdminHousingViewController, 관리자만)
-  Model : today (서울 날짜 yyyy-MM-dd), layout (공통 레이아웃 값, 아직 없으면 null)
+  Model : today (서울 날짜 yyyy-MM-dd), unlockLevel (모의 청약 해금 레벨, 운영 설정 #223), layout (공통 레이아웃 값, 아직 없으면 null)
   구성 : 왼쪽 모의 청약 관리 메뉴 + 보기 4개 - 대시보드 / 청약 공고 관리 / 신청 현황 / 당첨 결과 관리 (주소 끝 #notices, #apps, #results)
          데이터는 static/js/admin-housing.js 가 운영 API(142~148)로 불러온다
   시안과 다른 점 (확정 정책·API 기준)
@@ -118,7 +118,7 @@
           <div class="ah-upload" aria-disabled="true" title="이미지 저장 기능이 아직 없어요">
             <span class="ah-upload__title">아파트 이미지 올리기</span><span class="ah-muted">준비 중이에요</span>
           </div>
-          <div class="ah-info">공고를 게시하면 게시일부터 바로 신청을 받아요. 상태는 날짜에 맞춰 자동으로 정해지고(게시일이 미래면 모집 예정), 신청 조건(Lv.12 이상)은 그대로 적용돼요.</div>
+          <div class="ah-info">공고를 게시하면 게시일부터 바로 신청을 받아요. 상태는 날짜에 맞춰 자동으로 정해지고(게시일이 미래면 모집 예정), 신청 조건(<span th:text="|Lv.${unlockLevel} 이상|">Lv.12 이상</span>, 운영 설정 기준)은 그대로 적용돼요.</div>
           <div class="ah-warn" data-lock-note hidden></div>
           <p class="ah-form-msg" data-form-msg role="alert"></p>
           <div class="ah-actions">

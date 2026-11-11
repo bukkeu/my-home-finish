@@ -49,8 +49,7 @@ public enum MemberErrorCode implements ErrorCode {
     OAUTH_PROVIDER_UNAVAILABLE("OAUTH_PROVIDER_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요."),
     OAUTH_SESSION_EXPIRED("OAUTH_SESSION_EXPIRED", HttpStatus.BAD_REQUEST, "간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요."),
     // 비밀번호가 없는 간편 로그인 회원의 본인 확인 (탈퇴, API 17)
-    SOCIAL_REAUTH_REQUIRED("SOCIAL_REAUTH_REQUIRED", HttpStatus.BAD_REQUEST, "구글·카카오로 다시 로그인해 본인 확인을 해 주세요."),
-    OAUTH_REAUTH_MISMATCH("OAUTH_REAUTH_MISMATCH", HttpStatus.BAD_REQUEST, "지금 로그인한 계정과 다른 계정으로 확인했어요. 같은 계정으로 다시 시도해 주세요.");
+    WITHDRAW_VERIFICATION_REQUIRED("WITHDRAW_VERIFICATION_REQUIRED", HttpStatus.BAD_REQUEST, "가입한 이메일로 받은 인증번호를 확인해 주세요.");
 
     private final String code;
     private final HttpStatus status;

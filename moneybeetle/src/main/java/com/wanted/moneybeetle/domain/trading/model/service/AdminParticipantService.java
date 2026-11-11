@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,8 @@ public class AdminParticipantService {
     public static final String SORT_JOINED_AT = "joinedAt";
     public static final int DEFAULT_SIZE = 50;
     public static final int MAX_SIZE = 200;
+    private static final Set<String> SORT_KEYS =
+            Set.of(SORT_NET_ASSET, SORT_RETURN_RATE, SORT_INVEST_AMOUNT, SORT_JOINED_AT);
 
     private final TradingSeasonRepository seasonRepository;
     private final SeasonParticipantRepository participantRepository;
@@ -63,6 +66,7 @@ public class AdminParticipantService {
     /** API 135 참가자 목록. sort : netAsset(기본)·returnRate·investAmount 는 큰 순, joinedAt 은 먼저 참가한 순 */
     public AdminParticipantListDTO findParticipants(Long seasonId, String sort, int page, int size) {
         String sortKey = sort == null || sort.isBlank() ? SORT_NET_ASSET : sort;
+        checkSortKey(sortKey);
         checkPaging(page, size);
         TradingSeason season = getSeason(seasonId);
         List<SeasonParticipant> participants =
@@ -180,6 +184,12 @@ public class AdminParticipantService {
 
     private static void checkPaging(int page, int size) {
         if (page < 0 || size < 1 || size > MAX_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private static void checkSortKey(String sortKey) {
+        if (!SORT_KEYS.contains(sortKey)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
     }

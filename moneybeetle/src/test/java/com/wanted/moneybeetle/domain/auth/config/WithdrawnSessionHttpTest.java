@@ -70,6 +70,11 @@ class WithdrawnSessionHttpTest {
         }
 
         @Bean
+        com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier withdrawVerifier() {
+            return org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier.class);   // AccountService 가 요구하는 빈 (이 테스트는 탈퇴 본인 확인을 쓰지 않는다)
+        }
+
+        @Bean
         Clock clock() {
             return Clock.fixed(Instant.parse("2026-11-09T00:00:00Z"), ZoneId.of("Asia/Seoul"));
         }

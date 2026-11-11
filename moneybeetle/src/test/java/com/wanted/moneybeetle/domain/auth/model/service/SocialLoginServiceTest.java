@@ -40,14 +40,13 @@ class SocialLoginServiceTest {
     @SuppressWarnings("unchecked")
     private final org.springframework.beans.factory.ObjectProvider<org.springframework.security.oauth2.client.registration.ClientRegistrationRepository>
             clientRegistrations = mock(org.springframework.beans.factory.ObjectProvider.class);
-    private final ReauthClock clock = new ReauthClock(java.time.Instant.parse("2026-11-10T00:00:00Z"));
     private SocialLoginService service;
 
     private final SocialProfile profile = new SocialProfile("GOOGLE", "g-1", "Minji@Gmail.com", "민지");
 
     @BeforeEach
     void setUp() {
-        service = new SocialLoginService(memberService, memberSignupService, authService, clientRegistrations, clock);
+        service = new SocialLoginService(memberService, memberSignupService, authService, clientRegistrations);
     }
 
     private void givenGoogleRegistered() {
@@ -81,105 +80,18 @@ class SocialLoginServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
-    /** 시간을 앞으로 보낼 수 있는 시계 */
-    private static class ReauthClock extends java.time.Clock {
-        private java.time.Instant now;
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("isProviderAvailable: 등록된 제공자만 true 이고, 등록 안 된·지원하지 않는·null 제공자와 등록 정보가 없을 때는 false 다 (화면 버튼 기준, 예외 없음)")
+    void providerAvailabilityForPages() {
+        givenGoogleRegistered();
 
-        ReauthClock(java.time.Instant start) {
-            this.now = start;
-        }
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("google")).isTrue();
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("kakao")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("naver")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable(null)).isFalse();
 
-        void advance(java.time.Duration duration) {
-            now = now.plus(duration);
-        }
-
-        @Override
-        public java.time.ZoneId getZone() {
-            return java.time.ZoneId.of("Asia/Seoul");
-        }
-
-        @Override
-        public java.time.Clock withZone(java.time.ZoneId zone) {
-            return this;
-        }
-
-        @Override
-        public java.time.Instant instant() {
-            return now;
-        }
-    }
-
-    // ---- 본인 확인(다시 로그인): 비밀번호가 없는 간편 로그인 회원의 탈퇴 ----
-
-    @Test
-    @DisplayName("같은 계정으로 다시 로그인하면 본인 확인이 기록되고, 탈퇴 때 한 번만 쓸 수 있다")
-    void reauthSucceedsAndIsConsumedOnce() {
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_ACTIVE)));
-        service.beginReauth(7L, session);
-        assertThat(service.isReauthPending(session)).isTrue();
-
-        LoginMemberDTO member = service.completeReauth(profile, session);
-
-        assertThat(member.getMemberId()).isEqualTo(7L);
-        assertThat(service.isReauthPending(session)).isFalse();   // 시작한 상태는 한 번 쓰고 지운다
-        assertThat(service.consumeRecentReauth(7L, session)).isTrue();
-        assertThat(service.consumeRecentReauth(7L, session)).isFalse();   // 확인은 한 번만 쓸 수 있다
-    }
-
-    @Test
-    @DisplayName("다른 회원의 계정이거나 연결되지 않은 계정으로 확인하면 OAUTH_REAUTH_MISMATCH 이고 확인은 기록되지 않는다")
-    void reauthWithOtherAccountIsRejected() {
-        service.beginReauth(8L, session);   // 8번 회원이 확인하러 갔는데 7번 회원의 구글 계정으로 돌아왔다
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_ACTIVE)));
-        assertCode(() -> service.completeReauth(profile, session), MemberErrorCode.OAUTH_REAUTH_MISMATCH);
-        assertThat(service.consumeRecentReauth(8L, session)).isFalse();
-        assertThat(service.consumeRecentReauth(7L, session)).isFalse();
-
-        service.beginReauth(7L, session);
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.empty());   // 연결되지 않은 계정
-        assertCode(() -> service.completeReauth(profile, session), MemberErrorCode.OAUTH_REAUTH_MISMATCH);
-        assertThat(service.consumeRecentReauth(7L, session)).isFalse();
-    }
-
-    @Test
-    @DisplayName("본인 확인을 시작한 적이 없거나 5분이 지났으면 OAUTH_SESSION_EXPIRED 이다")
-    void reauthWithoutStartOrExpired() {
-        assertCode(() -> service.completeReauth(profile, session), MemberErrorCode.OAUTH_SESSION_EXPIRED);
-        assertCode(() -> service.completeReauth(profile, null), MemberErrorCode.OAUTH_SESSION_EXPIRED);
-
-        service.beginReauth(7L, session);
-        clock.advance(SocialLoginService.REAUTH_VALID);
-        assertThat(service.isReauthPending(session)).isTrue();   // 만료돼도 대기 상태는 남아, 일반 로그인으로 처리되지 않고
-        assertCode(() -> service.completeReauth(profile, session), MemberErrorCode.OAUTH_SESSION_EXPIRED);   // 여기서 만료 오류로 막힌다
-        assertThat(service.isReauthPending(session)).isFalse();   // 확인을 한 번 시도하면 대기 상태는 지워진다
-    }
-
-    @Test
-    @DisplayName("마친 본인 확인도 5분이 지나면 쓸 수 없고, 다른 회원은 쓸 수 없다. 세션이 없으면 false")
-    void doneReauthExpiresAndIsPerMember() {
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_ACTIVE)));
-        service.beginReauth(7L, session);
-        service.completeReauth(profile, session);
-
-        assertThat(service.consumeRecentReauth(8L, session)).isFalse();   // 다른 회원
-        clock.advance(SocialLoginService.REAUTH_VALID);
-        assertThat(service.consumeRecentReauth(7L, session)).isFalse();   // 시간이 지났다
-        assertThat(service.consumeRecentReauth(7L, null)).isFalse();
-    }
-
-    @Test
-    @DisplayName("본인 확인을 다시 시작하면 이전에 마친 확인은 지워지고, cancelReauth 는 시작한 상태를 지운다")
-    void beginClearsPreviousAndCancelClearsPending() {
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_ACTIVE)));
-        service.beginReauth(7L, session);
-        service.completeReauth(profile, session);
-
-        service.beginReauth(7L, session);
-        assertThat(service.consumeRecentReauth(7L, session)).isFalse();
-
-        service.cancelReauth(session);
-        assertThat(service.isReauthPending(session)).isFalse();
-        service.cancelReauth(null);   // 세션이 없어도 안전하다
+        org.mockito.Mockito.when(clientRegistrations.getIfAvailable()).thenReturn(null);
+        org.assertj.core.api.Assertions.assertThat(service.isProviderAvailable("google")).isFalse();
     }
 
     private static LoginMemberDTO loginMember(String status) {

@@ -30,7 +30,7 @@
 | 데이터 형식 | `Content-Type: application/json; charset=UTF-8` (파일 업로드만 `multipart/form-data`) |
 | 인증 | 세션 쿠키(`JSESSIONID`). 30분 동안 요청이 없으면 만료 (DP-11) |
 | 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자 |
-| 해금 | 모의투자 API는 Lv.8, 모의 청약 API는 Lv.12 미만이면 `403 LEVEL_LOCKED` (SP-24) |
+| 해금 | 모의투자 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_TRADING`, 기본 Lv.8, 시즌과 무관), 모의 청약 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_HOUSING`, 기본 Lv.12) 미만이면 `403 LEVEL_LOCKED` (SP-24, #223) |
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
@@ -134,6 +134,8 @@
 | 15 | `POST` | `/api/v1/members/me/profile-image` | 프로필 이미지 변경 | 회원 | USR-12, DP-32 |
 | 16 | `PATCH` | `/api/v1/members/me/password` | 비밀번호 변경 | 회원 | USR-13, SP-03 |
 | 17 | `DELETE` | `/api/v1/members/me` | 회원 탈퇴 | 회원 | USR-14, DP-06 |
+| 17-1 | `POST` | `/api/v1/members/me/withdraw-verification/request` | 탈퇴 본인 확인 코드 요청 (간편 로그인 회원) | 회원 | USR-14, DP-06 |
+| 17-2 | `POST` | `/api/v1/members/me/withdraw-verification` | 탈퇴 본인 확인 (받은 코드 확인, 간편 로그인 회원) | 회원 | USR-14, DP-06 |
 | 18 | `GET` | `/api/v1/members/{memberId}/profile` | 다른 회원 공개 프로필 | 회원 | DP-03, HOM-06 |
 
 ### 홈·성장
@@ -537,20 +539,19 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | --- | --- |
 | Endpoint | `/api/v1/auth/oauth/{provider}` |
 | Method | `GET` |
-| 권한 | 비회원 (`purpose=reauth` 는 회원) |
+| 권한 | 비회원 |
 | 관련 | USR-07, DP-13 |
-| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. **본인 확인용 다시 로그인(`purpose=reauth`)**: 비밀번호가 없는 간편 로그인 회원이 탈퇴(API 17) 전에 같은 제공자로 다시 로그인해 본인을 확인한다. 로그인한 회원만 시작할 수 있고(아니면 `UNAUTHORIZED` 401) 시작하면 세션에 5분짜리 확인 대기 상태가 생긴다. 제공자의 로그인 세션이 살아 있어도 새 확인 없이 통과하지 않도록, 이 요청에만 제공자에게 로그인을 다시 요구하는 `prompt` 값을 붙인다(카카오 `login`, 구글 `select_account consent`. 구글은 비밀번호 입력까지 강제하지는 못한다. 카카오톡 인앱 브라우저는 `login` 을 지원하지 않을 수 있다). 일반 간편 로그인은 그대로다. 제공자에서 돌아오면 새 로그인이 아니라 본인 확인으로 처리한다: 연결된 계정이 지금 로그인한 회원의 계정과 같으면 확인을 기록하고(5분 안에 탈퇴 요청 한 번에 쓸 수 있다) 로그인 상태를 그대로 두고 `/user/my-page?reauth=done` 으로 이동(302)한다. 다른 계정이거나 확인이 만료됐으면 로그인 상태를 지우고 `/login?oauthError=OAUTH_REAUTH_MISMATCH`(만료는 `OAUTH_SESSION_EXPIRED`)로 이동한다. |
+| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. |
 
 **Request**
 
 - Path: provider=google | kakao
-- Query: purpose=reauth (선택. 탈퇴 본인 확인용 다시 로그인)
 
 **Response**
 
 - 302 Found → `/oauth2/authorization/{provider}` → 제공자 로그인 화면
 
-**Error**: `OAUTH_PROVIDER_UNAVAILABLE`, `UNAUTHORIZED`(`purpose=reauth` 인데 로그인하지 않음)
+**Error**: `OAUTH_PROVIDER_UNAVAILABLE`
 
 #### 8-1. 간편 로그인 가입 정보 확인
 
@@ -793,7 +794,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 본인 확인 뒤 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 비밀번호가 있는 회원은 현재 비밀번호(`password`)로 확인한다. **비밀번호가 없는 간편 로그인 회원은 `password` 없이 요청하며**, 먼저 API 8 을 `purpose=reauth` 로 불러 같은 제공자로 다시 로그인해 확인을 마친 세션이어야 한다(5분 안, 한 번만 사용). 확인이 없으면 `SOCIAL_REAUTH_REQUIRED`. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
+| 설명 | 본인 확인 뒤 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 비밀번호가 있는 회원은 현재 비밀번호(`password`)로 확인한다. **비밀번호가 없는 간편 로그인 회원은 `password` 없이 요청하며**, 먼저 API 17-1·17-2 로 가입 이메일로 받은 코드를 확인한 세션이어야 한다(확인 뒤 5분 안, 한 번만 사용). 확인이 없으면 `WITHDRAW_VERIFICATION_REQUIRED`. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -807,7 +808,49 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`, `SOCIAL_REAUTH_REQUIRED`, `FORBIDDEN`
+**Error**: `PASSWORD_WRONG`, `WITHDRAW_VERIFICATION_REQUIRED`, `FORBIDDEN`
+
+#### 17-1. 탈퇴 본인 확인 코드 요청 (간편 로그인 회원)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification/request` |
+| Method | `POST` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #232 |
+| 설명 | 비밀번호가 없는 간편 로그인(구글·카카오) 회원이 탈퇴(API 17) 전에 본인임을 확인하려고, **가입한 이메일**로 6자리 인증번호를 보낸다. 받는 이메일은 서버가 로그인한 회원의 가입 이메일로 정하므로 요청으로 받지 않는다. 제공자에게 다시 로그인하게 하는 방식은 서버가 "다시 로그인했는가"를 확인할 증거를 받을 수 없어서(제공자 요청의 `prompt` 값은 브라우저가 보내는 값이라 지울 수 있다) 쓰지 않는다. 코드 규칙은 가입 중 본인인증(API 5·5-1)과 같다: 5분 안에 쓰고, 5번 틀리면 폐기하고, 같은 회원은 60초에 한 번만 받을 수 있다(세션을 새로 만들어도 같다). 새 코드를 받으면 이전 코드는 쓸 수 없다. 비밀번호가 있는 회원은 이 방식을 쓰지 않으므로 `FORBIDDEN`(현재 비밀번호로 탈퇴한다). 진행 상태는 세션에만 두고 DB 테이블은 만들지 않는다. |
+
+**Request**: 본문 없음
+
+**Response**
+
+- 202 Accepted (메일은 비동기로 보낸다)
+
+**Error**: `FORBIDDEN`(비밀번호가 있는 회원), `IDENTITY_CODE_TOO_SOON`(60초 안에 다시 요청), `IDENTITY_MAIL_UNAVAILABLE`, `UNAUTHORIZED`
+
+#### 17-2. 탈퇴 본인 확인 (받은 코드 확인)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification` |
+| Method | `POST` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #232 |
+| 설명 | 받은 6자리 코드가 맞으면 이 세션에서 그 회원의 탈퇴 본인 확인을 마친 것으로 기록한다. 확인은 **5분 동안 탈퇴 요청(API 17) 한 번**에 쓸 수 있고, 다른 회원이거나 시간이 지났으면 쓸 수 없다. 다른 이메일의 코드, 5분이 지난 코드, 이미 5번 틀린 코드는 구분하지 않고 `IDENTITY_CODE_EXPIRED` 로 알린다. |
+
+**Request**
+
+```json
+{ "code": "123456" }
+```
+
+- `code`: 숫자 6자리(아니면 400).
+
+**Response**
+
+- 204 No Content
+
+**Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`(코드를 받은 적이 없거나 만료·5회 실패), `FORBIDDEN`(비밀번호가 있는 회원), `UNAUTHORIZED`
 
 #### 18. 다른 회원 공개 프로필
 
@@ -1641,7 +1684,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-03~04, SP-51~52, DP-40 |
-| 설명 | 시즌당 1회, 첫 턴 종료 전까지(진행 중이고 현재 턴이 1일 때, 시작 전 시즌도 마감으로 본다). 투자 가능 금액 = 모은 캐시(참가할 때의 캐시 잔액) + 이월금(이 회원의 가장 최근 다른 시즌 `carryover_out`)으로 확정(이후 불변). **참가해도 회원 캐시는 빼지 않는다** (PM 결정, #23). 로그인 정보가 없으면 401 `UNAUTHORIZED` |
+| 설명 | 시즌당 1회, 첫 턴 종료 전까지(진행 중이고 현재 턴이 1일 때, 시작 전 시즌도 마감으로 본다). 투자 가능 금액 = 모은 캐시(참가할 때의 캐시 잔액) + 이월금(이 회원의 이전 시즌 `carryover_out`)으로 확정(이후 불변). 이전 시즌은 시작일이 현재 시즌보다 이르거나, 시작일이 같고 시즌 ID가 더 작은 시즌 중 이 회원이 참가한 시즌이다. 그중 시작일이 가장 늦은 시즌을 선택하고, 시작일도 같으면 시즌 ID가 가장 큰 시즌을 선택한다. 해당 이전 시즌이 아직 정산되지 않았으면 참가할 수 없다(409 `PREVIOUS_SEASON_NOT_SETTLED`, SP-63). **참가해도 회원 캐시는 빼지 않는다** (PM 결정, #23). 로그인 정보가 없으면 401 `UNAUTHORIZED` |
 
 **Request**
 
@@ -1654,7 +1697,7 @@ Header: Idempotency-Key: 7c1e...
 { "participantId": 120, "savedCash": 3200000, "carryoverIn": 1620000, "investAmount": 4820000 }
 ```
 
-**Error**: `LEVEL_LOCKED`, `ALREADY_JOINED`, `JOIN_CLOSED`, `NOT_FOUND`(없는 시즌), `UNAUTHORIZED`
+**Error**: `LEVEL_LOCKED`, `ALREADY_JOINED`, `JOIN_CLOSED`, `PREVIOUS_SEASON_NOT_SETTLED`, `NOT_FOUND`(없는 시즌), `UNAUTHORIZED`
 
 #### 55. 분야 목록
 
@@ -2412,7 +2455,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-08 |
-| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `todayOrders`·`nextTurnReady`·`missing` 은 모의투자(trading) 조회 메서드가 공개되기 전까지 null 이다. |
+| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `season` 의 `todayOrders`(서울 기준 오늘 주문 수)·`nextTurnReady`(다음 턴의 가격·뉴스가 모두 준비돼 넘길 수 있는지, API 119 와 같은 기준)·`missing`(`prices` 는 다음 턴에 가격이 비어 있는 종목 수, `news` 는 다음 턴 뉴스가 하나도 없으면 1 아니면 0)은 진행·휴장 중인 시즌일 때 값이 나오고, 정산 중(SETTLING)인 시즌이면 null 이다. |
 
 **Request**
 
@@ -2995,7 +3038,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | NFR-13 |
-| 설명 | 값 변경, admin_log 기록. |
+| 설명 | 값 변경, admin_log 기록. `UNLOCK_LEVEL_TRADING`·`UNLOCK_LEVEL_HOUSING`을 바꾸면 모의투자·모의 청약 레벨 검사(와 모의 청약 화면 잠금)에 바로 반영된다(값이 없거나 1 미만이면 기본 Lv.8·Lv.12, #223). 모의투자 해금은 시즌과 상관없이 이 값 하나로 정한다. |
 
 **Request**
 
@@ -3616,7 +3659,12 @@ email=admin@moneybeetle.kr&password=...
 { "participants": 1240, "settledAt": "2026-11-15T00:10:00" }
 ```
 
-**Error**: `INVALID_STATUS_TRANSITION`
+- 정산 중(SETTLING)인 시즌만, **한 번만** 실행한다. 정산 중이 아니거나 이미 정산했으면 `INVALID_STATUS_TRANSITION`. 시즌 행을 잠그고 처리한다
+- 한 트랜잭션으로 모든 참가자의 최종 순자산·수익률(SP-61), 순자산·수익률 순위(동점은 같은 순위, SP-62), 다음 시즌 이월금을 확정한다
+- 이월금 = 최종 순자산 × 시즌 이월 비율(%), 상한이 있으면 상한까지, 0 미만이면 0, 원 단위 내림 (SP-63). 기본 설정(100%·상한 없음)이면 최종 순자산 전액이다. 다음 시즌 참가(API 53)가 이 값을 이월금으로 읽는다
+- admin_log(`SETTLE`)에 기록한다
+
+**Error**: `INVALID_STATUS_TRANSITION`(409), `NOT_FOUND`(404)
 
 #### 139. 랭킹 공개
 
@@ -3638,7 +3686,11 @@ email=admin@moneybeetle.kr&password=...
 { "publishedAt": "2026-11-15T09:00:00" }
 ```
 
-**Error**: `NOT_SETTLED`
+- 정산 중인 시즌을 정산한 뒤에만 공개할 수 있다. 공개하면 시즌이 종료(ENDED)된다
+- 공개할 때 상위 3위 보상(API 140)을 함께 지급한다 (SP-64: 랭킹 공개 때 지급). 같은 트랜잭션이라 지급에 실패하면 공개도 되돌려진다
+- admin_log(`RANKING_PUBLISH`)에 기록한다
+
+**Error**: `NOT_SETTLED`(409, 정산 전), `INVALID_STATUS_TRANSITION`(409, 이미 공개했거나 정산 단계가 아님), `NOT_FOUND`(404)
 
 #### 140. 랭킹 보상 지급
 
@@ -3660,6 +3712,13 @@ email=admin@moneybeetle.kr&password=...
 { "awarded": 6 }
 ```
 
+- 순자산·수익률 랭킹 각각 상위 3위에게 뱃지·칭호(`ranking_award`, 예: "시즌 7 순자산 1위")와 캐시 50,000 / 30,000 / 10,000을 준다 (SP-64). 두 랭킹에 모두 들면 둘 다 받는다. 동점이면 같은 순위 모두에게 그 순위의 보상을 준다
+- 랭킹 공개(139) 때 이미 지급하므로 이 API는 **다시 시도용**이다. 이미 받은 수상은 건너뛰어(UNIQUE 시즌·회원·종류) 여러 번 눌러도 한 번만 지급된다. `awarded`는 이번에 새로 지급한 수상 수
+- 탈퇴·정지 등 활동 중이 아닌 회원은 건너뛴다. 캐시는 관리자 지급(`RewardService.adjustByAdmin`)으로 주고 사유에 뱃지 이름이 남는다
+- admin_log(`RANKING_REWARD`)에 기록한다
+
+**Error**: `RANKING_NOT_PUBLISHED`(403, 공개 전), `NOT_FOUND`(404)
+
 #### 141. 시즌 통계
 
 | 항목 | 내용 |
@@ -3679,6 +3738,14 @@ email=admin@moneybeetle.kr&password=...
 ```json
 { "avgReturnRate": 9.2, "topBought": ["한빛반도체"], "reasonRatio": { "뉴스를 보고": 41.2 }, "panicSellRate": 18.5 }
 ```
+
+- `avgReturnRate`: 참가자 수익률의 평균(%, 소수 둘째 자리). 정산 전에는 지금 값, 정산 뒤에는 확정한 값
+- `topBought`: 매수 주문 건수가 많은 종목 이름, 최대 3개 (같으면 종목 번호 순)
+- `reasonRatio`: 전체 주문 중 매매 이유별 비율(%, 소수 첫째 자리), 많은 순
+- `panicSellRate`: 급락 턴에 판 사람 비율(%, 소수 첫째 자리) = 그 종목의 지난 턴 대비 변동률이 **-10% 이하**인 턴에 그 종목을 판 적이 있는 참가자 수 ÷ 한 번이라도 판 참가자 수 × 100. 파는 사람이 없으면 0 (기준 -10%는 `SettlementService.PANIC_DROP_RATE`)
+- 참가자·주문이 없으면 0과 빈 목록
+
+**Error**: `NOT_FOUND`(404)
 
 ### 관리자 · 모의 청약 운영
 
@@ -3885,8 +3952,7 @@ email=admin@moneybeetle.kr&password=...
 | 회원 | `OAUTH_FAILED` | 502 | 간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요 |
 | 회원 | `OAUTH_PROVIDER_UNAVAILABLE` | 503 | 지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요 |
 | 회원 | `OAUTH_SESSION_EXPIRED` | 400 | 간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요 |
-| 회원 | `SOCIAL_REAUTH_REQUIRED` | 400 | 구글·카카오로 다시 로그인해 본인 확인을 해 주세요 |
-| 회원 | `OAUTH_REAUTH_MISMATCH` | 400 | 지금 로그인한 계정과 다른 계정으로 확인했어요. 같은 계정으로 다시 시도해 주세요 |
+| 회원 | `WITHDRAW_VERIFICATION_REQUIRED` | 400 | 가입한 이메일로 받은 인증번호를 확인해 주세요 |
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
@@ -3895,6 +3961,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |
+| 모의투자 | `PREVIOUS_SEASON_NOT_SETTLED` | 409 | 이전 시즌 정산이 끝나면 참가할 수 있어요 |
 | 모의투자 | `NOT_JOINED` | 403 | 이번 시즌에 참가하지 않았어요. 먼저 참가해 주세요 |
 | 모의투자 | `NOT_ENOUGH_CASH` | 400 | 현금이 부족해요 |
 | 모의투자 | `NOT_ENOUGH_QUANTITY` | 400 | 보유한 수량보다 많이 팔 수 없어요 |

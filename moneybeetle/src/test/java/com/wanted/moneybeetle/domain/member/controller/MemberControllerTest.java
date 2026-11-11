@@ -44,6 +44,7 @@ class MemberControllerTest {
         return MockMvcBuilders.standaloneSetup(
                         new MemberController(memberService,
                                 mock(com.wanted.moneybeetle.domain.member.model.service.AccountService.class),
+                                mock(com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier.class),
                                 mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class),
                                 memberSignupService))
                 .setControllerAdvice(new GlobalExceptionHandler())

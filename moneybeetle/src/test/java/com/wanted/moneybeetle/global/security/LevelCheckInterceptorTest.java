@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.global.security;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import org.junit.jupiter.api.AfterEach;
@@ -14,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,13 +31,16 @@ import static org.mockito.Mockito.when;
 *   - @RequireLevel 이 없으면 레벨을 묻지도 않고 통과 (청약통장·당첨 결과처럼 레벨 조건이 없는 API)
 *   - 붙어 있으면 로그인 회원 번호로 GrowthService.getLevel 을 불러 비교 : 모자라면 LEVEL_LOCKED, 같거나 높으면 통과
 *   - 로그인 정보가 없으면 0 으로 보고 막는다
+*   - 기준 레벨은 UnlockLevelProvider 로 읽는다 : 모의 청약은 운영 설정 값(#223), 설정이 없으면 기본값
 *  */
 class LevelCheckInterceptorTest {
 
     private static final Long MEMBER_ID = 8L;
 
     private final GrowthService growthService = mock(GrowthService.class);
-    private final LevelCheckInterceptor interceptor = new LevelCheckInterceptor(growthService);
+    private final SystemSettingService systemSettingService = mock(SystemSettingService.class);   // 기본은 설정 없음(빈 값)
+    private final LevelCheckInterceptor interceptor =
+            new LevelCheckInterceptor(growthService, new UnlockLevelProvider(systemSettingService));
     private final MockHttpServletRequest request = new MockHttpServletRequest();
     private final MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -113,6 +118,30 @@ class LevelCheckInterceptorTest {
         SecurityContextHolder.clearContext();
         assertLocked(handler(new HousingController(), "complexes"));
         verify(growthService, never()).getLevel(any());
+    }
+
+    @Test
+    void 관리자가_모의청약_해금_레벨을_10으로_바꾸면_Lv10_부터_통과() throws Exception {
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_HOUSING")).thenReturn(OptionalInt.of(10));
+        HandlerMethod complexes = handler(new HousingController(), "complexes");
+
+        when(growthService.getLevel(MEMBER_ID)).thenReturn(9);
+        assertLocked(complexes);
+
+        when(growthService.getLevel(MEMBER_ID)).thenReturn(10);
+        assertThat(interceptor.preHandle(request, response, complexes)).isTrue();
+    }
+
+    @Test
+    void 관리자가_모의투자_해금_레벨을_10으로_바꾸면_Lv10_부터_통과() throws Exception {
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(10));
+        HandlerMethod home = handler(new TradingController(), "home");
+
+        when(growthService.getLevel(MEMBER_ID)).thenReturn(9);
+        assertLocked(home);
+
+        when(growthService.getLevel(MEMBER_ID)).thenReturn(10);
+        assertThat(interceptor.preHandle(request, response, home)).isTrue();
     }
 
     @Test

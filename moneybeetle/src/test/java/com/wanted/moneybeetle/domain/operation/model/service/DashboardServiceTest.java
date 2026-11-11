@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,10 +14,13 @@ import com.wanted.moneybeetle.domain.inquiry.model.service.InquiryService;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberCountDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.trading.model.dto.SeasonSummaryDTO;
+import com.wanted.moneybeetle.domain.trading.model.dto.TradingDashboardSummaryDTO;
 import com.wanted.moneybeetle.domain.trading.model.service.SeasonAdminService;
+import com.wanted.moneybeetle.domain.trading.model.service.TradingService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +34,7 @@ class DashboardServiceTest {
     private InquiryService inquiryService;
     private SeasonAdminService seasonAdminService;
     private MemberService memberService;
+    private TradingService tradingService;
     private DashboardService service;
 
     @BeforeEach
@@ -38,12 +43,14 @@ class DashboardServiceTest {
         inquiryService = mock(InquiryService.class);
         seasonAdminService = mock(SeasonAdminService.class);
         memberService = mock(MemberService.class);
-        service = new DashboardService(courseService, inquiryService, seasonAdminService, memberService);
+        tradingService = mock(TradingService.class);
+        service = new DashboardService(courseService, inquiryService, seasonAdminService, memberService, tradingService);
 
         when(courseService.countReviewWaiting()).thenReturn(3L);
         givenInquiryWaiting(2);
         when(memberService.countMembers()).thenReturn(new MemberCountDTO(5, 1));
         when(seasonAdminService.findSeasons()).thenReturn(List.of());
+        when(tradingService.getDashboardSummary()).thenReturn(Optional.empty());
     }
 
     private void givenInquiryWaiting(long total) {
@@ -88,21 +95,78 @@ class DashboardServiceTest {
     }
 
     @Test
-    @DisplayName("진행 중인 시즌 중 가장 최근 시즌의 번호·현재 턴·참가자 수를 담고, trading 이 못 주는 값은 null 이다")
+    @DisplayName("진행 중인 시즌 중 가장 최근 시즌의 번호·현재 턴·참가자 수와, trading 요약의 오늘 주문 수·다음 턴 점검 결과를 담는다")
     void activeSeason() {
         when(seasonAdminService.findSeasons()).thenReturn(List.of(   // 시작일 최신순
                 season(8, "READY", 0, 0, 0),
                 season(7, "RUNNING", 5, 1240, 4),
                 season(5, "SETTLING", 12, 800, 40)));
+        when(tradingService.getDashboardSummary()).thenReturn(Optional.of(
+                new TradingDashboardSummaryDTO(7L, 3820, false, new TradingDashboardSummaryDTO.Missing(2, 0))));
 
         var season = service.getDashboard().season();
 
         assertThat(season.seasonId()).isEqualTo(7L);
         assertThat(season.currentTurn()).isEqualTo(5);
         assertThat(season.participants()).isEqualTo(1240);
+        assertThat(season.todayOrders()).isEqualTo(3820L);
+        assertThat(season.nextTurnReady()).isFalse();
+        assertThat(season.missing().prices()).isEqualTo(2);
+        assertThat(season.missing().news()).isZero();
+    }
+
+    @Test
+    @DisplayName("다음 턴 준비가 끝났으면 nextTurnReady 는 true 이고 누락은 0 이다 (뉴스가 없으면 news 1)")
+    void nextTurnReadyAndNewsMissing() {
+        when(seasonAdminService.findSeasons()).thenReturn(List.of(season(7, "RUNNING", 5, 10, 1)));
+        when(tradingService.getDashboardSummary()).thenReturn(Optional.of(
+                new TradingDashboardSummaryDTO(7L, 0, true, new TradingDashboardSummaryDTO.Missing(0, 0))));
+        var ready = service.getDashboard().season();
+        assertThat(ready.todayOrders()).isZero();   // 오늘 주문이 없어도 값은 0 이고 null 이 아니다
+        assertThat(ready.nextTurnReady()).isTrue();
+        assertThat(ready.missing().prices()).isZero();
+
+        when(tradingService.getDashboardSummary()).thenReturn(Optional.of(
+                new TradingDashboardSummaryDTO(7L, 5, false, new TradingDashboardSummaryDTO.Missing(0, 1))));
+        assertThat(service.getDashboard().season().missing().news()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("정산 중인 시즌은 trading 요약이 없으므로 시즌 정보는 담고 주문 수·다음 턴 점검은 null 이다")
+    void settlingSeasonHasNoTradingSummary() {
+        when(seasonAdminService.findSeasons()).thenReturn(List.of(season(7, "SETTLING", 12, 10, 1)));
+        when(tradingService.getDashboardSummary()).thenReturn(Optional.empty());
+
+        var season = service.getDashboard().season();
+
+        assertThat(season.seasonId()).isEqualTo(7L);
         assertThat(season.todayOrders()).isNull();
         assertThat(season.nextTurnReady()).isNull();
         assertThat(season.missing()).isNull();
+    }
+
+    @Test
+    @DisplayName("trading 요약이 다른 시즌의 것이면(시즌 번호가 다르면) 쓰지 않고 null 로 둔다")
+    void summaryOfAnotherSeasonIsIgnored() {
+        when(seasonAdminService.findSeasons()).thenReturn(List.of(season(8, "SETTLING", 12, 10, 1)));
+        when(tradingService.getDashboardSummary()).thenReturn(Optional.of(
+                new TradingDashboardSummaryDTO(7L, 99, true, new TradingDashboardSummaryDTO.Missing(0, 0))));
+
+        var season = service.getDashboard().season();
+
+        assertThat(season.seasonId()).isEqualTo(8L);
+        assertThat(season.todayOrders()).isNull();
+        assertThat(season.nextTurnReady()).isNull();
+        assertThat(season.missing()).isNull();
+    }
+
+    @Test
+    @DisplayName("진행 중인 시즌이 없으면 trading 요약은 부르지 않는다")
+    void noActiveSeasonSkipsTradingSummary() {
+        when(seasonAdminService.findSeasons()).thenReturn(List.of(season(6, "ENDED", 12, 900, 30)));
+
+        assertThat(service.getDashboard().season()).isNull();
+        verify(tradingService, never()).getDashboardSummary();
     }
 
     @Test

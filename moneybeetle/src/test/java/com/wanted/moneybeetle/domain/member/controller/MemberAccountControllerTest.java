@@ -40,6 +40,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class MemberAccountControllerTest {
 
     private final AccountService accountService = mock(AccountService.class);
+    private final com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier withdrawVerifier =
+            mock(com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier.class);
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -51,7 +53,7 @@ class MemberAccountControllerTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(mock(MemberService.class), accountService,
+        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(mock(MemberService.class), accountService, withdrawVerifier,
                 mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class),
                 mock(com.wanted.moneybeetle.domain.member.model.service.MemberSignupService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -113,17 +115,61 @@ class MemberAccountControllerTest {
     }
 
     @Test
-    @DisplayName("간편 로그인 회원이 다시 로그인으로 본인 확인을 하지 않았으면 SOCIAL_REAUTH_REQUIRED 이고 세션을 끝내지 않는다")
-    void withdrawRequiresReauth() throws Exception {
-        doThrow(new BusinessException(MemberErrorCode.SOCIAL_REAUTH_REQUIRED)).when(accountService)
+    @DisplayName("간편 로그인 회원이 이메일 코드로 본인 확인을 하지 않았으면 WITHDRAW_VERIFICATION_REQUIRED 이고 세션을 끝내지 않는다")
+    void withdrawRequiresVerification() throws Exception {
+        doThrow(new BusinessException(MemberErrorCode.WITHDRAW_VERIFICATION_REQUIRED)).when(accountService)
                 .withdraw(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any());
         MockHttpSession session = new MockHttpSession();
 
         mockMvc.perform(delete("/api/v1/members/me").session(session))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("SOCIAL_REAUTH_REQUIRED"));
+                .andExpect(jsonPath("$.error.code").value("WITHDRAW_VERIFICATION_REQUIRED"));
 
         assertTrue(!session.isInvalid());
+    }
+
+    @Test
+    @DisplayName("탈퇴 본인 확인 코드 요청(API 17-1)은 로그인한 회원의 번호로 서비스를 부르고 202 를 돌려준다")
+    void requestWithdrawCode() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/members/me/withdraw-verification/request").session(session))
+                .andExpect(status().isAccepted());
+
+        verify(withdrawVerifier).requestCode(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("탈퇴 본인 확인 코드 요청은 서비스의 오류(예: 60초 제한)를 그대로 돌려준다")
+    void requestWithdrawCodeTooSoon() throws Exception {
+        doThrow(new BusinessException(MemberErrorCode.IDENTITY_CODE_TOO_SOON)).when(withdrawVerifier)
+                .requestCode(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/members/me/withdraw-verification/request"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("IDENTITY_CODE_TOO_SOON"));
+    }
+
+    @Test
+    @DisplayName("탈퇴 본인 확인(API 17-2)은 6자리 코드를 서비스에 넘기고 204 를 돌려준다")
+    void verifyWithdrawCode() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/members/me/withdraw-verification")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"123456\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(withdrawVerifier).verify(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq("123456"), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("탈퇴 본인 확인 코드가 6자리 숫자가 아니면 400 이고 서비스를 부르지 않는다")
+    void verifyWithdrawCodeValidation() throws Exception {
+        for (String body : new String[] {"{\"code\":\"12345\"}", "{\"code\":\"abcdef\"}", "{\"code\":\"\"}", "{}"}) {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/members/me/withdraw-verification")
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+
+        org.mockito.Mockito.verifyNoInteractions(withdrawVerifier);
     }
 
     @Test

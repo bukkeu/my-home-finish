@@ -85,6 +85,7 @@ class ParticipationServiceTest {
             }
         }
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(SEASON_ID)).thenReturn(Optional.of(season));
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
         return season;
     }
@@ -109,7 +110,7 @@ class ParticipationServiceTest {
         when(rewardService.getBalance(MEMBER_ID)).thenReturn(3_200_000L);
         SeasonParticipant previous = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
         previous.settle(1_620_000L, new BigDecimal("62.00"), 1_620_000L);
-        when(participantRepository.findFirstByMemberIdAndTradingSeasonIdNotOrderByJoinedAtDesc(MEMBER_ID, SEASON_ID))
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID))
                 .thenReturn(Optional.of(previous));
         when(participantRepository.saveAndFlush(any(SeasonParticipant.class))).thenAnswer(invocation -> {
             SeasonParticipant saved = invocation.getArgument(0);
@@ -123,6 +124,7 @@ class ParticipationServiceTest {
         assertThat(result.getSavedCash()).isEqualTo(3_200_000L);
         assertThat(result.getCarryoverIn()).isEqualTo(1_620_000L);
         assertThat(result.getInvestAmount()).isEqualTo(4_820_000L);
+        verify(seasonRepository).findByIdForUpdate(SEASON_ID);
         verify(rewardService, never()).spendCash(any(), any(), any(), anyLong());
     }
 
@@ -136,6 +138,19 @@ class ParticipationServiceTest {
 
         assertThat(result.getCarryoverIn()).isZero();
         assertThat(result.getInvestAmount()).isEqualTo(500_000L);
+    }
+
+    @Test
+    void rejectsUnsettledPreviousSeasonWithoutCreatingParticipation() {
+        season(1);
+        SeasonParticipant unsettled = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID)).thenReturn(Optional.of(unsettled));
+
+        assertThatThrownBy(() -> service.join(SEASON_ID, MEMBER_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+        verify(participantRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(rewardService);
     }
 
     @Test
@@ -181,7 +196,7 @@ class ParticipationServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.UNAUTHORIZED);
 
-        when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.join(99L, MEMBER_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.NOT_FOUND);

@@ -233,6 +233,11 @@ public class TradingSeason {
         return this.currentTurn >= this.totalTurns;
     }
 
+    /** 정산을 마쳤는가 (정산은 한 번만 실행한다) */
+    public boolean isSettled() {
+        return this.settledAt != null;
+    }
+
     public boolean isRankingPublished() {
         return this.rankingPublishedAt != null;
     }

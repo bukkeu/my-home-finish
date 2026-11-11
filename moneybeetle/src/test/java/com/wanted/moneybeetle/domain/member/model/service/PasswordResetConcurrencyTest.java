@@ -70,8 +70,8 @@ class PasswordResetConcurrencyTest {
         }
 
         @Bean
-        SocialReauthVerifier socialReauthVerifier() {
-            return (memberId, session) -> false;   // 이 테스트는 탈퇴를 쓰지 않는다 (AccountService 가 요구하는 빈만 채운다)
+        WithdrawVerifier withdrawVerifier() {
+            return org.mockito.Mockito.mock(WithdrawVerifier.class);   // 이 테스트는 탈퇴를 쓰지 않는다 (AccountService 가 요구하는 빈만 채운다)
         }
 
         @Bean
