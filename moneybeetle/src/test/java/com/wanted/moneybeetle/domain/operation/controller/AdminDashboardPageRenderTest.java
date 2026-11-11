@@ -98,7 +98,7 @@ class AdminDashboardPageRenderTest {
     void termsTab() throws Exception {
         String html = render("/admin/dashboard?view=terms");
 
-        assertThat(html).contains("오늘의 경제 용어", "id=\"adm-days\"", "id=\"adm-editor\"", "id=\"adm-term-save\"", "id=\"adm-terms\"")
+        assertThat(html).contains("오늘의 경제 용어", "id=\"adm-days\"", "id=\"adm-editor\"", "id=\"adm-clear-day\"", "자동 선정으로", "id=\"adm-term-save\"", "id=\"adm-terms\"")
                 .contains("/js/admin-terms.js")
                 .doesNotContain("/js/admin-overview.js", "/js/admin-growth.js");
     }

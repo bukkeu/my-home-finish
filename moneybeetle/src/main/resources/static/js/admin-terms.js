@@ -1,6 +1,6 @@
 /* comment.
 *   담당 : DBA ② 김예린 (#61, 홈 콘텐츠 탭 - 경제 용어·오늘의 용어)
-*   - 날짜별 오늘의 경제 용어: GET /api/v1/admin/term-schedules?month= (API 99), PUT /api/v1/admin/term-schedules/{date} (API 100)
+*   - 날짜별 오늘의 경제 용어: GET /api/v1/admin/term-schedules?month= (API 99), PUT /api/v1/admin/term-schedules/{date} (API 100), DELETE 같은 주소 (API 100-1, "자동 선정으로")
 *     지정하지 않은 날은 자동 선정 결과를 미리 보여 주고(isAuto), 5개를 골라 저장하면 지정한 날이 된다. 지난 날짜는 바꿀 수 없다 (SP-46~47).
 *   - 경제 용어 관리: GET·POST /api/v1/admin/economic-terms (API 95·96), PUT·DELETE .../{termId} (API 97·98)
 *   오류는 서버가 주는 문구(PAST_DATE_LOCKED, TERMS_NOT_ENOUGH 등)를 그대로 보여 준다. 화면에서 값을 직접 만들어 저장하지 않는다.
@@ -119,6 +119,9 @@
     });
     select.hidden = locked || state.selected.length >= PICK;
     byId('adm-save-day').hidden = locked;
+    // 직접 지정한 날(자동 선정이 아닌 날)만 지정을 풀 수 있다. 지난 날짜는 바꿀 수 없다
+    var pickedDay = state.days.filter(function (d) { return d.date === state.picked; })[0];
+    byId('adm-clear-day').hidden = locked || !pickedDay || pickedDay.isAuto;
   }
 
   function saveDay() {
@@ -137,6 +140,25 @@
       if (day) pickDay(day);
     }, function (err) { error.textContent = MBA.errorText(err); })
       .finally(function () { button.disabled = false; });
+  }
+
+  /** 지정을 풀고 자동 선정으로 되돌린다 (API 100-1) */
+  function clearDay() {
+    var button = byId('adm-clear-day');
+    if (button.disabled || !state.picked) return;
+    var date = state.picked;
+    MBA.confirm('이 날의 지정을 풀까요?', '지정한 용어 5개가 지워지고, 이 날은 등록 순서대로 자동 선정돼요.', '자동 선정으로').then(function (yes) {
+      if (!yes) return null;
+      button.disabled = true;   // 느린 응답 중에 다시 눌러 같은 DELETE 가 겹치지 않게 막는다
+      return MB.api('/api/v1/admin/term-schedules/' + encodeURIComponent(date), { method: 'DELETE' }).then(function () {
+        MB.toast('자동 선정으로 되돌렸어요');
+        return loadMonth();
+      }).then(function () {
+        var day = state.days.filter(function (d) { return d.date === date; })[0];
+        if (day) pickDay(day);
+      }, function (err) { byId('adm-editor-error').textContent = MBA.errorText(err); })
+        .finally(function () { button.disabled = false; });
+    });
   }
 
   /* ---------- 용어 목록 ---------- */
@@ -248,6 +270,7 @@
     if (id && state.selected.length < PICK) { state.selected.push(id); renderEditor(); }
   });
   byId('adm-save-day').addEventListener('click', saveDay);
+  byId('adm-clear-day').addEventListener('click', clearDay);
   byId('adm-term-save').addEventListener('click', saveTerm);
   byId('adm-term-cancel').addEventListener('click', function () {
     state.draft = { id: null, term: '', description: '', isActive: true };
