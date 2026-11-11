@@ -3659,7 +3659,12 @@ email=admin@moneybeetle.kr&password=...
 { "participants": 1240, "settledAt": "2026-11-15T00:10:00" }
 ```
 
-**Error**: `INVALID_STATUS_TRANSITION`
+- 정산 중(SETTLING)인 시즌만, **한 번만** 실행한다. 정산 중이 아니거나 이미 정산했으면 `INVALID_STATUS_TRANSITION`. 시즌 행을 잠그고 처리한다
+- 한 트랜잭션으로 모든 참가자의 최종 순자산·수익률(SP-61), 순자산·수익률 순위(동점은 같은 순위, SP-62), 다음 시즌 이월금을 확정한다
+- 이월금 = 최종 순자산 × 시즌 이월 비율(%), 상한이 있으면 상한까지, 0 미만이면 0, 원 단위 내림 (SP-63). 기본 설정(100%·상한 없음)이면 최종 순자산 전액이다. 다음 시즌 참가(API 53)가 이 값을 이월금으로 읽는다
+- admin_log(`SETTLE`)에 기록한다
+
+**Error**: `INVALID_STATUS_TRANSITION`(409), `NOT_FOUND`(404)
 
 #### 139. 랭킹 공개
 
@@ -3681,7 +3686,11 @@ email=admin@moneybeetle.kr&password=...
 { "publishedAt": "2026-11-15T09:00:00" }
 ```
 
-**Error**: `NOT_SETTLED`
+- 정산 중인 시즌을 정산한 뒤에만 공개할 수 있다. 공개하면 시즌이 종료(ENDED)된다
+- 공개할 때 상위 3위 보상(API 140)을 함께 지급한다 (SP-64: 랭킹 공개 때 지급). 같은 트랜잭션이라 지급에 실패하면 공개도 되돌려진다
+- admin_log(`RANKING_PUBLISH`)에 기록한다
+
+**Error**: `NOT_SETTLED`(409, 정산 전), `INVALID_STATUS_TRANSITION`(409, 이미 공개했거나 정산 단계가 아님), `NOT_FOUND`(404)
 
 #### 140. 랭킹 보상 지급
 
@@ -3703,6 +3712,13 @@ email=admin@moneybeetle.kr&password=...
 { "awarded": 6 }
 ```
 
+- 순자산·수익률 랭킹 각각 상위 3위에게 뱃지·칭호(`ranking_award`, 예: "시즌 7 순자산 1위")와 캐시 50,000 / 30,000 / 10,000을 준다 (SP-64). 두 랭킹에 모두 들면 둘 다 받는다. 동점이면 같은 순위 모두에게 그 순위의 보상을 준다
+- 랭킹 공개(139) 때 이미 지급하므로 이 API는 **다시 시도용**이다. 이미 받은 수상은 건너뛰어(UNIQUE 시즌·회원·종류) 여러 번 눌러도 한 번만 지급된다. `awarded`는 이번에 새로 지급한 수상 수
+- 탈퇴·정지 등 활동 중이 아닌 회원은 건너뛴다. 캐시는 관리자 지급(`RewardService.adjustByAdmin`)으로 주고 사유에 뱃지 이름이 남는다
+- admin_log(`RANKING_REWARD`)에 기록한다
+
+**Error**: `RANKING_NOT_PUBLISHED`(403, 공개 전), `NOT_FOUND`(404)
+
 #### 141. 시즌 통계
 
 | 항목 | 내용 |
@@ -3722,6 +3738,14 @@ email=admin@moneybeetle.kr&password=...
 ```json
 { "avgReturnRate": 9.2, "topBought": ["한빛반도체"], "reasonRatio": { "뉴스를 보고": 41.2 }, "panicSellRate": 18.5 }
 ```
+
+- `avgReturnRate`: 참가자 수익률의 평균(%, 소수 둘째 자리). 정산 전에는 지금 값, 정산 뒤에는 확정한 값
+- `topBought`: 매수 주문 건수가 많은 종목 이름, 최대 3개 (같으면 종목 번호 순)
+- `reasonRatio`: 전체 주문 중 매매 이유별 비율(%, 소수 첫째 자리), 많은 순
+- `panicSellRate`: 급락 턴에 판 사람 비율(%, 소수 첫째 자리) = 그 종목의 지난 턴 대비 변동률이 **-10% 이하**인 턴에 그 종목을 판 적이 있는 참가자 수 ÷ 한 번이라도 판 참가자 수 × 100. 파는 사람이 없으면 0 (기준 -10%는 `SettlementService.PANIC_DROP_RATE`)
+- 참가자·주문이 없으면 0과 빈 목록
+
+**Error**: `NOT_FOUND`(404)
 
 ### 관리자 · 모의 청약 운영
 
