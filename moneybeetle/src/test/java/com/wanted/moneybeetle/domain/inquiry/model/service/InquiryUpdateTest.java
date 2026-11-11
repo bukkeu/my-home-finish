@@ -15,6 +15,7 @@ import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,7 +45,7 @@ class InquiryUpdateTest {
         inquiryService = new InquiryService(inquiryRepository, mock(InquiryReplyRepository.class), mock(CourseService.class),
                 mock(ForbiddenWordService.class), mock(NotificationService.class),
                 Clock.fixed(Instant.parse("2026-11-11T01:00:00Z"), ZoneId.of("Asia/Seoul")),
-                mock(MemberService.class), mock(AdminLogService.class));
+                mock(MemberService.class), mock(AdminLogService.class), mock(SystemSettingService.class));
 
         inquiry = Inquiry.create(WRITER, null, "계정·캐시", "원래 제목", "원래 내용");
         ReflectionTestUtils.setField(inquiry, "inquiryId", INQUIRY_ID);

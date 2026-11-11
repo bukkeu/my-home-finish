@@ -406,13 +406,13 @@ public class CourseService {
     private Course getVisibleCourse(Long courseId) {
         return courseRepository.findById(courseId)
                 .filter(Course::isVisibleToLearner)
-                .orElseThrow(() -> new BusinessException(CourseErrorCode.COURSE_NOT_PUBLIC)); // TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.COURSE_NOT_PUBLIC));
     }
 
     /* 그 강의에 속한 영상인지 확인한다 */
     private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
         return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
-                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));// TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));
     }
 
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
