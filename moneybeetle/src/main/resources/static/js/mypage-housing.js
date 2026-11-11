@@ -56,26 +56,37 @@
   }
 
   // ---------- 통장 현황 (API 65) ----------
+  // 탭을 빠르게 다시 열거나 납입 직후 다시 불러올 때, 먼저 보낸 조회가 늦게 도착해 새 값을 덮지 않게 마지막 요청의 응답만 쓴다
+  var accountRequestId = 0;
+
+  // 잔액·누적 납입금액·누적 인정금액·회차·보유 캐시 (통장 조회 응답과 납입 응답에 모두 있는 값)
+  function showNumbers(balance, recognized, count, cash) {
+    setText('balance', fmt(balance));
+    // 시안의 "누적 납입금액" : 통장에서 돈이 빠져나가는 기능이 없어 납입한 금액이 모두 잔액에 남는다 → 잔액과 같은 값
+    setText('total', fmt(balance));
+    setText('recognized', fmt(recognized));
+    setText('count', count + '회차');
+    setText('cash', fmt(cash));
+    showCash(cash);
+  }
+
   function loadAccount() {
+    var requestId = ++accountRequestId;
     return MB.api(API + '/account').then(function (acc) {
+      if (requestId !== accountRequestId) return;
       account = acc;
       if (acc.depositPolicy) policy = acc.depositPolicy;
-      setText('balance', fmt(acc.balance));
-      // 시안의 "누적 납입금액" : 통장에서 돈이 빠져나가는 기능이 없어 납입한 금액이 모두 잔액에 남는다 → 잔액과 같은 값
-      setText('total', fmt(acc.balance));
-      setText('recognized', fmt(acc.recognizedAmount));
-      setText('count', acc.paidCount + '회차');
+      showNumbers(acc.balance, acc.recognizedAmount, acc.paidCount, acc.cash);
       setText('lastDate', fmtDate(acc.lastPaidDate));
       var today = setText('today', acc.paidToday ? '납입 완료' : '미납입');
       today.classList.toggle('is-unpaid', !acc.paidToday);
-      setText('cash', fmt(acc.cash));
       setText('minText', fmt(policy.minAmount));
       setText('maxText', fmt(policy.maxAmount));
       setText('limitText', fmt(policy.dailyRecognizedLimit));
       setText('limitHint', fmt(policy.dailyRecognizedLimit));
-      showCash(acc.cash);
       preview();
     }).catch(function (err) {
+      if (requestId !== accountRequestId) return;
       MB.toast(err.message, 'error');
     });
   }
@@ -87,9 +98,12 @@
   }
 
   // ---------- 납입 내역 (API 67) ----------
+  var depositsRequestId = 0;                            // 통장 조회와 같은 이유로 마지막 요청의 결과만 그린다
   function loadDeposits() {
     var box = q('hist');
+    var requestId = ++depositsRequestId;
     return MB.api(API + '/account/deposits?page=0&size=20').then(function (page) {
+      if (requestId !== depositsRequestId) return;
       var items = (page && page.items) || [];
       box.querySelectorAll('.mh-row').forEach(function (n) { n.remove(); });
       var empty = q('empty');
@@ -101,6 +115,7 @@
         box.appendChild(el('span', 'mh-row is-num', fmt(d.recognizedAmount)));
       });
     }).catch(function (err) {
+      if (requestId !== depositsRequestId) return;
       // 실패하면 예전 내역을 지우고 오류 문구만 보인다 (모의 청약 화면 housing.js 의 납입 내역과 같은 방식)
       box.querySelectorAll('.mh-row').forEach(function (n) { n.remove(); });
       var empty = q('empty');
@@ -192,6 +207,7 @@
   });
 
   function deposit(amt) {
+    if (sending || !amt || problemOf(amt)) return;          // 이미 보내는 중이거나 금액이 바뀌어 맞지 않으면 보내지 않는다
     sending = true;
     submitBtn.disabled = true;
     if (!depositKey) depositKey = newKey();
@@ -204,6 +220,13 @@
       amountInput.value = '';
       var extra = r.recognizedAmount < r.amount ? ' (인정 ' + fmt(r.recognizedAmount) + ' 캐시)' : '';
       MB.toast(fmt(r.amount) + ' 캐시를 납입했어요 · ' + r.paidCount + '회차 인정' + extra);
+      // 다시 불러오기가 실패해도 납입 결과는 보이게, 응답에 있는 값(잔액·누적 인정금액·회차·캐시)을 먼저 반영한다.
+      // 응답에 없는 최근 납입일·오늘 납입 여부는 다시 불러온 값으로만 바꾼다
+      account.balance = r.balance;
+      account.recognizedAmount = r.totalRecognizedAmount;
+      account.paidCount = r.paidCount;
+      account.cash = r.cash;
+      showNumbers(r.balance, r.totalRecognizedAmount, r.paidCount, r.cash);
       return Promise.all([loadAccount(), loadDeposits()]);
     }).catch(function (err) {
       if (UNKNOWN_RESULT.indexOf(err.code) < 0) depositKey = null;   // 결과가 분명한 실패만 키를 버린다
