@@ -39,12 +39,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *   - 화면 스크립트·스타일이 들어간다
 *   - 프로필 카드 경험치는 공통 레이아웃 값(LayoutInterceptor, #249)의 지금 레벨 경험치·레벨 구간을 쓴다
 *   - 나의 청약통장 탭(#70)은 자기 조각(fragments/mypage/housing)으로 그려진다
+*   - 학습 탭 4개(#71: wrong·scrap·learning·qna)는 신아림 조각(fragments/mypage/learning)으로 그려진다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, MyPageViewController.class, HomeWebConfig.class, LayoutInterceptor.class})
 @MockSecurityServices
 class MyPageRenderTest {
 
     private static final List<String> TABS = List.of("settings", "growth", "housing", "wrong", "scrap", "learning", "qna");
+    private static final List<String> LEARNING_TABS = List.of("wrong", "scrap", "learning", "qna");   // #71 조각이 있는 탭
 
     @Autowired
     private MemberService memberService;
@@ -101,8 +103,20 @@ class MyPageRenderTest {
     void 아직_없는_탭_조각은_준비_중_자리로_대신_그린다() throws Exception {
         String html = render();
 
-        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth·learning) — 이미 만든 housing(#70) 탭만 빼고 모두
-        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 1);
+        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth) — 이미 만든 housing(#70)·학습 탭 4개(#71)만 빼고 모두
+        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 1 - LEARNING_TABS.size());
+    }
+
+    @Test
+    void 학습_탭_4개는_신아림_조각을_그린다() throws Exception {
+        String html = render();
+
+        // #71 fragments/mypage/learning.html : 탭마다 data-ml 영역, 스크립트·스타일은 한 번만
+        for (String tab : LEARNING_TABS) {
+            assertThat(html).contains("data-ml=\"" + tab + "\"");
+        }
+        assertThat(html.split("/js/mypage-learning.js", -1).length - 1).isEqualTo(1);
+        assertThat(html).contains("/css/mypage-learning.css");
     }
 
     @Test

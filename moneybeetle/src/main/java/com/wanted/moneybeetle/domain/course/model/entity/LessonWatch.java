@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
  *   테이블 lesson_watch (시청 기록)
  *   - 끝까지 봤는지(is_completed)는 화면이 보낸 completed 값이 아니라 서버가 정한다 (#20, 퀴즈 열기·보상 근거)
  *     본 시간은 지난 저장 뒤 실제로 흐른 시간(서버 시계)만큼만 늘어나고, 영상 길이의 90%를 넘으면 완료
+ *   - 이어보기 위치(position_seconds)는 영상마다 둔다 (#71). 강의의 마지막 영상은 learning_progress 가 그대로 기억한다
  *  */
 @Entity
 @Table(name = "lesson_watch")
@@ -35,6 +36,7 @@ public class LessonWatch {
     private Long memberId;
     private Long lessonId;
     private int watchedSeconds;
+    private int positionSeconds;                            // 이 영상의 마지막 재생 위치(초). 되감으면 줄어든다
     private boolean isCompleted;
     private LocalDateTime lastWatchedAt;
 
@@ -42,6 +44,7 @@ public class LessonWatch {
         this.memberId = memberId;
         this.lessonId = lessonId;
         this.watchedSeconds = 0;
+        this.positionSeconds = 0;
         this.isCompleted = false;
         this.lastWatchedAt = now;
     }
@@ -49,6 +52,11 @@ public class LessonWatch {
     /* 영상을 처음 볼 때 시청 기록을 만든다 */
     public static LessonWatch start(Long memberId, Long lessonId, LocalDateTime now) {
         return new LessonWatch(memberId, lessonId, now);
+    }
+
+    /* 이 영상의 이어보기 위치를 바꾼다 (LRN-05, #71). 범위는 호출하는 쪽이 영상 길이로 맞춰 넘긴다 */
+    public void moveTo(int positionSeconds) {
+        this.positionSeconds = Math.max(positionSeconds, 0);
     }
 
     /* 시청 기록을 갱신한다 (LRN-06).

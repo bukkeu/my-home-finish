@@ -191,6 +191,7 @@
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
 | 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
 
 ### 모의투자
 
@@ -1205,7 +1206,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-03, LRN-05 |
-| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
+| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`, 영상마다 따로 저장된 이 영상의 마지막 위치, 본 적 없으면 0, #71), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
 
 **Request**
 
@@ -1227,7 +1228,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `PUT` |
 | 권한 | 회원 |
 | 관련 | LRN-05~06, SP-38 |
-| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
+| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). `positionSeconds`는 이 영상의 이어보기 위치(lesson_watch)로, 강의의 마지막 영상과 위치(learning_progress)로도 함께 남긴다(#71). |
 
 **Request**
 
@@ -1467,7 +1468,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-06, SP-36 |
-| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. |
+| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. choices는 다시 풀기(API 45)용 보기(보기 순서, 정답 표시 없음, #71). |
 
 **Request**
 
@@ -1478,7 +1479,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 {
   "items": [ { "wrongNoteId": 9, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "categoryName": "부동산 › 청약",
-    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" }   ],
+    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...",
+    "choices": [ { "choiceId": 31, "content": "33,840원" }, { "choiceId": 32, "content": "40,000원" } ], "createdAt": "2026-11-02T14:00:00" }   ],
   "page": 0, "size": 20, "totalElements": 1, "totalPages": 1
 }
 ```
@@ -1654,6 +1656,32 @@ Header: Idempotency-Key: 7c1e...
 ```
 
 **Error**: `FORBIDDEN`, `FORBIDDEN_WORD`
+
+#### 149. 내가 쓴 문의 모음
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/inquiries` |
+| Method | `GET` |
+| 권한 | 회원 |
+| 관련 | LRN-09 |
+| 설명 | 마이페이지 Q&A·문의 모음(#71). 내가 쓴 사이트 문의와 강의 문의를 함께, 최신순(같으면 문의 ID 역순). 삭제한 글은 빠진다. 관리자가 숨긴 글은 목록에 남기되 제목을 안내 문구로 가린다(DP-22, isHidden true). courseTitle은 수강생에게 보이는 강의(허가 + 공개 + 삭제 안 됨)일 때만 채우고, 아니면 null(화면은 이때 "해당 강의 보러 가기"를 숨긴다). 내용·답글은 문의 상세(API 49). 목록 응답 형식(1-3). |
+
+**Request**
+
+- Query: page=0&size=20 (size 최대 50)
+
+**Response**
+
+```json
+{
+  "items": [
+    { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "category": null, "title": "인정금액이 잔액보다 적게 나와요", "status": "ANSWERED", "isHidden": false, "createdAt": "2026-11-03T10:00:00" },
+    { "inquiryId": 1, "courseId": null, "courseTitle": null, "category": "ACCOUNT", "title": "관리자에 의해 숨김 처리된 글이에요", "status": "WAITING", "isHidden": true, "createdAt": "2026-11-01T09:00:00" }
+  ],
+  "page": 0, "size": 20, "totalElements": 2, "totalPages": 1
+}
+```
 
 ### 모의투자
 
