@@ -818,6 +818,9 @@
     if (errBox.dataset.code === 'NOT_ENOUGH_QUANTITY' || errBox.dataset.code === 'NOT_ENOUGH_CASH') delete errBox.dataset.from;
   }
 
+  /** 주문이 처리됐는지 모르는 오류 코드: 같은 주문을 다시 내면 같은 키를 써서 서버가 처음 결과를 돌려주게 한다 (course-quiz.js·housing.js 와 같다) */
+  var UNKNOWN_RESULT = ['NETWORK_ERROR', 'ERROR', 'DUPLICATE_REQUEST'];
+
   function submitOrder(e) {
     e.preventDefault();
     var d = S.stock;
@@ -844,11 +847,12 @@
       // 새로고침(홈·종목)이 끝날 때까지 S.busy 로 제출 버튼을 잠근다 (같은 주문의 중복 체결 방지)
       return refreshAll(true);
     }, function (err) {
-      // 응답을 못 받은 경우(네트워크·형식 없는 오류)만 결과를 모른다 -> 키를 남겨 둔다. 그 밖의 오류는 처리되지 않은 것
-      if (err.code !== 'NETWORK_ERROR' && err.code !== 'ERROR') S.pendingOrder = null;
+      // 응답을 못 받았거나(네트워크·형식 없는 오류) 처음 주문이 아직 처리 중(DUPLICATE_REQUEST)이면 결과를 모른다
+      // -> 키를 남겨 둔다. 그 밖의 오류는 처리되지 않은 것(서버도 4xx 는 기록을 지워 같은 키로 다시 보낼 수 있다)
+      if (UNKNOWN_RESULT.indexOf(err.code) < 0) S.pendingOrder = null;
       if (fatal(err)) return;
       // MSG 에 없는 코드(예: 500 INTERNAL_ERROR)는 서버가 주문을 저장했는지 알 수 없다 -> 내역을 다시 불러오고 확인을 안내한다
-      var unknown = err.code !== 'NETWORK_ERROR' && err.code !== 'ERROR' && !MSG[err.code];
+      var unknown = UNKNOWN_RESULT.indexOf(err.code) < 0 && !MSG[err.code];
       orderError(unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err), err.code);
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
       if (unknown || err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
