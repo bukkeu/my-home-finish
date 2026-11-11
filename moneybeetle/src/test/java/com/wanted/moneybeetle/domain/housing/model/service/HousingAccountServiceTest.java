@@ -1,7 +1,7 @@
 package com.wanted.moneybeetle.domain.housing.model.service;
 
 import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
-import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
 import com.wanted.moneybeetle.domain.housing.exception.HousingErrorCode;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingApplicationRepository;
@@ -17,6 +17,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
@@ -27,8 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.when;
 *   청약통장 #28 확인 (DB 없이 Repository·RewardService 는 가짜, 오늘은 2026-11-05 로 고정)
 *   - 통장 개설 : 없으면 만들고, 이미 있으면 그대로
 *   - 납입 : 금액 범위, 하루 1회, 인정금액 = min(금액, 250,000), 회차 +1, 캐시 차감
+*   - #291 : 규칙은 통장(SubscriptionAccount.deposit)이 지킨다. 규칙을 어기면 내역 저장·캐시 차감 전에 멈추고 통장도 그대로다
 *  */
 class HousingAccountServiceTest {
 
@@ -119,7 +121,7 @@ class HousingAccountServiceTest {
     void 납입하면_잔액은_전액_인정금액은_250000까지_더하고_회차가_1_늘어난다() {
         SubscriptionAccount account = account(LocalDate.of(2026, 11, 4));
         when(accountRepository.findWithLockByMemberId(MEMBER_ID)).thenReturn(Optional.of(account));
-        when(rewardService.spendCash(eq(MEMBER_ID), eq(CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT), eq(15L), eq(300_000L)))
+        when(rewardService.spendCash(eq(MEMBER_ID), eq(CashSource.SUBSCRIPTION_DEPOSIT), eq(15L), eq(300_000L)))
                 .thenReturn(950_000L);
 
         DepositResultDTO result = service.deposit(MEMBER_ID, 300_000L);
@@ -132,35 +134,53 @@ class HousingAccountServiceTest {
         assertThat(result.getPaidCount()).isEqualTo(15);                       // 14 + 1
         assertThat(result.getCash()).isEqualTo(950_000L);
         assertThat(account.getLastPaidDate()).isEqualTo(TODAY);
+        // 통장 반영 → 내역 저장(회차 15) → 캐시 차감 순서 (규칙 위반이면 앞 단계에서 멈춰 뒤 단계가 실행되지 않는다)
+        InOrder order = inOrder(depositRepository, rewardService);
+        order.verify(depositRepository).save(org.mockito.ArgumentMatchers.argThat(d -> d.getPaidCountAfter() == 15));
+        order.verify(rewardService).spendCash(MEMBER_ID, CashSource.SUBSCRIPTION_DEPOSIT, 15L, 300_000L);
+    }
+
+    // 규칙 위반이면 내역을 저장하지 않고 캐시도 빼지 않으며, 통장 값도 그대로다 (#291)
+    private void assertNothingChanged(SubscriptionAccount account, LocalDate lastPaidDate) {
+        verify(depositRepository, never()).save(any());
+        verify(rewardService, never()).spendCash(any(), any(CashSource.class), any(), anyLong());
+        assertThat(account.getBalance()).isEqualTo(1_840_000L);
+        assertThat(account.getRecognizedAmount()).isEqualTo(1_590_000L);
+        assertThat(account.getPaidCount()).isEqualTo(14);
+        assertThat(account.getLastPaidDate()).isEqualTo(lastPaidDate);
     }
 
     @Test
-    void 같은_날_두_번째_납입은_ALREADY_PAID_TODAY() {
-        when(accountRepository.findWithLockByMemberId(MEMBER_ID)).thenReturn(Optional.of(account(TODAY)));
+    void 같은_날_두_번째_납입은_ALREADY_PAID_TODAY_이고_내역_캐시_통장이_그대로다() {
+        SubscriptionAccount account = account(TODAY);
+        when(accountRepository.findWithLockByMemberId(MEMBER_ID)).thenReturn(Optional.of(account));
 
         assertRejected(() -> service.deposit(MEMBER_ID, 100_000L), HousingErrorCode.ALREADY_PAID_TODAY);
-        verify(rewardService, never()).spendCash(any(), anyString(), any(), anyLong());
+        assertNothingChanged(account, TODAY);
     }
 
     @Test
-    void 금액_범위는_20000_이상_500000_이하만() {
+    void 금액_범위는_20000_이상_500000_이하만이고_밖이면_내역_캐시_통장이_그대로다() {
+        SubscriptionAccount account = account(LocalDate.of(2026, 11, 4));
+        when(accountRepository.findWithLockByMemberId(MEMBER_ID)).thenReturn(Optional.of(account));
+
         assertRejected(() -> service.deposit(MEMBER_ID, 19_999L), HousingErrorCode.DEPOSIT_BELOW_MIN);
         assertRejected(() -> service.deposit(MEMBER_ID, 500_001L), HousingErrorCode.DEPOSIT_ABOVE_MAX);
+        assertNothingChanged(account, LocalDate.of(2026, 11, 4));
 
-        // 경계값은 통과 (여기서는 통장까지 가는지만 본다)
-        when(accountRepository.findWithLockByMemberId(MEMBER_ID)).thenReturn(Optional.of(account(null)));
+        // 경계값은 통과
         assertThat(service.deposit(MEMBER_ID, 20_000L).getRecognizedAmount()).isEqualTo(20_000L);
     }
 
     @Test
-    void 캐시가_부족하면_RewardService_의_NOT_ENOUGH_CASH_가_그대로_나가고_통장은_바뀌지_않는다() {
+    void 캐시가_부족하면_RewardService_의_NOT_ENOUGH_CASH_가_그대로_나간다() {
+        // 캐시 부족은 캐시를 가진 growth 가 마지막 단계에서 알려 준다. 예외가 나가면 deposit 의 트랜잭션이 통장 반영·내역 저장을 함께 취소한다
+        // (DB 롤백은 이 단위 테스트가 아니라 @Transactional 이 맡는다)
         SubscriptionAccount account = account(LocalDate.of(2026, 11, 4));
         when(accountRepository.findWithLockByMemberId(MEMBER_ID)).thenReturn(Optional.of(account));
-        when(rewardService.spendCash(any(), anyString(), any(), anyLong()))
+        when(rewardService.spendCash(any(), any(CashSource.class), any(), anyLong()))
                 .thenThrow(new BusinessException(GrowthErrorCode.NOT_ENOUGH_CASH));
 
         assertRejected(() -> service.deposit(MEMBER_ID, 300_000L), GrowthErrorCode.NOT_ENOUGH_CASH);
-        assertThat(account.getPaidCount()).isEqualTo(14);          // 통장 반영 전에 멈춘다 (저장된 내역은 트랜잭션이 취소)
-        assertThat(account.getBalance()).isEqualTo(1_840_000L);
     }
 }

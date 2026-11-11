@@ -1,8 +1,7 @@
 package com.wanted.moneybeetle.domain.housing.model.service;
 
-import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;   // 캐시 출처 enum (#287). growth 의 엔티티 클래스는 쓰지 않는다
 import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
-import com.wanted.moneybeetle.domain.housing.exception.HousingErrorCode;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingApplicationRepository;
 import com.wanted.moneybeetle.domain.housing.model.dao.HousingComplexRepository;
 import com.wanted.moneybeetle.domain.housing.model.dao.SubscriptionAccountRepository;
@@ -112,35 +111,24 @@ public class HousingService {
         return AccountDTO.from(account, LocalDate.now(clock), cash);
     }
 
-    // API 66 청약통장 납입 : 내역 저장 + 캐시 차감 + 통장 반영을 한 트랜잭션으로 (하나라도 실패하면 모두 취소)
+    // API 66 청약통장 납입 : 통장 반영 + 내역 저장 + 캐시 차감을 한 트랜잭션으로 (하나라도 실패하면 모두 취소)
+    //  금액 범위·하루 1회 규칙은 통장(SubscriptionAccount.deposit)이 지킨다 (#291). 규칙을 어기면 내역·캐시는 건드리기 전에 끝난다
     @Transactional
     public DepositResultDTO deposit(Long memberId, long amount) {
-        // ① 금액 범위 (SP-70)
-        if (amount < DepositPolicyDTO.MIN_AMOUNT) {
-            throw new BusinessException(HousingErrorCode.DEPOSIT_BELOW_MIN);
-        }
-        if (amount > DepositPolicyDTO.MAX_AMOUNT) {
-            throw new BusinessException(HousingErrorCode.DEPOSIT_ABOVE_MAX);
-        }
-
-        // ② 통장 (잠금) ③ 하루 1회 (DP-35)
+        // ① 통장 (잠금 : 같은 회원의 동시 납입은 여기서 기다려 하루 1회가 지켜진다)
         SubscriptionAccount account = accountRepository.findWithLockByMemberId(memberId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         LocalDate today = LocalDate.now(clock);
-        if (account.isPaidToday(today)) {
-            throw new BusinessException(HousingErrorCode.ALREADY_PAID_TODAY);
-        }
 
-        // ④ 내역 저장 (먼저 저장해야 내역 번호를 캐시 사용 기록의 원인 번호로 쓸 수 있다)
-        long recognized = DepositPolicyDTO.recognizedAmountOf(amount);
+        // ② 통장 반영 : 규칙 확인(금액 범위 → 하루 1회) 후 잔액·인정금액·회차·납입일 (save 안 해도 변경 감지로 저장된다)
+        long recognized = account.deposit(amount, today);
+
+        // ③ 내역 저장 (먼저 저장해야 내역 번호를 캐시 사용 기록의 원인 번호로 쓸 수 있다). 회차는 ② 로 늘어난 값
         SubscriptionDeposit deposit = depositRepository.save(SubscriptionDeposit.create(
-                account.getId(), today, (int) amount, (int) recognized, account.getPaidCount() + 1));
+                account.getId(), today, (int) amount, (int) recognized, account.getPaidCount()));
 
-        // ⑤ 캐시 차감 (부족하면 NOT_ENOUGH_CASH 예외 → ④ 도 함께 취소)
-        long cash = rewardService.spendCash(memberId, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, deposit.getId(), amount);
-
-        // ⑥ 통장 반영 (save 안 해도 트랜잭션이 끝날 때 변경 감지로 저장된다)
-        account.deposit(amount, recognized, today);
+        // ④ 캐시 차감 (부족하면 NOT_ENOUGH_CASH 예외 → ②·③ 도 함께 취소)
+        long cash = rewardService.spendCash(memberId, CashSource.SUBSCRIPTION_DEPOSIT, deposit.getId(), amount);
 
         return DepositResultDTO.from(deposit, account, cash);
     }
