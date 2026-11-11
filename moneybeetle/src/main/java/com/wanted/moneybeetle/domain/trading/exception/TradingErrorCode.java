@@ -11,7 +11,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #24 시세·뉴스 조회 : NO_RUNNING_SEASON
 *   - #111 턴 진행 규칙 : MARKET_HOLIDAY, LAST_TURN_REACHED
 *   - #44 턴 진행 : NEXT_TURN_NOT_READY, TURN_CONFLICT
-*   - #207 시즌 순서 : PREVIOUS_SEASON_NOT_SETTLED, SEASON_PERIOD_OVERLAP
+*   - #207 시즌 순서 : SEASON_PERIOD_OVERLAP (PREVIOUS_SEASON_NOT_SETTLED 는 #23 과 같은 코드를 쓴다)
 *   - #25 매수·매도 : NOT_JOINED, NOT_ENOUGH_CASH, NOT_ENOUGH_QUANTITY, REASON_REQUIRED, STALE_TURN_PRICE
 *   - #26 시즌 랭킹 : RANKING_NOT_PUBLISHED
 *  */
@@ -44,7 +44,6 @@ public enum TradingErrorCode implements ErrorCode {
     LAST_TURN_REACHED(HttpStatus.CONFLICT, "마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요"),                          // 409
     NEXT_TURN_NOT_READY(HttpStatus.CONFLICT, "다음 턴의 가격이나 뉴스가 아직 다 준비되지 않았어요"),                          // 409
     TURN_CONFLICT(HttpStatus.CONFLICT, "다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요"),                            // 409
-    PREVIOUS_SEASON_NOT_SETTLED(HttpStatus.CONFLICT, "이전 시즌 정산을 먼저 마쳐 주세요"),                              // 409
     SEASON_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요"),                            // 409
     NOT_JOINED(HttpStatus.FORBIDDEN, "이번 시즌에 참가하지 않았어요. 먼저 참가해 주세요"),                              // 403
     NOT_ENOUGH_CASH(HttpStatus.BAD_REQUEST, "현금이 부족해요"),                                                    // 400

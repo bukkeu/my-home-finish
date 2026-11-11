@@ -65,6 +65,9 @@ public class SeasonAdminService {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
         request.checkStartDate();
+        // 생성 요청을 차례로 처리한다. 기존 시즌 행을 모두 잠근 뒤 겹침을 확인해야 동시에 들어온 두 요청이
+        // 같이 통과하지 못한다. 시즌이 하나도 없으면 잠글 행이 없다(맨 처음 시즌을 동시에 두 번 만드는 경우만 남는다)
+        seasonRepository.findAllForUpdate();
         // 기간이 하루라도 겹치는 시즌은 만들 수 없다 (#207)
         LocalDate periodEnd = request.getStartDate().plusDays(TradingSeason.SEASON_DAYS - 1);
         if (seasonRepository.existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(periodEnd,

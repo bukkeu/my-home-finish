@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
@@ -247,5 +249,16 @@ class SeasonAdminServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.SEASON_PERIOD_OVERLAP);
         verify(seasonRepository, never()).save(any());
+    }
+
+    @Test
+    void 시즌을_만들_때_기존_시즌을_먼저_잠그고_그_뒤에_겹침을_확인한다() {
+        service.createSeason(new SeasonSaveDTO("시즌 8", MONDAY, null), ADMIN_ID);
+
+        InOrder inOrder = inOrder(seasonRepository);
+        inOrder.verify(seasonRepository).findAllForUpdate();
+        inOrder.verify(seasonRepository).existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                MONDAY.plusDays(13), MONDAY);
+        inOrder.verify(seasonRepository).save(any());
     }
 }
