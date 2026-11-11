@@ -249,7 +249,7 @@ public class TradingService {
     }
 
     /** 이전 시즌(시작일이 더 이른 가장 최근 시즌)이 없거나, 정산을 마치고 끝났는가 (#207) */
-    private boolean isPreviousSeasonSettled(TradingSeason season) {
+    public boolean isPreviousSeasonSettled(TradingSeason season) {
         return seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(season.getStartDate())
                 .map(TradingSeason::isSettledAndEnded)
                 .orElse(true);

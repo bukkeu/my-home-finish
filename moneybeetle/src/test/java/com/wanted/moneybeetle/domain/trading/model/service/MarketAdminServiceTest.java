@@ -324,7 +324,7 @@ class MarketAdminServiceTest {
         assertThat(stocks).extracting(AdminStockDTO::getSectorName).containsExactly("모빌리티", "반도체");
     }
 
-    // ===== 턴 진행과 같은 시즌 행 잠금 =====
+    // ===== 턴 진행과 같은 공통 시즌 행 잠금 =====
 
     @Test
     void 분야_종목_변경은_READY_RUNNING_HOLIDAY_시즌을_직접_잠금_조회한다() {

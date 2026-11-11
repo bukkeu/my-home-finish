@@ -165,6 +165,7 @@ class AdminParticipantServiceTest {
                     .isInstanceOfSatisfying(BusinessException.class,
                             e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
         }
+        verify(seasonRepository, never()).findById(anyLong());
     }
 
     @Test

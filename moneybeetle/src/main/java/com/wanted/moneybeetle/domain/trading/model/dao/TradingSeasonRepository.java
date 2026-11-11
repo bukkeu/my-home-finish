@@ -25,6 +25,15 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     @Query("select s from TradingSeason s where s.status in :statuses order by s.startDate desc")
     List<TradingSeason> findAllByStatusInForUpdate(@Param("statuses") List<String> statuses);
 
+    /**
+     * 시즌 생성 전에 모든 시즌 행을 쓰기 잠금으로 읽는다 (#207). 동시에 들어온 생성 요청이 차례로 처리돼
+     * 둘 다 기간 겹침 확인을 통과해 겹치는 시즌을 저장하지 못한다.
+     * findAllByStatusInForUpdate 와 같은 순서(시작일 최신순)로 잠가 서로 기다리다 막히는 일(교착)이 없다
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from TradingSeason s order by s.startDate desc")
+    List<TradingSeason> findAllForUpdate();
+
     /** 관리자 시즌 목록 : 최근 시작한 시즌부터 */
     List<TradingSeason> findAllByOrderByStartDateDesc();
 

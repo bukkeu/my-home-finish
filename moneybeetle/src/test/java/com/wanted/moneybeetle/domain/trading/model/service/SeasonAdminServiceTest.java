@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
@@ -43,6 +45,7 @@ class SeasonAdminServiceTest {
     private TradingSeasonRepository seasonRepository;
     private SeasonTurnRepository turnRepository;
     private SeasonParticipantRepository participantRepository;
+    private TradingService tradingService;
     private SeasonAdminService service;
 
     @BeforeEach
@@ -50,7 +53,9 @@ class SeasonAdminServiceTest {
         seasonRepository = mock(TradingSeasonRepository.class);
         turnRepository = mock(SeasonTurnRepository.class);
         participantRepository = mock(SeasonParticipantRepository.class);
-        service = new SeasonAdminService(seasonRepository, turnRepository, participantRepository);
+        tradingService = mock(TradingService.class);
+        service = new SeasonAdminService(seasonRepository, turnRepository, participantRepository, tradingService);
+        when(tradingService.isPreviousSeasonSettled(any(TradingSeason.class))).thenReturn(true);
 
         // 저장하면 번호가 붙는 것처럼 흉내 낸다
         when(seasonRepository.save(any(TradingSeason.class))).thenAnswer(invocation -> {
@@ -200,24 +205,11 @@ class SeasonAdminServiceTest {
 
     // ===== #207 이전 시즌 정산 확인, 기간 겹침 =====
 
-    private TradingSeason previousSeason(boolean settledAndEnded) {
-        TradingSeason previous = TradingSeason.create("시즌 7", MONDAY.minusDays(14), ADMIN_ID);
-        ReflectionTestUtils.setField(previous, "tradingSeasonId", 7L);
-        previous.changeStatus(TradingSeason.STATUS_RUNNING);
-        previous.changeStatus(TradingSeason.STATUS_SETTLING);
-        if (settledAndEnded) {
-            previous.completeSettlement(java.time.LocalDateTime.of(2026, 11, 16, 0, 10));
-            previous.publishRanking(java.time.LocalDateTime.of(2026, 11, 16, 9, 0));
-        }
-        return previous;
-    }
-
     @Test
     void 이전_시즌이_정산_전이면_새_시즌을_진행_중으로_바꿀_수_없다() {
         TradingSeason next = savedSeason(8L, "시즌 8");
         when(seasonRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(next));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
-                .thenReturn(Optional.of(previousSeason(false)));
+        when(tradingService.isPreviousSeasonSettled(next)).thenReturn(false);
 
         assertThatThrownBy(() -> service.changeStatus(8L, new SeasonStatusDTO("RUNNING")))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -229,14 +221,11 @@ class SeasonAdminServiceTest {
     void 이전_시즌이_정산을_마치고_끝났거나_없으면_새_시즌을_시작할_수_있다() {
         TradingSeason first = savedSeason(8L, "시즌 8");
         when(seasonRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(first));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY)).thenReturn(Optional.empty());
         service.changeStatus(8L, new SeasonStatusDTO("RUNNING"));
         assertThat(first.isRunning()).isTrue();
 
         TradingSeason second = savedSeason(9L, "시즌 9");
         when(seasonRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(second));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
-                .thenReturn(Optional.of(previousSeason(true)));
         service.changeStatus(9L, new SeasonStatusDTO("RUNNING"));
         assertThat(second.isRunning()).isTrue();
     }
@@ -246,9 +235,6 @@ class SeasonAdminServiceTest {
         TradingSeason running = savedSeason(8L, "시즌 8");
         running.changeStatus(TradingSeason.STATUS_RUNNING);
         when(seasonRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(running));
-        when(seasonRepository.findFirstByStartDateBeforeOrderByStartDateDesc(MONDAY))
-                .thenReturn(Optional.of(previousSeason(false)));
-
         service.changeStatus(8L, new SeasonStatusDTO("HOLIDAY"));
 
         assertThat(running.isHoliday()).isTrue();
@@ -263,5 +249,16 @@ class SeasonAdminServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.SEASON_PERIOD_OVERLAP);
         verify(seasonRepository, never()).save(any());
+    }
+
+    @Test
+    void 시즌을_만들_때_기존_시즌을_먼저_잠그고_그_뒤에_겹침을_확인한다() {
+        service.createSeason(new SeasonSaveDTO("시즌 8", MONDAY, null), ADMIN_ID);
+
+        InOrder inOrder = inOrder(seasonRepository);
+        inOrder.verify(seasonRepository).findAllForUpdate();
+        inOrder.verify(seasonRepository).existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                MONDAY.plusDays(13), MONDAY);
+        inOrder.verify(seasonRepository).save(any());
     }
 }

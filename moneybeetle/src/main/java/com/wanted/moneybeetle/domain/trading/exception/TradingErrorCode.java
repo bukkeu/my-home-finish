@@ -54,7 +54,9 @@ public enum TradingErrorCode implements ErrorCode {
     PREVIOUS_SEASON_SETTLE_REQUIRED(HttpStatus.CONFLICT, "이전 시즌 정산을 먼저 마쳐 주세요"),                       // 409 (관리자: 새 시즌 시작·다음 턴 전)
     SEASON_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요"),               // 409
     MARKET_STILL_OPEN(HttpStatus.CONFLICT, "장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요"),  // 409
-    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요");                                       // 403
+    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요"),                                       // 403
+    NOT_SETTLED(HttpStatus.CONFLICT, "정산을 먼저 해 주세요");                                                    // 409
+
 
     private final HttpStatus status;
     private final String message;

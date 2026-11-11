@@ -85,6 +85,7 @@ class ParticipationServiceTest {
             }
         }
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(SEASON_ID)).thenReturn(Optional.of(season));
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
         return season;
     }
@@ -123,6 +124,7 @@ class ParticipationServiceTest {
         assertThat(result.getSavedCash()).isEqualTo(3_200_000L);
         assertThat(result.getCarryoverIn()).isEqualTo(1_620_000L);
         assertThat(result.getInvestAmount()).isEqualTo(4_820_000L);
+        verify(seasonRepository).findByIdForUpdate(SEASON_ID);
         verify(rewardService, never()).spendCash(any(), any(), any(), anyLong());
     }
 
@@ -194,7 +196,7 @@ class ParticipationServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.UNAUTHORIZED);
 
-        when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.join(99L, MEMBER_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.NOT_FOUND);

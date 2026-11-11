@@ -100,7 +100,8 @@ class AdminTurnControllerTest {
                 .andExpect(jsonPath("$.data.nextTradeDate").value("2026-11-07"))
                 .andExpect(jsonPath("$.data.missingPrices[1]").value("별숲엔터"))
                 .andExpect(jsonPath("$.data.newsCount").value(2))
-                .andExpect(jsonPath("$.data.isHoliday").value(false));
+                .andExpect(jsonPath("$.data.isHoliday").value(false))
+                .andExpect(jsonPath("$.data.previousSeasonSettled").value(true));
     }
 
     @Test

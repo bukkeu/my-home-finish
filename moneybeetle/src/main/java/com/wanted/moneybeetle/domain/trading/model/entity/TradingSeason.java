@@ -233,9 +233,14 @@ public class TradingSeason {
         return this.currentTurn >= this.totalTurns;
     }
 
+    /** 정산을 마쳤는가 (정산은 한 번만 실행한다) */
+    public boolean isSettled() {
+        return this.settledAt != null;
+    }
+
     /** 정산을 마치고 끝난 시즌인가 (다음 시즌을 시작하기 전에 이전 시즌이 이 상태여야 한다, #207) */
     public boolean isSettledAndEnded() {
-        return isEnded() && this.settledAt != null;
+        return isEnded() && isSettled();
     }
 
     public boolean isRankingPublished() {
