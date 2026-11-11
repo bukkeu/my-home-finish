@@ -118,6 +118,8 @@ class HomeTemplatesRenderTest {
 
         assertThat(html).contains("id=\"hm\"", "data-mb-home", "data-level=\"4\"", "data-tier=\"원룸\"", "민지", "님, Money Beetle에", "님, 오늘도 한 걸음",
                 "/css/home.css", "/js/home.js", "/js/words.js", "data-mb-words", "id=\"hm-training\"", "data-slot=\"kicker\"", "data-slot=\"meta\"");
+        // 공통 헤더의 검색창(name=q)과 추천 검색어 스크립트 (#278)
+        assertThat(html).contains("name=\"q\"", "/js/search-suggest.js");
     }
 
     @Test
@@ -156,7 +158,7 @@ class HomeTemplatesRenderTest {
     @DisplayName("화면이 불러오는 스타일·스크립트·이미지 파일이 모두 있다")
     void staticFilesExist() throws Exception {
         for (String path : new String[] {"/static/css/home.css", "/static/css/landing.css", "/static/js/home.js", "/static/js/landing.js",
-                "/static/js/words.js", "/static/images/house-top-hd.png", "/static/images/beetle-mascot.png"}) {
+                "/static/js/words.js", "/static/js/search-suggest.js", "/static/images/house-top-hd.png", "/static/images/beetle-mascot.png"}) {
             assertThat(HomeTemplatesRenderTest.class.getResource(path)).as(path).isNotNull();
         }
     }

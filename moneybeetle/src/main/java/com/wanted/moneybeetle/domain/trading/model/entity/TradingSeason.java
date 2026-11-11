@@ -2,7 +2,7 @@ package com.wanted.moneybeetle.domain.trading.model.entity;
 
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.global.exception.BusinessException;
-import jakarta.persistence.Column;
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,20 +19,19 @@ import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 /* comment.
 *   담당 : PM (모의투자)
 *   테이블 trading_season
 *   상태 : READY -> RUNNING <-> HOLIDAY -> SETTLING -> ENDED (SP-65, 거꾸로 가지 않음.
 *          일요일 휴장 뒤에는 다시 진행 중으로 돌아온다)
+*   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#293)
 *  */
 @Entity
 @Table(name = "trading_season")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TradingSeason {
+public class TradingSeason extends BaseTimeEntity {
 
     public static final String STATUS_READY = "READY";
     public static final String STATUS_RUNNING = "RUNNING";
@@ -80,14 +79,6 @@ public class TradingSeason {
 
     /** 만든 관리자 (member 도메인 - ID 참조) */
     private Long createdBy;
-
-    // TODO(#2): BaseTimeEntity 로 바꿀지 팀과 맞춘다
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 
     private TradingSeason(String name, LocalDate startDate, BigDecimal carryoverRate,
             Long carryoverCap, Long createdBy) {
@@ -181,18 +172,24 @@ public class TradingSeason {
         }
     }
 
-    /** 정산을 마쳤다고 기록한다. 정산 중(SETTLING)에만 */
+    /** 정산을 마쳤다고 기록한다. 정산 중(SETTLING)에, 한 번만 */
     public void completeSettlement(LocalDateTime settledAt) {
-        if (!STATUS_SETTLING.equals(this.status)) {
+        if (!STATUS_SETTLING.equals(this.status) || isSettled()) {
             throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
         }
         this.settledAt = settledAt;
     }
 
-    /** 랭킹을 공개하고 시즌을 끝낸다. 정산 중(SETTLING)이고 정산을 마친 뒤에만 (SP-62, SP-65) */
+    /**
+     * 랭킹을 공개하고 시즌을 끝낸다. 정산 중(SETTLING)이고 정산을 마친 뒤에만 (SP-62, SP-65).
+     * 정산 중이 아니면(이미 끝났거나 아직 정산 단계가 아니면) INVALID_STATUS_TRANSITION, 정산 전이면 NOT_SETTLED
+     */
     public void publishRanking(LocalDateTime publishedAt) {
-        if (!STATUS_SETTLING.equals(this.status) || this.settledAt == null) {
+        if (!STATUS_SETTLING.equals(this.status)) {
             throw new BusinessException(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (!isSettled()) {
+            throw new BusinessException(TradingErrorCode.NOT_SETTLED);
         }
         this.rankingPublishedAt = publishedAt;
         this.status = STATUS_ENDED;
