@@ -4,6 +4,8 @@ import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,12 +31,6 @@ import java.util.Objects;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Course extends BaseTimeEntity {
 
-    // 상태값은 Entity가 상수로 가진다 (컨벤션 4장)
-    public static final String STATUS_DRAFT = "DRAFT";
-    public static final String STATUS_REVIEW = "REVIEW";
-    public static final String STATUS_APPROVED = "APPROVED";
-    public static final String STATUS_REJECTED = "REJECTED";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long courseId;
@@ -44,7 +40,8 @@ public class Course extends BaseTimeEntity {
     private String title;
     private String description;
     private String thumbnailUrl;
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private CourseStatus status;    // 상태값은 enum (#295). DB 컬럼은 그대로 VARCHAR, 저장되는 값도 같다
     private boolean isPublic;
     private LocalDate infoBaseDate;
     private String infoSource;
@@ -60,7 +57,7 @@ public class Course extends BaseTimeEntity {
         this.description = description;
         this.infoBaseDate = infoBaseDate;
         this.infoSource = infoSource;
-        this.status = STATUS_DRAFT;
+        this.status = CourseStatus.DRAFT;
         this.isPublic = false;
     }
 
@@ -70,17 +67,31 @@ public class Course extends BaseTimeEntity {
         return new Course(instructorId, categoryId, title, description, infoBaseDate, infoSource);
     }
 
+    /* 화면·JSON·관리자 로그가 읽는 상태 문자열 ("REVIEW" 등). 응답 모양을 바꾸지 않으려고 String 으로 돌려준다 */
+    public String getStatus() {
+        return status.name();
+    }
+
+    /* 상태 enum (#295). 상태로 판단할 때는 이것이나 아래 is* 메서드를 쓴다 */
+    public CourseStatus getCourseStatus() {
+        return status;
+    }
+
     // 사용자에게 보여도 되는 강의인지는 Entity가 판단 (SP-31)
     public boolean isVisibleToLearner() {
-        return STATUS_APPROVED.equals(status) && isPublic && deletedAt == null;
+        return status == CourseStatus.APPROVED && isPublic && deletedAt == null;
     }
 
     public boolean isInReview() {
-        return STATUS_REVIEW.equals(status);
+        return status == CourseStatus.REVIEW;
     }
 
     public boolean isApproved() {
-        return STATUS_APPROVED.equals(status);
+        return status == CourseStatus.APPROVED;
+    }
+
+    public boolean isRejected() {
+        return status == CourseStatus.REJECTED;
     }
 
     public boolean isDeleted() {
@@ -90,7 +101,7 @@ public class Course extends BaseTimeEntity {
     /* 허가 = 허가 + 공개 (API 91). 검수 중인 강의만 */
     public void approve(LocalDateTime approvedAt) {
         requireInReview();
-        this.status = STATUS_APPROVED;
+        this.status = CourseStatus.APPROVED;
         this.isPublic = true;
         this.approvedAt = approvedAt;
     }
@@ -98,7 +109,7 @@ public class Course extends BaseTimeEntity {
     /* 반려 (API 92). 사유는 course_review에 남긴다. 반려된 강의는 보이지 않게 비공개 */
     public void reject() {
         requireInReview();
-        this.status = STATUS_REJECTED;
+        this.status = CourseStatus.REJECTED;
         this.isPublic = false;
     }
 
@@ -124,7 +135,7 @@ public class Course extends BaseTimeEntity {
     /* 검수 요청을 할 수 있는 상태인지 (API 81). 작성 중·반려 상태만 → 반려된 강의를 고쳐 다시 요청할 수 있다
      * 서비스가 콘텐츠(영상·퀴즈) 검사보다 먼저 불러 상태 오류(409)가 콘텐츠 오류보다 앞서게 한다 */
     public void checkRequestable() {
-        if (!STATUS_DRAFT.equals(status) && !STATUS_REJECTED.equals(status)) {
+        if (status != CourseStatus.DRAFT && status != CourseStatus.REJECTED) {
             throw new BusinessException(CourseErrorCode.COURSE_NOT_REQUESTABLE);
         }
     }
@@ -132,7 +143,7 @@ public class Course extends BaseTimeEntity {
     /* 검수 요청 (API 81, DP-34). 상태 변경 자체도 같은 검사로 보호한다 */
     public void requestReview(LocalDateTime submittedAt) {
         checkRequestable();
-        this.status = STATUS_REVIEW;
+        this.status = CourseStatus.REVIEW;
         this.submittedAt = submittedAt;
     }
 
@@ -167,7 +178,7 @@ public class Course extends BaseTimeEntity {
     /* 허가된 강의를 고치면 다시 검수 → 허가 전까지 사용자에게 보이지 않는다 (SP-31) */
     private void reReviewIfApproved(LocalDateTime now) {
         if (isApproved()) {
-            this.status = STATUS_REVIEW;
+            this.status = CourseStatus.REVIEW;
             this.submittedAt = now;
         }
     }

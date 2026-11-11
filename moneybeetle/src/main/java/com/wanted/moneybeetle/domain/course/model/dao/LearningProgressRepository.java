@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.course.model.dao;
 
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +38,7 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
             """)
     Page<LearningProgress> findVisibleByMemberIdAndStatus(@Param("memberId") Long memberId,
                                                           @Param("progressStatus") String progressStatus,
-                                                          @Param("courseStatus") String courseStatus,
+                                                          @Param("courseStatus") CourseStatus courseStatus,
                                                           Pageable pageable);
 
     /* 홈·내 정보의 학습 완료 강의 수 (#188): 학습 완료 목록(findVisibleByMemberIdAndStatus)과 같은 조건으로 개수만 센다 */
@@ -49,7 +50,7 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
             """)
     long countVisibleByMemberIdAndStatus(@Param("memberId") Long memberId,
                                          @Param("progressStatus") String progressStatus,
-                                         @Param("courseStatus") String courseStatus);
+                                         @Param("courseStatus") CourseStatus courseStatus);
 
     /* 홈 '이어서 볼 강의' (최근에 본 순서 5개) */
     List<LearningProgress> findTop5ByMemberIdAndStatusOrderByUpdatedAtDesc(Long memberId, String status);
