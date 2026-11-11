@@ -27,8 +27,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 /* comment.
@@ -41,19 +39,13 @@ import org.springframework.stereotype.Service;
 *     시안의 값(#261): 이어서 볼 영상의 길이·몇 강째인지·소주제(course), 모의투자 시즌 요약(trading), 접수 중 공고 수·내 납입 횟수(housing)도 담는다.
 *     요약은 해금된 기능만 만들고, 만들 수 없으면(시즌·통장 없음, 예상 밖 오류) 홈 전체를 실패시키지 않고 그 요약만 null 로 둔다.
 *   - 이 클래스는 트랜잭션을 열지 않는다. 각 서비스 호출이 자기 트랜잭션을 연다 (오늘의 용어 자동 선정이 트랜잭션 밖에서 실행돼야 해서).
-*   - 이어서 볼 강의는 course 도메인에 "강의 + 마지막 영상 + 위치"를 한 번에 주는 메서드가 없어서, 공개된 조회 메서드 세 개
-*     (이어 볼 강의 목록, 시청 기록, 영상 재생 정보)를 조합한다. 전용 메서드가 생기면 그것으로 바꾼다.
+*   - 이어서 볼 강의는 course 도메인의 공개된 조회 메서드(이어 볼 강의 목록, 그 강의의 마지막 시청 기록 한 건(#188), 영상 재생 정보·강의 상세)를 조합한다.
+*     본 영상 수·학습 완료 강의 수는 개수 전용 조회(#188)로 센다 (#267).
 *  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class HomeService {
-
-    /** 이어서 볼 강의의 마지막 영상을 찾으려고 한 번에 읽는 시청 기록 개수 */
-    static final int WATCH_SCAN_SIZE = 20;
-
-    /** 마지막 영상을 찾을 때 넘겨 볼 최대 쪽 수 (20개씩 50쪽 = 최근 1,000건) */
-    static final int MAX_WATCH_PAGES = 50;
 
     /** 청약 단지 상태 중 접수 중인 값. housing 의 ComplexDTO.status 가 이 문자열로 내려온다 (다른 도메인의 Entity 를 쓰지 않으려고 여기에 따로 둔다) */
     private static final String HOUSING_STATUS_OPEN = "OPEN";
@@ -72,8 +64,9 @@ public class HomeService {
         var todayTerms = termService.getToday().terms();
         int level = growthService.getLevel(memberId);
 
-        long watchedLessons = courseService.findWatchHistories(memberId, PageRequest.of(0, 1)).getTotalElements();
-        long completedCourses = courseService.findCompletedCourses(memberId, PageRequest.of(0, 1)).getTotalElements();
+        // 목록을 만들지 않고 개수만 센다 (#188 의 개수 전용 조회, 시청 기록·학습 완료 목록과 같은 조건)
+        long watchedLessons = courseService.countWatchedLessons(memberId);
+        long completedCourses = courseService.countCompletedCourses(memberId);
 
         return new HomeDTO(
                 todayTerms,
@@ -146,7 +139,8 @@ public class HomeService {
         }
         CourseListDTO course = continuing.get(0);
 
-        WatchHistoryDTO lastWatched = findLastWatched(memberId, course.getCourseId());
+        // 그 강의에서 가장 최근에 본 영상 기록 한 건 (#188). 기록이 아주 많아도 쪽을 넘기지 않고 바로 찾는다
+        WatchHistoryDTO lastWatched = courseService.findLastWatched(memberId, course.getCourseId()).orElse(null);
         if (lastWatched == null) {
             return new HomeDTO.ContinueCourse(course.getCourseId(), course.getTitle(), null, null, null, null, null, null, null);
         }
@@ -176,29 +170,6 @@ public class HomeService {
                 return i + 1;
             }
         }
-        return null;
-    }
-
-    /**
-     * 그 강의에서 가장 최근에 본 영상 기록. 시청 기록은 최근 순이라서 첫 번째로 맞는 것이 가장 최근이다.
-     * 다른 강의 영상을 많이 본 뒤라면 첫 쪽에 없을 수 있으므로, 찾거나 마지막 쪽에 닿을 때까지 쪽을 넘겨 가며 찾는다.
-     * 기록이 아주 많은 회원이 홈을 열 때마다 끝없이 읽지 않도록 최대 MAX_WATCH_PAGES 쪽까지만 본다.
-     */
-    private WatchHistoryDTO findLastWatched(Long memberId, Long courseId) {
-        for (int pageNo = 0; pageNo < MAX_WATCH_PAGES; pageNo++) {
-            Page<WatchHistoryDTO> page = courseService.findWatchHistories(memberId, PageRequest.of(pageNo, WATCH_SCAN_SIZE));
-            for (WatchHistoryDTO history : page.getContent()) {
-                if (courseId.equals(history.getCourseId())) {
-                    return history;
-                }
-            }
-            if (!page.hasNext()) {
-                return null;
-            }
-        }
-        // 상한까지 읽고도 끝나지 않았다: 그 강의의 기록이 더 오래됐거나 기록이 아주 많은 회원이다. 영상·위치 없이 강의만 보여 준다
-        log.warn("이어서 볼 강의의 마지막 영상을 최근 {}건 안에서 찾지 못했어요: memberId={}, courseId={}",
-                MAX_WATCH_PAGES * WATCH_SCAN_SIZE, memberId, courseId);
         return null;
     }
 

@@ -31,8 +31,6 @@ import java.util.OptionalInt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 
 /* comment.
@@ -62,8 +60,8 @@ class MemberProfileServiceTest {
 
         LevelTable table = levelTable();   // when() 안에서 다른 Mock 을 만들지 않도록 먼저 만든다
         when(growthService.loadLevelTable()).thenReturn(table);
-        when(courseService.findWatchHistories(any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(), Pageable.ofSize(1), 14));
-        when(courseService.findCompletedCourses(any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(), Pageable.ofSize(1), 5));
+        when(courseService.countWatchedLessons(any())).thenReturn(14L);          // 개수 전용 조회 (#188, #267)
+        when(courseService.countCompletedCourses(any())).thenReturn(5L);
     }
 
     /** 레벨 1~20, 필요 경험치 = (레벨-1)*150, 칭호는 레벨 번호 */
@@ -89,11 +87,13 @@ class MemberProfileServiceTest {
     @DisplayName("내 정보에 칭호·다음 레벨까지 경험치·출석·학습·해금이 함께 나온다")
     void myInfo() {
         when(memberService.getProfile(1L)).thenReturn(profile(8, 1120, 3));
+        when(memberService.getLoginProvider(1L)).thenReturn("EMAIL");
         when(attendanceService.getStatus(1L)).thenReturn(new AttendanceStatusDTO(3, 2, 10_000, true));
 
         MyInfoDTO info = service.getMyInfo(1L);
 
         assertThat(info.email()).isEqualTo("minji@gmail.com");
+        assertThat(info.loginProvider()).isEqualTo("EMAIL");
         assertThat(info.title()).isEqualTo("칭호8");
         assertThat(info.expToNextLevel()).isEqualTo(8 * 150 - 1120);
         assertThat(info.attendance().streak()).isEqualTo(3);
@@ -103,6 +103,16 @@ class MemberProfileServiceTest {
         assertThat(info.unlocks().trading()).isTrue();
         assertThat(info.unlocks().housing()).isFalse();
         assertThat(info.unlocks().housingLevel()).isEqualTo(12);
+    }
+
+    @Test
+    @DisplayName("구글 간편 로그인 회원의 내 정보에는 loginProvider 가 GOOGLE 로 나온다 (#255)")
+    void myInfoGoogleLoginProvider() {
+        when(memberService.getProfile(1L)).thenReturn(profile(8, 1120, 3));
+        when(memberService.getLoginProvider(1L)).thenReturn("GOOGLE");
+        when(attendanceService.getStatus(1L)).thenReturn(new AttendanceStatusDTO(3, 2, 10_000, true));
+
+        assertThat(service.getMyInfo(1L).loginProvider()).isEqualTo("GOOGLE");
     }
 
     @Test

@@ -17,7 +17,6 @@ import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,14 +54,15 @@ public class MemberProfileService {
 
         // 연속 출석은 회원 행에 저장된 값이 아니라 오늘(서울) 기준으로 이어지고 있는 일수다. 어제 빠졌으면 0이고, 남은 일수도 같은 기준으로 계산된다
         AttendanceStatusDTO attendance = attendanceService.getStatus(memberId);
-        long watchedLessons = courseService.findWatchHistories(memberId, PageRequest.of(0, 1)).getTotalElements();
-        long completedCourses = courseService.findCompletedCourses(memberId, PageRequest.of(0, 1)).getTotalElements();
+        // 목록을 만들지 않고 개수만 센다 (#188 의 개수 전용 조회, 시청 기록·학습 완료 목록과 같은 조건, #267)
+        long watchedLessons = courseService.countWatchedLessons(memberId);
+        long completedCourses = courseService.countCompletedCourses(memberId);
         int tradingLevel = unlockLevelProvider.getLevel(UnlockFeature.TRADING);
         int housingLevel = unlockLevelProvider.getLevel(UnlockFeature.HOUSING);
 
         return new MyInfoDTO(
                 profile.memberId(), profile.email(), profile.nickname(), profile.profileImageUrl(),
-                profile.birthDate(), profile.gender(), profile.role(),
+                profile.birthDate(), profile.gender(), profile.role(), memberService.getLoginProvider(memberId),
                 level, levelTable.titleOf(level), profile.exp(), expToNextLevel, profile.cash(),
                 new MyInfoDTO.Attendance(attendance.getStreak(), attendance.getDaysToReward()),
                 new MyInfoDTO.Learning(watchedLessons, completedCourses),

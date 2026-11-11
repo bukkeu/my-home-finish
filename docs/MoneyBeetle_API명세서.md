@@ -700,7 +700,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | HOM-03~05, USR-12 |
-| 설명 | 햄버거 메뉴 맨 위 프로필과 설정 화면에 쓴다. |
+| 설명 | 햄버거 메뉴 맨 위 프로필과 설정 화면에 쓴다. `loginProvider` 는 로그인 방식으로, 이메일 가입이면 `EMAIL`, 구글 간편 로그인 회원이면 `GOOGLE`(`social_account` 기준)이다. 마이페이지 프로필 카드가 이메일 옆에 "구글 로그인"을 붙이는 데 쓴다. |
 
 **Request**
 
@@ -711,7 +711,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "memberId": 1, "email": "minji@gmail.com", "nickname": "민지", "profileImageUrl": null,
-  "birthDate": "1999-04-12", "gender": "FEMALE", "role": "MEMBER",
+  "birthDate": "1999-04-12", "gender": "FEMALE", "role": "MEMBER", "loginProvider": "EMAIL",
   "level": 8, "title": "투룸", "exp": 1120, "expToNextLevel": 230,
   "cash": 12400,
   "attendance": { "streak": 3, "daysToReward": 2 },
@@ -915,7 +915,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```
 
 - `todayTerms` 는 오늘(KST) 지정된 용어 5개로, 같은 날에는 모든 사용자에게 같은 값이다(API 20과 같은 값, 사용 중인 용어가 5개 미만이면 있는 만큼, 하나도 없으면 빈 배열).
-- `continueCourse` 는 가장 최근에 본 진행 중 강의다. 이어서 볼 강의가 없으면 `null`이고, 강의는 있지만 그 강의에서 본 영상 기록이 없으면 `lessonId`·`lessonTitle`·`positionSeconds`·`durationSeconds`·`lessonNumber`·`lessonCount`·`categoryName` 이 `null`이다. 마지막 영상은 최근 시청 기록 1,000건 안에서 찾는다.
+- `continueCourse` 는 가장 최근에 본 진행 중 강의다. 이어서 볼 강의가 없으면 `null`이고, 강의는 있지만 그 강의에서 본 영상 기록이 없으면 `lessonId`·`lessonTitle`·`positionSeconds`·`durationSeconds`·`lessonNumber`·`lessonCount`·`categoryName` 이 `null`이다. 마지막 영상은 그 강의의 시청 기록 중 가장 최근 것 한 건이다(기록 수와 상관없이 찾는다, #267).
 - `continueCourse` 의 `durationSeconds` 는 마지막으로 본 영상의 길이(초), `lessonNumber` 는 그 영상이 강의의 영상 목록(재생 순서)에서 몇 번째인지(1부터, 목록에 없으면 `null`), `lessonCount` 는 강의의 영상 수, `categoryName` 은 강의의 소주제 이름이다. 홈 화면이 "08:24 / 14:30", "3강 중 2강"을 보여 주는 데 쓴다(이슈 #261).
 - `training.tradingSeason` 은 모의투자가 열려 있을 때(`training.trading.unlocked`)만 값이 있고, 지금 보이는 시즌의 이름·상태·현재 턴·전체 턴·종료일까지 남은 일수(`daysLeft`, 서울 날짜 기준, 0 아래로 내려가지 않는다)다. 해금되지 않았거나 시즌이 없으면 `null`이다.
 - `training.housingSummary` 는 모의 청약이 열려 있을 때(`training.housing.unlocked`)만 값이 있고, 이번 달에 걸친 단지 중 접수 중(`OPEN`)인 공고 수(`openComplexes`)와 내 청약통장 납입 횟수(`paidCount`, 통장이 없으면 `null`)다. 해금되지 않았거나 공고를 읽지 못하면 `null`이다.

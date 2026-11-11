@@ -1,5 +1,84 @@
-<!-- comment.
-    담당 : DBA ② 김예린 (#61, 관리자 대시보드 틀)
-    원본 디자인 : AdminDashboard.dc.html
-    경로 : /admin/dashboard (탭 틀만. 탭 내용은 fragments/admin 의 각 담당 파일)
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : DBA ② 김예린 (#61, 관리자 대시보드 틀)
+  원본 디자인 : moneybeetle-page/AdminDashboard.dc.html (화면 구성·모양은 이 시안이 기준)
+  경로 : /admin/dashboard?view=… (AdminDashboardViewController, 관리자만)
+  구성 : 왼쪽 고정 관리자 메뉴(fragments/layout/sidebar) + 위쪽 공통 헤더 + 탭 내용. 탭은 주소의 ?view= 로 고른다.
+         view 값: (없음)=대시보드, courses=강의 운영, terms=홈 콘텐츠, growth=성장·캐시, members=회원·강사, board=문의 게시판, settings=설정·작업 기록
+         모르는 값은 대시보드로 보여 준다. 모의투자·모의 청약 운영은 별도 화면(/admin/trading-management, /admin/housing-management)이다.
+  탭 파일 약속 : 각 탭 내용은 fragments/admin 의 파일 하나를 통째로 끼워 넣는다 (th:insert, 조각 이름 없음).
+         - 파일에는 html·head·body 를 쓰지 않고 탭 안에 들어갈 <section> 들만 쓴다
+         - 파일 안에서 지금 탭은 ${view} 로 알 수 있다 (members.html 은 members·board 두 탭에 쓰인다)
+         - 탭이 쓰는 스크립트는 이 틀이 view 별로 불러온다. 새 탭 스크립트를 만들면 아래 th:case 에 한 줄 더한다
+  파일 담당 : 틀·overview·terms·growth·settings = 김예린(#61, #36, #39), courses = 신아림(#34, #35), members(문의 게시판 포함) = 신아림(#37, #38)
+  Model : layout (공통 레이아웃 값, 관리자는 없으면 null이고 기본값으로 그려진다)
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('관리자 대시보드')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/admin.css}">
+</head>
+<body th:with="view=${param.view != null and #lists.contains({'courses', 'terms', 'growth', 'members', 'board', 'settings'}, param.view[0]) ? param.view[0] : 'dashboard'}">
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment(${view})}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+
+    <main class="adm-main" id="adm-main" tabindex="-1">
+      <section class="adm-head">
+        <th:block th:switch="${view}">
+        <span class="adm-crumb" th:case="'courses'">ADMIN · 강의 운영</span>
+        <span class="adm-crumb" th:case="'terms'">ADMIN · 홈 콘텐츠</span>
+        <span class="adm-crumb" th:case="'growth'">ADMIN · 성장·캐시</span>
+        <span class="adm-crumb" th:case="'members'">ADMIN · 회원·강사</span>
+        <span class="adm-crumb" th:case="'board'">ADMIN · 문의 게시판</span>
+        <span class="adm-crumb" th:case="'settings'">ADMIN · 설정·작업 기록</span>
+        <span class="adm-crumb" th:case="*">ADMIN · 대시보드</span>
+        </th:block>
+
+        <th:block th:switch="${view}">
+        <h1 th:case="'courses'">강의 운영</h1>
+        <h1 th:case="'terms'">오늘의 경제 용어</h1>
+        <h1 th:case="'growth'">성장·캐시</h1>
+        <h1 th:case="'members'">회원·강사 관리</h1>
+        <h1 th:case="'board'">문의 게시판 관리</h1>
+        <h1 th:case="'settings'">설정·작업 기록</h1>
+        <h1 th:case="*">운영 대시보드</h1>
+        </th:block>
+
+        <th:block th:switch="${view}">
+        <p th:case="'courses'">카테고리를 정리하고 올라온 강의를 검수해요</p>
+        <p th:case="'terms'">날짜마다 홈에 보여 줄 경제 용어 5개를 정하고 용어를 관리해요</p>
+        <p th:case="'growth'">활동별 캐시·경험치 규칙을 고치고 캐시를 직접 지급·회수해요</p>
+        <p th:case="'members'">사용자와 강사 계정, 강사 가입 신청을 관리해요</p>
+        <p th:case="'board'">문의 게시판의 글을 확인하고 숨김을 관리해요</p>
+        <p th:case="'settings'">서비스 설정 값과 관리자 작업 기록을 확인해요</p>
+        <p th:case="*">처리할 일과 서비스 현황을 한눈에 봐요</p>
+        </th:block>
+      </section>
+
+      <th:block th:switch="${view}">
+        <th:block th:case="'courses'" th:insert="~{fragments/admin/courses}"></th:block>
+        <th:block th:case="'terms'" th:insert="~{fragments/admin/terms}"></th:block>
+        <th:block th:case="'growth'" th:insert="~{fragments/admin/growth}"></th:block>
+        <th:block th:case="'members'" th:insert="~{fragments/admin/members}"></th:block>
+        <th:block th:case="'board'" th:insert="~{fragments/admin/members}"></th:block>
+        <th:block th:case="'settings'" th:insert="~{fragments/admin/settings}"></th:block>
+        <th:block th:case="*" th:insert="~{fragments/admin/overview}"></th:block>
+      </th:block>
+    </main>
+  </div>
+</div>
+
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/admin-common.js}"></script>
+<!--/* 탭 스크립트: 스크립트가 없는 탭(courses, members, board)은 그 탭 담당이 th:case 를 더한다 */-->
+<th:block th:switch="${view}">
+  <script th:case="'terms'" th:src="@{/js/admin-terms.js}"></script>
+  <script th:case="'growth'" th:src="@{/js/admin-growth.js}"></script>
+  <script th:case="'settings'" th:src="@{/js/admin-settings.js}"></script>
+  <script th:case="'dashboard'" th:src="@{/js/admin-overview.js}"></script>
+</th:block>
+</body>
+</html>

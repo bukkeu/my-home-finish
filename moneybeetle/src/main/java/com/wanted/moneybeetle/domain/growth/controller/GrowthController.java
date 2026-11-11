@@ -6,7 +6,9 @@ import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryPageDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.ExpHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.ExpHistoryPageDTO;
+import com.wanted.moneybeetle.domain.growth.model.dto.LevelListDTO;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
+import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.global.common.ApiResponse;
@@ -21,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 /* comment.
 *   담당 : DBA ② (성장·캐시·레벨)
 *   GET /api/v1/members/me/attendance, /members/me/cash-histories, /members/me/exp-histories, /levels
-*   - 출석 현황(API 21), 캐시 내역(API 22), 경험치 내역(API 23)
+*   - 출석 현황(API 21), 캐시 내역(API 22), 경험치 내역(API 23), 레벨·칭호 표(API 24)
 *  */
 @RestController
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class GrowthController {
 
     private final AttendanceService attendanceService;
     private final RewardService rewardService;
+    private final GrowthService growthService;
 
     // API 21. 출석 현황 (조회만 한다. 출석 기록은 로그인 성공 때 한다)
     @GetMapping("/api/v1/members/me/attendance")
@@ -64,6 +67,12 @@ public class GrowthController {
         Pageable pageable = toPageable(page, size);
         return ApiResponse.success(ExpHistoryPageDTO.from(
                 balance.getLevel(), balance.getExp(), rewardService.findExpHistories(memberId, pageable)));
+    }
+
+    // API 24. 레벨·칭호 표 (레벨별 필요 누적 경험치·칭호·레벨업 캐시·해금 기능). 로그인한 회원이면 누구나 본다
+    @GetMapping("/api/v1/levels")
+    public ApiResponse<LevelListDTO> getLevels() {
+        return ApiResponse.success(new LevelListDTO(growthService.findLevels()));
     }
 
     private Pageable toPageable(int page, int size) {
