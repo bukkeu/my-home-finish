@@ -786,7 +786,8 @@
     blockBox.textContent = block;
     blockBox.className = 'order-block';
     show(blockBox, !!block);
-    var over = !block && qty > max;
+    // 결과를 모르는 주문과 같은 내용이면 보유 수량이 줄었어도(이미 체결됐을 수 있다) 같은 키로 다시 낼 수 있게 막지 않는다
+    var over = !block && qty > max && !isPendingRetry(qty);
     // 서버가 준 안내(처리 여부 확인 등)가 떠 있으면 수량 오류가 덮어쓰지 않는다
     if (errBox.dataset.from !== 'server') {
       if (over) { errBox.textContent = buy ? MSG.NOT_ENOUGH_CASH : MSG.NOT_ENOUGH_QUANTITY; show(errBox, true); }
@@ -821,6 +822,31 @@
   /** 주문이 처리됐는지 모르는 오류 코드: 같은 주문을 다시 내면 같은 키를 써서 서버가 처음 결과를 돌려주게 한다 (course-quiz.js·housing.js 와 같다) */
   var UNKNOWN_RESULT = ['NETWORK_ERROR', 'ERROR', 'DUPLICATE_REQUEST'];
 
+  /** 주문 요청 본문. 결과를 모르는 주문을 다시 낼 때 같은 내용인지 비교하므로 키 순서를 바꾸지 않는다 */
+  function orderBody(d, side, qty) {
+    return { stockId: d.stockId, orderType: side, quantity: qty, turnNo: d.turnNo, reasonId: Number(S.reasonId) };
+  }
+
+  /** 지금 폼이 결과를 모르는 주문(pendingOrder)과 같은 내용인가 */
+  function isPendingRetry(qty) {
+    return !!(S.pendingOrder && S.stock && S.pendingOrder.sig === JSON.stringify(orderBody(S.stock, S.side, qty)));
+  }
+
+  /**
+   * 응답을 못 받은 주문 뒤에 이 종목의 보유 수량만 다시 받는다.
+   * 가격·턴·수량·이유·키는 그대로 둔다 (같은 주문을 같은 본문·키로 다시 내야 서버가 처음 결과를 돌려준다).
+   * 새 주문에는 갱신된 수량 제한이 걸린다 (updateOrder)
+   */
+  function refreshStockHolding(stockId) {
+    var req = S.stockReq;
+    return api('/stocks/' + encodeURIComponent(stockId)).then(function (d) {
+      if (req !== S.stockReq || !S.stock || S.stock.stockId !== d.stockId) return;   // 그사이 다른 종목을 열었으면 버린다
+      S.stock.myHolding = d.myHolding;
+      renderHoldingSummary();
+      updateOrder();
+    }).catch(function (err) { fatal(err); });   // 못 받아도 홈·내역은 이미 갱신됐고, 주문 화면은 그대로 둔다
+  }
+
   function submitOrder(e) {
     e.preventDefault();
     var d = S.stock;
@@ -828,7 +854,7 @@
     if (!S.reasonId) { orderError(MSG.REASON_REQUIRED); return; }
     var qty = Math.max(1, parseInt($('trd-qty').value, 10) || 1);
     var side = S.side;
-    var body = { stockId: d.stockId, orderType: side, quantity: qty, turnNo: d.turnNo, reasonId: Number(S.reasonId) };
+    var body = orderBody(d, side, qty);
     // 새 주문은 새 키, 결과를 모르는 주문을 같은 내용으로 다시 내면 같은 키 (서버가 처음 결과를 돌려준다, DP-37)
     var sig = JSON.stringify(body);
     var key = S.pendingOrder && S.pendingOrder.sig === sig ? S.pendingOrder.key : uuid();
@@ -858,8 +884,9 @@
       var noReply = err.code === 'NETWORK_ERROR' || err.code === 'ERROR';
       orderError(noReply ? '응답을 받지 못해 주문이 처리됐는지 알 수 없어요. 내 거래 내역을 확인해 주세요. 같은 주문을 다시 누르면 중복 없이 처리돼요'
         : unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err), err.code);
-      // 거래 내역·보유는 새로 불러오되 종목 화면은 다시 그리지 않는다 (다시 그리면 고른 수량·이유가 초기화돼 같은 주문을 다시 내기 어렵다)
-      if (noReply) return refreshAll(false);
+      // 거래 내역·보유는 새로 불러오되 종목 화면은 다시 그리지 않는다 (다시 그리면 고른 수량·이유가 초기화돼 같은 주문을 다시 내기 어렵다).
+      // 이 종목의 보유 수량만 따로 갱신한다: 매도가 체결됐다면 종목 화면의 매도 가능 수량도 줄어 있어야 새 주문이 맞게 막힌다
+      if (noReply) return Promise.all([refreshAll(false), refreshStockHolding(d.stockId)]);
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
       if (unknown || err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
         return refreshAll(true, true);
