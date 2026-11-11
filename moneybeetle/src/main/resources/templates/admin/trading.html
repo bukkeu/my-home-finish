@@ -54,7 +54,7 @@
         </section>
         <div class="at-grid2">
           <section class="at-card">
-            <div class="at-card__head"><div><h2>시즌 설정</h2><p>이월 비율과 상한, 참여 해금 레벨을 정해요. 정산 중·종료된 시즌은 바꿀 수 없어요</p></div></div>
+            <div class="at-card__head"><div><h2>시즌 설정</h2><p>이월 비율과 상한을 정해요. 정산 중·종료된 시즌은 바꿀 수 없어요</p></div></div>
             <form class="at-form" id="at-settings-form" novalidate>
               <label>이월 비율 (%)
                 <input type="number" name="carryoverRate" min="0" max="100" step="0.01" placeholder="예) 100" required>
@@ -62,10 +62,6 @@
               </label>
               <label>이월 상한 (캐시)
                 <input type="number" name="carryoverCap" min="0" step="1" placeholder="비워 두면 상한 없음">
-              </label>
-              <label>참여 해금 레벨
-                <input type="number" name="unlockLevel" min="1" max="20" step="1" placeholder="예) 8" required>
-                <small class="at-muted">Lv.1~20</small>
               </label>
               <em class="at-err" data-at-error hidden></em>
               <div class="at-row end"><button type="submit" class="at-btn primary">설정 저장</button></div>
@@ -80,8 +76,8 @@
                 <em class="at-err" id="at-monday-error" hidden>시즌 시작일은 월요일이어야 해요</em>
               </label>
               <label>설정 가져오기
-                <select name="copyFromSeasonId" id="at-copy-select"><option value="">가져오지 않음 (이월 100% · 상한 없음 · Lv.8)</option></select>
-                <small class="at-muted">고른 시즌의 이월 비율·상한·해금 레벨을 그대로 써요. 분야·종목은 모든 시즌이 함께 써요</small>
+                <select name="copyFromSeasonId" id="at-copy-select"><option value="">가져오지 않음 (이월 100% · 상한 없음)</option></select>
+                <small class="at-muted">고른 시즌의 이월 비율·상한을 그대로 써요. 분야·종목은 모든 시즌이 함께 써요</small>
               </label>
               <div class="at-cal" id="at-create-cal" hidden></div>
               <em class="at-err" data-at-error hidden></em>

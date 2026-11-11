@@ -259,7 +259,6 @@
     var f = $('at-settings-form');
     f.carryoverRate.value = s && s.carryoverRate != null ? s.carryoverRate : '';
     f.carryoverCap.value = s && s.carryoverCap != null ? s.carryoverCap : '';
-    f.unlockLevel.value = s && s.unlockLevel != null ? s.unlockLevel : '';
     f.querySelector('[type=submit]').disabled = !s || s.status === 'SETTLING' || s.status === 'ENDED';
     formError(f, '');
   }
@@ -280,18 +279,16 @@
     e.preventDefault();
     var f = e.currentTarget;
     if (!state.season) return formError(f, noSeasonText());
-    var rate = f.carryoverRate.value.trim(), cap = f.carryoverCap.value.trim(), level = f.unlockLevel.value.trim();
+    var rate = f.carryoverRate.value.trim(), cap = f.carryoverCap.value.trim();
     if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number(rate) > 100) return formError(f, '이월 비율은 0~100 사이, 소수 둘째 자리까지 입력해 주세요');
     if (cap !== '' && !/^\d+$/.test(cap)) return formError(f, '이월 상한은 0 이상의 정수로 입력하거나 비워 두세요');
-    if (!/^\d+$/.test(level) || Number(level) < 1 || Number(level) > 20) return formError(f, '참여 해금 레벨은 1~20 사이로 입력해 주세요');
     formError(f, '');
-    var body = { carryoverRate: Number(rate), carryoverCap: cap === '' ? null : Number(cap), unlockLevel: Number(level) };
+    var body = { carryoverRate: Number(rate), carryoverCap: cap === '' ? null : Number(cap) };
     var target = state.season;   // 요청을 보낸 시즌 (저장하는 사이 다른 시즌으로 바꿔도 이 시즌에 반영한다)
     busy(f.querySelector('[type=submit]'), api(seasonPath('/settings'), { method: 'PATCH', body: body })).then(function () {
       // 목록 응답에 설정값이 없어서, 탭을 이동했다 돌아오면 폼이 비지 않게 저장한 값을 시즌에 담아 둔다
       target.carryoverRate = body.carryoverRate;
       target.carryoverCap = body.carryoverCap;
-      target.unlockLevel = body.unlockLevel;
       MB.toast('시즌 설정을 저장했어요');
     }, function (err) { formError(f, errText(err)); });
   });
