@@ -128,12 +128,14 @@
     var send = byId('mg-wd-send');
     var opener = null;
     var codeMode = false;
+    var codeStarted = false;   // 이 창에서 인증번호를 요청했는가 (닫을 때 서버에 남은 인증을 취소해야 하는지 가린다)
     var timer = null;
     var dialogSession = 0;   // 창을 열고 닫을 때마다 바뀐다. 이전 창에서 보낸 요청의 응답을 가려내는 데 쓴다
 
     function reset() {
       dialogSession += 1;
       codeMode = false;
+      codeStarted = false;
       stepPassword.hidden = false;
       stepCode.hidden = true;
       byId('mg-wd-password').value = '';
@@ -172,9 +174,15 @@
       dialog.hidden = false;
       (codeMode ? send : byId('mg-wd-password')).focus();
     }
+    /** 서버 세션에 남은 탈퇴 인증(받은 코드·확인 완료 표시)을 지운다 (API 17-3, 이슈 #279). 실패해도 창을 닫는 데는 영향이 없다 */
+    function cancelVerification() {
+      api('/api/v1/members/me/withdraw-verification', { method: 'DELETE' }).catch(function () { /* 서버의 5분 만료가 남은 인증을 정리한다 */ });
+    }
     function close() {
+      var hadCode = codeStarted;   // reset() 이 지우기 전에 기억해 둔다
       dialog.hidden = true;
       reset();
+      if (hadCode) cancelVerification();
       if (opener) opener.focus();
     }
     function done() { window.location.assign('/'); }
@@ -194,6 +202,7 @@
 
     send.addEventListener('click', function () {
       send.disabled = true;
+      codeStarted = true;   // 요청이 아직 끝나지 않았어도 닫을 때 취소한다 (늦게 도착한 코드가 남지 않게)
       var session = dialogSession;
       api('/api/v1/members/me/withdraw-verification/request', { method: 'POST' }).then(function () {
         if (session !== dialogSession) return;   // 요청 중에 창을 닫았다 다시 열었으면 이 응답은 무시한다
