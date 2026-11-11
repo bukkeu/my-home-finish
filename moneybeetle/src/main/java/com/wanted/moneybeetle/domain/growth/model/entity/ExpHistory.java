@@ -26,6 +26,8 @@ public class ExpHistory {
     /** 원인 종류 (source_type) */
     public static final String SOURCE_COURSE_COMPLETE = "COURSE_COMPLETE";
     public static final String SOURCE_QUIZ_PERFECT = "QUIZ_PERFECT";
+    /** 출석 경험치 (원인 ID = 그날의 출석 ID, #205) */
+    public static final String SOURCE_ATTENDANCE = "ATTENDANCE";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

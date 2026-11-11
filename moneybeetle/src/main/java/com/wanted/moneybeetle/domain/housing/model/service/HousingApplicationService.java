@@ -63,7 +63,7 @@ public class HousingApplicationService {
     @Transactional
     public ApplyResultDTO apply(Long memberId, Long complexId, ScoreRequestDTO request) {
         checkScoreInput(request);
-        HousingComplex complex = complexRepository.findByIdAndDeletedAtIsNull(complexId)
+        HousingComplex complex = complexRepository.findForUpdate(complexId)   // 단지 행 잠금 (#48)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
 
         LocalDate today = LocalDate.now(clock);

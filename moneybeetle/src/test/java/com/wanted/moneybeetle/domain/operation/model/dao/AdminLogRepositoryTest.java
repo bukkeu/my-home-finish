@@ -3,14 +3,16 @@ package com.wanted.moneybeetle.domain.operation.model.dao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.operation.model.entity.AdminLog;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -49,6 +51,26 @@ class AdminLogRepositoryTest {
         assertThat(found.getTargetId()).isEqualTo(33L);
         assertThat(found.getCreatedAt()).isNotNull();
         assertThat(found.getDetail()).contains("\"after\"").contains("APPROVED");
+    }
+
+    @Test
+    @DisplayName("대상·관리자·기간으로 최신순 조회하고, null 조건은 쓰지 않는다")
+    void searchFilters() {
+        repository.saveAndFlush(AdminLog.create(1L, "TURN_ADVANCE", "SEASON", 7L, null));
+        repository.saveAndFlush(AdminLog.create(2L, "SETTLE", "SEASON", 7L, null));
+        repository.saveAndFlush(AdminLog.create(1L, "COURSE_APPROVE", "COURSE", 33L, null));
+        var page = PageRequest.of(0, 50);
+
+        assertThat(repository.search(null, null, null, null, null, page).getContent()).hasSize(3);
+        var season = repository.search("SEASON", 7L, null, null, null, page).getContent();
+        assertThat(season).extracting(AdminLog::getAction).containsExactly("SETTLE", "TURN_ADVANCE");   // 최신순
+        assertThat(repository.search(null, null, 1L, null, null, page).getContent()).hasSize(2);
+        assertThat(repository.search("COURSE", 33L, 2L, null, null, page).getContent()).isEmpty();
+
+        LocalDateTime now = LocalDateTime.now();
+        assertThat(repository.search(null, null, null, now.minusDays(1), now.plusDays(1), page).getContent()).hasSize(3);
+        assertThat(repository.search(null, null, null, now.plusDays(1), null, page).getContent()).isEmpty();
+        assertThat(repository.search(null, null, null, null, now.minusDays(1), page).getContent()).isEmpty();
     }
 
     @Test

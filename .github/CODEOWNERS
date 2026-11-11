@@ -1,0 +1,8 @@
+# comment.
+#   담당 : SCM (Git 규칙·브랜치 보호, #85)
+#   모든 파일의 코드 오너. main·dev 브랜치 보호의 "Require review from Code Owners" 와 함께 쓰면
+#   아래 두 사람 중 한 명이 승인해야 병합할 수 있다 (docs/MoneyBeetle_Git규칙.md 3장·6장)
+#   - tjtndud2      : SCM 서수영
+#   - godgeul-glitch : PM 이재성 (서수영이 올린 PR은 본인이 승인할 수 없어서 보조 승인자로 둔다)
+
+* @tjtndud2 @godgeul-glitch

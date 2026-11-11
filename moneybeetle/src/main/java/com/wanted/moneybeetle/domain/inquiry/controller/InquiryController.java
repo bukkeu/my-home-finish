@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.inquiry.controller;
 
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryCreateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryCreatedDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryDetailDTO;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,58 +30,67 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /* comment.
-*   담당 : DBA ① (문의)
-*   GET/POST /api/v1/inquiries, GET/PATCH/DELETE /api/v1/inquiries/{inquiryId}
-*   POST /api/v1/inquiries/{inquiryId}/replies, GET /api/v1/instructor/inquiries
-*   화면 : /user/inquiry
-*  */
+ *   담당 : DBA ① (문의)
+ *   GET/POST /api/v1/inquiries, GET/PATCH/DELETE /api/v1/inquiries/{inquiryId}
+ *   POST /api/v1/inquiries/{inquiryId}/replies   (API 47~52, #22)
+ *   GET /api/v1/instructor/inquiries             (API 82, #32에서 추가)
+ *   화면 : /user/inquiry
+ *   로그인 회원: @AuthenticationPrincipal AuthDetails (#132). 관리자 여부는 권한(role)이 ADMIN인지로 판단
+ *  */
 @RestController
 @RequestMapping("/api/v1/inquiries")
 @RequiredArgsConstructor
 public class InquiryController {
 
     private static final int MAX_PAGE_SIZE = 50;
+    private static final String ROLE_ADMIN = "ADMIN";   // AuthDetails 권한 이름 (ROLE_ 접두어 없음, SecurityConfig와 같음)
 
     private final InquiryService inquiryService;
 
     @GetMapping
-    public ApiResponse<PageResponse<InquiryListItemDTO>> list(@RequestParam(required = false) Long courseId,
+    public ApiResponse<PageResponse<InquiryListItemDTO>> list(@AuthenticationPrincipal AuthDetails me,
+                                                              @RequestParam(required = false) Long courseId,
                                                               @RequestParam(required = false) String status,
                                                               @RequestParam(defaultValue = "0") int page,
                                                               @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.success(
-                inquiryService.findInquiries(currentMemberId(), isAdmin(), courseId, status, toPageable(page, size)));
+                inquiryService.findInquiries(memberIdOf(me), isAdmin(me), courseId, status, toPageable(page, size)));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<InquiryCreatedDTO>> create(@Valid @RequestBody InquiryCreateDTO request) {
-        Long inquiryId = inquiryService.createInquiry(currentMemberId(), request);
+    public ResponseEntity<ApiResponse<InquiryCreatedDTO>> create(@AuthenticationPrincipal AuthDetails me,
+                                                                 @Valid @RequestBody InquiryCreateDTO request) {
+        Long inquiryId = inquiryService.createInquiry(memberIdOf(me), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(InquiryCreatedDTO.ofInquiry(inquiryId)));
     }
 
     @GetMapping("/{inquiryId}")
-    public ApiResponse<InquiryDetailDTO> detail(@PathVariable Long inquiryId) {
-        return ApiResponse.success(inquiryService.getInquiry(currentMemberId(), isAdmin(), inquiryId));
+    public ApiResponse<InquiryDetailDTO> detail(@AuthenticationPrincipal AuthDetails me,
+                                                @PathVariable Long inquiryId) {
+        return ApiResponse.success(inquiryService.getInquiry(memberIdOf(me), isAdmin(me), inquiryId));
     }
 
     @PatchMapping("/{inquiryId}")
-    public ResponseEntity<Void> update(@PathVariable Long inquiryId,
+    public ResponseEntity<Void> update(@AuthenticationPrincipal AuthDetails me,
+                                       @PathVariable Long inquiryId,
                                        @Valid @RequestBody InquiryUpdateDTO request) {
-        inquiryService.updateInquiry(currentMemberId(), inquiryId, request);
+        inquiryService.updateInquiry(memberIdOf(me), inquiryId, request);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{inquiryId}")
-    public ResponseEntity<Void> delete(@PathVariable Long inquiryId) {
-        inquiryService.deleteInquiry(currentMemberId(), isAdmin(), inquiryId);
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthDetails me,
+                                       @PathVariable Long inquiryId) {
+        inquiryService.deleteInquiry(memberIdOf(me), isAdmin(me), inquiryId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{inquiryId}/replies")
-    public ResponseEntity<ApiResponse<InquiryCreatedDTO>> reply(@PathVariable Long inquiryId,
+    public ResponseEntity<ApiResponse<InquiryCreatedDTO>> reply(@AuthenticationPrincipal AuthDetails me,
+                                                                @PathVariable Long inquiryId,
                                                                 @Valid @RequestBody InquiryReplyCreateDTO request) {
-        Long replyId = inquiryService.createReply(currentMemberId(), isAdmin(), inquiryId, request);
+        Long replyId = inquiryService.createReply(memberIdOf(me), isAdmin(me), inquiryId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(InquiryCreatedDTO.ofReply(replyId)));
     }
@@ -88,13 +99,15 @@ public class InquiryController {
         return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE));
     }
 
-    /* TODO(#132): 로그인 연결 전에는 안전한 쪽으로 401 */
-    private Long currentMemberId() {
-        throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+    /* 로그인 회원 ID. 로그인 정보가 없으면 안전한 쪽으로 401 */
+    private Long memberIdOf(AuthDetails me) {
+        if (me == null) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        return me.getMemberId();
     }
 
-    /* TODO(#132): 로그인 연결 때 권한(ADMIN)으로 판단 */
-    private boolean isAdmin() {
-        return false;
+    private boolean isAdmin(AuthDetails me) {
+        return me != null && ROLE_ADMIN.equals(me.getRole());
     }
 }

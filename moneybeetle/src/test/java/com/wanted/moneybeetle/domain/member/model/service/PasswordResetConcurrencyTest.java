@@ -7,7 +7,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.PasswordResetTokenRepository;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.Clock;
 import java.time.Instant;
@@ -67,6 +67,11 @@ class PasswordResetConcurrencyTest {
         @Bean
         PasswordEncoder passwordEncoder() {
             return new BCryptPasswordEncoder(4);   // 테스트라서 빠르게
+        }
+
+        @Bean
+        WithdrawVerifier withdrawVerifier() {
+            return org.mockito.Mockito.mock(WithdrawVerifier.class);   // 이 테스트는 탈퇴를 쓰지 않는다 (AccountService 가 요구하는 빈만 채운다)
         }
 
         @Bean

@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -158,6 +159,82 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> service.checkToday(MEMBER))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(GrowthErrorCode.REWARD_RULE_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("출석 경험치 배수: 1~5일 1, 6~10일 2, 11~15일 3, 16~20일 4, 21일부터 5(상한) (#205, SP-22)")
+    void expMultiplierByStreak() {
+        assertThat(AttendanceService.expMultiplier(1)).isEqualTo(1);
+        assertThat(AttendanceService.expMultiplier(5)).isEqualTo(1);
+        assertThat(AttendanceService.expMultiplier(6)).isEqualTo(2);
+        assertThat(AttendanceService.expMultiplier(10)).isEqualTo(2);
+        assertThat(AttendanceService.expMultiplier(11)).isEqualTo(3);
+        assertThat(AttendanceService.expMultiplier(16)).isEqualTo(4);
+        assertThat(AttendanceService.expMultiplier(20)).isEqualTo(4);
+        assertThat(AttendanceService.expMultiplier(21)).isEqualTo(5);
+        assertThat(AttendanceService.expMultiplier(100)).isEqualTo(5);
+        assertThat(AttendanceService.expMultiplier(0)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("출석하면 그날의 출석 ID로 연속 일수 배수를 곱한 경험치를 지급한다 (처음·끊긴 뒤 = 1배)")
+    void grantsExpWithStreakMultiplier() {
+
+        givenRecorded(1, true);
+        service.checkToday(MEMBER);
+        verify(rewardService).grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 1);
+
+        givenRecorded(12, true);
+        service.checkToday(MEMBER);
+        verify(rewardService).grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3);
+
+        givenRecorded(30, true);
+        service.checkToday(MEMBER);
+        verify(rewardService).grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 5);
+    }
+
+    @Test
+    @DisplayName("오늘 이미 출석했으면 경험치를 다시 주지 않는다 (SP-18)")
+    void noExpWhenAlreadyChecked() {
+        givenRecorded(7, false);
+
+        service.checkToday(MEMBER);
+
+        verify(rewardService, never()).grantWithExpMultiplier(anyLong(), any(), anyLong(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    @DisplayName("출석 경험치 규칙이 꺼져 있어 RewardService 가 빈 결과를 돌려줘도 예외 없이 출석은 기록된다 (경험치만 건너뜀)")
+    void expRuleOffSkipsExp() {
+        when(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 1)).thenReturn(Optional.empty());
+        givenRecorded(1, true);
+
+        AttendanceResultDTO result = service.checkToday(MEMBER);
+
+        verify(attendanceRepository).save(any());
+        assertThat(result.getStreak()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("출석 경험치 규칙은 AttendanceService 가 따로 조회하지 않고 RewardService 한 곳에서 한 번만 읽는다")
+    void ruleIsLookedUpOnlyByRewardService() {
+        givenRecorded(3, true);
+
+        service.checkToday(MEMBER);
+
+        verify(rewardService, org.mockito.Mockito.times(1))
+                .grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 1);
+        verify(rewardService, never()).grant(anyLong(), org.mockito.ArgumentMatchers.eq(RewardRule.ATTENDANCE_DAILY), anyLong());
+    }
+
+    @Test
+    @DisplayName("경험치 지급이 실패하면 예외를 그대로 던진다 (같은 트랜잭션이라 출석 기록도 되돌려진다)")
+    void expFailurePropagates() {
+        givenRecorded(2, true);
+        when(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 1))
+                .thenThrow(new BusinessException(GrowthErrorCode.REWARD_RULE_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.checkToday(MEMBER)).isInstanceOf(BusinessException.class);
     }
 
     @Test

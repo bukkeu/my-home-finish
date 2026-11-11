@@ -1,0 +1,71 @@
+/* comment.
+*   담당 : DBA ① 신아림 (#55, 문의 게시판·강의 문의 탭)
+*   UserInquiry.dc.html 의 인라인 스타일을 클래스로 옮겼다. 색·글꼴은 common.css 토큰(var(--color-*))을 쓴다.
+*  */
+.inq-page { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
+.inq-hero h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.03em; }
+.inq-hero p { margin: 0; font-size: 15px; line-height: 1.6; color: var(--color-neutral-700); word-break: keep-all; }
+.inq-board { display: flex; flex-direction: column; gap: 14px; }
+
+.inq-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.inq-note { margin: 0; flex: 1; min-width: 220px; font-size: 13px; line-height: 1.6; color: var(--color-neutral-700); word-break: keep-all; }
+.inq-meta, .inq-count { font-size: 12px; color: var(--color-neutral-700); }
+
+.inq-form { background: #fff; border: 1.5px dashed var(--color-divider); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.inq-form--edit { width: 100%; padding: 16px; }
+.inq-form__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.inq-field { display: flex; flex-direction: column; gap: 6px; }
+.inq-field__label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
+.inq-input { width: 100%; box-sizing: border-box; border: 1px solid var(--color-divider); border-radius: 12px; background: #fff;
+  padding: 10px 12px; font: inherit; font-size: 14px; color: var(--color-text); resize: vertical; }
+.inq-input:focus { outline: none; border-color: var(--color-accent-700); }
+select.inq-input { height: 42px; }
+.inq-error { margin: 0; font-size: 13px; color: var(--color-danger); }
+.inq-error:empty { display: none; }
+.inq-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+.inq-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.inq-tab { height: 36px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--color-divider); background: #fff;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.inq-tab[aria-selected="true"] { background: var(--color-accent-700); border-color: var(--color-accent-700); color: var(--color-accent); }
+.inq-tab__n { opacity: .7; }
+
+.inq-list { display: flex; flex-direction: column; gap: 10px; }
+.inq-state { padding: 32px 16px; text-align: center; font-size: 14px; color: var(--color-neutral-700); background: #fff;
+  border: 1.5px dashed var(--color-divider); border-radius: 16px; line-height: 1.8; }
+.inq-state--error { color: var(--color-danger); }
+.inq-row { background: #fff; border: 1.5px dashed var(--color-divider); border-radius: 16px; overflow: hidden; }
+.inq-row.is-open { border-style: solid; border-color: var(--color-accent); }
+.inq-row--linked { margin-bottom: 6px; }
+.inq-row__head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 0; background: transparent;
+  font: inherit; color: var(--color-text); text-align: left; cursor: pointer; box-sizing: border-box; flex-wrap: wrap; }
+button.inq-row__head:hover { background: #F7FAF3; }
+.inq-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.inq-row__title { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inq-row__caret { flex: none; font-size: 14px; color: var(--color-neutral-700); }
+.inq-status { flex: none; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.inq-status--waiting { background: #FBEFC9; color: #7A5A00; }
+.inq-status--answered { background: var(--color-accent); color: var(--color-accent-700); }
+
+.inq-detail { border-top: 1px solid var(--color-divider); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.inq-body { margin: 0; font-size: 14px; line-height: 1.75; white-space: pre-line; word-break: break-word; }
+.inq-answers { display: flex; flex-direction: column; gap: 8px; }
+.inq-answer { border-radius: 12px; background: var(--color-accent-100); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.inq-answer__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.inq-answer__who { font-size: 13px; font-weight: 800; color: var(--color-accent-700); }
+.inq-waiting { border-radius: 12px; background: var(--color-bg); padding: 12px 14px; font-size: 13px; line-height: 1.7; color: var(--color-neutral-700); }
+.inq-comments { display: flex; flex-direction: column; gap: 6px; }
+.inq-comment { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.inq-comment__body { flex: 1; min-width: 160px; white-space: pre-line; word-break: break-word; }
+.inq-reply { display: flex; gap: 8px; align-items: flex-end; }
+.inq-reply .inq-input { flex: 1; }
+.inq-owner { display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px dashed var(--color-divider); padding-top: 10px; }
+.inq-danger { color: var(--color-danger); }
+
+@media (max-width: 767px) {
+  .inq-hero h1 { font-size: 24px; }
+  .inq-top .btn { width: 100%; height: 44px; }
+  .inq-reply { flex-direction: column; align-items: stretch; }
+  .inq-actions .btn { flex: 1; height: 44px; }
+  .inq-row__head .btn { width: 100%; }
+}

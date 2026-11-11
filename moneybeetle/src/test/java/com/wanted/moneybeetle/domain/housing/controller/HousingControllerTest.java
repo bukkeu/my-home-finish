@@ -15,7 +15,9 @@ import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.security.LevelCheckInterceptor;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,7 +95,8 @@ class HousingControllerTest {
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver(),     // Boot 처럼 Pageable 받기
                         new AuthenticationPrincipalArgumentResolver())                       // @AuthenticationPrincipal 받기
                 .setMessageConverters(json)
-                .addInterceptors(new LevelCheckInterceptor(growthService))
+                .addInterceptors(new LevelCheckInterceptor(growthService,
+                        new UnlockLevelProvider(mock(SystemSettingService.class))))   // 설정 없음 → 기본 Lv.12
                 .build();
     }
 
