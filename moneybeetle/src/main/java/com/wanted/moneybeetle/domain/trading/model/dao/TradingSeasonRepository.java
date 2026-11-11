@@ -42,7 +42,7 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     List<Long> findSeasonIdsByStatusIn(@Param("statuses") List<String> statuses, Pageable pageable);
 
     /**
-     * 주문이 시즌 행을 공유 잠금으로 읽는다 (#25). 주문끼리는 서로 기다리지 않고,
+     * 주문이 시즌 행을 공유 잠금(FOR SHARE)으로 읽는다 (#25, #208). 주문끼리는 서로 기다리지 않고,
      * 턴을 넘기는 쪽(findByIdForUpdate)은 진행 중인 주문이 끝나기를, 주문은 진행 중인 턴 넘김이 끝나기를 기다린다
      */
     @Lock(LockModeType.PESSIMISTIC_READ)

@@ -1,0 +1,86 @@
+/* comment.
+*   담당 : DBA ① 신아림 (#60, 강사 강의 만들기·고치기)
+*   InstructorCourseCreate.dc.html 의 인라인 스타일을 클래스로 옮겼다. 공통 강사 화면 스타일(instructor.css)과 함께 쓴다.
+*  */
+.cc-page { max-width: 880px; }
+.cc-back { font-size: 14px; font-weight: 700; text-decoration: none; color: var(--color-text); }
+.cc-status { margin-right: 4px; }
+.cc-status--draft { background: #EEF0EC; }
+.cc-status--review { background: #FBEFC9; color: #7A5A00; }
+.cc-status--approved { background: var(--color-accent); color: var(--color-accent-700); }
+.cc-status--rejected { background: #FCE8E6; color: #B3261E; }
+
+.cc-notice { padding: 14px 16px; border-radius: 14px; background: var(--color-accent-100); font-size: 14px; line-height: 1.7; word-break: keep-all; }
+.cc-notice--review { background: #FBEFC9; color: #5C4400; }
+.cc-notice--rejected { background: #FCE8E6; color: #8C1D18; }
+.cc-reason { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: #fff; white-space: pre-line; }
+.cc-next { padding: 16px; text-align: center; }
+
+.cc-section { gap: 16px; }
+.cc-section__head { display: flex; align-items: flex-start; gap: 12px; }
+.cc-section__head > div { flex: 1; min-width: 0; }
+.cc-section__head h2 { margin: 2px 0 4px; font-size: 18px; }
+.cc-num { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--color-accent-700); color: var(--color-accent);
+  font-size: 14px; font-weight: 900; }
+.cc-tag { flex: none; padding: 4px 10px; border-radius: 999px; background: #EEF0EC; font-size: 12px; font-weight: 700; color: var(--color-neutral-700); white-space: nowrap; }
+
+.cc-stack { display: flex; flex-direction: column; gap: 14px; }
+.cc-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cc-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cc-field__label { display: flex; justify-content: space-between; gap: 8px; }
+.cc-req { color: var(--color-danger); }
+.cc-count { font-size: 12px; font-weight: 400; color: var(--color-neutral-700); }
+.cc-textarea { height: auto; padding: 10px 14px; line-height: 1.6; resize: vertical; }
+
+.cc-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.cc-chip { height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--color-divider); background: #fff; font: inherit; font-size: 14px;
+  font-weight: 700; color: var(--color-text); cursor: pointer; }
+.cc-chip[aria-checked="true"] { background: var(--color-accent-700); border-color: var(--color-accent-700); color: var(--color-accent); }
+.cc-chip:disabled { cursor: not-allowed; opacity: .6; }
+/* 검수 중 등으로 막힌 버튼이 눌리는 것처럼 보이지 않게 한다 */
+[data-cc-root] .btn:disabled { cursor: not-allowed; opacity: .45; box-shadow: none; }
+.cc-chip--ox { width: 52px; padding: 0; font-size: 18px; font-weight: 900; }
+
+.cc-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.cc-file-btn { position: relative; align-self: flex-start; cursor: pointer; }
+.cc-file-btn:focus-within { outline: 2px solid var(--color-accent-700); outline-offset: 2px; }
+.cc-file-btn.is-disabled { opacity: .5; pointer-events: none; }
+.cc-thumb-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.cc-thumb { width: 240px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: var(--color-bg) center / cover no-repeat;
+  border: 1px solid var(--color-divider); display: grid; place-items: center; }
+.cc-thumb--empty { font-size: 13px; color: var(--color-neutral-700); }
+
+.cc-lessons, .cc-quiz { display: flex; flex-direction: column; gap: 12px; }
+.cc-card { border: 1px solid var(--color-divider); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+.cc-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cc-icon { width: 36px; padding: 0; }
+.cc-video { display: grid; grid-template-columns: 240px 1fr; gap: 14px; align-items: start; }
+.cc-video__player { width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: #000; }
+.cc-video__empty { width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: var(--color-bg); border: 1px dashed var(--color-divider);
+  display: grid; place-items: center; font-size: 13px; color: var(--color-neutral-700); }
+.cc-progress { font-size: 13px; font-weight: 700; color: #4E8A24; }
+.cc-progress:empty { display: none; }
+
+.cc-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cc-choice { display: flex; align-items: center; gap: 8px; }
+.cc-choice__mark { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--color-accent-700); background: #fff; font: inherit;
+  font-size: 13px; font-weight: 800; color: var(--color-text); cursor: pointer; padding: 0; }
+.cc-choice__mark[aria-checked="true"] { background: var(--color-accent); }
+.cc-import { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--color-bg); }
+
+.cc-save { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--color-divider); padding-top: 14px; }
+.cc-save__row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.cc-save__row .btn { height: 46px; padding: 0 22px; }
+.cc-unsaved { font-size: 13px; font-weight: 700; color: #7A5A00; }
+.cc-warn { color: #7A5A00; }
+.cc-checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cc-checks li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--color-bg); font-size: 14px; color: var(--color-neutral-700); }
+.cc-checks li.is-ok { background: var(--color-accent-100); color: var(--color-text); font-weight: 700; }
+.cc-check { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #fff; font-weight: 900; }
+.cc-checks li.is-ok .cc-check { background: var(--color-accent); }
+
+@media (max-width: 767px) {
+  .cc-grid2, .cc-video, .cc-choices, .cc-checks { grid-template-columns: 1fr; }
+  .cc-save__row .btn { flex: 1; }
+  .cc-section__head { flex-wrap: wrap; }
+}

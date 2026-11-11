@@ -36,42 +36,37 @@ class AuthPageControllerTest {
     }
 
     @Test
-    @DisplayName("로그인 화면은 등록된 제공자만 버튼을 보이도록 Model 에 담는다 (구글만 등록)")
+    @DisplayName("로그인 화면은 구글이 등록됐을 때만 버튼을 보이도록 Model 에 담는다")
     void loginShowsOnlyAvailableProviders() {
         when(socialLoginService.isProviderAvailable("google")).thenReturn(true);
-        when(socialLoginService.isProviderAvailable("kakao")).thenReturn(false);
         ExtendedModelMap model = new ExtendedModelMap();
 
         String view = controller.login(null, model);
 
         assertThat(view).isEqualTo("auth/login");
         assertThat(model.asMap().get("googleOAuthEnabled")).isEqualTo(true);
-        assertThat(model.asMap().get("kakaoOAuthEnabled")).isEqualTo(false);
     }
 
     @Test
-    @DisplayName("회원가입 화면도 같은 기준으로 제공자 상태를 담는다 (둘 다 등록)")
+    @DisplayName("회원가입 화면도 같은 기준으로 제공자 상태를 담는다")
     void signupShowsProviderFlags() {
         when(socialLoginService.isProviderAvailable("google")).thenReturn(true);
-        when(socialLoginService.isProviderAvailable("kakao")).thenReturn(true);
         ExtendedModelMap model = new ExtendedModelMap();
 
         String view = controller.signup(model);
 
         assertThat(view).isEqualTo("member/signup");
         assertThat(model.asMap().get("googleOAuthEnabled")).isEqualTo(true);
-        assertThat(model.asMap().get("kakaoOAuthEnabled")).isEqualTo(true);
     }
 
     @Test
-    @DisplayName("제공자가 하나도 등록되지 않았으면 둘 다 false 다 (서비스 mock 기본값)")
+    @DisplayName("제공자가 등록되지 않았으면 false 다 (서비스 mock 기본값)")
     void noProviders() {
         ExtendedModelMap model = new ExtendedModelMap();
 
         controller.login(null, model);
 
         assertThat(model.asMap().get("googleOAuthEnabled")).isEqualTo(false);
-        assertThat(model.asMap().get("kakaoOAuthEnabled")).isEqualTo(false);
     }
 
     @Test
@@ -88,10 +83,10 @@ class AuthPageControllerTest {
     @DisplayName("주소가 템플릿 이름에 연결된다: /login, /signup, /signup/social, /password-reset, /admin/login")
     void routesResolveToTemplates() throws Exception {
         mockMvc.perform(get("/login")).andExpect(status().isOk()).andExpect(view().name("auth/login"))
-                .andExpect(model().attributeExists("googleOAuthEnabled", "kakaoOAuthEnabled"));
+                .andExpect(model().attributeExists("googleOAuthEnabled"));
         mockMvc.perform(get("/login").param("view", "find-email")).andExpect(view().name("auth/find-email"));
         mockMvc.perform(get("/signup")).andExpect(view().name("member/signup"))
-                .andExpect(model().attributeExists("googleOAuthEnabled", "kakaoOAuthEnabled"));
+                .andExpect(model().attributeExists("googleOAuthEnabled"));
         mockMvc.perform(get("/signup/social")).andExpect(view().name("member/social-signup"));
         mockMvc.perform(get("/password-reset")).andExpect(view().name("auth/password-reset"));
         mockMvc.perform(get("/admin/login")).andExpect(status().isOk()).andExpect(view().name("auth/admin-login"));

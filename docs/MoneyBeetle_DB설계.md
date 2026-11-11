@@ -229,7 +229,7 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 
 | 테이블 | 컬럼 | 막는 것 |
 | --- | --- | --- |
-| `social_account` | provider, provider_user_id | 같은 구글·카카오 계정 중복 연결 |
+| `social_account` | provider, provider_user_id | 같은 구글 계정 중복 연결 |
 | `member_terms_agreement` | member_id, terms_id | 같은 약관 중복 동의 기록 |
 | `attendance` | member_id, attend_date | 하루 2번 출석 (SP-10) |
 | `cash_history` | member_id, source_type, source_id | 같은 활동으로 캐시 2번 지급 (SP-18, NFR-06) |
@@ -310,7 +310,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 
 #### 3. `social_account` 간편 로그인 연결
 
-구글·카카오 계정 연결 정보.
+구글 계정 연결 정보.
 
 관련: USR-07, DP-13
 
@@ -318,7 +318,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `social_account_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 연결 ID |
 | `member_id` | BIGINT | N | FK → member.member_id | - | 회원 |
-| `provider` | VARCHAR(20) | N | UNIQUE(provider, provider_user_id) | - | GOOGLE / KAKAO |
+| `provider` | VARCHAR(20) | N | UNIQUE(provider, provider_user_id) | - | GOOGLE |
 | `provider_user_id` | VARCHAR(100) | N | UNIQUE(provider, provider_user_id) | - | 제공자 쪽 사용자 ID |
 | `created_at` | DATETIME | N | - | 현재 시각 | 생성 일시 |
 
@@ -772,7 +772,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `status` | VARCHAR(20) | N | - | READY | READY / RUNNING / HOLIDAY / SETTLING / ENDED |
 | `current_turn` | TINYINT | N | - | 0 | 현재 턴 0~12 |
 | `total_turns` | TINYINT | N | - | 12 | 전체 턴 |
-| `unlock_level` | TINYINT | N | - | 8 | 참가 해금 레벨 |
+| `unlock_level` | TINYINT | N | - | 8 | **사용하지 않음** (#242). 모의투자 해금은 운영 설정 `UNLOCK_LEVEL_TRADING` 하나로 정해서 Entity·API가 이 컬럼을 읽거나 쓰지 않는다(INSERT 때는 기본값 8이 들어간다). 컬럼을 지울지는 DBA와 결정 |
 | `carryover_rate` | DECIMAL(5,2) | N | - | 100.00 | 이월 비율(%). 기본 100(전액), 관리자가 시즌 설정(ADM-11)에서 바꿀 수 있다 |
 | `carryover_cap` | BIGINT | Y | - | - | 이월 상한. 기본 NULL(상한 없음), 관리자가 시즌 설정에서 정한다 |
 | `settled_at` | DATETIME | Y | - | - | 정산 일시 |

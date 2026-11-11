@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   이메일·비밀번호 로그인과 같은 모양(AuthDetails)의 로그인 상태를 세션에 직접 만든다 (간편 로그인, 이슈 #9)
-*   - 구글·카카오 인증이 끝나면 Spring Security 의 인증 정보는 OAuth2 사용자(OAuth2AuthenticationToken)인데, 이 서비스의 나머지 코드는
+*   - 구글 인증이 끝나면 Spring Security 의 인증 정보는 OAuth2 사용자(OAuth2AuthenticationToken)인데, 이 서비스의 나머지 코드는
 *     로그인한 회원을 AuthDetails 로 읽는다(@AuthenticationPrincipal, 권한 MEMBER·INSTRUCTOR·ADMIN). 그래서 같은 모양으로 바꿔 넣는다.
 *   - 세션 ID 는 새로 발급한다 (세션 고정 보호). 가입을 이어서 하는 중 세션에 담아 둔 값은 그대로 따라간다.
 *  */
