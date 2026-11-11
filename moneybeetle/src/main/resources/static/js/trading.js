@@ -878,7 +878,10 @@
       if (UNKNOWN_RESULT.indexOf(err.code) < 0) S.pendingOrder = null;
       if (fatal(err)) return;
       // MSG 에 없는 코드(예: 500 INTERNAL_ERROR)는 서버가 주문을 저장했는지 알 수 없다 -> 내역을 다시 불러오고 확인을 안내한다
-      var unknown = UNKNOWN_RESULT.indexOf(err.code) < 0 && !MSG[err.code];
+      // HTTP 4xx 는 서버가 이유를 알려 준 거절이다(예: 409 MARKET_CLOSED 장 운영 시간 밖). 서버 문구를 그대로 보여 주고 수량·이유는 지우지 않는다.
+      // 5xx 처럼 서버가 주문을 저장했는지 알 수 없는 오류만 '처리 여부 확인' 으로 다룬다
+      var rejected = err.status >= 400 && err.status < 500;
+      var unknown = UNKNOWN_RESULT.indexOf(err.code) < 0 && !MSG[err.code] && !rejected;
       // 응답을 못 받으면(NETWORK_ERROR·ERROR) 서버가 주문을 저장했을 수 있다. 수량·이유·키는 그대로 두므로
       // 같은 주문을 다시 누르면 서버가 처음 결과를 돌려줘 중복 체결되지 않는다
       var noReply = err.code === 'NETWORK_ERROR' || err.code === 'ERROR';

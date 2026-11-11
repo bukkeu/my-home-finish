@@ -45,7 +45,7 @@
         if (res.ok && (!body || body.success !== false)) return body && 'data' in body ? body.data : body;
         var err = (body && body.error) || {};
         // fields: 입력칸별 오류(@Valid 실패). 있으면 화면이 입력칸 아래에 문구를 보여 줄 수 있다
-        return Promise.reject({ code: err.code || 'ERROR', message: err.message || '요청을 처리하지 못했어요.', fields: err.fields || null });
+        return Promise.reject({ code: err.code || 'ERROR', message: err.message || '요청을 처리하지 못했어요.', fields: err.fields || null, status: res.status });
       });
     });
   };
