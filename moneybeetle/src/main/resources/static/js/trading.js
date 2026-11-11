@@ -221,7 +221,8 @@
         // 주문·참가 뒤의 일반 새로고침은 0이 되지 않으므로 이 판단에 끼지 않는다
         var repeated = S.expiredTarget === target;
         S.expiredTarget = target;
-        setTimeout(function () {
+        // 예약도 S.timer 에 둔다. 그래야 다음 startCountdown·stopTimers 가 이 예약을 취소해 새로고침이 겹쳐 쌓이지 않는다
+        S.timer = setTimeout(function () {
           if (S.stopped) return;
           refreshAll(true).then(function (ok) {
             if (!ok) startCountdown(nextTurnAt, status);   // 새로고침이 실패했으면 멈추지 않고 다시 확인한다
@@ -937,12 +938,17 @@
     var seasonId = previous ? S.season.previousSeasonId : S.season.seasonId;
     $('trd-rank-title').textContent = previous ? '지난 시즌 랭킹' : '시즌 랭킹';
     noteBox.textContent = previous && S.season.status !== 'ENDED' ? '이번 시즌 랭킹은 시즌 종료 후 공개돼요' : '';
-    api('/seasons/' + seasonId + '/rankings?type=' + S.rankType + '&page=0&size=10').then(function (d) {
+    // 탭(순자산·수익률)을 빠르게 바꾸면 이전 탭의 늦은 응답은 버린다. 그리는 기준도 요청할 때의 탭으로 고정한다
+    var req = S.rankReq = (S.rankReq || 0) + 1;
+    var current = function () { return req === S.rankReq; };
+    var type = S.rankType;
+    api('/seasons/' + seasonId + '/rankings?type=' + type + '&page=0&size=10').then(function (d) {
+      if (!current()) return;
       if (d.seasonName) {
         var num = /(\d+)/.exec(d.seasonName);
         $('trd-rank-season').textContent = num ? 'SEASON ' + num[1] : d.seasonName;
       }
-      var asset = S.rankType === 'ASSET';
+      var asset = type === 'ASSET';
       var items = d.items || [];
       if (!items.length) { note(list, '아직 랭킹이 없어요'); return; }
       list.replaceChildren.apply(list, items.map(function (r) {
@@ -977,6 +983,7 @@
         show(me, true);
       }
     }).catch(function (err) {
+      if (!current()) { fatal(err); return; }   // 늦은 응답의 오류는 화면 전체 오류(잠금·시즌 없음)만 처리한다
       if (err.code === 'RANKING_NOT_PUBLISHED') { note(list, MSG.RANKING_NOT_PUBLISHED); return; }
       sectionError(list)(err);
     });
