@@ -698,7 +698,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | HOM-03~05, USR-12 |
-| 설명 | 햄버거 메뉴 맨 위 프로필과 설정 화면에 쓴다. |
+| 설명 | 햄버거 메뉴 맨 위 프로필과 설정 화면에 쓴다. `loginProvider` 는 로그인 방식으로, 이메일 가입이면 `EMAIL`, 구글 간편 로그인 회원이면 `GOOGLE`(`social_account` 기준)이다. 마이페이지 프로필 카드가 이메일 옆에 "구글 로그인"을 붙이는 데 쓴다. |
 
 **Request**
 
@@ -709,7 +709,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "memberId": 1, "email": "minji@gmail.com", "nickname": "민지", "profileImageUrl": null,
-  "birthDate": "1999-04-12", "gender": "FEMALE", "role": "MEMBER",
+  "birthDate": "1999-04-12", "gender": "FEMALE", "role": "MEMBER", "loginProvider": "EMAIL",
   "level": 8, "title": "투룸", "exp": 1120, "expToNextLevel": 230,
   "cash": 12400,
   "attendance": { "streak": 3, "daysToReward": 2 },

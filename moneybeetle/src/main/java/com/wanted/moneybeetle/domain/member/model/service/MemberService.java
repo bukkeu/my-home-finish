@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 public class MemberService {
 
     /** DB 고유 키 이름 (schema.sql). 동시 가입의 중복을 알아보는 데 쓴다 */
+    private static final String LOGIN_PROVIDER_EMAIL = "EMAIL";
     private static final String UK_MEMBER_EMAIL = "uk_member_email";
     private static final String UK_MEMBER_NICKNAME = "uk_member_nickname";
 
@@ -246,6 +247,13 @@ public class MemberService {
     /** 회원의 프로필 원본 값 (member.MemberProfileService 용). 없는 회원이면 MEMBER_NOT_FOUND */
     public MemberProfileDTO getProfile(Long memberId) {
         return MemberProfileDTO.from(getMember(memberId));
+    }
+
+    /** 로그인 방식 (내 정보 API 13). social_account 에 연결이 있으면 그 provider(GOOGLE), 없으면 이메일 가입이라 EMAIL */
+    public String getLoginProvider(Long memberId) {
+        return socialAccountRepository.findFirstByMemberIdOrderBySocialAccountIdAsc(memberId)
+                .map(SocialAccount::getProvider)
+                .orElse(LOGIN_PROVIDER_EMAIL);
     }
 
     /** 다른 회원에게 보여 줄 프로필 원본 값. 탈퇴·정지 회원은 없는 회원처럼 MEMBER_NOT_FOUND (DP-03) */

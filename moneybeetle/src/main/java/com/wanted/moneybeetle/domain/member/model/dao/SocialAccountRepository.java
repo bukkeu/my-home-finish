@@ -13,6 +13,9 @@ public interface SocialAccountRepository extends JpaRepository<SocialAccount, Lo
 
     Optional<SocialAccount> findByProviderAndProviderUserId(String provider, String providerUserId);
 
+    /** 회원의 간편 로그인 연결 (이메일 가입 회원은 없다) */
+    Optional<SocialAccount> findFirstByMemberIdOrderBySocialAccountIdAsc(Long memberId);
+
     /** 회원 여러 명의 간편 로그인 연결을 지운다 (탈퇴 회원 개인정보 정리, DP-06) */
     void deleteByMemberIdIn(Collection<Long> memberIds);
 }

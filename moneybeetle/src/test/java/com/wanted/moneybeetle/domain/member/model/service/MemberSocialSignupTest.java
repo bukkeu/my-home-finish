@@ -169,6 +169,16 @@ class MemberSocialSignupTest {
     }
 
     @Test
+    @DisplayName("로그인 방식은 구글 연결이 있으면 GOOGLE, 연결이 없는 이메일 회원은 EMAIL 이다 (#255)")
+    void loginProvider() {
+        when(socialAccountRepository.findFirstByMemberIdOrderBySocialAccountIdAsc(42L))
+                .thenReturn(Optional.of(SocialAccount.create(42L, "GOOGLE", "g-1")));
+
+        assertThat(memberService.getLoginProvider(42L)).isEqualTo("GOOGLE");
+        assertThat(memberService.getLoginProvider(7L)).isEqualTo("EMAIL");
+    }
+
+    @Test
     @DisplayName("SocialAccount 는 GOOGLE·KAKAO 외 제공자나 빈 사용자 ID 를 받지 않는다")
     void socialAccountRules() {
         assertThatThrownBy(() -> SocialAccount.create(1L, "NAVER", "x")).isInstanceOf(IllegalArgumentException.class);
