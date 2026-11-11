@@ -33,7 +33,7 @@ public class SubscriptionAccount extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 번호는 MySQL의 AUTO_INCREMENT가 매기게 맡긴다
     @Column(name = "subscription_account_id")
-    private Long id;
+    private Long subscriptionAccountId;
 
     @Column(name = "member_id", nullable = false)
     private Long memberId;

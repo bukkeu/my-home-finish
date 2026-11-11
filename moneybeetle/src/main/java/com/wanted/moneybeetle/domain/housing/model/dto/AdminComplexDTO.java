@@ -31,7 +31,7 @@ public class AdminComplexDTO {
     private boolean computed;         // 산정 완료 (산정하면 일정·세대 수 수정이 막히고, 발표일부터 발표할 수 있다)
 
     public static AdminComplexDTO from(HousingComplex complex, LocalDate today, long applicants) {
-        return new AdminComplexDTO(complex.getId(), complex.getName(), complex.getLocation(), complex.getAreaType(),
+        return new AdminComplexDTO(complex.getHousingComplexId(), complex.getName(), complex.getLocation(), complex.getAreaType(),
                 complex.getSalePrice(), complex.getSupplyUnits(), complex.getSupplyType(),
                 complex.getNoticeDate(), complex.getApplyStartDate(), complex.getApplyEndDate(),
                 complex.getAnnounceDate(), complex.currentStatus(today), applicants, complex.isComputed());

@@ -72,7 +72,7 @@ class AdminHousingServiceTest {
         HousingComplex complex = HousingComplex.create(r.getName(), r.getLocation(), r.getAreaType(),
                 r.getSalePrice(), r.getSupplyUnits(), r.getSupplyType(), r.getNoticeDate(),
                 r.getApplyStartDate(), r.getApplyEndDate(), r.getAnnounceDate(), ADMIN_ID);
-        ReflectionTestUtils.setField(complex, "id", id);
+        ReflectionTestUtils.setField(complex, "housingComplexId", id);
         return complex;
     }
 
@@ -96,7 +96,7 @@ class AdminHousingServiceTest {
     void 등록하면_관리자_번호와_함께_저장하고_ID를_돌려준다() {
         when(complexRepository.save(any())).thenAnswer(inv -> {
             HousingComplex c = inv.getArgument(0);
-            ReflectionTestUtils.setField(c, "id", 9L);
+            ReflectionTestUtils.setField(c, "housingComplexId", 9L);
             return c;
         });
 

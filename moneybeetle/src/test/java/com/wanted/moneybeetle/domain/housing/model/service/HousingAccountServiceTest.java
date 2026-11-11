@@ -64,7 +64,7 @@ class HousingAccountServiceTest {
         // 저장하면 번호(id)가 매겨진 것처럼 돌려준다
         when(depositRepository.save(any(SubscriptionDeposit.class))).thenAnswer(call -> {
             SubscriptionDeposit deposit = call.getArgument(0);
-            ReflectionTestUtils.setField(deposit, "id", 15L);
+            ReflectionTestUtils.setField(deposit, "subscriptionDepositId", 15L);
             return deposit;
         });
     }
@@ -72,7 +72,7 @@ class HousingAccountServiceTest {
     // 잔액 1,840,000 / 인정 1,590,000 / 14회차 / 마지막 납입일 지정
     private SubscriptionAccount account(LocalDate lastPaidDate) {
         SubscriptionAccount account = SubscriptionAccount.create(MEMBER_ID);
-        ReflectionTestUtils.setField(account, "id", 1L);
+        ReflectionTestUtils.setField(account, "subscriptionAccountId", 1L);
         ReflectionTestUtils.setField(account, "balance", 1_840_000L);
         ReflectionTestUtils.setField(account, "recognizedAmount", 1_590_000L);
         ReflectionTestUtils.setField(account, "paidCount", 14);

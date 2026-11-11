@@ -27,7 +27,7 @@ public class HousingComplex extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 번호는 MySQL의 AUTO_INCREMENT가 매기게 맡긴다
     @Column(name = "housing_complex_id")
-    private Long id;
+    private Long housingComplexId;
 
     @Column(name = "name", nullable = false)
     private String name;

@@ -31,7 +31,7 @@ public class ComplexDetailDTO {
     public static ComplexDetailDTO from(HousingComplex complex, LocalDate today,
                                         Double competitionRate, MyApplicationDTO myApplication) {
         return new ComplexDetailDTO(
-                complex.getId(),
+                complex.getHousingComplexId(),
                 complex.getName(),
                 complex.getLocation(),
                 complex.getAreaType(),

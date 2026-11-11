@@ -24,7 +24,7 @@ public class HousingApplication {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "housing_application_id")
-    private Long id;
+    private Long housingApplicationId;
 
     @Column(name = "member_id", nullable = false)
     private Long memberId;

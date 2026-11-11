@@ -73,10 +73,10 @@ public class AdminHousingService {
     // API 142 단지 목록 : 삭제 안 된 단지 + 신청자 수 (한 번에 센다)
     public List<AdminComplexDTO> findComplexes() {
         List<HousingComplex> complexes = complexRepository.findByDeletedAtIsNullOrderByApplyStartDateDesc();
-        Map<Long, Long> applicants = countApplicants(complexes.stream().map(HousingComplex::getId).toList());
+        Map<Long, Long> applicants = countApplicants(complexes.stream().map(HousingComplex::getHousingComplexId).toList());
         LocalDate today = LocalDate.now(clock);
         return complexes.stream()
-                .map(c -> AdminComplexDTO.from(c, today, applicants.getOrDefault(c.getId(), 0L)))
+                .map(c -> AdminComplexDTO.from(c, today, applicants.getOrDefault(c.getHousingComplexId(), 0L)))
                 .toList();
     }
 
@@ -89,7 +89,7 @@ public class AdminHousingService {
                 request.getSupplyUnits(), request.getSupplyType(),
                 request.getNoticeDate(), request.getApplyStartDate(), request.getApplyEndDate(),
                 request.getAnnounceDate(), adminId);
-        Long complexId = complexRepository.save(complex).getId();
+        Long complexId = complexRepository.save(complex).getHousingComplexId();
         adminLogService.record(adminId, ACTION_CREATE, TARGET_TYPE, complexId, toJson(Map.of("after", snapshot(complex))));
         return complexId;
     }
@@ -147,7 +147,7 @@ public class AdminHousingService {
 
     // API 146 신청자 목록 : 산정 전에는 가점 → 납입회차 → 신청 순, 산정 뒤에는 산정 순위 순
     public List<ApplicantDTO> findApplicants(Long complexId) {
-        HousingComplex complex = complexRepository.findByIdAndDeletedAtIsNull(complexId)
+        HousingComplex complex = complexRepository.findByHousingComplexIdAndDeletedAtIsNull(complexId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         List<HousingApplication> applications = applicationRepository.findByHousingComplexId(complexId);
         Map<Long, String> nicknames = memberService.findNicknames(
