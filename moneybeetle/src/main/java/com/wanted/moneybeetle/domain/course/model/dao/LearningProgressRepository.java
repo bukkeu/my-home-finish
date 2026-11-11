@@ -40,6 +40,17 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
                                                           @Param("courseStatus") String courseStatus,
                                                           Pageable pageable);
 
+    /* 홈·내 정보의 학습 완료 강의 수 (#188): 학습 완료 목록(findVisibleByMemberIdAndStatus)과 같은 조건으로 개수만 센다 */
+    @Query("""
+            select count(p) from LearningProgress p, Course c
+            where p.courseId = c.courseId
+              and p.memberId = :memberId and p.status = :progressStatus
+              and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
+            """)
+    long countVisibleByMemberIdAndStatus(@Param("memberId") Long memberId,
+                                         @Param("progressStatus") String progressStatus,
+                                         @Param("courseStatus") String courseStatus);
+
     /* 홈 '이어서 볼 강의' (최근에 본 순서 5개) */
     List<LearningProgress> findTop5ByMemberIdAndStatusOrderByUpdatedAtDesc(Long memberId, String status);
 

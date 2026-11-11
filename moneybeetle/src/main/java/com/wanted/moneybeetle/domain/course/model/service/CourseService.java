@@ -30,6 +30,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -206,6 +207,32 @@ public class CourseService {
                 completed.getContent().stream().map(LearningProgress::getCourseId).toList());
 
         return completed.map(progress -> CompletedCourseDTO.from(progress, courses.get(progress.getCourseId())));
+    }
+
+    /* ===== 홈·내 정보용 개수·마지막 시청 기록 (#188, 호출부 변경은 #267) ===== */
+
+    /* 본 영상 수: 시청 기록(API 34, findWatchHistories)과 같은 조건(이 회원, 허가 + 공개 + 삭제 안 된 강의)으로 개수만 센다 */
+    public long countWatchedLessons(Long memberId) {
+        return lessonWatchRepository.countVisibleByMemberId(memberId, Course.STATUS_APPROVED);
+    }
+
+    /* 학습 완료한 강의 수: 학습 완료 목록(API 35, findCompletedCourses)과 같은 조건으로 개수만 센다 */
+    public long countCompletedCourses(Long memberId) {
+        return learningProgressRepository.countVisibleByMemberIdAndStatus(
+                memberId, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED);
+    }
+
+    /* 이 강의에서 가장 최근에 본 영상 기록 한 건 (홈 '이어서 볼 강의').
+     * 시청 기록(API 34)과 같은 조건·순서라 "최근 시청 목록에서 이 강의의 첫 항목"과 같다. 기록이 아무리 많아도 DB에서 바로 찾는다.
+     * 본 적 없거나 강의가 보이지 않으면(비공개·삭제) 빈 값 */
+    public Optional<WatchHistoryDTO> findLastWatched(Long memberId, Long courseId) {
+        return lessonWatchRepository.findLatestVisibleByMemberIdAndCourseId(
+                        memberId, courseId, Course.STATUS_APPROVED, PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .flatMap(watch -> lessonRepository.findById(watch.getLessonId())
+                        .flatMap(lesson -> courseRepository.findById(lesson.getCourseId())
+                                .map(course -> WatchHistoryDTO.from(watch, lesson, course))));
     }
 
     /* ===== 스크랩 (#18) ===== */
