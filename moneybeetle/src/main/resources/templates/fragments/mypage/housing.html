@@ -1,0 +1,100 @@
+<!--/* comment.
+  담당 : SCM 서수영 (#70, 마이페이지 나의 청약통장 탭)
+  원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 "나의 청약통장" 탭 (납입 확인창 포함)
+  사용 : 틀 member/mypage.html 이 th:insert 로 부른다 (fragments/mypage/housing :: housingTabFragment, 주소 ?tab=housing)
+  - 모의 청약 화면(#58)과 같은 통장 API 를 쓴다 → 두 화면의 통장 값이 같다
+      GET /api/v1/housing/account (65), POST /api/v1/housing/account/deposits (66, Idempotency-Key), GET /api/v1/housing/account/deposits (67)
+  - 레벨 조건 없음 : Lv.12 미만도 통장을 보고 납입할 수 있다 (API 65~67 에 @RequireLevel 없음)
+  - 이 조각 안의 <link>(mypage-mh.css)와 <script defer>(mypage-housing.js)가 스타일·데이터를 맡는다. 틀은 탭 전환만 한다
+  - class·id 접두어 mh-, 값을 채우는 자리는 data-h
+*/-->
+<th:block th:fragment="housingTabFragment">
+  <link rel="stylesheet" type="text/css" th:href="@{/css/mypage-mh.css}">
+  <div class="mh" id="mh">
+    <div class="mh-head">
+      <div class="mh-head__text">
+        <div class="card-title mh-title">나의 청약통장</div>
+        <span class="mh-lead">출석·학습·레벨업으로 모은 가상 캐시를 납입해 회차와 인정금액을 쌓아요.<br>레벨과 상관없이 이용할 수 있어요.</span>
+      </div>
+      <a th:href="@{/user/demo-housing-subscription}" class="btn btn-secondary">모의 청약 보러 가기</a>
+    </div>
+
+    <!--/* 통장 현황 (API 65) */-->
+    <div class="mh-board">
+      <div class="mh-board__main">
+        <div class="mh-stat">
+          <span class="mh-stat__label">청약통장 잔액</span>
+          <span class="mh-stat__value"><img th:src="@{/images/cash-coin2.png}" alt="캐시"><span data-h="balance">-</span></span>
+        </div>
+        <div class="mh-stat">
+          <span class="mh-stat__label">누적 납입금액</span>
+          <span class="mh-stat__value"><img th:src="@{/images/cash-coin2.png}" alt="캐시"><span data-h="total">-</span></span>
+        </div>
+        <div class="mh-stat">
+          <span class="mh-stat__label">누적 인정금액</span>
+          <span class="mh-stat__value is-recognized"><img th:src="@{/images/cash-coin2.png}" alt="캐시"><span data-h="recognized">-</span></span>
+        </div>
+        <div class="mh-stat">
+          <span class="mh-stat__label">인정 납입 회차</span>
+          <span class="mh-stat__value" data-h="count">-</span>
+        </div>
+      </div>
+      <div class="mh-board__sub">
+        <span class="mh-sub"><span class="mh-sub__label">최근 납입일</span><b data-h="lastDate">-</b></span>
+        <span class="mh-sub"><span class="mh-sub__label">오늘 납입 여부</span><b data-h="today">-</b></span>
+      </div>
+    </div>
+
+    <div class="mh-note">
+      <span class="mh-note__label">안내</span>
+      <span>실제 청약통장은 한 달에 한 번 납입한 것을 1회차로 인정하지만, MoneyBeetle에서는 학습을 위해 <b>하루 1회 납입을 1회차로</b> 인정해요.<br>한 번에 <span data-h="minText">20,000</span>~<span data-h="maxText">500,000</span> 캐시를 넣을 수 있고, 회차 인정금액은 하루 최대 <span data-h="limitText">250,000</span> 캐시예요.</span>
+    </div>
+
+    <div class="mh-grid">
+      <!--/* 납입하기 (API 66) : 금액 입력 → 예상 결과 → 확인창 → 납입 */-->
+      <div class="card mh-card">
+        <span class="mh-card__title">납입하기</span>
+        <label class="mh-field">
+          <span class="mh-field__label">납입 금액 · 보유 캐시 <span data-h="cash">-</span> 캐시</span>
+          <span class="mh-input">
+            <input type="text" inputmode="numeric" autocomplete="off" placeholder="20,000" data-h="amount" aria-describedby="mh-dep-error">
+            <span class="mh-input__unit">캐시</span>
+          </span>
+        </label>
+        <div class="mh-quick">
+          <button type="button" class="btn btn-secondary" data-amount="20000">20,000</button>
+          <button type="button" class="btn btn-secondary" data-amount="100000">100,000</button>
+          <button type="button" class="btn btn-secondary" data-amount="250000">250,000</button>
+          <button type="button" class="btn btn-secondary" data-amount="400000">400,000</button>
+        </div>
+        <span class="mh-error" id="mh-dep-error" data-h="error" role="alert" hidden></span>
+        <div class="mh-calc" data-h="calc"></div>
+        <span class="mh-hint">인정 한도를 넘는 금액도 통장 잔액에는 그대로 쌓여요.<br>회차 인정금액에는 <span data-h="limitHint">250,000</span> 캐시까지만 반영돼요.</span>
+        <button type="button" class="btn btn-primary mh-submit" data-h="submit" disabled>납입하기</button>
+      </div>
+
+      <!--/* 납입 내역 (API 67, 최신순) */-->
+      <div class="card mh-card">
+        <span class="mh-card__title">납입 내역</span>
+        <span class="mh-empty" data-h="empty" hidden>아직 납입 내역이 없어요.</span>
+        <div class="mh-hist" data-h="hist">
+          <span class="mh-hist__head">날짜 · 회차</span><span class="mh-hist__head is-num">적립</span><span class="mh-hist__head is-num">인정</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--/* 납입 확인창 (시안의 "OO 캐시를 납입할까요?") */-->
+  <dialog class="mh-dialog" id="mh-confirm" aria-labelledby="mh-confirm-title">
+    <form method="dialog" class="mh-dialog__box">
+      <span class="mh-dialog__title" id="mh-confirm-title"><span data-h="confirmAmount">-</span> 캐시를 납입할까요?</span>
+      <div class="mh-calc is-dialog" data-h="confirmCalc"></div>
+      <span class="mh-dialog__note">오늘 납입하면 <span data-h="nextCount">-</span>회차로 인정되고, 내일부터 다시 납입할 수 있어요.</span>
+      <div class="mh-dialog__actions">
+        <button type="submit" value="cancel" class="btn btn-secondary">취소</button>
+        <button type="submit" value="ok" class="btn btn-primary">납입하기</button>
+      </div>
+    </form>
+  </dialog>
+  <script th:src="@{/js/mypage-housing.js}" defer></script>
+</th:block>
