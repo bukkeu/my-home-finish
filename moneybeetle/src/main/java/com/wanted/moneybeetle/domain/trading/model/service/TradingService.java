@@ -37,6 +37,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -215,8 +216,8 @@ public class TradingService {
         // 관리자가 휴장(HOLIDAY)으로 바꾸지 않았어도 서울 기준 일요일이면 휴장일이다 (SP-50, 휴장일에는 턴이 잠긴다)
         boolean holiday = season.isHoliday() || TradingSeason.isClosedDay(today());
         if (season.isLastTurn()) {
-            return new NextTurnCheckDTO(false, null, null, List.of(), 0, holiday,
-                    isPreviousSeasonSettled(season));
+            return new NextTurnCheckDTO(false, null, null, List.of(), 0, holiday, isPreviousSeasonSettled(season),
+                    isAfterMarketClose(season));
         }
         int nextTurn = season.getCurrentTurn() + 1;
         Set<Long> activeSectorIds = sectorRepository.findByIsActiveTrueOrderBySortOrderAscSectorIdAsc().stream()
@@ -232,10 +233,26 @@ public class TradingService {
                 .toList();
         long newsCount = newsRepository.countByTradingSeasonIdAndTurnNo(season.getTradingSeasonId(), nextTurn);
         boolean previousSettled = isPreviousSeasonSettled(season);
+        boolean afterClose = isAfterMarketClose(season);
         boolean ready = season.isRunning() && !holiday && !stocks.isEmpty() && missingPrices.isEmpty() && newsCount > 0
-                && previousSettled;
-        return new NextTurnCheckDTO(ready, nextTurn, season.tradeDateOf(nextTurn), missingPrices, newsCount, holiday,
-                previousSettled);
+                && previousSettled && afterClose;
+        return new NextTurnCheckDTO(ready, nextTurn, season.tradeDateOf(nextTurn), missingPrices, newsCount,
+                holiday, previousSettled, afterClose);
+    }
+
+    /**
+     * 턴을 넘길 수 있는 시각인가 (#208). 거래 중인 턴(1턴 이후)은 그 턴의 거래일 장 마감(20:00)이 지난 뒤,
+     * 장이 닫혀 있는 시각(20:00~다음 날 08:00)에만 넘긴다.
+     * 거래일 마감을 함께 보므로 같은 밤에 이미 넘긴 턴(거래일이 아직 오지 않음)을 또 넘겨 거래일을 건너뛸 수 없다.
+     * 첫 턴을 시작하는 0턴 → 1턴은 시각을 따지지 않는다
+     */
+    private boolean isAfterMarketClose(TradingSeason season) {
+        if (season.getCurrentTurn() < 1) {
+            return true;
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime currentTurnCloses = MarketHours.closesAt(season.tradeDateOf(season.getCurrentTurn()));
+        return !MarketHours.isOpen(now) && !now.isBefore(currentTurnCloses);
     }
 
     /** 이전 시즌(시작일이 더 이른 가장 최근 시즌)이 없거나, 정산을 마치고 끝났는가 (#207) */

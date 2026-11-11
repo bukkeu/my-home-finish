@@ -663,7 +663,7 @@ CREATE TABLE IF NOT EXISTS `sector` (
 CREATE TABLE IF NOT EXISTS `social_account` (
                                                 `social_account_id` bigint NOT NULL AUTO_INCREMENT COMMENT '연결 ID',
                                                 `member_id` bigint NOT NULL COMMENT '회원',
-                                                `provider` varchar(20) NOT NULL COMMENT 'GOOGLE / KAKAO',
+                                                `provider` varchar(20) NOT NULL COMMENT 'GOOGLE',
     `provider_user_id` varchar(100) NOT NULL COMMENT '제공자 쪽 사용자 ID',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
     PRIMARY KEY (`social_account_id`),

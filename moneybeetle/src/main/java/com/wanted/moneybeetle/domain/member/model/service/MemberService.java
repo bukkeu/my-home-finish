@@ -451,11 +451,11 @@ public class MemberService {
     }
 
     /**
-     * 간편 로그인(구글·카카오)으로 처음 온 사람의 가입 (API 8-2, DP-13, 이슈 #9). 이메일은 제공자가 확인해 준 값(세션)이고 비밀번호는 없다.
+     * 간편 로그인(구글)으로 처음 온 사람의 가입 (API 8-2, DP-13, 이슈 #9). 이메일은 제공자가 확인해 준 값(세션)이고 비밀번호는 없다.
      * 순서: 이메일 → 닉네임(형식·금칙어·중복) → 생년월일·만 14세 → 약관 → 저장(회원 → 약관 동의 기록 → 간편 로그인 연결).
      * 같은 제공자 계정이 동시에 가입하면 DB 고유 제약(uk_social_account_1)이 한쪽을 거르고 그쪽은 OAUTH_FAILED 가 된다.
      *
-     * @param provider       GOOGLE / KAKAO
+     * @param provider       GOOGLE
      * @param providerUserId 제공자 쪽 사용자 ID
      */
     @Transactional

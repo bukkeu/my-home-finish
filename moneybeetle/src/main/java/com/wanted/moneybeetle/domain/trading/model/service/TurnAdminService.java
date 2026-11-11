@@ -84,7 +84,11 @@ public class TurnAdminService {
         }
         if (!check.previousSeasonSettled()) {
             // 이전 시즌 정산을 빠뜨리면 회원이 이번 시즌 참가 기회를 잃으므로 가격·뉴스 점검보다 먼저 알려 준다 (#207)
-            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED);
+        }
+        if (!check.afterMarketClose()) {
+            // 장이 열려 있는 동안(08:00~20:00)에는 거래 중인 턴을 넘기지 않는다 (#208)
+            throw new BusinessException(TradingErrorCode.MARKET_STILL_OPEN);
         }
         if (!check.ready()) {
             throw new BusinessException(TradingErrorCode.NEXT_TURN_NOT_READY);

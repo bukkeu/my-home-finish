@@ -207,9 +207,9 @@ class AuthControllerTest {
     void startOAuthUnavailable() throws Exception {
         org.mockito.Mockito.doThrow(new com.wanted.moneybeetle.global.exception.BusinessException(
                         com.wanted.moneybeetle.domain.member.exception.MemberErrorCode.OAUTH_PROVIDER_UNAVAILABLE))
-                .when(socialLoginService).requireAvailableProvider("kakao");
+                .when(socialLoginService).requireAvailableProvider("naver");
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/kakao"))
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/oauth/naver"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error.code").value("OAUTH_PROVIDER_UNAVAILABLE"));
     }

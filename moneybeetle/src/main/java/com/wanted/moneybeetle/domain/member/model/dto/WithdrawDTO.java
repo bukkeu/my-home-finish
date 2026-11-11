@@ -15,6 +15,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class WithdrawDTO {
 
-    /** 비밀번호가 있는 회원만 보낸다. 간편 로그인 회원은 비워 두고 구글·카카오로 다시 로그인해 확인한다 */
+    /** 비밀번호가 있는 회원만 보낸다. 간편 로그인 회원은 비워 두고 구글로 다시 로그인해 확인한다 */
     private String password;
 }

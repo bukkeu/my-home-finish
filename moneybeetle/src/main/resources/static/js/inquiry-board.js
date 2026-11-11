@@ -3,6 +3,8 @@
 *   문의 게시판 그리기 (window.MBInquiry). 두 곳에서 같이 쓴다
 *   - 사이트 문의 게시판 /user/inquiry          : mount(box, { mode: 'site', openId })
 *   - 강의 상세의 '강의 문의' 탭 (#52 화면)     : mount(box, { mode: 'course', courseId })
+*   - 강사 센터 Q&A 관리 (#59)                  : mount(box, { mode: 'instructor', openId })
+*     → 강사 문의함 API 82 로 내 강의의 문의만 받고, 펼쳐서 답변을 남긴다(API 52). 문의 작성 버튼은 없다
 *   API : GET·POST /api/v1/inquiries, GET·PATCH·DELETE /api/v1/inquiries/{id}, POST /{id}/replies (API 47~52)
 *   - 볼 수 있는 사람은 작성자, 그 강의의 강사, 관리자 (서버가 정한다, SP-40). 그래서 공개/비공개 선택은 두지 않는다
 *   - 수정은 작성자만, 답변이 달리기 전에만 (INQUIRY_ALREADY_ANSWERED). 삭제는 작성자만 (화면에서는 한 번 더 확인)
@@ -30,11 +32,15 @@
   }
 
   var boardSeq = 0;      // 한 화면에 게시판이 여러 개여도 탭·목록 id 가 겹치지 않게
-  var meRequest = null;   // 내 회원 ID (수정·삭제 버튼을 내 글에만 보이려고). 한 번만 받는다
+  var meRequest = null;   // 내 회원 ID (수정·삭제 버튼을 내 글에만 보이려고). 성공하면 한 번만 받는다
+  /* 실패하면 저장한 요청을 지우고 오류를 그대로 넘긴다 → 게시판의 '다시 시도'로 다시 조회된다 (#245) */
   function loadMe() {
     if (!meRequest) {
       meRequest = MB.api('/api/v1/members/me').then(function (me) { return me && me.memberId; })
-        .catch(function () { return null; });
+        .catch(function (err) {
+          meRequest = null;
+          throw err;
+        });
     }
     return meRequest;
   }
@@ -64,10 +70,8 @@
   }
 
   function errorText(err, fallback) {
-    if (err && err.fields) {
-      var first = Object.keys(err.fields)[0];
-      if (first) return err.fields[first];
-    }
+    // 입력값 오류(@Valid)면 error.fields 는 [{ field, message }] 목록이다 (GlobalExceptionHandler)
+    if (err && Array.isArray(err.fields) && err.fields.length && err.fields[0].message) return err.fields[0].message;
     return (err && err.message) || fallback;
   }
 
@@ -81,6 +85,7 @@
   function mount(box, options) {
     var opts = options || {};
     var isCourse = opts.mode === 'course';
+    var isInstructor = opts.mode === 'instructor';
     var st = { items: [], tab: 'all', writing: false, openId: opts.openId || null, details: {}, deleted: {}, meId: null, loading: true, error: null };   // deleted: 이 화면에서 지운 문의 ID (늦게 온 상세 응답을 버린다)
 
     var uid = 'inq' + (++boardSeq);
@@ -93,10 +98,12 @@
 
     fill(box, 
       h('div', { class: 'inq-top' }, [
-        h('p', { class: 'inq-note', text: isCourse
-          ? '이 강의에 대해 궁금한 점을 강사에게 남겨 주세요. 작성자·강사·관리자만 볼 수 있어요.'
-          : '강의나 서비스를 이용하다 궁금한 점을 남겨 주세요. 작성자와 관리자만 볼 수 있고, 관리자가 확인한 뒤 답변을 드려요.' }),
-        h('button', { type: 'button', class: 'btn btn-primary', text: '문의 작성', onclick: function () { st.writing = !st.writing; drawForm(); } })
+        h('p', { class: 'inq-note', text: isInstructor
+          ? '내 강의에 달린 수강생 문의예요. 답변 대기 글이 먼저 보여요. 펼쳐서 답변을 남기면 수강생에게 알림이 가요.'
+          : isCourse
+            ? '이 강의에 대해 궁금한 점을 강사에게 남겨 주세요. 작성자·강사·관리자만 볼 수 있어요.'
+            : '강의나 서비스를 이용하다 궁금한 점을 남겨 주세요. 작성자와 관리자만 볼 수 있고, 관리자가 확인한 뒤 답변을 드려요.' }),
+        isInstructor ? null : h('button', { type: 'button', class: 'btn btn-primary', text: '문의 작성', onclick: function () { st.writing = !st.writing; drawForm(); } })
       ]),
       els.form, els.extra, els.tabs, els.list
     );
@@ -104,6 +111,7 @@
     /* ---------- 불러오기 ---------- */
 
     function listUrl(page) {
+      if (isInstructor) return '/api/v1/instructor/inquiries?page=' + page + '&size=' + PAGE_SIZE;   // 답변 대기 먼저, 그다음 최신순
       return '/api/v1/inquiries?' + (isCourse ? 'courseId=' + opts.courseId + '&' : '') + 'page=' + page + '&size=' + PAGE_SIZE;
     }
 
@@ -201,7 +209,7 @@
       var rows = shownItems();
       if (!rows.length) {
         fill(els.list, h('div', { class: 'inq-state', text: st.items.length ? '해당하는 문의가 없어요.'
-          : (isCourse ? '아직 남긴 강의 문의가 없어요.' : '아직 남긴 문의가 없어요.') }));
+          : (isInstructor ? '아직 내 강의에 달린 문의가 없어요.' : isCourse ? '아직 남긴 강의 문의가 없어요.' : '아직 남긴 문의가 없어요.') }));
       } else {
         fill(els.list, rows.map(renderRow));
       }
@@ -221,7 +229,7 @@
           h('span', { class: 'inq-status inq-status--' + String(item.status).toLowerCase(), text: STATUS[item.status] || item.status }),
           h('span', { class: 'inq-row__text' }, [
             h('strong', { class: 'inq-row__title', text: item.title }),
-            h('span', { class: 'inq-meta', text: [item.category, item.writerNickname, date(item.createdAt)].filter(Boolean).join(' · ') })
+            h('span', { class: 'inq-meta', text: [item.courseTitle, item.category, item.writerNickname, date(item.createdAt)].filter(Boolean).join(' · ') })
           ]),
           h('span', { class: 'inq-row__caret', 'aria-hidden': 'true', text: open ? '▴' : '▾' })
         ]),
@@ -300,9 +308,10 @@
 
       if (d.isHidden) {
         // 관리자가 숨긴 글: 서버가 제목·본문을 안내 문구로 바꿔 보낸다(DP-22). 화면은 내용 대신 안내만 보이고 답글을 막는다
+        // 숨긴 글은 수정할 수 없고(서버도 INQUIRY_HIDDEN 으로 막음, #245) 작성자는 삭제만 할 수 있다
         fill(detailBox, h('div', { class: 'inq-waiting inq-hidden', role: 'note' }, [
-          '🔒 관리자에 의해 숨김 처리된 문의예요.', h('br'), '내용과 답변은 볼 수 없고, 댓글도 남길 수 없어요.'
-        ]), mine ? renderOwnerActions(d) : null);
+          '🔒 관리자에 의해 숨김 처리된 문의예요.', h('br'), '내용과 답변은 볼 수 없고, 수정·댓글도 할 수 없어요.'
+        ]), mine ? renderOwnerActions(d, { deleteOnly: true }) : null);
         return;
       }
 
@@ -361,11 +370,13 @@
       return h('div', { class: 'inq-reply' }, [input, send]);
     }
 
-    function renderOwnerActions(d) {
+    /* 작성자 버튼. options.deleteOnly 면(숨긴 글) 수정 없이 삭제만 */
+    function renderOwnerActions(d, options) {
+      var canEdit = d.status === 'WAITING' && !d.isHidden && !(options && options.deleteOnly);
       var bar = h('div', { class: 'inq-owner' });
       function idle() {
         fill(bar, 
-          d.status === 'WAITING' ? h('button', { type: 'button', class: 'btn btn-ghost', text: '수정', onclick: function () { edit(); } }) : null,
+          canEdit ? h('button', { type: 'button', class: 'btn btn-ghost', text: '수정', onclick: function () { edit(); } }) : null,
           h('button', { type: 'button', class: 'btn btn-ghost inq-danger', text: '문의 삭제', onclick: confirmDelete })
         );
       }
@@ -403,7 +414,8 @@
           }).catch(function (err) {
             msg.textContent = errorText(err, '수정하지 못했어요.');
             save.disabled = false;
-            if (err && err.code === 'INQUIRY_ALREADY_ANSWERED') refreshDetail(d.inquiryId);
+            // 그사이 답변이 달렸거나 관리자가 숨겼으면 상세를 다시 받아 버튼(수정 없이 삭제만)을 서버 상태에 맞춘다
+            if (err && (err.code === 'INQUIRY_ALREADY_ANSWERED' || err.code === 'INQUIRY_HIDDEN')) refreshDetail(d.inquiryId);
           });
         });
         fill(bar, h('div', { class: 'inq-form inq-form--edit' }, [

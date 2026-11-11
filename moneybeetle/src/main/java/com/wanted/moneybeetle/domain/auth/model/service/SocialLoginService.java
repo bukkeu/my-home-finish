@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
-*   간편 로그인(구글·카카오) 처리 (USR-07, DP-13, 이슈 #9)
+*   간편 로그인(구글) 처리 (USR-07, DP-13, 이슈 #9)
 *   - login : 제공자가 알려 준 정보로 로그인한다.
 *       ① 이미 연결된 회원이면 정상(ACTIVE) 계정인지 보고 로그인한다 (탈퇴·정지는 ACCOUNT_WITHDRAWN / ACCOUNT_SUSPENDED).
 *       ② 처음이면 같은 이메일로 이미 가입한 사람이 있는지 본다. 있으면 EMAIL_DUPLICATED 로 막는다.
@@ -44,8 +44,7 @@ public class SocialLoginService {
      */
     public boolean isProviderAvailable(String provider) {
         ClientRegistrationRepository repository = clientRegistrations.getIfAvailable();
-        boolean supported = SocialProfileExtractor.REGISTRATION_GOOGLE.equals(provider)
-                || SocialProfileExtractor.REGISTRATION_KAKAO.equals(provider);
+        boolean supported = SocialProfileExtractor.REGISTRATION_GOOGLE.equals(provider);
         return repository != null && supported && repository.findByRegistrationId(provider) != null;
     }
 

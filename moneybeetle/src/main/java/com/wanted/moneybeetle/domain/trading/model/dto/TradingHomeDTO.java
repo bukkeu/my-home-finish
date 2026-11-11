@@ -43,7 +43,7 @@ public class TradingHomeDTO {
         private final int currentTurn;
         private final int totalTurns;
         private final LocalDate endDate;
-        private final LocalDateTime nextTurnAt;   // 다음 턴 거래일 0시. 마지막 턴이면 null
+        private final LocalDateTime nextTurnAt;   // 다음 턴 거래일 08:00 (장 시작, #208). 마지막 턴이면 null
         private final List<CalendarDay> calendar;
 
         public Season(Long seasonId, String name, String status, int currentTurn, int totalTurns, LocalDate endDate,
