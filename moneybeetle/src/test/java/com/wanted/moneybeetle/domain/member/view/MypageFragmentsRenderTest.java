@@ -166,7 +166,9 @@ class MypageFragmentsRenderTest {
         String growth = read("/static/js/mypage-growth.js");
 
         // 안내 요청(1)·인증 성공(2)·인증 오류(3)·비밀번호 확인 거절(4)이 각각 보낸 창과 지금 창을 비교한다
-        assertThat(settings.split("ession !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(5);
+        // 주석(// ...)에 같은 글자가 있어도 세지 않도록 줄 전체 주석을 뺀 코드에서 센다 (JS 를 실행하지 않는 정적 패턴 검사라 보조 수단이다)
+        String settingsCode = settings.replaceAll("(?m)^\s*//.*$", "");
+        assertThat(settingsCode.split("ession !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(5);
         assertThat(growth).contains("mg-filter').forEach(function (button) { button.disabled = true; });");
         assertThat(read("/static/css/mypage-mg.css")).contains(".mg .mg-levels { overflow-x: auto; display: block; }");   // 좁은 화면에서 레벨 표가 페이지를 넘치지 않게
         assertThat(read("/templates/fragments/mypage/settings.html")).contains("인증번호 받기를 누르면 가입한 이메일로");   // 인증번호는 탈퇴하기가 아니라 인증번호 단계의 버튼으로 보낸다
