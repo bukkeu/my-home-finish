@@ -1,26 +1,25 @@
 package com.wanted.moneybeetle.domain.trading.model.entity;
 
-import jakarta.persistence.Column;
+import com.wanted.moneybeetle.global.common.CreatedTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
 *   담당 : PM (모의투자)
 *   테이블 trade_order (체결 후 불변)
+*   created_at 은 CreatedTimeEntity 가 공통 시계(Asia/Seoul)로 기록한다. 서버 시간대가 UTC 여도 "오늘 주문 수"가 어긋나지 않는다
 *  */
 @Entity
 @Table(name = "trade_order")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TradeOrder {
+public class TradeOrder extends CreatedTimeEntity {
 
     public static final String TYPE_BUY = "BUY";
     public static final String TYPE_SELL = "SELL";
@@ -47,10 +46,6 @@ public class TradeOrder {
     private long amount;
 
     private Long tradeReasonId;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
 
     private TradeOrder(Long seasonParticipantId, Long stockId, int turnNo, String orderType,
             int quantity, int price, Long tradeReasonId) {
