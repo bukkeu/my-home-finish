@@ -79,7 +79,23 @@
         resolve(result);
       }
       function onKey(event) {
-        if (event.key === 'Escape') done(false);
+        if (event.key === 'Escape') { done(false); return; }
+        if (event.key !== 'Tab') return;
+        // 창 안에서만 Tab 이 돈다: 첫 버튼에서 Shift+Tab 은 마지막 버튼으로, 마지막에서 Tab 은 첫 버튼으로.
+        // 처음 포커스를 받는 제목(tabindex -1)이나 창 밖에서 시작하면 방향에 맞는 버튼으로 넣는다
+        var first = cancel;
+        var last = ok;
+        var active = document.activeElement;
+        if (!box.contains(active) || active === heading) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        } else if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
       cancel.addEventListener('click', function () { done(false); });
       ok.addEventListener('click', function () { done(true); });

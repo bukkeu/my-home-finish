@@ -27,7 +27,7 @@
     box.appendChild(stat('검수 대기 강의', MBA.won(data.reviewWaiting) + '개', '강의 운영에서 허가·반려해요', DASH + '?view=courses', data.reviewWaiting > 0));
     box.appendChild(stat('답변 대기 문의', MBA.won(data.inquiryWaiting) + '건', '문의 게시판에서 확인해요', DASH + '?view=board', data.inquiryWaiting > 0));
     box.appendChild(stat('진행 중 시즌', season ? season.currentTurn + '턴' : '없음', season ? '시즌 #' + season.seasonId : '모의투자 운영에서 시즌을 만들어요', '/admin/trading-management', false));
-    box.appendChild(stat('참가자', season ? MBA.won(season.participants) + '명' : '-', season ? (season.todayOrders == null ? '오늘 주문은 집계 전이에요' : '오늘 주문 ' + MBA.won(season.todayOrders) + '건') : '진행 중인 시즌이 없어요', '/admin/trading-management', false));
+    box.appendChild(stat('참가자', season ? MBA.won(season.participants) + '명' : '-', season ? (season.todayOrders == null ? '오늘 주문 정보 없음' : '오늘 주문 ' + MBA.won(season.todayOrders) + '건') : '진행 중인 시즌이 없어요', '/admin/trading-management', false));
     box.appendChild(stat('학습자', MBA.won(data.members.total) + '명', '탈퇴 ' + MBA.won(data.members.withdrawn) + '명 포함', DASH + '?view=members', false));
   }
 

@@ -43,6 +43,7 @@
 .adm-row:first-child { border-top: 0; }
 .adm-row--link { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 8px; border-top: 1px solid var(--color-divider); border-radius: 8px; }
 .adm-row--link:hover { background: var(--color-bg); }
+.adm-row--link:focus-visible { outline: 3px solid rgb(159 232 112 / 70%); outline-offset: -2px; background: var(--color-bg); }
 .adm-row__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--color-gold); }
 .adm-row__main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .adm-row__main strong { font-size: 14px; }

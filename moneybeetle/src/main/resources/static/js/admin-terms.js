@@ -124,6 +124,9 @@
   function saveDay() {
     var error = byId('adm-editor-error');
     if (state.selected.length !== PICK) { error.textContent = '용어 ' + PICK + '개를 골라 주세요.'; return; }
+    var button = byId('adm-save-day');
+    if (button.disabled) return;
+    button.disabled = true;   // 느린 응답 중에 다시 눌러 같은 PUT 이 겹치지 않게 막는다
     MB.api('/api/v1/admin/term-schedules/' + encodeURIComponent(state.picked), {
       method: 'PUT', body: { economicTermIds: state.selected }
     }).then(function () {
@@ -132,7 +135,8 @@
     }).then(function () {
       var day = state.days.filter(function (d) { return d.date === state.picked; })[0];
       if (day) pickDay(day);
-    }, function (err) { error.textContent = MBA.errorText(err); });
+    }, function (err) { error.textContent = MBA.errorText(err); })
+      .finally(function () { button.disabled = false; });
   }
 
   /* ---------- 용어 목록 ---------- */
@@ -197,6 +201,9 @@
     var description = byId('adm-term-desc').value.trim();
     var error = byId('adm-term-error');
     if (!term || !description) { error.textContent = '용어와 뜻을 모두 입력해 주세요.'; return; }
+    var button = byId('adm-term-save');
+    if (button.disabled) return;
+    button.disabled = true;   // 연타로 같은 용어가 두 번 등록·수정 요청되지 않게 막는다
     var creating = state.draft.id == null;
     var request = creating
       ? MB.api('/api/v1/admin/economic-terms', { method: 'POST', body: { term: term, description: description } })
@@ -208,7 +215,8 @@
       state.draft = { id: null, term: '', description: '', isActive: true };
       renderDraft();
       return Promise.all([loadTerms(), loadMonth()]);
-    }, function (err) { error.textContent = MBA.errorText(err); });
+    }, function (err) { error.textContent = MBA.errorText(err); })
+      .finally(function () { button.disabled = false; });
   }
 
   function removeTerm(t) {

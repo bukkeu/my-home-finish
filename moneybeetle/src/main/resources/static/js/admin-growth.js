@@ -141,23 +141,28 @@
     if (!reason) { error.textContent = '사유를 입력해 주세요.'; return; }
     if (reason.length > MAX_REASON) { error.textContent = '사유는 ' + MAX_REASON + '자 이하로 입력해 주세요.'; return; }
     var verb = adj.type === 'GIVE' ? '지급' : '회수';
-    MBA.confirm(adj.member.nickname + ' 님에게 ' + MBA.won(amount) + ' 캐시를 ' + verb + '할까요?', '사유: ' + reason + '\n작업 기록이 남아요.', verb + '하기').then(function (yes) {
+    var submit = byId('adm-adj-submit');
+    if (submit.disabled) return;
+    // 요청 대상 회원·종류는 지금 값으로 고정한다 (요청 중에 다른 회원을 고르거나 종류를 바꿔도 이 요청의 응답은 이 회원에게 쓴다)
+    var member = adj.member;
+    var type = adj.type;
+    // 확인 창이 떠 있는 동안에도 다시 눌러 같은 요청이 두 번 나가지 않게 버튼을 먼저 막는다
+    submit.disabled = true;
+    MBA.confirm(member.nickname + ' 님에게 ' + MBA.won(amount) + ' 캐시를 ' + verb + '할까요?', '사유: ' + reason + '\n작업 기록이 남아요.', verb + '하기').then(function (yes) {
       if (!yes) return null;
-      var submit = byId('adm-adj-submit');
-      submit.disabled = true;
-      return MB.api('/api/v1/admin/members/' + adj.member.memberId + '/cash-adjustments', {
-        method: 'POST', body: { type: adj.type, amount: amount, reason: reason }
+      return MB.api('/api/v1/admin/members/' + member.memberId + '/cash-adjustments', {
+        method: 'POST', body: { type: type, amount: amount, reason: reason }
       }).then(function (result) {
-        adj.member.cash = result.balanceAfter;
-        MB.toast(adj.member.nickname + ' 님 캐시를 ' + verb + '했어요 (잔액 ' + MBA.won(result.balanceAfter) + ')');
+        member.cash = result.balanceAfter;
+        MB.toast(member.nickname + ' 님 캐시를 ' + verb + '했어요 (잔액 ' + MBA.won(result.balanceAfter) + ')');
         byId('adm-adj-amount').value = '';
         byId('adm-adj-reason').value = '';
         error.textContent = '';
-        renderPicked();
-      }, function (err) {
-        error.textContent = MBA.errorText(err);
-      }).then(function () { submit.disabled = false; });
-    });
+        if (adj.member === member) renderPicked();   // 그 사이 다른 회원을 골랐다면 화면의 회원 카드는 건드리지 않는다
+      });
+    }).catch(function (err) {
+      error.textContent = MBA.errorText(err);   // 요청 실패뿐 아니라 응답을 처리하다 난 오류도 여기서 알린다
+    }).finally(function () { submit.disabled = false; });
   }
 
   byId('adm-member-search').addEventListener('click', searchMembers);

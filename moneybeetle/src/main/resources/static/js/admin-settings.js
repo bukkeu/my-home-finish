@@ -64,7 +64,7 @@
 
   /* ---------- 작업 기록 ---------- */
 
-  var logState = { page: 0, query: '' };
+  var logState = { page: 0, query: '', loading: false };   // query: "조회"를 누를 때 저장한 조건 (더 보기가 이 조건을 쓴다)
 
   function detailText(detail) {
     if (detail == null) return '';
@@ -80,7 +80,8 @@
     return row;
   }
 
-  function buildQuery(page) {
+  /** 지금 입력칸의 조건 (페이지 번호 빼고). "조회"를 누를 때만 읽어서 logState.query 에 저장한다 */
+  function readFilter() {
     var params = [];
     var type = byId('adm-log-type').value.trim();
     var from = byId('adm-log-from').value;
@@ -88,16 +89,22 @@
     if (type) params.push('targetType=' + encodeURIComponent(type));
     if (from) params.push('from=' + encodeURIComponent(from));
     if (to) params.push('to=' + encodeURIComponent(to));
-    params.push('page=' + page, 'size=' + SIZE);
     return params.join('&');
   }
 
   function loadLogs(reset) {
-    if (reset) logState.page = 0;
+    if (logState.loading) return;   // 요청 중에는 조회·더 보기를 다시 보내지 않는다 (더 보기를 빠르게 두 번 눌러 쪽을 건너뛰지 않게)
+    var page = reset ? 0 : logState.page + 1;
+    if (reset) logState.query = readFilter();
     var box = byId('adm-logs');
     var more = byId('adm-log-more');
-    var query = buildQuery(logState.page);
+    var search = byId('adm-log-search');
+    var query = (logState.query ? logState.query + '&' : '') + 'page=' + page + '&size=' + SIZE;
+    logState.loading = true;
+    more.disabled = true;
+    search.disabled = true;
     MB.api('/api/v1/admin/admin-logs?' + query).then(function (data) {
+      logState.page = page;   // 성공했을 때만 쪽 번호를 올린다 (실패하면 같은 쪽을 다시 받을 수 있다)
       var items = (data && data.items) || [];
       if (reset) {
         MBA.clear(box);
@@ -112,11 +119,15 @@
       if (reset) { MBA.clear(box); }
       box.appendChild(el('p', 'adm-empty', '작업 기록을 불러오지 못했어요. ' + MBA.errorText(err)));
       more.hidden = true;
+    }).finally(function () {
+      logState.loading = false;
+      more.disabled = false;
+      search.disabled = false;
     });
   }
 
   byId('adm-log-search').addEventListener('click', function () { loadLogs(true); });
-  byId('adm-log-more').addEventListener('click', function () { logState.page += 1; loadLogs(false); });
+  byId('adm-log-more').addEventListener('click', function () { loadLogs(false); });
 
   loadSettings();
   loadLogs(true);
