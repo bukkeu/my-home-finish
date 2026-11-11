@@ -21,4 +21,10 @@ public interface WithdrawVerifier {
      * 확인하지 않았거나 다른 회원이거나 시간이 지났으면 false.
      */
     boolean consumeVerified(Long memberId, HttpSession session);
+
+    /**
+     * 이 세션에 남은 탈퇴 본인 확인(받은 코드·확인 완료 표시)을 모두 지운다 (이슈 #279, API 17-3). 아무것도 없거나 세션이 없어도 오류가 아니다.
+     * 지운 뒤에는 확인을 다시 하지 않은 채 비운 탈퇴 요청을 보낼 수 없다.
+     */
+    void cancel(Long memberId, HttpSession session);
 }

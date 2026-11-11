@@ -126,6 +126,9 @@ class WrongNoteServiceTest {
         assertThat(result.getResults()).extracting(TestQuizResultDTO.ResultItem::getQuestionId).containsExactly(1L);
         assertThat(result.getResults().get(0).isCorrect()).isTrue();
         assertThat(result.getResults().get(0).getCorrectChoiceId()).isEqualTo(correct(1));
+        // 맞혀도 다시 풀기는 기록을 바꾸지 않는다 (오답노트를 지우거나 새로 저장하지 않음)
+        verify(wrongNoteRepository, never()).saveAll(anyList());
+        verify(wrongNoteRepository, never()).deleteByWrongAnswerNoteIdAndMemberId(anyLong(), anyLong());
     }
 
     @Test

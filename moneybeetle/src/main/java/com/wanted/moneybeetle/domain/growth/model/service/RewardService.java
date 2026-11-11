@@ -14,7 +14,7 @@ import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
-import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
@@ -215,9 +215,9 @@ public class RewardService {
     private void sendUnlockNotifications(Long memberId, List<String> unlocks) {
         for (String unlock : unlocks) {
             if (UnlockRules.TRADING.equals(unlock)) {
-                notificationService.send(memberId, Notification.TYPE_UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
+                notificationService.send(memberId, NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
             } else if (UnlockRules.HOUSING.equals(unlock)) {
-                notificationService.send(memberId, Notification.TYPE_UNLOCK, "모의 청약이 열렸어요",
+                notificationService.send(memberId, NotificationType.UNLOCK, "모의 청약이 열렸어요",
                         "/user/demo-housing-subscription");
             }
         }

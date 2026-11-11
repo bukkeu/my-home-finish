@@ -163,7 +163,7 @@ class RewardServiceGrantTest {
         assertThat(result.getLevelTo()).isEqualTo(8);
         assertThat(result.getLevelUpCash()).isEqualTo(350_000);
         assertThat(result.getUnlocks()).containsExactly(UnlockRules.TRADING);
-        verify(notificationService).send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
 
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository, org.mockito.Mockito.times(7)).save(cash.capture());
@@ -190,9 +190,9 @@ class RewardServiceGrantTest {
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
         assertThat(result.getUnlocks()).containsExactly(UnlockRules.HOUSING);
-        verify(notificationService).send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의 청약이 열렸어요", "/user/demo-housing-subscription");
         verify(notificationService, org.mockito.Mockito.times(1))
-                .send(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                .send(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.class),
                         org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 
@@ -835,14 +835,14 @@ class RewardServiceGrantTest {
         RewardResultDTO atTwelve = service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 20L);
 
         assertThat(atTwelve.getUnlocks()).isEmpty();
-        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.anyString(),
+        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.any(com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.class),
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
 
         givenLevelUp(14, 15);
         RewardResultDTO atFifteen = service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 21L);
 
         assertThat(atFifteen.getUnlocks()).containsExactly(UnlockRules.HOUSING);
-        verify(notificationService).send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의 청약이 열렸어요", "/user/demo-housing-subscription");
     }
 
     @Test
@@ -853,7 +853,7 @@ class RewardServiceGrantTest {
 
         assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 30L).getUnlocks())
                 .containsExactly(UnlockRules.TRADING);
-        verify(notificationService).send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
 
         org.mockito.Mockito.clearInvocations(notificationService);
         givenLevelUp(2, 12);
@@ -861,9 +861,9 @@ class RewardServiceGrantTest {
         assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 31L).getUnlocks())
                 .containsExactly(UnlockRules.TRADING, UnlockRules.HOUSING);
         verify(notificationService, org.mockito.Mockito.times(1))
-                .send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
+                .send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
         verify(notificationService, org.mockito.Mockito.times(1))
-                .send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+                .send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의 청약이 열렸어요", "/user/demo-housing-subscription");
     }
 
     @Test
@@ -873,7 +873,7 @@ class RewardServiceGrantTest {
         givenLevelUp(8, 9);
 
         assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 40L).getUnlocks()).isEmpty();
-        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.anyString(),
+        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.any(com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.class),
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 }

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.wanted.moneybeetle.domain.course.exception.CourseErrorCode;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
@@ -244,6 +246,18 @@ class QuizServiceTest {
 
             verify(courseService).checkCourseVisible(COURSE);
             verifyNoInteractions(attemptRepository, answerRepository, wrongNoteRepository, rewardService);
+        }
+
+        @Test
+        @DisplayName("강의를 볼 수 없으면 그 예외를 그대로 던지고, 문항을 조회하거나 아무것도 저장하지 않는다")
+        void invisibleCourseStopsBeforeReadingQuestions() {
+            BusinessException denied = new BusinessException(CourseErrorCode.COURSE_NOT_PUBLIC);
+            doThrow(denied).when(courseService).checkCourseVisible(COURSE);
+
+            assertThatThrownBy(() -> quizService.gradeTestQuiz(COURSE, answers(1L, correct(1))))
+                    .isSameAs(denied);
+            verifyNoInteractions(questionRepository, choiceRepository, attemptRepository, answerRepository,
+                    wrongNoteRepository, rewardService);
         }
     }
 
