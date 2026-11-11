@@ -63,6 +63,8 @@
   function currentSeasonId() { return state.season ? state.season.seasonId : null; }
   // 시즌별 요청의 순번. 시즌을 A -> B -> A 로 바꿔도 먼저 보낸 요청의 늦은 응답이 지금 화면을 덮어쓰지 않게 한다
   var req = { turn: 0, prices: 0, news: 0, people: 0, stats: 0, rank: 0 };
+  var seasonsSeq = 0, marketSeq = 0;   // 시즌 목록·분야/종목 조회 순번 (늦게 온 이전 응답은 버린다)
+  var PEOPLE_SIZE = 50;               // 참가자 목록 한 페이지 크기 (API 135 size)
   var personReq = 0;   // 참가자 상세 요청 순번: 가장 나중에 고른 참가자의 응답만 그린다
   function begin(key) { return { token: ++req[key], seasonId: state.season ? state.season.seasonId : null }; }
   function stale(key, t) { return t.token !== req[key] || !state.season || state.season.seasonId !== t.seasonId; }
@@ -213,7 +215,9 @@
 
   function loadSeasons(wantedId) {
     var before = currentSeasonId();   // 목록을 요청할 때 고른 시즌
+    var seq = ++seasonsSeq;           // 턴 진행 전후 조회가 엇갈려 도착해도 마지막 조회만 반영한다
     return api('/seasons').then(function (data) {
+      if (seq !== seasonsSeq) return;
       state.seasonsError = false;
       state.seasons = items(data);
       // 목록을 받는 동안 관리자가 다른 시즌을 골랐으면 그 선택을 우선한다 (응답이 이전 시즌으로 되돌리지 않게)
@@ -221,6 +225,7 @@
       state.season = pickSeason(state.seasons, changed ? currentSeasonId() : wantedId);
       renderSeasonSelect();
     }, function (err) {
+      if (seq !== seasonsSeq) return;   // 이전 조회의 실패가 새로 받은 목록을 지우지 않게
       state.seasonsError = true;
       state.seasons = [];
       state.season = null;
@@ -473,11 +478,20 @@
    * ===================================================================== */
   function loadMarket(force) {
     if (state.marketLoaded && !force) return Promise.resolve();
-    return Promise.all([api('/sectors'), api('/stocks')]).then(function (r) {
+    // 탭 진입·저장 뒤 조회가 엇갈려 도착하면 저장 전 값이 다시 보일 수 있다 -> 마지막 조회만 state 에 반영한다.
+    // 이전 조회를 기다리던 쪽(뉴스 탭 등)은 최신 조회의 결과(성공·실패)를 그대로 이어받는다
+    var seq = ++marketSeq;
+    var p = Promise.all([api('/sectors'), api('/stocks')]).then(function (r) {
+      if (seq !== marketSeq) return state.marketPromise;
       state.sectors = items(r[0]);
       state.stocks = items(r[1]);
       state.marketLoaded = true;
+    }, function (err) {
+      if (seq !== marketSeq) return state.marketPromise;
+      throw err;
     });
+    state.marketPromise = p;
+    return p;
   }
   function sectorName(id) { var x = state.sectors.filter(function (s) { return s.sectorId === id; })[0]; return x ? x.name : '-'; }
 
@@ -531,6 +545,7 @@
 
   function editStock(st) {
     var f = $('at-stock-form');
+    state.stockEditSeq = (state.stockEditSeq || 0) + 1;   // 편집 대상이 바뀌었다 (보내 둔 저장 응답은 이 폼에 반영하지 않는다)
     state.stockEditId = st ? st.stockId : null;
     $('at-stock-form-title').textContent = st ? '종목 수정 · ' + st.name : '종목 등록';
     ['name', 'startPrice', 'intro', 'business', 'revenue', 'operatingProfit'].forEach(function (k) { f.elements[k].value = st && st[k] != null ? st[k] : ''; });
@@ -551,14 +566,15 @@
     formError(f, '');
     var body = { sectorId: Number(f.sectorId.value), name: f.elements.name.value.trim(), startPrice: Number(price),
       intro: f.intro.value, business: f.business.value, revenue: f.revenue.value, operatingProfit: f.operatingProfit.value };
-    var id = state.stockEditId;
+    var id = state.stockEditId, seq = state.stockEditSeq;
     var req = id ? api('/stocks/' + id, { method: 'PUT', body: body }) : api('/stocks', { method: 'POST', body: body });
     // STOCK_LIMIT_EXCEEDED(분야당 사용 중 종목 2개)·STOCK_DUPLICATED 는 서버 문구를 그대로 보여 준다
     busy(f.querySelector('[type=submit]'), req).then(function (data) {
       MB.toast(id ? '종목을 저장했어요' : '종목을 등록했어요');
-      if (!id && data && data.stockId) state.stockEditId = data.stockId;
+      // 그사이 다른 종목을 고르거나 새 종목 폼을 열었으면 등록된 번호를 지금 폼에 붙이지 않는다 (붙이면 지금 폼 저장이 그 종목을 덮어쓴다)
+      if (!id && data && data.stockId && seq === state.stockEditSeq) state.stockEditId = data.stockId;
       loadStocksTab();
-    }, function (err) { formError(f, errText(err)); });
+    }, function (err) { if (seq === state.stockEditSeq) formError(f, errText(err)); else toastError(err); });
   });
 
   $('at-sector-form').addEventListener('submit', function (e) {
@@ -612,7 +628,9 @@
   }
 
   function renderPrices() {
-    var P = state.prices, T = P.currentTurn;
+    var P = state.prices;
+    if (!P) return updatePriceStatus();
+    var T = P.currentTurn;
     $('at-price-desc').textContent = T > 0 ? '지난 턴과 현재 턴(1~' + T + '턴)은 잠겨 있어요' : '아직 시작 전이라 모든 턴을 입력할 수 있어요';
     var head = [el('th', { class: 'sticky', text: '종목' })];
     for (var t = 1; t <= TURNS; t++) {
@@ -659,6 +677,13 @@
   });
 
   function updatePriceStatus() {
+    if (!state.prices) {
+      // 가격표를 아직 받지 못했거나 다시 불러오지 못했다: 행 정보가 없어 경고 계산·저장·되돌리기를 할 수 없다
+      $('at-price-status').textContent = '가격표를 불러온 뒤에 저장할 수 있어요';
+      $('at-price-reset').disabled = true;
+      $('at-price-save').disabled = true;
+      return;
+    }
     var keys = Object.keys(state.edits), warns = 0;
     keys.forEach(function (k) { var ed = state.edits[k]; if (isWarn(rowOf(ed.stockId), ed.turnNo)) warns += 1; });
     $('at-price-status').textContent = keys.length
@@ -820,6 +845,7 @@
   function openNewsForm(n) {
     var T = state.season.currentTurn, past = !!(n && n.turnNo <= T);
     if (!n && T >= TURNS) return MB.toast('남은 턴이 없어서 뉴스를 등록할 수 없어요', 'error');
+    state.newsFormSeq = (state.newsFormSeq || 0) + 1;   // 새 편집폼 (보내 둔 저장 응답은 이 폼을 닫지 않는다)
     state.newsEdit = n || null;
     state.newsSel = {
       sectorIds: n ? (n.sectors || []).map(function (s) { return s.id; }) : [],
@@ -871,14 +897,18 @@
     formError(newsForm, '');
     var body = { turnNo: Number(newsForm.turnNo.value), title: title, content: content,
       sectorIds: state.newsSel.sectorIds.slice(), stockIds: state.newsSel.stockIds.slice(), adminMemo: newsForm.adminMemo.value.trim() || null };
+    var seq = state.newsFormSeq;
     var req = n ? api('/news/' + n.newsId, { method: 'PUT', body: body }) : api(seasonPath('/news'), { method: 'POST', body: body });
     // PAST_TURN_LOCKED: 지난 턴으로 옮기거나 지난 턴의 분야·종목을 바꾸려 하면 서버가 거절한다
     busy(newsForm.querySelector('[type=submit]'), req).then(function () {
       MB.toast('뉴스를 저장했어요');
-      state.newsTurn = body.turnNo;
-      closeNewsForm();
+      // 저장하는 동안 다른 뉴스를 열었으면 그 편집폼은 그대로 둔다 (작성 중인 내용이 사라지지 않게)
+      if (seq === state.newsFormSeq && newsForm.hidden === false) {
+        state.newsTurn = body.turnNo;
+        closeNewsForm();
+      }
       loadNews();
-    }, function (err) { formError(newsForm, errText(err)); });
+    }, function (err) { if (seq === state.newsFormSeq) formError(newsForm, errText(err)); else toastError(err); });
   });
 
   function deleteNews(n, btn) {
@@ -900,11 +930,19 @@
     personReq += 1;   // 보내 둔 참가자 상세 요청을 무효로 만들고 상세 영역을 처음 상태로 돌린다
     $('at-person-title').textContent = '참가자 상세';
     emptyBox($('at-person-detail'), '왼쪽에서 참가자를 골라 주세요');
+    renderPeoplePager(0);
     if (!state.season) return emptyRow(rows, 5, noSeasonText());
+    // 시즌을 바꾸면 첫 페이지부터 본다
+    if (state.peopleSeasonId !== state.season.seasonId) { state.peopleSeasonId = state.season.seasonId; state.peoplePage = 0; }
+    var page = state.peoplePage || 0;
     emptyRow(rows, 5, '불러오는 중…');
-    api(seasonPath('/participants?sort=netAsset&page=0&size=50')).then(function (data) {
+    api(seasonPath('/participants?sort=netAsset&page=' + page + '&size=' + PEOPLE_SIZE)).then(function (data) {
       if (stale('people', t)) return;
       var list = items(data);
+      var total = data && data.totalCount != null ? Number(data.totalCount) : list.length;
+      // 마지막 참가자가 빠져 지금 페이지가 비었으면 앞 페이지로 돌아간다
+      if (!list.length && page > 0) { state.peoplePage = page - 1; return loadPeople(); }
+      renderPeoplePager(total);
       if (!list.length) return emptyRow(rows, 5, '아직 참가자가 없어요');
       fill(rows, list.map(function (p) {
         return el('tr', { class: 'click', tabindex: 0, onclick: function (e) { selectPerson(p, e.currentTarget); },
@@ -915,6 +953,20 @@
         ]);
       }));
     }, function (err) { if (!stale('people', t)) emptyRow(rows, 5, errText(err), true); });
+  }
+
+  /** 참가자 목록 페이지 넘기기 (API 135 page·size, 응답 totalCount 로 마지막 페이지를 안다). 한 페이지면 숨긴다 */
+  function renderPeoplePager(total) {
+    var box = $('at-people-pager'), page = state.peoplePage || 0;
+    var pages = Math.max(1, Math.ceil(total / PEOPLE_SIZE));
+    box.hidden = pages <= 1;
+    if (box.hidden) return fill(box, []);
+    var go = function (to) { state.peoplePage = to; loadPeople(); };
+    fill(box, [
+      el('button', { type: 'button', class: 'at-btn ghost sm', text: '이전', disabled: page <= 0, onclick: function () { go(page - 1); } }),
+      el('span', { class: 'at-muted', text: (page + 1) + ' / ' + pages + ' 페이지 · 전체 ' + fmt(total) + '명' }),
+      el('button', { type: 'button', class: 'at-btn ghost sm', text: '다음', disabled: page >= pages - 1, onclick: function () { go(page + 1); } })
+    ]);
   }
 
   function selectPerson(p, tr) {
@@ -1068,7 +1120,12 @@
     // 왼쪽 메뉴 카드의 '다음 턴 점검' 표시: 턴 진행 메뉴를 열지 않아도 한 번 점검해 둔다
     if (state.tab !== 'turn') {
       if (!state.season) $('at-side-check').textContent = '해당 없음';
-      else api(seasonPath('/turns/next-check')).then(renderCheck, function (err) { renderCheck(null, err); });
+      else {
+        // loadTurn() 과 같은 검사: 그사이 시즌을 바꾸거나 턴 진행 메뉴에서 다시 점검했으면 이 응답은 버린다
+        var t = begin('turn');
+        api(seasonPath('/turns/next-check')).then(function (d) { if (!stale('turn', t)) renderCheck(d); },
+          function (err) { if (!stale('turn', t)) renderCheck(null, err); });
+      }
     }
   });
 })();
