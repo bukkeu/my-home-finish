@@ -7,6 +7,7 @@
 *   - 59 GET  /trade-reasons, 60 POST /orders(Idempotency-Key), 61 GET /orders, 62 GET /seasons/{id}/rankings
 *   403 LEVEL_LOCKED  -> 본문을 흐리게 하고 잠금 안내 (NFR-09), NO_RUNNING_SEASON -> "다음 시즌을 준비 중이에요"
 *   서버·사용자 문구는 모두 textContent 로 넣는다 (HTML 로 해석하지 않는다).
+*   화면 마크업·클래스 이름은 디자인(UserDemoTrading.dc.html, new1/App.jsx)과 같다.
 *  */
 (function () {
   'use strict';
@@ -38,6 +39,10 @@
   var SETTLE_POLL_MS = 60000;       // 정산 중 홈 확인 간격
   var WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
   var TONES = ['mint', 'orange', 'blue', 'purple', 'pink', 'yellow'];
+  // 디자인의 랭킹 행 안쪽 배치 (디자인이 인라인 스타일로 둔 값)
+  var RANK_NAME_STYLE = 'display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0';
+  var RANK_WHO_STYLE = 'display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap';
+  var RANK_NICK_STYLE = 'overflow:hidden;text-overflow:ellipsis';
 
   var S = {
     season: null, participation: null, stocks: [], sectors: null, reasons: null,
@@ -57,11 +62,23 @@
   }
   function fmt(n) { return n == null ? '-' : Number(n).toLocaleString('ko-KR'); }
   function won(n) { return fmt(n) + ' 캐시'; }
-  function rate(r) {
-    if (r == null) return el('span', 'trd-flat', '-');
+  /** 등락 문구: 디자인처럼 ▲ +2.8% / ▼ −0.9% (소수 첫째 자리, 음수는 −) */
+  function rateText(v) {
+    return (v > 0 ? '▲ +' : v < 0 ? '▼ −' : '') + Math.abs(v).toFixed(1) + '%';
+  }
+  function rateClass(v) { return v > 0 ? 'up' : v < 0 ? 'down' : 'trd-flat'; }
+  /** 등락 표시 요소. 디자인이 자리마다 다른 태그(span·b·small·strong)를 써서 tag 로 고른다 */
+  function rate(r, tag) {
+    if (r == null) return el(tag || 'span', 'trd-flat', '-');
     var v = Number(r);
-    var cls = v > 0 ? 'trd-up' : v < 0 ? 'trd-down' : 'trd-flat';
-    return el('span', cls, (v > 0 ? '▲ +' : v < 0 ? '▼ ' : '') + v.toFixed(2) + '%');
+    return el(tag || 'span', rateClass(v), rateText(v));
+  }
+  /** 자리가 정해진 요소(#id)에 등락을 채운다 */
+  function setRate(node, r) {
+    if (r == null) { node.className = 'trd-flat'; node.textContent = '-'; return; }
+    var v = Number(r);
+    node.className = rateClass(v);
+    node.textContent = rateText(v);
   }
   function note(node, text, isError) {
     node.replaceChildren(el('p', 'trd-empty' + (isError ? ' is-error' : ''), text));
@@ -77,6 +94,7 @@
     return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
   }
   function api(path, opts) { return MB.api(API + path, opts); }
+  function pad2(n) { return String(n).padStart(2, '0'); }
 
   /** 화면 전체에 걸리는 오류 (잠금·시즌 없음). 처리했으면 true */
   function fatal(err) {
@@ -121,10 +139,14 @@
     $('trd-app').dataset.state = 'empty';
   }
 
+  /** 화면 전환. 디자인처럼 홈은 home-page, 나머지는 detail-page 클래스를 쓴다 */
   function go(view) {
     show($('trd-home'), view === 'home');
     show($('trd-all'), view === 'all');
     show($('trd-detail'), view === 'detail');
+    var app = $('trd-app');
+    app.classList.toggle('home-page', view === 'home');
+    app.classList.toggle('detail-page', view !== 'home');
     window.scrollTo(0, 0);
   }
 
@@ -143,6 +165,8 @@
 
   function renderSeason(season) {
     var closed = season.status === 'SETTLING' || season.status === 'ENDED';
+    var num = /(\d+)/.exec(season.name || '');
+    $('trd-eyebrow').textContent = 'VIRTUAL MARKET' + (num ? ' · SEASON ' + num[1] : '');
     $('trd-season-title').textContent = season.name + ' ' + (STATUS_LABEL[season.status] || STATUS_LABEL.RUNNING);
     $('trd-turn').textContent = season.currentTurn + '턴 / ' + season.totalTurns + '턴';
     var bar = $('trd-season-notice');
@@ -159,11 +183,15 @@
     var cal = $('trd-calendar');
     cal.replaceChildren();
     (season.calendar || []).forEach(function (day, i, all) {
-      var last = i === all.length - 1 && day.turnNo == null;
-      var cell = el('div', 'trd-turn is-' + String(day.state || '').toLowerCase() + (last ? ' is-settle' : ''));
-      var wd = WEEKDAYS[new Date(day.date + 'T00:00:00').getDay()];
-      cell.appendChild(el('span', 'trd-turn__wd', (day.state === 'DONE' ? '✓ ' : '') + wd));
-      cell.appendChild(el('small', null, day.turnNo != null ? day.turnNo + '턴' : last ? '정산·랭킹' : '휴장'));
+      var settle = i === all.length - 1 && day.turnNo == null;
+      var state = String(day.state || '').toLowerCase();
+      var cls = settle ? 'settlement' : state === 'done' ? 'complete' : state === 'holiday' ? 'closed' : state;
+      var cell = el('div', 'turn-cell ' + cls);
+      var wd = el('span', 'weekday');
+      if (state === 'done') wd.appendChild(el('i', null, '✓'));
+      wd.appendChild(document.createTextNode(WEEKDAYS[new Date(day.date + 'T00:00:00').getDay()]));
+      cell.appendChild(wd);
+      cell.appendChild(el('small', null, day.turnNo != null ? day.turnNo + '턴' : settle ? '정산 · 랭킹 공개' : '휴장'));
       cell.title = day.date;
       cal.appendChild(cell);
     });
@@ -182,10 +210,11 @@
     var target = new Date(nextTurnAt).getTime();
     var tick = function () {
       var left = Math.max(0, Math.floor((target - Date.now()) / 1000));
-      var hh = String(Math.floor(left / 3600)).padStart(2, '0');
-      var mm = String(Math.floor(left % 3600 / 60)).padStart(2, '0');
-      var ss = String(left % 60).padStart(2, '0');
-      out.textContent = '다음 턴까지 ' + hh + ':' + mm + ':' + ss;
+      var hh = pad2(Math.floor(left / 3600));
+      var mm = pad2(Math.floor(left % 3600 / 60));
+      var ss = pad2(left % 60);
+      // 디자인처럼 남은 시간만 굵게 보여 준다
+      out.replaceChildren(document.createTextNode('다음 턴까지 '), el('b', null, hh + ':' + mm + ':' + ss));
       if (left === 0) {
         clearInterval(S.timer);
         // 같은 시각으로 또 0이 되면 서버가 아직 턴을 넘기지 않은 것(또는 PC 시계가 빠른 것)이다 -> 천천히 다시 확인한다.
@@ -222,38 +251,49 @@
   }
 
   function renderBalance(season, p) {
+    var canJoin = season.status !== 'SETTLING' && season.status !== 'ENDED';
     show($('trd-joined'), !!p);
     show($('trd-join'), !p);
+    show($('trd-start-btn'), !!p);
+    show($('trd-join-btn'), !p && canJoin);
     if (p) {
       $('trd-cash').textContent = fmt(p.cash);
       $('trd-invest').textContent = won(p.investAmount);
-    } else if (season.status === 'SETTLING' || season.status === 'ENDED') {
+      // 시작 자금 구성 (= 모은 캐시 + 이월금) : API 가 두 값을 주면 디자인처럼 풀어 보여 준다
+      var parts = $('trd-invest-parts');
+      parts.replaceChildren();
+      if (p.savedCash != null && p.carryoverIn != null) {
+        parts.append(document.createTextNode(' = 모은 캐시 '), el('strong', null, won(p.savedCash)),
+          document.createTextNode(' + 이월금 '), el('strong', null, won(p.carryoverIn)));
+      }
+    } else if (!canJoin) {
       // 정산 중·종료 시즌은 참가할 수 없다 (서버도 JOIN_CLOSED)
       $('trd-join-title').textContent = MSG.JOIN_CLOSED;
-      show($('trd-join-btn'), false);
     } else {
       $('trd-join-title').textContent = season.name + '에 참가할까요?';
-      $('trd-join-btn').textContent = season.name + ' 참가하기 →';
-      show($('trd-join-btn'), true);
+      $('trd-join-btn').replaceChildren(document.createTextNode(season.name + ' 참가하기 '), el('span', null, '→'));
     }
   }
 
   function renderPortfolio(p, holdings) {
     $('trd-net').textContent = p ? fmt(p.netAsset) : '-';
-    $('trd-rate').replaceChildren(p ? rate(p.returnRate) : '');
-    $('trd-holding-count').textContent = '보유 종목 ' + holdings.length + '개';
-    var list = $('trd-holdings');
-    if (!p) { note(list, '시즌에 참가하면 내 주식이 여기에 보여요'); return; }
-    if (!holdings.length) { note(list, '아직 보유한 종목이 없어요. 오늘의 가상 시세에서 종목을 골라 보세요'); return; }
-    list.replaceChildren.apply(list, holdings.map(function (h) {
-      var row = el('button', 'trd-row3');
+    var rateBox = $('trd-rate');
+    if (p) setRate(rateBox, p.returnRate); else { rateBox.className = ''; rateBox.textContent = ''; }
+    var box = $('trd-holdings');
+    var head = el('div', 'holding-head');
+    head.append(el('span', null, '보유 종목 ' + holdings.length + '개'), el('span', null, '평가금액'), el('span', null, '수익률'));
+    box.replaceChildren(head);
+    if (!p) { box.appendChild(el('p', 'trd-empty', '시즌에 참가하면 내 주식이 여기에 보여요')); return; }
+    if (!holdings.length) { box.appendChild(el('p', 'trd-empty', '아직 보유한 종목이 없어요. 오늘의 가상 시세에서 종목을 골라 보세요')); return; }
+    holdings.forEach(function (h, i) {
+      var row = el('button', 'holding-row');
       row.type = 'button';
       row.dataset.trdStock = h.stockId;
-      var name = el('span', 'trd-row3__name');
-      name.append(avatar(h.stockName, h.stockId), el('span', null, h.stockName), el('small', 'trd-meta', h.quantity + '주'));
-      row.append(name, el('strong', null, won(h.evaluation)), rate(h.returnRate));
-      return row;
-    }));
+      var name = el('span');
+      name.append(el('i', 'mini-logo color-' + (i % TONES.length), (h.stockName || '?').charAt(0)), document.createTextNode(h.stockName));
+      row.append(name, el('strong', null, won(h.evaluation)), rate(h.returnRate, 'b'));
+      box.appendChild(row);
+    });
   }
 
   function join() {
@@ -276,63 +316,73 @@
 
   /* ---------- 거래 내역 (API 61) ---------- */
   function loadTrades() {
-    var list = $('trd-trade-list');
-    $('trd-trade-count').textContent = '';
-    if (!S.participation) { note(list, '시즌에 참가하면 거래 내역이 여기에 보여요'); return; }
-    loading(list);
+    var box = $('trd-trade-list');
+    var count = $('trd-trade-count');
+    show(count, false);
+    var head = el('div', 'trade-row trade-head');
+    ['턴', '종목', '구분', '수량', '체결가', '매매 이유'].forEach(function (t) { head.appendChild(el('span', null, t)); });
+    var withHead = function (node) { box.replaceChildren(head, node); };
+    if (!S.participation) { withHead(el('p', 'trd-empty', '시즌에 참가하면 거래 내역이 여기에 보여요')); return; }
+    withHead(el('p', 'trd-empty', '불러오는 중이에요'));
     api('/orders?seasonId=' + S.season.seasonId + '&page=0&size=20').then(function (d) {
       var items = d.items || [];
-      $('trd-trade-count').textContent = '총 ' + fmt(d.totalCount != null ? d.totalCount : items.length) + '건';
-      if (!items.length) { note(list, '아직 거래하지 않았어요'); return; }
-      list.replaceChildren.apply(list, items.map(function (t) {
-        var row = el('div', 'trd-trade');
+      count.textContent = '총 ' + fmt(d.totalCount != null ? d.totalCount : items.length) + '건';
+      show(count, true);
+      if (!items.length) { withHead(el('p', 'trd-empty', '아직 거래하지 않았어요')); return; }
+      box.replaceChildren(head);
+      items.forEach(function (t) {
+        var row = el('div', 'trade-row');
         var buy = t.orderType === 'BUY';
-        row.append(el('span', 'trd-badge', t.turnNo + '턴'), el('strong', null, t.stockName),
-          el('span', buy ? 'trd-up' : 'trd-down', buy ? '매수' : '매도'), el('span', null, fmt(t.quantity) + '주'),
-          el('span', null, won(t.price)), el('span', 'trd-reason', t.reason || '-'));
-        return row;
-      }));
-    }).catch(sectionError(list));
+        var turn = el('span');
+        turn.appendChild(el('b', 'turn-badge', t.turnNo + '턴'));
+        row.append(turn, el('strong', null, t.stockName), el('span', buy ? 'trade-buy' : 'trade-sell', buy ? '매수' : '매도'),
+          el('span', null, fmt(t.quantity) + '주'), el('span', null, won(t.price)), el('span', 'trade-reason', t.reason || '-'));
+        box.appendChild(row);
+      });
+    }).catch(function (err) { if (!fatal(err)) withHead(el('p', 'trd-empty is-error', errText(err))); });
   }
 
   /* ---------- 뉴스 (API 58) ---------- */
-  function newsItem(n, withContent) {
-    // 홈의 뉴스는 관련 종목의 뉴스 탭으로 이어 준다 (종목 상세 안의 뉴스는 이어 주지 않는다)
-    var stock = withContent ? null : S.stocks.find(function (s) { return (n.stocks || []).indexOf(s.name) >= 0; });
-    var item = el(stock ? 'button' : 'div', 'trd-news-item');
-    if (stock) { item.type = 'button'; item.dataset.trdStock = stock.stockId; item.dataset.trdOpenTab = 'news'; }
-    var tags = el('div', 'trd-tags');
-    (n.sectors || []).forEach(function (s) { tags.appendChild(el('span', 'trd-tag is-sector', s)); });
-    (n.stocks || []).forEach(function (s) { tags.appendChild(el('span', 'trd-tag', s)); });
-    item.append(el('span', 'trd-badge', n.turnNo + '턴'), el('h3', null, n.title));
-    if (withContent && n.content) item.appendChild(el('p', null, n.content));
-    item.appendChild(tags);
-    return item;
-  }
-
   function loadTurnNews() {
-    var list = $('trd-news-list');
-    $('trd-news-turn').textContent = S.season.currentTurn + '턴';
-    loading(list);
+    var box = $('trd-news-box');
+    var head = el('div', 'news-card-header');
+    var title = el('div');
+    title.append(el('h2', null, '이번 턴 뉴스'), el('span', 'turn-badge', S.season.currentTurn + '턴'));
+    head.append(title, el('p', null, '가격에 영향을 줄 소식을 확인해 보세요'));
+    box.replaceChildren(head, el('p', 'trd-empty', '불러오는 중이에요'));
     api('/news?turnNo=' + S.season.currentTurn).then(function (d) {
       var items = d.items || [];
-      if (!items.length) { note(list, '이번 턴에 공개된 뉴스가 없어요'); return; }
-      list.replaceChildren.apply(list, items.slice(0, 5).map(function (n) { return newsItem(n, false); }));
-    }).catch(sectionError(list));
+      if (!items.length) { box.replaceChildren(head, el('p', 'trd-empty', '이번 턴에 공개된 뉴스가 없어요')); return; }
+      box.replaceChildren(head);
+      items.slice(0, 3).forEach(function (n, i) {
+        // 홈의 뉴스는 관련 종목의 뉴스 탭으로 이어 준다
+        var stock = S.stocks.find(function (s) { return (n.stocks || []).indexOf(s.name) >= 0; });
+        var card = el('button', 'news-card');
+        card.type = 'button';
+        if (stock) { card.dataset.trdStock = stock.stockId; card.dataset.trdOpenTab = 'news'; }
+        var body = el('div', 'news-row-content');
+        var tags = el('div', 'tag-row');
+        (n.sectors || []).forEach(function (s) { tags.appendChild(el('span', 'sector-tag', s)); });
+        (n.stocks || []).forEach(function (s) { tags.appendChild(el('span', null, s)); });
+        body.append(el('span', 'turn-badge', n.turnNo + '턴'), el('h3', null, n.title), tags);
+        card.append(el('div', 'news-index', pad2(i + 1)), body, el('span', 'arrow', '↗'));
+        box.appendChild(card);
+      });
+    }).catch(function (err) { if (!fatal(err)) box.replaceChildren(head, el('p', 'trd-empty is-error', errText(err))); });
   }
 
   /* ---------- 시세·분야 (API 55, 56) ---------- */
   function avatar(name, id) {
-    return el('span', 'trd-avatar is-' + TONES[Number(id || 0) % TONES.length], (name || '?').charAt(0));
+    return el('span', 'stock-avatar ' + TONES[Number(id || 0) % TONES.length], (name || '?').charAt(0));
   }
   function stockRow(s) {
-    var row = el('button', 'trd-stock');
+    var row = el('button', 'stock-row');
     row.type = 'button';
     row.dataset.trdStock = s.stockId;
-    var name = el('span', 'trd-stock__name');
+    var name = el('span', 'stock-name');
     name.append(el('strong', null, s.name), el('small', null, s.sectorName || ''));
-    var price = el('span', 'trd-stock__price');
-    price.append(el('strong', null, s.price == null ? '가격 준비 중' : won(s.price)), rate(s.changeRate));
+    var price = el('span', 'stock-price');
+    price.append(el('strong', null, s.price == null ? '가격 준비 중' : won(s.price)), rate(s.changeRate, 'small'));
     row.append(avatar(s.name, s.stockId), name, price);
     return row;
   }
@@ -362,14 +412,14 @@
       fetchSectors().then(function (sectors) {
         if (!sectors.length) { note(list, '등록된 분야가 없어요'); return; }
         list.replaceChildren.apply(list, sectors.map(function (sec) {
-          var row = el('button', 'trd-stock');
+          var row = el('button', 'stock-row');
           row.type = 'button';
           row.dataset.trdSector = sec.sectorId;
-          var name = el('span', 'trd-stock__name');
+          var name = el('span', 'stock-name');
           name.append(el('strong', null, sec.name),
             el('small', null, (sec.stocks || []).map(function (s) { return s.name; }).join(' · ')));
-          var cnt = el('span', 'trd-stock__price');
-          cnt.append(el('strong', null, (sec.stocks || []).length + '종목'), el('small', 'trd-meta', '›'));
+          var cnt = el('span', 'stock-price');
+          cnt.append(el('strong', null, (sec.stocks || []).length + '종목'), el('small', 'trd-flat', '›'));
           row.append(avatar(sec.name, sec.sectorId), name, cnt);
           return row;
         }));
@@ -383,26 +433,34 @@
   }
 
   /* ---------- 전체 종목 (INV-06) ---------- */
-  function showAll(sectorId) {
+  /** 머리말 오른쪽: "5턴 기준 · 15개 분야". 시세와 분야 목록은 따로 도착하므로 둘 다 도착한 뒤에 채운다 */
+  function updateAllMeta(sectorId) {
+    var count = (S.sectors || []).length;
+    $('trd-all-meta').textContent = $('trd-market-turn').textContent + (count && !sectorId ? ' · ' + count + '개 분야' : '');
+  }
+  function showAll(sectorId, keyword) {
     go('all');
     var list = $('trd-all-list');
     var chips = $('trd-sector-chips');
     loading(list);
     fetchSectors().then(function (sectors) {
-      var all = el('button', sectorId ? '' : 'is-on', '전체');
+      var all = el('button', sectorId || keyword ? '' : 'selected', '전체');
       all.type = 'button'; all.dataset.trdSector = '';
       chips.replaceChildren(all);
       sectors.forEach(function (sec) {
-        var c = el('button', String(sec.sectorId) === String(sectorId) ? 'is-on' : '', sec.name);
+        var c = el('button', String(sec.sectorId) === String(sectorId) ? 'selected' : '', sec.name);
         c.type = 'button'; c.dataset.trdSector = sec.sectorId;
         chips.appendChild(c);
       });
+      updateAllMeta(sectorId);
     }).catch(function (err) { fatal(err); chips.replaceChildren(); });
-    fetchStocks(sectorId ? 'sectorId=' + encodeURIComponent(sectorId) : '').then(function (stocks) {
-      if (!sectorId) S.stocks = stocks;
-      $('trd-all-title').textContent = sectorId ? (stocks[0] ? stocks[0].sectorName : '분야') + ' 종목' : '전체 ' + stocks.length + '개 종목';
-      $('trd-all-meta').textContent = $('trd-market-turn').textContent;
-      if (!stocks.length) { note(list, '이 분야에는 아직 종목이 없어요'); return; }
+    var query = sectorId ? 'sectorId=' + encodeURIComponent(sectorId) : keyword ? 'keyword=' + encodeURIComponent(keyword) : '';
+    fetchStocks(query).then(function (stocks) {
+      if (!sectorId && !keyword) S.stocks = stocks;
+      $('trd-all-title').textContent = sectorId ? (stocks[0] ? stocks[0].sectorName : '분야') + ' 종목'
+        : keyword ? '‘' + keyword + '’ 검색 결과 ' + stocks.length + '개' : '전체 ' + stocks.length + '개 종목';
+      updateAllMeta(sectorId);
+      if (!stocks.length) { note(list, keyword ? '검색 결과가 없어요. 종목명을 다시 확인해 주세요' : '이 분야에는 아직 종목이 없어요'); return; }
       var groups = {};
       var order = [];
       stocks.forEach(function (s) {
@@ -411,7 +469,7 @@
         groups[key].push(s);
       });
       list.replaceChildren.apply(list, order.map(function (key) {
-        var g = el('div', 'trd-group');
+        var g = el('div', 'sector-group');
         var h = el('h3', null, key);
         h.appendChild(el('small', null, groups[key].length + '종목'));
         g.appendChild(h);
@@ -424,7 +482,9 @@
   /* ---------- 종목 상세 (API 57, 58) ---------- */
   function openStock(stockId, tab) {
     go('detail');
-    setTab(tab || 'chart');
+    var info = tab === 'news' || tab === 'company';
+    setTab(info ? 'info' : 'chart');
+    setInfo(tab === 'news' ? 'news' : 'company');
     $('trd-d-name').textContent = '불러오는 중이에요';
     loading($('trd-chart'));
     $('trd-price-table').replaceChildren();
@@ -437,11 +497,15 @@
       S.stock = d;
       $('trd-d-initial').textContent = (d.name || '?').charAt(0);
       $('trd-d-name').textContent = d.name;
-      $('trd-d-sector').textContent = '국내 주식 · ' + (d.sectorName || '');
+      var crumb = $('trd-d-sector');
+      crumb.replaceChildren(document.createTextNode('국내 주식 '), el('b', null, '·'), document.createTextNode(' ' + (d.sectorName || '')));
+      var tags = $('trd-d-tags');
+      tags.replaceChildren(el('span', null, d.sectorName || ''), el('span', null, '국내'), el('span', 'virtual', '가상 기업'));
       $('trd-d-price').textContent = fmt(d.price);
-      $('trd-d-change').replaceChildren(rate(d.changeRate));
+      setRate($('trd-d-change'), d.changeRate);
       renderChart(d.priceHistory || []);
       renderCompany(d);
+      renderNewsImpact();
       resetOrder();
     }).catch(function (err) {
       if (fatal(err)) return;
@@ -454,86 +518,171 @@
     var list = $('trd-d-news');
     loading(list);
     api('/news?stockId=' + encodeURIComponent(stockId)).then(function (d) {
-      var items = d.items || [];
-      if (!items.length) { note(list, '아직 이 종목의 뉴스가 없어요'); return; }
-      list.replaceChildren.apply(list, items.map(function (n) { return newsItem(n, true); }));
-    }).catch(sectionError(list));
+      S.stockNews = d.items || [];
+      renderNewsImpact();
+    }).catch(function (err) { S.stockNews = null; sectionError(list)(err); });
+  }
+
+  /** 종목 뉴스 타임라인: 뉴스가 공개된 다음 턴의 가격 변화를 함께 보여 준다 (가격 흐름에서 계산) */
+  function renderNewsImpact() {
+    var list = $('trd-d-news');
+    var items = S.stockNews;
+    var now = $('trd-d-news-now');
+    if (!items) return;
+    var cur = S.season ? S.season.currentTurn : 0;
+    now.replaceChildren(el('span', 'now-dot'), document.createTextNode('현재 '), el('b', null, cur + '턴'),
+      document.createTextNode(' 진행 중 · 전체 ' + cur + '개 턴'));
+    if (!items.length) { note(list, '아직 이 종목의 뉴스가 없어요'); return; }
+    var history = (S.stock && S.stock.priceHistory) || [];
+    var byTurn = {};
+    history.forEach(function (p) { byTurn[p.turnNo] = p.price; });
+    list.replaceChildren.apply(list, items.slice().sort(function (a, b) { return b.turnNo - a.turnNo; }).map(function (n) {
+      var article = el('article', n.turnNo === cur ? 'current' : '');
+      var marker = el('div', 'timeline-marker');
+      marker.append(el('span', null, n.turnNo + '턴'), el('i'));
+      var card = el('div', 'timeline-card');
+      var top = el('div', 'timeline-top');
+      top.appendChild(el('span', 'turn-badge', n.turnNo + '턴'));
+      if (n.turnNo === cur) top.appendChild(el('span', 'now-badge', '현재 턴'));
+      var wrap = el('div', 'impact-wrap');
+      var from = byTurn[n.turnNo], to = byTurn[n.turnNo + 1];
+      var impact = el('span', 'impact');
+      if (from && to) {
+        var v = Math.round((to - from) / from * 1000) / 10;
+        impact.className = 'impact ' + (v > 0 ? 'up' : v < 0 ? 'down' : '');
+        impact.textContent = '다음 턴 ' + rateText(v);
+      } else {
+        impact.textContent = '다음 턴 ?';
+      }
+      wrap.appendChild(impact);
+      top.appendChild(wrap);
+      card.append(top, el('h3', null, n.title));
+      if (n.content) card.appendChild(el('p', null, n.content));
+      (n.stocks || []).forEach(function (s) { card.appendChild(el('span', 'company-tag', s)); });
+      (n.sectors || []).forEach(function (s) { card.appendChild(el('span', 'company-tag sector', '관련 분야 · ' + s)); });
+      article.append(marker, card);
+      return article;
+    }));
   }
 
   function setTab(tab) {
     document.querySelectorAll('[data-trd-tab]').forEach(function (b) {
-      b.classList.toggle('is-on', b.dataset.trdTab === tab);
+      b.classList.toggle('active', b.dataset.trdTab === tab);
       b.setAttribute('aria-selected', String(b.dataset.trdTab === tab));
     });
     document.querySelectorAll('[data-trd-pane]').forEach(function (p) { show(p, p.dataset.trdPane === tab); });
   }
+  function setInfo(name) {
+    document.querySelectorAll('[data-trd-info]').forEach(function (b) { b.classList.toggle('active', b.dataset.trdInfo === name); });
+    document.querySelectorAll('[data-trd-info-pane]').forEach(function (p) { show(p, p.dataset.trdInfoPane === name); });
+  }
 
-  /** 턴별 가격 꺾은선 (SVG, 라이브러리 없음) */
+  /** 턴별 가격 꺾은선 (SVG, 라이브러리 없음). 좌표·요소는 디자인(840×340)과 같다 */
   function renderChart(points) {
     var box = $('trd-chart');
     var table = $('trd-price-table');
-    if (!points.length) { note(box, '아직 가격 흐름이 없어요'); table.replaceChildren(); return; }
-    var W = 640, H = 240, L = 16, R = 16, T = 28, B = 32;
+    var sum = $('trd-d-season-rate');
+    if (!points.length) { note(box, '아직 가격 흐름이 없어요'); table.replaceChildren(); sum.textContent = ''; return; }
+    var W = 840, H = 340, L = 52, R = 790, TOP = 65, BOTTOM = 275;
     var prices = points.map(function (p) { return p.price; });
     var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
-    var span = max - min || Math.max(1, max * 0.1);
-    var x = function (i) { return points.length === 1 ? W / 2 : L + i * (W - L - R) / (points.length - 1); };
-    var y = function (v) { return T + (max - v) * (H - T - B) / span; };
-    var up = prices[prices.length - 1] >= prices[0];
+    var x = function (i) { return points.length === 1 ? R : L + i * (R - L) / (points.length - 1); };
+    var y = function (v) { return max === min ? (TOP + BOTTOM) / 2 : BOTTOM - (v - min) * (BOTTOM - TOP) / (max - min); };
     var NS = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', (S.stock ? S.stock.name + ' ' : '') + '1턴부터 ' + points[points.length - 1].turnNo + '턴까지 가격 흐름');
-    var add = function (tag, attrs, text) {
+    svg.setAttribute('aria-label', '1턴부터 ' + points[points.length - 1].turnNo + '턴까지 ' + (S.stock ? S.stock.name + ' ' : '') + '가격 차트');
+    var add = function (parent, tag, attrs, text) {
       var n = document.createElementNS(NS, tag);
       Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
       if (text != null) n.textContent = text;
-      svg.appendChild(n);
+      parent.appendChild(n);
       return n;
     };
-    [0, 0.5, 1].forEach(function (f) { add('line', { x1: L, x2: W - R, y1: T + f * (H - T - B), y2: T + f * (H - T - B), 'class': 'trd-grid' }); });
-    var d = points.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.price).toFixed(1); }).join(' ');
-    add('path', { d: d + ' L' + x(points.length - 1).toFixed(1) + ' ' + (H - B) + ' L' + x(0).toFixed(1) + ' ' + (H - B) + ' Z', 'class': 'trd-area' });
-    add('path', { d: d, 'class': 'trd-line ' + (up ? 'is-up' : 'is-down') });
+    var defs = add(svg, 'defs', {});
+    var grad = add(defs, 'linearGradient', { id: 'area', x1: 0, x2: 0, y1: 0, y2: 1 });
+    add(grad, 'stop', { offset: '0%', 'stop-color': '#9FE870', 'stop-opacity': '.5' });
+    add(grad, 'stop', { offset: '100%', 'stop-color': '#9FE870', 'stop-opacity': '0' });
+    var glow = add(defs, 'filter', { id: 'glow' });
+    add(glow, 'feGaussianBlur', { stdDeviation: 4, result: 'blur' });
+    var merge = add(glow, 'feMerge', {});
+    add(merge, 'feMergeNode', { 'in': 'blur' });
+    add(merge, 'feMergeNode', { 'in': 'SourceGraphic' });
+    [55, 115, 175, 235, 295].forEach(function (gy) { add(svg, 'line', { x1: L, x2: R, y1: gy, y2: gy, 'class': 'gridline' }); });
+    var path = points.map(function (p, i) { return (i ? 'L' : 'M') + x(i) + ' ' + y(p.price); }).join(' ');
+    add(svg, 'path', { 'class': 'chart-area', d: path + ' L' + x(points.length - 1) + ' 295 L' + x(0) + ' 295Z' });
+    add(svg, 'path', { 'class': 'chart-line', d: path });
+    var last = points.length - 1;
+    points.forEach(function (p, i) { if (i !== last) add(svg, 'circle', { cx: x(i), cy: y(p.price), r: 4, 'class': 'chart-dot' }); });
+    add(svg, 'line', { x1: x(last), x2: x(last), y1: 60, y2: 295, 'class': 'current-line' });
+    add(svg, 'circle', { cx: x(last), cy: y(points[last].price), r: 8, 'class': 'current-dot', filter: 'url(#glow)' });
+    var label = add(svg, 'g', { 'class': 'price-label' });
+    add(label, 'rect', { x: x(last) - 108, y: 22, width: 108, height: 30, rx: 7 });
+    add(label, 'text', { x: x(last) - 54, y: 42 }, won(points[last].price));
     points.forEach(function (p, i) {
-      var lastPt = i === points.length - 1;
-      add('circle', { cx: x(i), cy: y(p.price), r: lastPt ? 6 : 3.5, 'class': 'trd-pt' + (lastPt ? ' is-now' : '') });
-      add('text', { x: x(i), y: H - 8, 'class': 'trd-axis', 'text-anchor': 'middle' }, p.turnNo + '턴');
+      add(svg, 'text', { x: x(i), y: 326, 'class': 'axis-label', 'text-anchor': i === 0 ? 'start' : i === last ? 'end' : 'middle' }, p.turnNo + '턴');
     });
-    var lp = points[points.length - 1];
-    add('text', { x: Math.min(x(points.length - 1), W - 60), y: Math.max(14, y(lp.price) - 12), 'class': 'trd-axis is-strong', 'text-anchor': 'middle' }, won(lp.price));
     box.replaceChildren(svg);
 
+    var first = prices[0], lastPrice = prices[last];
+    if (first) setRate(sum, Math.round((lastPrice - first) / first * 1000) / 10); else sum.textContent = '';
+    sum.tagName === 'STRONG' || (sum.style.fontWeight = '700');
+
     table.replaceChildren.apply(table, points.map(function (p, i) {
-      var cell = el('div', i === points.length - 1 ? 'is-now' : '');
+      var cell = el('div', i === last ? 'current' : '');
       var prev = i ? points[i - 1].price : null;
-      cell.append(el('span', null, p.turnNo + '턴' + (i === points.length - 1 ? ' · 현재' : '')), el('strong', null, won(p.price)),
-        rate(prev ? Math.round((p.price - prev) / prev * 10000) / 100 : null));
+      var label = el('span', null, p.turnNo + '턴');
+      if (i === last) label.appendChild(el('b', null, '현재'));
+      cell.append(label, el('strong', null, won(p.price)),
+        rate(prev ? Math.round((p.price - prev) / prev * 1000) / 10 : null, 'small'));
       return cell;
     }));
   }
 
+  /** 종목정보 > 주요 정보 (디자인의 기업 소개·기본 정보·주요 사업. API 가 주는 값만 보여 준다) */
   function renderCompany(d) {
     var box = $('trd-company');
     var c = d.company;
     box.replaceChildren();
-    var head = el('div', 'trd-company__head');
-    head.append(el('h2', null, d.name), el('span', 'trd-meta', '국내 · ' + (d.sectorName || '') + ' · 가상 기업'));
-    box.appendChild(head);
+    var intro = el('div', 'company-intro');
+    var title = el('div', 'company-title');
+    title.append(el('h2', null, d.name), el('span', null, '국내 · ' + (d.sectorName || '') + ' · 가상 기업'));
+    intro.appendChild(title);
+    if (c && c.intro) intro.appendChild(el('p', null, c.intro));
+    box.appendChild(intro);
     if (!c) { box.appendChild(el('p', 'trd-empty', '기업정보가 아직 없어요')); return; }
-    if (c.intro) box.appendChild(el('p', 'trd-company__intro', c.intro));
-    var facts = el('div', 'trd-facts');
-    [['분야', d.sectorName], ['매출', c.revenue], ['영업이익', c.operatingProfit]].forEach(function (f) {
+
+    var no = 0;
+    var section = function (cls, name) {
+      var s = el('section', 'info-section' + (cls ? ' ' + cls : ''));
+      var t = el('div', 'info-title');
+      no += 1;
+      t.append(el('span', null, pad2(no)), el('h3', null, name));
+      s.appendChild(t);
+      box.appendChild(s);
+      return s;
+    };
+    var facts = el('div', 'facts');
+    [['분야', d.sectorName], ['시장', '국내'], ['매출', c.revenue], ['영업이익', c.operatingProfit]].forEach(function (f) {
       if (!f[1]) return;
       var row = el('div');
       row.append(el('span', null, f[0]), el('strong', null, f[1]));
       facts.appendChild(row);
     });
-    box.appendChild(facts);
-    if (c.business) {
-      box.appendChild(el('h3', null, '주요 사업'));
-      box.appendChild(el('p', 'trd-company__intro', c.business));
+    section('', '기본 정보').appendChild(facts);
+
+    var lines = (c.business || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length) {
+      var list = el('div', 'business-list');
+      lines.forEach(function (line, i) {
+        var row = el('div');
+        var p = el('p');
+        p.appendChild(document.createTextNode(line));
+        row.append(el('span', null, pad2(i + 1)), p);
+        list.appendChild(row);
+      });
+      section('business-section', '주요 사업').appendChild(list);
     }
   }
 
@@ -565,7 +714,7 @@
     $('trd-qty').value = 1;
     delete $('trd-o-error').dataset.from;
     show($('trd-o-error'), false);
-    document.querySelectorAll('[data-trd-side]').forEach(function (b) { b.classList.toggle('is-on', b.dataset.trdSide === S.side); });
+    document.querySelectorAll('[data-trd-side]').forEach(function (b) { b.classList.toggle('active', b.dataset.trdSide === S.side); });
     renderHoldingSummary();
     var box = $('trd-reasons');
     loading(box);
@@ -587,19 +736,25 @@
   function renderHoldingSummary() {
     var box = $('trd-d-holding');
     var h = S.stock && S.stock.myHolding;
-    if (!h || !h.quantity) { note(box, '아직 보유하지 않은 종목이에요'); box.classList.add('is-empty'); return; }
-    box.classList.remove('is-empty');
+    if (!h || !h.quantity) {
+      box.className = 'holding-summary empty';
+      box.replaceChildren(el('p', null, '아직 보유하지 않은 종목이에요'));
+      return;
+    }
+    box.className = 'holding-summary';
     var profit = S.stock.price != null ? (S.stock.price - h.avgPrice) * h.quantity : null;
-    var pr = profit != null && h.avgPrice ? Math.round((S.stock.price - h.avgPrice) / h.avgPrice * 10000) / 100 : null;
-    var cells = [['보유 수량', fmt(h.quantity) + '주'], ['평균 단가', won(h.avgPrice)]];
-    box.replaceChildren(el('span', 'trd-badge', '보유 중'));
-    cells.forEach(function (c) {
-      var d = el('div'); d.append(el('small', null, c[0]), el('strong', null, c[1])); box.appendChild(d);
+    var pr = profit != null && h.avgPrice ? Math.round((S.stock.price - h.avgPrice) / h.avgPrice * 1000) / 10 : null;
+    var values = el('div', 'holding-summary-values');
+    [['보유 수량', fmt(h.quantity) + '주'], ['평균 단가', won(h.avgPrice)]].forEach(function (c) {
+      var d = el('div'); d.append(el('small', null, c[0]), el('strong', null, c[1])); values.appendChild(d);
     });
     var pl = el('div');
-    var plText = el('strong', profit > 0 ? 'trd-up' : profit < 0 ? 'trd-down' : '', profit == null ? '-' : (profit > 0 ? '+' : '') + won(profit));
-    pl.append(el('small', null, '평가손익'), plText, rate(pr));
-    box.appendChild(pl);
+    var em = el('em', profit > 0 ? 'up' : profit < 0 ? 'down' : '',
+      profit == null ? '-' : (profit > 0 ? '▲ +' : profit < 0 ? '▼ −' : '') + won(Math.abs(profit)) + ' ');
+    if (pr != null) em.appendChild(el('span', null, '(' + (pr > 0 ? '+' : pr < 0 ? '−' : '') + Math.abs(pr).toFixed(1) + '%)'));
+    pl.append(el('small', null, '평가손익'), em);
+    values.appendChild(pl);
+    box.replaceChildren(el('span', 'holding-badge', '보유 중'), values);
   }
 
   function updateOrder() {
@@ -614,21 +769,23 @@
     $('trd-o-price').textContent = d ? won(d.price) : '-';
     $('trd-o-max').textContent = '최대 ' + fmt(max) + '주';
     $('trd-o-total-label').textContent = buy ? '총 주문 금액' : '예상 판매 금액';
-    $('trd-o-total').textContent = won(qty * price);
+    $('trd-o-total').replaceChildren(document.createTextNode(fmt(qty * price)), el('small', null, '캐시'));
     $('trd-o-avail-label').textContent = buy ? '주문 가능 금액' : '매도 가능 수량';
     $('trd-o-avail').textContent = buy ? (S.participation ? won(S.participation.cash) : '-') : fmt(max) + '주';
-    $('trd-o-block').textContent = block;
-    show($('trd-o-block'), !!block);
+    var blockBox = $('trd-o-block');
+    blockBox.textContent = block;
+    blockBox.className = 'order-block';
+    show(blockBox, !!block);
     var over = !block && qty > max;
     if (over) { errBox.textContent = buy ? MSG.NOT_ENOUGH_CASH : MSG.NOT_ENOUGH_QUANTITY; show(errBox, true); }
     else if (errBox.dataset.from !== 'server') show(errBox, false);
     document.querySelectorAll('[data-trd-reason]').forEach(function (c) {
       var on = String(c.dataset.trdReason) === String(S.reasonId);
-      c.classList.toggle('is-on', on);
+      c.classList.toggle('selected', on);
       c.setAttribute('aria-checked', String(on));
     });
     var btn = $('trd-o-submit');
-    btn.className = 'btn trd-submit ' + (buy ? 'is-buy' : 'is-sell');
+    btn.className = 'order-submit ' + (buy ? 'buy' : 'sell');
     btn.disabled = !!block || over || !S.reasonId || S.busy;
     btn.textContent = block ? '지금은 주문할 수 없어요'
       : S.reasonId ? (buy ? '매수' : '매도') + ' · ' + fmt(qty) + '주 ' + won(qty * price) : '매매 이유를 골라주세요';
@@ -679,27 +836,54 @@
   }
 
   /* ---------- 랭킹 (API 62) ---------- */
+  /** 디자인은 "지난 시즌 랭킹"을 보여 준다. API 가 지난 시즌 번호(previousSeasonId)를 주면 그 시즌을, 아니면 이 시즌을 부른다 */
   function loadRanking() {
     var list = $('trd-rank-list');
     var me = $('trd-my-rank');
+    var noteBox = $('trd-rank-note');
     show(me, false);
     loading(list);
-    api('/seasons/' + S.season.seasonId + '/rankings?type=' + S.rankType + '&page=0&size=10').then(function (d) {
-      if (d.seasonName) $('trd-rank-season').textContent = d.seasonName;
+    var previous = S.season.previousSeasonId != null;
+    var seasonId = previous ? S.season.previousSeasonId : S.season.seasonId;
+    $('trd-rank-title').textContent = previous ? '지난 시즌 랭킹' : '시즌 랭킹';
+    noteBox.textContent = previous && S.season.status !== 'ENDED' ? '이번 시즌 랭킹은 시즌 종료 후 공개돼요' : '';
+    api('/seasons/' + seasonId + '/rankings?type=' + S.rankType + '&page=0&size=10').then(function (d) {
+      if (d.seasonName) {
+        var num = /(\d+)/.exec(d.seasonName);
+        $('trd-rank-season').textContent = num ? 'SEASON ' + num[1] : d.seasonName;
+      }
       var asset = S.rankType === 'ASSET';
       var items = d.items || [];
       if (!items.length) { note(list, '아직 랭킹이 없어요'); return; }
       list.replaceChildren.apply(list, items.map(function (r) {
-        var row = el('div', 'trd-rank-row');
-        var who = el('span', 'trd-rank-row__who');
-        who.append(el('span', null, r.nickname), el('span', 'trd-tag', r.title || ''));
-        row.append(el('span', 'trd-rank-no r' + r.rank, ({ 1: '🥇', 2: '🥈', 3: '🥉' })[r.rank] || String(r.rank)), who,
-          asset ? el('strong', null, won(r.netAsset)) : rate(r.returnRate));
+        var top = r.rank <= 3;
+        var row = el('div', 'rank-row' + (top ? '' : ' rank-row-sm'));
+        var who = el('span', 'rank-name');
+        who.setAttribute('style', RANK_NAME_STYLE);
+        var line = el('span');
+        line.setAttribute('style', RANK_WHO_STYLE);
+        var nick = el('span', null, r.nickname);
+        nick.setAttribute('style', RANK_NICK_STYLE);
+        line.appendChild(nick);
+        if (r.title) {
+          var title = el('small', null, r.title);
+          title.style.whiteSpace = 'nowrap';
+          line.appendChild(title);
+        }
+        who.appendChild(line);
+        if (top) {
+          var chip = el('span', 'gold-chip', '뱃지·칭호');
+          chip.style.whiteSpace = 'nowrap';
+          who.appendChild(chip);
+        }
+        var value = asset ? el('strong', null, won(r.netAsset)) : rate(r.returnRate, 'strong');
+        row.append(el('span', 'rank-number r' + r.rank, ({ 1: '🥇', 2: '🥈', 3: '🥉' })[r.rank] || String(r.rank)), who, value);
         return row;
       }));
       if (d.me) {
-        me.replaceChildren(el('strong', null, '나 · ' + (d.me.rank != null ? d.me.rank + '위' : '순위 없음')),
-          asset ? el('strong', null, won(d.me.netAsset)) : rate(d.me.returnRate));
+        var label = el('span');
+        label.append(el('strong', null, '나'), el('b', null, d.me.rank != null ? d.me.rank + '위' : '순위 없음'));
+        me.replaceChildren(label, asset ? el('strong', null, won(d.me.netAsset)) : rate(d.me.returnRate, 'strong'));
         show(me, true);
       }
     }).catch(function (err) {
@@ -739,18 +923,19 @@
     if (ds.trdSector !== undefined) { showAll(ds.trdSector); return; }
     if (ds.trdMarket) {
       S.marketTab = ds.trdMarket;
-      document.querySelectorAll('[data-trd-market]').forEach(function (b) { b.classList.toggle('is-on', b === t); });
+      document.querySelectorAll('[data-trd-market]').forEach(function (b) { b.classList.toggle('selected', b === t); });
       $('trd-search').value = '';
       loadMarket();
       return;
     }
     if (ds.trdRank) {
       S.rankType = ds.trdRank;
-      document.querySelectorAll('[data-trd-rank]').forEach(function (b) { b.classList.toggle('is-on', b === t); });
+      document.querySelectorAll('[data-trd-rank]').forEach(function (b) { b.classList.toggle('selected', b === t); });
       loadRanking();
       return;
     }
     if (ds.trdTab) { setTab(ds.trdTab); return; }
+    if (ds.trdInfo) { setInfo(ds.trdInfo); return; }
     if (ds.trdSide) { S.side = ds.trdSide; delete $('trd-o-error').dataset.from; resetOrder(); return; }
     if (ds.trdStep) {
       var q = $('trd-qty');
@@ -771,14 +956,26 @@
       clearTimeout(searchTimer);
       searchTimer = setTimeout(loadMarket, 250);
     });
-    ['trd-holdings', 'trd-trade-list', 'trd-news-list', 'trd-market-list', 'trd-rank-list'].forEach(function (id) { loading($(id)); });
+    // 전체 종목·종목 상세 위쪽 검색창: 엔터를 누르면 검색 결과를 전체 종목 화면으로 보여 준다
+    document.querySelectorAll('.trd-compact-search').forEach(function (input) {
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        var q = input.value.trim();
+        if (q) showAll('', q);
+      });
+    });
+    ['trd-holdings', 'trd-trade-list', 'trd-market-list', 'trd-rank-list'].forEach(function (id) { loading($(id)); });
 
     loadHome().then(function () {
       loadTrades();
       loadMarket();
       loadRanking();
       // 뉴스 → 종목 연결에 전체 종목 이름이 필요해서 먼저 받아 둔다
-      fetchStocks('').then(function (stocks) { S.stocks = stocks; }).catch(function () {}).then(loadTurnNews);
+      fetchStocks('').then(function (stocks) {
+        S.stocks = stocks;
+        $('trd-all-link').replaceChildren(document.createTextNode('전체 ' + stocks.length + '개 종목 보기 '), el('span', null, '›'));
+      }).catch(function () {}).then(loadTurnNews);
     }).catch(function (err) {
       if (!fatal(err)) fullState('모의투자 정보를 불러오지 못했어요', errText(err));
     });
