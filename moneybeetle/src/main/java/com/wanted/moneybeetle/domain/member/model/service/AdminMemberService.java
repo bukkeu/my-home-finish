@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AdminMemberItemDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -64,35 +65,30 @@ public class AdminMemberService {
                 .map(AdminMemberItemDTO::from));
     }
 
-    /* API 102 계정 정지·해제 (SP-06). 정지할 때 사유 필수. 지금과 같은 상태면 아무것도 바꾸지 않는다 */
+    /* API 102 계정 정지·해제 (SP-06). 정지할 때 사유 필수. 지금과 같은 상태면 아무것도 바꾸지 않는다.
+     * 바꿀 수 있는지·어떻게 바꾸는지는 Member.changeStatus 가 정하고, 여기서는 "조회 → 상태 변경 → 바뀌었으면 관리자 로그"만 한다 (#295) */
     @Transactional
     public void changeStatus(Long adminId, Long memberId, String status, String reason) {
-        if (!Member.STATUS_ACTIVE.equals(status) && !Member.STATUS_SUSPENDED.equals(status)) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
-        }
+        MemberStatus target = toChangeableStatus(status);
+        boolean suspending = target == MemberStatus.SUSPENDED;
         String trimmedReason = reason == null ? null : reason.strip();
-        if (Member.STATUS_SUSPENDED.equals(status) && (trimmedReason == null || trimmedReason.isEmpty())) {
+        if (suspending && (trimmedReason == null || trimmedReason.isEmpty())) {
             throw new BusinessException(AdminMemberErrorCode.REASON_REQUIRED);
         }
+
         Member member = getChangeableMember(memberId);
         String before = member.getStatus();
-        if (before.equals(status)) {
+        if (!member.changeStatus(target, trimmedReason)) {
             return;
-        }
-        if (Member.STATUS_SUSPENDED.equals(status)) {
-            member.suspend(trimmedReason);
-        } else {
-            member.activate();
         }
 
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("before", before);
-        detail.put("after", status);
-        if (Member.STATUS_SUSPENDED.equals(status)) {
+        detail.put("after", target.name());
+        if (suspending) {
             detail.put("reason", trimmedReason);
         }
-        record(adminId, Member.STATUS_SUSPENDED.equals(status) ? LOG_ACTION_SUSPEND : LOG_ACTION_ACTIVATE,
-                memberId, detail);
+        record(adminId, suspending ? LOG_ACTION_SUSPEND : LOG_ACTION_ACTIVATE, memberId, detail);
     }
 
     /* API 103 강사 권한 부여·회수 (SP-07). MEMBER ↔ INSTRUCTOR.
@@ -138,6 +134,23 @@ public class AdminMemberService {
     }
 
     /* 회원 행을 잠가 읽는다. 관리자·탈퇴 계정은 바꾸지 않는다 */
+    /* API 102 요청 값: 관리자가 바꿀 수 있는 상태는 ACTIVE·SUSPENDED 뿐이다. 탈퇴(WITHDRAWN)·모르는 값은 INVALID_INPUT */
+    private MemberStatus toChangeableStatus(String status) {
+        if (status == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        MemberStatus target;
+        try {
+            target = MemberStatus.from(status);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        if (target == MemberStatus.WITHDRAWN) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        return target;
+    }
+
     private Member getChangeableMember(Long memberId) {
         Member member = memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
