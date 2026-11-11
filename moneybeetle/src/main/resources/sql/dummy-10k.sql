@@ -7,7 +7,9 @@
 --   - 다시 실행하면 지난번 더미를 먼저 지우고 새로 넣는다 (여러 번 실행해도 1만 건)
 --   - 더미 강의를 스크랩·문의·학습·검수한 기록이 있으면 그 기록(더미 강의에 걸린 것만)을 먼저 지운다. 다른 강의의 기록은 그대로 둔다
 --     더미 강의에 영상·퀴즈를 직접 만들었다면 그것은 지우지 않으니 먼저 지운다
---   - 맨 아래 "지우기" 구역만 실행하면 더미를 모두 지운다
+--   - 지우기부터 넣기까지 한 트랜잭션이다 : 중간에 오류가 나면 mysql 이 멈추고 연결이 끊기면서 전부 되돌아간다
+--     (예: 더미 강의에 영상이 남아 강의 삭제가 막히면, 그 전에 지운 스크랩·문의도 되돌아간다). 끝까지 성공하면 COMMIT
+--   - 맨 아래 "지우기" 구역만 실행하면 더미를 모두 지운다 (이 구역도 START TRANSACTION … COMMIT 으로 감싼다)
 --   실행 : mysql -u <계정> -p money_beetle < moneybeetle/src/main/resources/sql/dummy-10k.sql
 --
 --   넣는 내용
@@ -18,6 +20,8 @@
 --                             강사는 시드 강사(seoyeon@moneybeetle.local)
 
 SET SESSION cte_max_recursion_depth = 20000;
+
+START TRANSACTION;
 
 -- ---------- 지난번 더미 지우기 (더미 강의에 걸린 기록 → 강의 → 소주제 → 상위 카테고리 → 금칙어) ----------
 DELETE FROM scrap WHERE course_id IN (SELECT course_id FROM course WHERE title LIKE '[더미] 금리 강의 %');
@@ -65,7 +69,10 @@ SELECT 'forbidden_word' AS tbl, COUNT(*) AS dummy_rows FROM forbidden_word WHERE
 UNION ALL SELECT 'category', COUNT(*) FROM category WHERE name LIKE '[더미] 카테고리 %' OR name LIKE '[더미] 소주제 %'
 UNION ALL SELECT 'course', COUNT(*) FROM course WHERE title LIKE '[더미] 금리 강의 %';
 
+COMMIT;
+
 -- ---------- 지우기 (측정이 끝나면 아래 줄만 실행. 맨 위 "지난번 더미 지우기" 와 같다) ----------
+-- START TRANSACTION;
 -- DELETE FROM scrap WHERE course_id IN (SELECT course_id FROM course WHERE title LIKE '[더미] 금리 강의 %');
 -- DELETE FROM inquiry_reply WHERE inquiry_id IN (SELECT inquiry_id FROM inquiry WHERE course_id IN (SELECT course_id FROM course WHERE title LIKE '[더미] 금리 강의 %'));
 -- DELETE FROM inquiry WHERE course_id IN (SELECT course_id FROM course WHERE title LIKE '[더미] 금리 강의 %');
@@ -75,3 +82,4 @@ UNION ALL SELECT 'course', COUNT(*) FROM course WHERE title LIKE '[더미] 금�
 -- DELETE FROM category WHERE name LIKE '[더미] 소주제 %' AND parent_id IS NOT NULL;
 -- DELETE FROM category WHERE name LIKE '[더미] 카테고리 %' AND parent_id IS NULL;
 -- DELETE FROM forbidden_word WHERE word LIKE '더미금칙어%';
+-- COMMIT;
