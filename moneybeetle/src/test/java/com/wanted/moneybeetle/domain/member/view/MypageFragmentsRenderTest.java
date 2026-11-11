@@ -169,9 +169,22 @@ class MypageFragmentsRenderTest {
         assertThat(settings.split("ession !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(5);
         assertThat(growth).contains("mg-filter').forEach(function (button) { button.disabled = true; });");
         assertThat(read("/static/css/mypage-mg.css")).contains(".mg .mg-levels { overflow-x: auto; display: block; }");   // 좁은 화면에서 레벨 표가 페이지를 넘치지 않게
-        assertThat(read("/templates/fragments/mypage/settings.html")).contains("다음 화면에서 인증번호 받기를 누르면");   // 인증번호는 탈퇴하기가 아니라 다음 화면의 버튼으로 보낸다
+        assertThat(read("/templates/fragments/mypage/settings.html")).contains("인증번호 받기를 누르면 가입한 이메일로");   // 인증번호는 탈퇴하기가 아니라 인증번호 단계의 버튼으로 보낸다
         assertThat(growth).contains("filter.disabled = false;");            // 더 보기로 내역을 받으면 막아 둔 필터를 푼다
         assertThat(settings).contains("sentGender", "byId('mg-gender').value = me.gender");   // 성별을 비워 저장해도 서버에 남은 값을 보여 준다
+    }
+
+    @Test
+    @DisplayName("탈퇴 창: 비밀번호가 없는 회원은 서버에 비운 탈퇴를 보내지 않고 바로 인증번호 단계로 가며, 이전 창의 응답은 새 창을 바꾸지 못한다")
+    void withdrawDialogGuards() throws Exception {
+        String script = read("/static/js/mypage-settings.js");
+
+        // loginProvider 로 비밀번호 없는 회원을 알아보고, 창을 열 때 바로 인증번호 단계로 간다
+        assertThat(script).contains("me.loginProvider !== 'EMAIL'").containsPattern("if \\(noPassword\\(\\)\\) enterCodeMode\\(\\);");
+        // 비밀번호 확인의 거절 응답은 코드(주석이 아닌) 안에서 창 세션이 같을 때만 단계를 바꾼다
+        assertThat(script).containsPattern("withdraw\\(byId\\('mg-wd-password'\\)\\.value\\)\\.then\\(done, function \\(error\\) \\{\\s*if \\(passwordSession !== dialogSession\\) return;");
+        // 비운 탈퇴 요청은 인증번호 확인(17-2)이 이 창에서 방금 성공한 뒤에만 보낸다
+        assertThat(script).containsPattern("if \\(session !== dialogSession\\) return null;\\s*return withdraw\\(''\\)\\.then\\(done\\);");
     }
 
     @Test

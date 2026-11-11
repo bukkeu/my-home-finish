@@ -142,11 +142,24 @@
       send.disabled = false;
       send.textContent = '인증번호 받기';
     }
+    /** 비밀번호가 없는 회원인가 (API 13 의 loginProvider 가 EMAIL 이 아니면 간편 로그인 회원). 값을 모르면 false 라서 예전처럼 서버가 알려 준다 */
+    function noPassword() {
+      return Boolean(me && me.loginProvider && me.loginProvider !== 'EMAIL');
+    }
+    function enterCodeMode() {
+      codeMode = true;
+      stepPassword.hidden = true;
+      stepCode.hidden = false;
+      say('mg-wd-msg', '비밀번호가 없는 계정이에요. 가입한 이메일로 인증번호를 받아 입력해 주세요.', true);
+    }
     function open(trigger) {
       opener = trigger;
       reset();
+      // 비밀번호 없는 회원은 비밀번호를 비운 요청을 보내지 않고 바로 인증번호 단계로 간다.
+      // 서버에 비워 보내는 탈퇴 요청은 이 창에서 방금 인증번호를 확인했을 때만 보낸다 (이전에 닫은 창의 인증이 남아 있어도 쓰이지 않게)
+      if (noPassword()) enterCodeMode();
       dialog.hidden = false;
-      byId('mg-wd-password').focus();
+      (codeMode ? send : byId('mg-wd-password')).focus();
     }
     function close() {
       dialog.hidden = true;
@@ -203,10 +216,7 @@
           return withdraw(byId('mg-wd-password').value).then(done, function (error) {
             if (passwordSession !== dialogSession) return;
             if (error && error.code === 'WITHDRAW_VERIFICATION_REQUIRED') {
-              codeMode = true;
-              stepPassword.hidden = true;
-              stepCode.hidden = false;
-              say('mg-wd-msg', '비밀번호가 없는 계정이에요. 가입한 이메일로 인증번호를 받아 입력해 주세요.', true);
+              enterCodeMode();
               return;
             }
             say('mg-wd-msg', errorText(error), false);
