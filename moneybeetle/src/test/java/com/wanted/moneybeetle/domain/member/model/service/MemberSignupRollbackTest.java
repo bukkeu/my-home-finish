@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -70,6 +72,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         com.wanted.moneybeetle.domain.housing.model.service.HousingService.class,
         com.wanted.moneybeetle.domain.growth.model.service.RewardService.class,
         com.wanted.moneybeetle.domain.growth.model.service.GrowthService.class,
+        UnlockLevelProvider.class,
         com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService.class,
         MemberSignupRollbackTest.TestBeans.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)   // 테스트가 감싸는 트랜잭션 없이, 서비스가 여는 트랜잭션이 실제로 커밋·롤백되게 한다
@@ -89,6 +92,10 @@ class MemberSignupRollbackTest {
             return Clock.system(ZoneId.of("Asia/Seoul"));
         }
     }
+
+    /** 해금 레벨 운영 설정(#266)은 이 테스트가 보지 않는다. 설정이 없는 것으로 두면 기본 해금 레벨을 쓴다 */
+    @MockitoBean
+    private SystemSettingService systemSettingService;
 
     /** #171(레벨업 해금 알림)이 병합되면 RewardService 가 알림 서비스를 쓴다. 이 테스트는 알림을 보지 않아 가짜로 둔다 */
     @MockitoBean

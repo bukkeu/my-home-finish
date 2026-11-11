@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.growth.model.service;
 
+import com.wanted.moneybeetle.support.UnlockLevelFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -54,7 +55,7 @@ class RewardServiceGrantTest {
         // 레벨 정책표는 이슈 #11 확정값(Lv.8 = 1,250, Lv.12 = 2,450)을 쓴다
         when(growthService.loadLevelTable()).thenReturn(LevelTableFixture.table());
         rewardService = new RewardService(ruleRepository, cashHistoryRepository, expHistoryRepository,
-                memberService, growthService, notificationService);
+                memberService, growthService, notificationService, UnlockLevelFixture.defaults());
     }
 
     private void givenRule(String code, int cash, int exp) {
@@ -802,5 +803,77 @@ class RewardServiceGrantTest {
         }
         verify(ruleRepository, never()).findByCodeAndActiveTrue(org.mockito.ArgumentMatchers.anyString());
         verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    // ===== #266 해금 알림은 운영 설정의 해금 레벨에서만 =====
+
+    private RewardService rewardServiceWith(Integer tradingLevel, Integer housingLevel) {
+        return new RewardService(ruleRepository, cashHistoryRepository, expHistoryRepository, memberService,
+                growthService, notificationService, UnlockLevelFixture.of(tradingLevel, housingLevel));
+    }
+
+    /** Lv.fromLevel → Lv.toLevel 로 오르는 지급을 흉내 낸다 (경험치는 레벨표의 필요 경험치에 맞춘다) */
+    private void givenLevelUp(int fromLevel, int toLevel) {
+        int fromExp = LevelTableFixture.policies().get(fromLevel - 1).getRequiredExp();
+        int toExp = LevelTableFixture.policies().get(toLevel - 1).getRequiredExp();
+        int gained = toExp - fromExp;
+        givenRule(RewardRule.COURSE_COMPLETE, 0, gained);
+        givenBalance(fromLevel, fromExp, 0);
+        when(memberService.addReward(MEMBER, 0L, gained)).thenReturn(MemberBalanceDTO.of(MEMBER, fromLevel, toExp, 0));
+        when(memberService.levelUp(MEMBER, toLevel)).thenReturn(MemberBalanceDTO.of(MEMBER, toLevel, toExp, 0));
+        when(memberService.addReward(org.mockito.ArgumentMatchers.eq(MEMBER),
+                org.mockito.ArgumentMatchers.longThat(cash -> cash > 0), org.mockito.ArgumentMatchers.eq(0)))
+                .thenAnswer(invocation -> MemberBalanceDTO.of(MEMBER, toLevel, toExp, invocation.<Long>getArgument(1)));
+    }
+
+    @Test
+    @DisplayName("청약 설정이 15 이면 Lv.12 에 올라도 청약 알림이 가지 않고, Lv.15 에 오를 때 간다")
+    void housingNotificationAtSettingLevel() {
+        RewardService service = rewardServiceWith(null, 15);
+        givenLevelUp(11, 12);
+
+        RewardResultDTO atTwelve = service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 20L);
+
+        assertThat(atTwelve.getUnlocks()).isEmpty();
+        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+
+        givenLevelUp(14, 15);
+        RewardResultDTO atFifteen = service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 21L);
+
+        assertThat(atFifteen.getUnlocks()).containsExactly(UnlockRules.HOUSING);
+        verify(notificationService).send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+    }
+
+    @Test
+    @DisplayName("모의투자 설정이 6 이면 Lv.6 에서 알림이 가고, 한 번에 Lv.2 → Lv.12 로 올라도 알림은 기능마다 한 번이다")
+    void tradingNotificationAtSettingLevelAndOncePerFeature() {
+        RewardService service = rewardServiceWith(6, null);
+        givenLevelUp(5, 6);
+
+        assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 30L).getUnlocks())
+                .containsExactly(UnlockRules.TRADING);
+        verify(notificationService).send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
+
+        org.mockito.Mockito.clearInvocations(notificationService);
+        givenLevelUp(2, 12);
+
+        assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 31L).getUnlocks())
+                .containsExactly(UnlockRules.TRADING, UnlockRules.HOUSING);
+        verify(notificationService, org.mockito.Mockito.times(1))
+                .send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
+        verify(notificationService, org.mockito.Mockito.times(1))
+                .send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+    }
+
+    @Test
+    @DisplayName("이미 해금 레벨을 지난 회원이 더 올라도 알림이 다시 가지 않는다 (청약 8, 모의투자 10)")
+    void noRepeatAfterUnlock() {
+        RewardService service = rewardServiceWith(10, 8);
+        givenLevelUp(8, 9);
+
+        assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 40L).getUnlocks()).isEmpty();
+        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 }

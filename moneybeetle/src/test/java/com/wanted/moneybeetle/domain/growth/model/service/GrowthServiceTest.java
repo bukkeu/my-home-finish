@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.growth.model.service;
 
+import com.wanted.moneybeetle.support.UnlockLevelFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -32,7 +33,7 @@ class GrowthServiceTest {
     void setUp() {
         repository = mock(LevelPolicyRepository.class);
         memberService = mock(MemberService.class);
-        service = new GrowthService(repository, memberService);
+        service = new GrowthService(repository, memberService, UnlockLevelFixture.defaults());
     }
 
     @Test
@@ -83,5 +84,23 @@ class GrowthServiceTest {
         assertThatThrownBy(() -> service.loadLevelTable())
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(GrowthErrorCode.LEVEL_POLICY_INVALID));
+    }
+
+    @Test
+    @DisplayName("findLevels: 해금 레벨 설정이 바뀌면 레벨 정책(API 24)의 unlocks 도 설정 레벨에서만 붙는다 (#266)")
+    void findLevelsUsesUnlockSettings() {
+        when(repository.findAllByOrderByLevelAsc()).thenReturn(LevelTableFixture.policies());
+
+        // 청약 15, 모의투자 6
+        List<LevelDTO> changed = new GrowthService(repository, memberService, UnlockLevelFixture.of(6, 15)).findLevels();
+        assertThat(changed.get(5).getUnlocks()).containsExactly("TRADING");        // Lv.6
+        assertThat(changed.get(7).getUnlocks()).isEmpty();                           // 예전 기본 Lv.8
+        assertThat(changed.get(11).getUnlocks()).isEmpty();                          // 예전 기본 Lv.12
+        assertThat(changed.get(14).getUnlocks()).containsExactly("HOUSING");       // Lv.15
+
+        // 청약 8, 모의투자 10
+        List<LevelDTO> other = new GrowthService(repository, memberService, UnlockLevelFixture.of(10, 8)).findLevels();
+        assertThat(other.get(7).getUnlocks()).containsExactly("HOUSING");           // Lv.8
+        assertThat(other.get(9).getUnlocks()).containsExactly("TRADING");           // Lv.10
     }
 }
