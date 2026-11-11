@@ -12,7 +12,7 @@
   window.__mbWords = true;
 
   var HIDE_KEY = 'mb-words-hide';
-  var backdrop, list, titleEl, loaded = false, opener;
+  var backdrop, list, titleEl, loaded = false, loadedOn = '', opener;   // loadedOn: 용어를 받아 온 서울 날짜 (날짜가 바뀐 탭에서 전날 용어를 보여 주지 않게)
 
   // 기기 시간대와 관계없이 서울 날짜(YYYY-MM-DD)를 키로 쓴다. 서버의 오늘의 용어도 서울 기준이다 (DP-42)
   function today() {
@@ -99,7 +99,8 @@
     if (!backdrop.contains(active)) {
       event.preventDefault();
       first.focus();
-    } else if (event.shiftKey && active === first) {
+    } else if (event.shiftKey && (active === first || active === titleEl)) {
+      // 처음 포커스를 받는 제목(tabindex -1)에서 Shift+Tab 은 첫 버튼이 아니라 마지막 버튼으로 돈다 (팝업 밖으로 나가지 않게)
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && active === last) {
@@ -123,8 +124,11 @@
   }
 
   function load() {
-    if (loaded || !window.MB || !MB.api) return;
+    if (!window.MB || !MB.api) return;
+    var day = today();
+    if (loaded && loadedOn === day) return;   // 같은 날 이미 받았다
     loaded = true;
+    loadedOn = day;
     MB.api('/api/v1/economic-terms/today').then(function (data) {
       render((data && data.terms) || []);
     }, function () {
