@@ -1,18 +1,44 @@
 <!DOCTYPE html>
-<!-- comment.
-    담당 : SCM 서수영 (#114, 공통 오류 처리)
+<!--/* comment.
+    담당 : SCM 서수영 (#114, 공통 오류 처리 · 화면 #333)
     내용 : 잘못된 요청 - 업로드 용량 초과(FILE_TOO_LARGE), 입력값 오류(INVALID_INPUT) 등 400 이 화면 요청에서 났을 때
-           (전에는 400 도 500 화면으로 보였다)
     경로 : EP-04
--->
+    화면 : 프로토타입 moneybeetle-page/400.dc.html
+    값   : message - 서버가 넣은 안내 문구 (없으면 화면 기본 문구)
+           Spring 기본 오류 처리(/error)가 넣는 'No message available' 은 문구가 없는 것으로 본다 (devtools 실행 시 생김)
+    버튼 : 홈으로 가기 - 역할별 첫 화면 (로그인 전 /, 회원 /user/home, 강사 /instructor/dashboard, 관리자 /admin/dashboard)
+           이전 페이지 - static/js/error.js (기록이 없으면 홈으로)
+*/-->
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>요청을 처리할 수 없어요</title>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('요청을 처리할 수 없어요')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/error.css}">
 </head>
-<body>
-<h1>400</h1>
-<p th:text="${message} ?: '요청을 처리할 수 없어요. 입력한 내용을 확인해 주세요.'">요청을 처리할 수 없어요. 입력한 내용을 확인해 주세요.</p>
-<a th:href="@{/}">메인으로</a>
+<body th:with="hasMessage=${!#strings.isEmpty(message) and message != 'No message available'},
+                 home=${#authorization.expression('hasAuthority(''ADMIN'')')} ? '/admin/dashboard'
+                 : (${#authorization.expression('hasAuthority(''INSTRUCTOR'')')} ? '/instructor/dashboard'
+                 : (${#authorization.expression('hasAuthority(''MEMBER'')')} ? '/user/home' : '/'))">
+<div class="error-page">
+  <a class="error-brand" th:href="@{${home}}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+  <main class="error-center">
+    <section class="error-card">
+      <div class="error-text">
+        <span class="error-badge">오류 코드 400</span>
+        <span class="error-code">400</span>
+        <h1 class="error-title">요청을 처리할 수 없어요</h1>
+        <p class="error-desc" th:if="${hasMessage}" th:text="${message}"></p>
+        <p class="error-desc" th:unless="${hasMessage}">요청 내용에 문제가 있어 처리하지 못했어요.<br>입력한 내용을 확인하고 다시 시도해 주세요.</p>
+        <div class="error-actions">
+          <a class="error-btn error-btn-home" th:href="@{${home}}">홈으로 가기</a>
+          <button type="button" class="error-btn error-btn-back" data-error-back th:data-home="@{${home}}">이전 페이지</button>
+        </div>
+      </div>
+      <div class="error-mascot">
+        <img th:src="@{/images/beetle-mascot.png}" alt="머니비틀 캐릭터">
+      </div>
+    </section>
+  </main>
+</div>
+<script th:src="@{/js/error.js}" defer></script>
 </body>
 </html>
