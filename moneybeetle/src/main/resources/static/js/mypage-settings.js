@@ -203,9 +203,16 @@
         }
         var code = byId('mg-wd-code').value.trim();
         if (!/^\d{6}$/.test(code)) return say('mg-wd-msg', '인증번호 6자리를 입력해 주세요.', false);
+        var session = dialogSession;   // 인증을 보낸 창. 응답이 올 때 창이 닫혔거나 다시 열렸으면 탈퇴를 진행하지 않는다
         return api('/api/v1/members/me/withdraw-verification', { method: 'POST', body: { code: code } })
-          .then(function () { return withdraw(''); })
-          .then(done, function (error) { say('mg-wd-msg', errorText(error), false); });
+          .then(function () {
+            if (session !== dialogSession) return null;
+            return withdraw('').then(done);
+          })
+          .then(null, function (error) {
+            if (session !== dialogSession) return;
+            say('mg-wd-msg', errorText(error), false);
+          });
       });
     });
   }

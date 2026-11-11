@@ -78,6 +78,7 @@ select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36p
 .mg-filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .mg-filter { padding: 7px 16px; border: 1.5px solid var(--color-divider); border-radius: 999px; background: #fff; color: #263B1A; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .mg-filter[aria-pressed="true"] { border-color: #9fe870; background: #9fe870; }
+.mg-filter:disabled { opacity: .5; cursor: not-allowed; }
 .mg-list { padding: 6px 20px !important; gap: 0 !important; }
 .mg-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--color-divider); }
 .mg-row:last-child { border-bottom: 0; }

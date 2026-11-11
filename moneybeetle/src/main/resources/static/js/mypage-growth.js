@@ -172,6 +172,8 @@
         var list = byId('mg-cash-list');
         Array.prototype.slice.call(list.querySelectorAll('.mg-row, .mg-empty')).forEach(function (node) { node.remove(); });
         list.appendChild(el('p', 'mg-empty', '캐시 내역을 불러오지 못했어요.'));
+        // 필터를 누르면 renderCash()가 이 오류 안내를 지우고 "내역이 없다"고 보여 주므로, 실패했을 때는 필터를 막아 둔다
+        root.querySelectorAll('.mg-filter').forEach(function (button) { button.disabled = true; });
       });
       loadExpHistory();
     }).catch(function (error) {

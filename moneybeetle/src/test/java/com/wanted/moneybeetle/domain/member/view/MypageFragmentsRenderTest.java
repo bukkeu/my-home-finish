@@ -160,6 +160,17 @@ class MypageFragmentsRenderTest {
     }
 
     @Test
+    @DisplayName("탈퇴 인증 응답은 보낸 창이 그대로일 때만 탈퇴로 이어지고, 캐시 조회가 실패하면 필터를 막는다")
+    void staleResponsesAndFailedCashLoadAreGuarded() throws Exception {
+        String settings = read("/static/js/mypage-settings.js");
+        String growth = read("/static/js/mypage-growth.js");
+
+        // 안내 요청(1)·인증 성공(2)·인증 오류(3)가 각각 보낸 창과 지금 창을 비교한다
+        assertThat(settings.split("session !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(4);
+        assertThat(growth).contains("mg-filter').forEach(function (button) { button.disabled = true; });");
+    }
+
+    @Test
     @DisplayName("화면이 쓰는 스타일·스크립트·이미지 파일이 모두 있다")
     void staticFilesExist() {
         for (String path : new String[] {"/static/css/mypage-mg.css", "/static/js/mypage-growth.js",
