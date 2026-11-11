@@ -89,6 +89,57 @@ class WithdrawVerificationServiceTest {
     }
 
     @Test
+    @DisplayName("취소(API 17-3): 코드를 확인한 뒤 취소하면 탈퇴 확인을 쓸 수 없다")
+    void cancelAfterVerifyBlocksConsume() {
+        service.requestCode(7L, session);
+        service.verify(7L, sentCode(), session);
+
+        service.cancel(7L, session);
+
+        assertThat(service.consumeVerified(7L, session)).isFalse();
+    }
+
+    @Test
+    @DisplayName("취소: 받은 코드도 지워서 늦게 도착한 코드 확인이 취소를 되돌리지 못한다 (IDENTITY_CODE_EXPIRED)")
+    void lateVerifyCannotUndoCancel() {
+        service.requestCode(7L, session);
+        String code = sentCode();
+
+        service.cancel(7L, session);
+
+        assertCode(() -> service.verify(7L, code, session), MemberErrorCode.IDENTITY_CODE_EXPIRED);
+        assertThat(service.consumeVerified(7L, session)).isFalse();
+    }
+
+    @Test
+    @DisplayName("취소: 지울 것이 없거나 세션이 없어도 오류가 아니고, 여러 번 불러도 같다")
+    void cancelIsIdempotent() {
+        service.cancel(7L, session);
+        service.cancel(7L, null);
+
+        service.requestCode(7L, session);
+        service.cancel(7L, session);
+        service.cancel(7L, session);
+
+        assertThat(service.consumeVerified(7L, session)).isFalse();
+    }
+
+    @Test
+    @DisplayName("취소 뒤에도 새로 받은 코드로 처음부터 다시 확인할 수 있다 (60초 제한은 지킨다)")
+    void canVerifyAgainAfterCancel() {
+        service.requestCode(7L, session);
+        service.cancel(7L, session);
+        clock.advance(Duration.ofSeconds(61));
+
+        service.requestCode(7L, session);
+        ArgumentCaptor<String> code = forClass(String.class);
+        verify(mailer, org.mockito.Mockito.times(2)).send(eq(EMAIL), code.capture());
+        service.verify(7L, code.getValue(), session);
+
+        assertThat(service.consumeVerified(7L, session)).isTrue();
+    }
+
+    @Test
     @DisplayName("코드를 확인하지 않았으면 탈퇴 확인을 쓸 수 없다 (코드만 받은 상태, 세션이 없는 상태 모두)")
     void notVerifiedCannotConsume() {
         assertThat(service.consumeVerified(7L, session)).isFalse();

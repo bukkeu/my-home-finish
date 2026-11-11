@@ -28,6 +28,7 @@ import org.springframework.web.util.WebUtils;
 *   - 진행 상태(코드 해시·만료·틀린 횟수·인증 완료 표시)는 HTTP 세션에 담고 DB 테이블은 만들지 않는다. 같은 회원은 60초에 한 번만 코드를 받을 수 있다.
 *   - 확인을 마치면 5분 동안 탈퇴(AccountService.withdraw)가 한 번 쓸 수 있다. 다른 회원이거나 시간이 지났으면 쓸 수 없다.
 *   - 비밀번호가 있는 회원은 이 방식을 쓰지 않는다 (현재 비밀번호로 확인한다).
+*   - 탈퇴 창을 닫을 때 cancel 로 세션에 남은 확인을 지운다 (이슈 #279, API 17-3).
 *  */
 @Slf4j
 @Service
@@ -130,6 +131,25 @@ public class WithdrawVerificationService implements WithdrawVerifier {
             }
             session.removeAttribute(SESSION_KEY);
             return true;
+        }
+    }
+
+    @Override
+    public void cancel(Long memberId, HttpSession session) {
+        if (session == null) {
+            return;
+        }
+        // 코드 요청·확인·사용과 같은 세션 잠금 안에서 지운다. 그래서 늦게 도착한 코드 확인이 취소를 되돌리지 못한다
+        // (확인은 저장된 상태가 있어야만 성공하고, 취소가 그 상태를 지웠으면 IDENTITY_CODE_EXPIRED 가 된다)
+        // 상태는 이 회원의 것일 때만 지운다. 이 세션에 다른 회원의 상태가 있을 수 없지만(로그인 세션 하나에 회원 하나), 남의 것을 지우지 않는다
+        String email = memberService.findLoginMemberById(memberId)
+                .map(member -> SignupRules.normalizeEmail(member.getEmail()))
+                .orElse(null);
+        synchronized (WebUtils.getSessionMutex(session)) {
+            IdentityVerificationState state = stateOf(session);
+            if (state != null && (email == null || state.getEmail().equals(email))) {
+                session.removeAttribute(SESSION_KEY);
+            }
         }
     }
 
