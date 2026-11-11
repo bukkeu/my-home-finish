@@ -188,6 +188,7 @@
   }
 
   function pick(courseId) {
+    if (st.busy) return;                                // 허가·반려 처리 중에는 다른 강의를 고르지 않는다
     st.picked = courseId;
     st.detail = null;
     drawQueue();
@@ -338,7 +339,10 @@
     }, function (err) {
       if (status !== L.status) return;
       if (reset) fill(listBox, stateBox(errText(err, '강의 목록을 불러오지 못했어요.'), function () { loadList(true); }));
-      else MB.toast(errText(err, '강의 목록을 더 불러오지 못했어요.'), 'error');
+      else {
+        MB.toast(errText(err, '강의 목록을 더 불러오지 못했어요.'), 'error');
+        drawList();                                        // 잠긴 "더 보기" 버튼을 다시 켠다
+      }
     });
   }
 
@@ -558,7 +562,9 @@
   }
 
   newSave.addEventListener('click', function () { addCategory(null, newName, newOrder, newError, newSave); });
-  newName.addEventListener('keydown', function (e) { if (e.key === 'Enter') newSave.click(); });
+  newName.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing) newSave.click();   // 한글 조합 중 Enter 는 무시 (마지막 글자가 빠지지 않게)
+  });
 
   /* ---------- 시작 ---------- */
   showTab(new URLSearchParams(location.search).get('tab') || 'review', true);

@@ -8,7 +8,7 @@
 *   - 강사 가입 신청 : GET /api/v1/admin/instructor-applications?status= (API 104), 승인 POST .../{memberId}/approve (API 105)
 *   문의 게시판 (?view=board)
 *   - 목록 : GET /api/v1/admin/inquiries?status=&hidden=&deleted= (API 106, 숨긴 글도 원문 제목)
-*   - 내용·답글 : GET /api/v1/inquiries/{id} (API 49), 답글 POST .../{id}/replies (API 52, 관리자 답글이면 답변 완료)
+*   - 내용·답글 보기 : GET /api/v1/inquiries/{id} (API 49). 숨기기 전에 글 내용을 확인하는 용도 (답글 작성은 이 이슈 범위가 아니라 넣지 않는다)
 *   - 숨김·해제 : PATCH /api/v1/admin/inquiries/{id}/hidden { hidden } (API 107)
 *   오류는 서버 문구를 그대로 보여 준다. 되돌리기 어려운 작업은 확인 창(MBA.confirm)을 거친다
 *  */
@@ -130,6 +130,8 @@
     var users = pager(function () { return '/api/v1/admin/members?' + query(filter); }, function (u) { return u.memberId; });
     var busy = {};
     var suspending = null;                                 // 정지 사유를 입력 중인 회원 ID
+    var suspendDraft = {}, suspendError = {};              // 회원 ID → 입력 중인 정지 사유·실패 문구 (다시 그려도 남게 상태로 둔다)
+    var focusSuspend = false;                              // 정지 칸을 처음 펼칠 때만 입력 칸으로 포커스
     var usersBox = root.querySelector('[data-ao-users]');
     var form = root.querySelector('[data-ao-user-filter]');
 
@@ -189,7 +191,7 @@
         u.status === 'SUSPENDED'
           ? h('button', { type: 'button', class: 'btn btn-secondary adm-btn-sm', text: '정지 해제', disabled: isBusy, onclick: function () { activate(u); } })
           : h('button', { type: 'button', class: 'btn btn-ghost adm-btn-sm adm-btn-danger', text: '정지', disabled: isBusy,
-            'aria-expanded': String(suspending === u.memberId), onclick: function () { suspending = suspending === u.memberId ? null : u.memberId; drawUsers(); } }),
+            'aria-expanded': String(suspending === u.memberId), onclick: function () { suspending = suspending === u.memberId ? null : u.memberId; focusSuspend = !!suspending; drawUsers(); } }),
         u.role === 'INSTRUCTOR'
           ? h('button', { type: 'button', class: 'btn btn-ghost adm-btn-sm', text: '강사 회수', disabled: isBusy, onclick: function () { changeRole(u, 'MEMBER'); } })
           : h('button', { type: 'button', class: 'btn btn-ghost adm-btn-sm', text: '강사 부여', disabled: isBusy, onclick: function () { changeRole(u, 'INSTRUCTOR'); } })
@@ -206,28 +208,44 @@
       ]);
     }
 
-    /* 정지 사유 입력 (줄 아래에 펼친다. 사유는 필수 200자) */
+    /* 정지 사유 입력 (줄 아래에 펼친다. 사유는 필수 200자).
+     * 목록은 다른 동작으로 자주 다시 그려지므로, 입력한 사유·실패 문구·요청 중 여부는 화면이 아니라 상태에 둔다 */
     function suspendForm(u) {
-      var input = h('textarea', { class: 'ao-textarea', maxlength: '200', placeholder: '예) 부적절한 문의 반복', 'aria-label': u.nickname + ' 정지 사유' });
-      var error = h('span', { class: 'adm-error', role: 'alert' });
-      var ok = h('button', { type: 'button', class: 'btn btn-primary adm-btn-sm', text: '정지하기' });
+      var id = u.memberId;
+      var isBusy = !!busy[id];
+      var input = h('textarea', { class: 'ao-textarea', maxlength: '200', placeholder: '예) 부적절한 문의 반복', 'aria-label': u.nickname + ' 정지 사유',
+        value: suspendDraft[id] || '', disabled: isBusy });
+      var error = h('span', { class: 'adm-error', role: 'alert', text: suspendError[id] || null });
+      var ok = h('button', { type: 'button', class: 'btn btn-primary adm-btn-sm', text: isBusy ? '정지하는 중…' : '정지하기', disabled: isBusy });
+      input.addEventListener('input', function () {
+        suspendDraft[id] = input.value;
+        input.removeAttribute('aria-invalid');
+        delete suspendError[id];
+        error.textContent = '';
+      });
       ok.addEventListener('click', function () {
+        if (busy[id]) return;
         var reason = input.value.trim();
         if (!reason) { input.setAttribute('aria-invalid', 'true'); error.textContent = '정지 사유를 입력해 주세요.'; input.focus(); return; }
         MBA.confirm(u.nickname + ' 님 계정을 정지할까요?', '바로 로그인할 수 없게 되고, 이미 로그인한 세션도 끊겨요.\n\n사유: ' + reason, '정지').then(function (yes) {
-          if (!yes) return;
-          ok.disabled = true;
-          error.textContent = '';
-          input.removeAttribute('aria-invalid');
-          save(u, '/status', { status: 'SUSPENDED', reason: reason }, function () { u.status = 'SUSPENDED'; suspending = null; }, '계정을 정지했어요.', error, function () { ok.disabled = false; });
+          if (!yes || busy[id]) return;
+          delete suspendError[id];
+          save(u, '/status', { status: 'SUSPENDED', reason: reason },
+            function () { u.status = 'SUSPENDED'; suspending = null; delete suspendDraft[id]; },
+            '계정을 정지했어요.',
+            function (msg) { suspendError[id] = msg; });
         });
       });
-      setTimeout(function () { input.focus(); }, 0);
+      if (focusSuspend) {
+        focusSuspend = false;
+        setTimeout(function () { input.focus(); }, 0);
+      }
       return h('div', { class: 'ao-inline' }, [
         h('label', { class: 'adm-field' }, ['정지 사유', h('small', { text: '필수, 200자까지. 관리자 작업 기록에 남아요.' }), input]),
         error,
         h('div', { class: 'adm-actions' }, [
-          h('button', { type: 'button', class: 'btn btn-ghost adm-btn-sm', text: '취소', onclick: function () { suspending = null; drawUsers(); } }),
+          h('button', { type: 'button', class: 'btn btn-ghost adm-btn-sm', text: '취소', disabled: isBusy,
+            onclick: function () { suspending = null; delete suspendError[id]; drawUsers(); } }),
           ok
         ])
       ]);
@@ -249,9 +267,11 @@
     }
 
     /* 바꾼 뒤 지금 필터에 안 맞게 된 사람(예: '정지' 목록에서 해제)은 목록에서 뺀다 */
-    function save(u, path, body, apply, done, errorEl, onFail) {
+    /* 요청 중에는 그 회원 줄의 버튼을 모두 잠근다 (busy). onError 가 있으면 실패 문구를 거기에 넘기고(정지 사유 칸), 없으면 토스트 */
+    function save(u, path, body, apply, done, onError) {
+      if (busy[u.memberId]) return;
       busy[u.memberId] = true;
-      if (!errorEl) drawUsers();                        // 사유 입력 칸이 있으면 다시 그리지 않는다 (입력한 사유 유지)
+      drawUsers();
       MB.api('/api/v1/admin/members/' + u.memberId + path, { method: 'PATCH', body: body }).then(function () {
         apply();
         if ((filter.status && filter.status !== u.status) || (filter.role && filter.role !== u.role)) {
@@ -262,11 +282,10 @@
         loaded.applications = false;                     // 강사 신청 목록은 다음에 열 때 새로 받는다
       }, function (err) {
         var msg = errText(err, '바꾸지 못했어요.');
-        if (errorEl) errorEl.textContent = msg; else MB.toast(msg, 'error');
-        if (onFail) onFail();
+        if (onError) onError(msg); else MB.toast(msg, 'error');
       }).then(function () {
         delete busy[u.memberId];
-        if (!errorEl || !errorEl.textContent) drawUsers();   // 실패해서 사유 칸에 문구를 띄웠으면 그대로 둔다
+        drawUsers();
       });
     }
 
@@ -422,34 +441,8 @@
           var w = r.writer || {};
           var who = w.role === 'ADMIN' ? '관리자' : w.role === 'INSTRUCTOR' ? '강사 ' + (w.nickname || '') : (w.nickname || '작성자');
           return h('div', { class: 'ao-reply' }, [h('b', { text: who + ' · ' + day(r.createdAt) }), r.content || '']);
-        })) : h('span', { class: 'ao-td-sub', text: '아직 답글이 없어요.' }),
-        replyForm(q)
+        })) : h('span', { class: 'ao-td-sub', text: '아직 답글이 없어요.' })
       ];
-    }
-
-    /* 관리자 답글 (API 52). 관리자가 달면 답변 완료가 되고 작성자에게 알림이 간다 */
-    function replyForm(q) {
-      var input = h('textarea', { class: 'ao-textarea', maxlength: '1000', placeholder: '답글을 입력해 주세요 (1,000자까지)', 'aria-label': '답글' });
-      var error = h('span', { class: 'adm-error', role: 'alert' });
-      var send = h('button', { type: 'button', class: 'btn btn-primary adm-btn-sm', text: '답글 달기' });
-      send.addEventListener('click', function () {
-        var text = input.value.trim();
-        if (!text) { input.setAttribute('aria-invalid', 'true'); error.textContent = '답글을 입력해 주세요.'; return; }
-        send.disabled = true;
-        MB.api('/api/v1/inquiries/' + q.inquiryId + '/replies', { method: 'POST', body: { content: text } }).then(function () {
-          MB.toast('답글을 달았어요. 작성자에게 알림이 갔어요.');
-          q.status = 'ANSWERED';
-          if (current === 'waiting') {
-            posts.items = posts.items.filter(function (x) { return x.inquiryId !== q.inquiryId; });
-            posts.total = Math.max(0, posts.total - 1);
-          }
-          fetchDetail(q);
-        }, function (err) {
-          error.textContent = errText(err, '답글을 달지 못했어요.');
-          send.disabled = false;
-        });
-      });
-      return h('div', { class: 'ao-inline' }, [input, error, h('div', { class: 'adm-actions' }, [send])]);
     }
 
     function toggle(q) {
