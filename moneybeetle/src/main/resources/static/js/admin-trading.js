@@ -168,7 +168,15 @@
     var loaders = { season: renderSeasonTab, turn: loadTurn, stocks: loadStocksTab, prices: loadPrices, news: loadNews, people: loadPeople, ranking: loadRanking };
     loaders[state.tab]();
   }
-  tabButtons.forEach(function (b) { b.addEventListener('click', function () { openTab(b.getAttribute('data-at-tab')); }); });
+  tabButtons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      openTab(b.getAttribute('data-at-tab'));
+      // 좁은 화면에서는 메뉴가 서랍이라, 메뉴를 고르면 공통 서랍 스크립트(drawer.js)가 닫도록 오버레이 눌림을 흉내 낸다
+      var side = b.closest('[data-mb-drawer]');
+      var overlay = document.querySelector('[data-mb-overlay]');
+      if (side && side.getAttribute('data-open') === 'true' && overlay) overlay.click();
+    });
+  });
 
   /* =====================================================================
    * 시즌 (API 114~117)

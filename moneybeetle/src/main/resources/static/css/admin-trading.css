@@ -4,7 +4,7 @@
 *   색은 common.css 토큰(var(--color-*))을 쓴다. 반응형 (NFR-10)
 *  */
 
-.at {
+.at, .at-side {
   --at-border: var(--color-divider);
   --at-muted: var(--color-neutral-600);
   --at-dark: var(--color-accent-700);
@@ -15,8 +15,8 @@
   --at-warn-bg: #fff7e0;
   --at-warn-text: #6b4a00;
   --at-danger: #b3261e;
-  display: flex; flex-direction: column; gap: 20px; max-width: none; line-height: 1.5;
 }
+.at { display: flex; flex-direction: column; gap: 20px; max-width: none; line-height: 1.5; }
 .mb-main.at { padding: 20px 36px 80px; }
 .at-side { line-height: 1.5; }
 .at [hidden] { display: none !important; }
@@ -32,7 +32,7 @@
 .at-head__season select { min-height: 40px; border: 1.5px solid var(--at-border); border-radius: 999px; padding: 0 12px; font: inherit; background: #fff; }
 
 /* ---------- 왼쪽 운영 메뉴 (시안 aside, 모의 청약 운영 화면과 같은 틀) ---------- */
-.at-side { gap: 20px; padding: 24px 16px; border-right: 1px solid var(--color-divider); z-index: 35; }
+.at-side { gap: 20px; padding: 24px 16px; border-right: 1px solid var(--color-divider); }
 .at-side [hidden] { display: none !important; }
 .at-side__brand { padding: 0 6px; }
 .at-side__brand img { height: 32px; max-width: 170px; }
