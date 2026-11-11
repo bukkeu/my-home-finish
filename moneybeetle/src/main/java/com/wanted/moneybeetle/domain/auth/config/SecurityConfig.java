@@ -124,7 +124,7 @@ public class SecurityConfig {
                     ex.accessDeniedHandler(securityErrorHandler);        // 권한 없음
                 });
 
-        // 간편 로그인(구글, #9): 키(환경변수)가 하나라도 있어 등록 정보가 만들어졌을 때만 켠다. 없으면 서버는 그대로 뜨고 이 로그인만 없다.
+        // 간편 로그인(구글, #9): GOOGLE_CLIENT_ID 와 GOOGLE_CLIENT_SECRET 이 모두 있어 등록 정보가 만들어졌을 때만 켠다. 하나라도 비면 서버는 그대로 뜨고 이 로그인만 없다.
         if (clientRegistrations.getIfAvailable() != null) {
             http.oauth2Login(oauth -> {
                 oauth.loginPage("/login");
