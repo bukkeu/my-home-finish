@@ -169,9 +169,19 @@
     });
   }
 
+  // 한 페이지는 최대 100건(API 95)이라, 100건 미만인 마지막 페이지가 나올 때까지 이어서 받아 모은다
+  var TERM_PAGE_SIZE = 100;
+  function fetchTermPages(page, collected) {
+    return MB.api('/api/v1/admin/economic-terms?page=' + page + '&size=' + TERM_PAGE_SIZE).then(function (data) {
+      var items = (data && data.items) || [];
+      var all = collected.concat(items);
+      return items.length < TERM_PAGE_SIZE ? all : fetchTermPages(page + 1, all);
+    });
+  }
+
   function loadTerms() {
-    return MB.api('/api/v1/admin/economic-terms?page=0&size=100').then(function (data) {
-      state.terms = (data && data.items) || [];
+    return fetchTermPages(0, []).then(function (terms) {
+      state.terms = terms;
       renderTerms();
       renderEditor();
     }, function (err) {
