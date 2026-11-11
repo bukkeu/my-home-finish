@@ -57,6 +57,14 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
     /** 이 시작일보다 먼저 시작한 시즌 중 가장 최근 시즌 = "이전 시즌" (#207) */
     Optional<TradingSeason> findFirstByStartDateBeforeOrderByStartDateDesc(LocalDate startDate);
 
+    /**
+     * 이 시작일보다 먼저 시작했고 랭킹을 공개한 시즌 중 가장 최근 시즌 = 모의투자 홈의 "지난 시즌 랭킹" (#310).
+     * 상태(ENDED)가 아니라 공개 시각으로 고른다 : 관리자가 정산 -> 종료로 상태만 바꾸면 랭킹을 공개하지 않은 종료 시즌이
+     * 생길 수 있고, 그 시즌은 랭킹 API(62)가 RANKING_NOT_PUBLISHED 로 거절한다
+     */
+    Optional<TradingSeason> findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(
+            LocalDate startDate);
+
     /** 기간(시작일~종료일)이 주어진 기간과 하루라도 겹치는 시즌이 있는가 (#207) */
     boolean existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate periodEnd, LocalDate periodStart);
 }

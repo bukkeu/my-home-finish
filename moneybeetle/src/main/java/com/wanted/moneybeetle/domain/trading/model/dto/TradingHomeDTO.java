@@ -45,9 +45,11 @@ public class TradingHomeDTO {
         private final LocalDate endDate;
         private final LocalDateTime nextTurnAt;   // 다음 턴 거래일 08:00 (장 시작, #208). 마지막 턴이면 null
         private final List<CalendarDay> calendar;
+        // 이 시즌보다 먼저 시작해 랭킹을 공개한 시즌 중 가장 최근 시즌 번호, 없으면 null (#310, 화면의 "지난 시즌 랭킹")
+        private final Long previousSeasonId;
 
         public Season(Long seasonId, String name, String status, int currentTurn, int totalTurns, LocalDate endDate,
-                LocalDateTime nextTurnAt, List<CalendarDay> calendar) {
+                LocalDateTime nextTurnAt, List<CalendarDay> calendar, Long previousSeasonId) {
             this.seasonId = seasonId;
             this.name = name;
             this.status = status;
@@ -56,6 +58,7 @@ public class TradingHomeDTO {
             this.endDate = endDate;
             this.nextTurnAt = nextTurnAt;
             this.calendar = calendar;
+            this.previousSeasonId = previousSeasonId;
         }
     }
 
@@ -82,13 +85,19 @@ public class TradingHomeDTO {
     public static class Participation {
 
         private final Long participantId;
+        // 시즌 시작 자금 구성 (#310) : investAmount = savedCash(참가할 때의 캐시 잔액) + carryoverIn(지난 시즌 이월금)
+        private final long savedCash;
+        private final long carryoverIn;
         private final long investAmount;
         private final long cash;
         private final long netAsset;
         private final BigDecimal returnRate;
 
-        public Participation(Long participantId, long investAmount, long cash, long netAsset, BigDecimal returnRate) {
+        public Participation(Long participantId, long savedCash, long carryoverIn, long investAmount, long cash,
+                long netAsset, BigDecimal returnRate) {
             this.participantId = participantId;
+            this.savedCash = savedCash;
+            this.carryoverIn = carryoverIn;
             this.investAmount = investAmount;
             this.cash = cash;
             this.netAsset = netAsset;

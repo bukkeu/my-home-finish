@@ -1723,12 +1723,16 @@ Header: Idempotency-Key: 7c1e...
 ```json
 {
   "season": { "seasonId": 7, "name": "시즌 7", "status": "RUNNING", "currentTurn": 5, "totalTurns": 12, "endDate": "2026-11-14", "nextTurnAt": "2026-11-06T08:00:00",
-    "calendar": [ { "date": "2026-11-02", "turnNo": 1, "state": "DONE" }, { "date": "2026-11-08", "turnNo": null, "state": "HOLIDAY" } ] },
-  "participation": { "participantId": 120, "investAmount": 4820000, "cash": 2939000, "netAsset": 5134000, "returnRate": 6.5 },
+    "calendar": [ { "date": "2026-11-02", "turnNo": 1, "state": "DONE" }, { "date": "2026-11-08", "turnNo": null, "state": "HOLIDAY" } ],
+    "previousSeasonId": 6 },
+  "participation": { "participantId": 120, "savedCash": 3200000, "carryoverIn": 1620000, "investAmount": 4820000, "cash": 2939000, "netAsset": 5134000, "returnRate": 6.5 },
   "holdings": [ { "stockId": 1, "stockName": "한빛반도체", "quantity": 12, "avgPrice": 79000, "evaluation": 1014000, "returnRate": 7.0 } ],
   "notice": "모든 투자·청약 화면은 가상 실습이며 실제 금융 거래가 아니에요"
 }
 ```
+
+- `season.previousSeasonId`: 이 시즌보다 먼저 시작해 **랭킹을 공개한** 시즌 중 가장 최근 시즌 번호, 없으면 `null` (#310). 화면은 이 값이 있으면 그 시즌의 랭킹(API 62)을 "지난 시즌 랭킹"으로 보여 준다. 상태가 종료(ENDED)여도 랭킹을 공개하지 않은 시즌은 고르지 않는다(API 62 가 `RANKING_NOT_PUBLISHED` 로 거절하기 때문)
+- `participation.savedCash`·`carryoverIn`: 시즌 시작 자금 구성 (#310). `investAmount` = `savedCash`(참가할 때의 캐시 잔액) + `carryoverIn`(지난 시즌 이월금), API 54 응답과 같은 값. 참가하지 않았으면 `participation` 은 `null`
 
 **Error**: `LEVEL_LOCKED`, `NO_RUNNING_SEASON`
 
