@@ -426,7 +426,8 @@ class OrderServiceTest {
 
     @Test
     void 장_시간_안_경계_08시_정각과_19시_59분_59초에는_주문이_체결된다() {
-        when(holdingRepository.findBySeasonParticipantIdAndStockId(20L, STOCK_ID)).thenReturn(Optional.empty());
+        when(holdingRepository.findForUpdateBySeasonParticipantIdAndStockId(20L, STOCK_ID))
+                .thenReturn(Optional.empty());
 
         assertThat(serviceAt("2026-11-05T08:00:00").placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)).amount())
                 .isEqualTo(PRICE);

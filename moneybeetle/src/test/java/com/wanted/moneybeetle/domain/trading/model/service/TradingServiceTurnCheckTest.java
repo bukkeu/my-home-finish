@@ -44,7 +44,7 @@ class TradingServiceTurnCheckTest {
 
     private static final long SEASON_ID = 7L;
     /** 한국 시간 2026-11-05 21:00 (장 마감 뒤) */
-    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-05T12:00:00Z"), ZoneId.of("Asia/Seoul"));
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-06T12:00:00Z"), ZoneId.of("Asia/Seoul"));
 
     private TradingSeasonRepository seasonRepository;
     private SectorRepository sectorRepository;
@@ -169,8 +169,8 @@ class TradingServiceTurnCheckTest {
     @Test
     void 대시보드_요약은_오늘_주문_수와_점검_결과를_준다() {
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
-        when(orderRepository.countOrdersBetween(eq(SEASON_ID), eq(LocalDateTime.of(2026, 11, 5, 0, 0)),
-                eq(LocalDateTime.of(2026, 11, 6, 0, 0)))).thenReturn(37L);
+        when(orderRepository.countOrdersBetween(eq(SEASON_ID), eq(LocalDateTime.of(2026, 11, 6, 0, 0)),
+                eq(LocalDateTime.of(2026, 11, 7, 0, 0)))).thenReturn(37L);
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L)));
         when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(0L);
 
@@ -265,7 +265,7 @@ class TradingServiceTurnCheckTest {
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
         when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
 
-        for (String open : new String[] {"2026-11-05T08:00:00", "2026-11-05T12:00:00", "2026-11-05T19:59:59"}) {
+        for (String open : new String[] {"2026-11-06T08:00:00", "2026-11-06T12:00:00", "2026-11-06T19:59:59"}) {
             NextTurnCheckDTO check = serviceAt(open).checkNextTurn(season);
             assertThat(check.afterMarketClose()).isFalse();
             assertThat(check.ready()).isFalse();
@@ -277,12 +277,37 @@ class TradingServiceTurnCheckTest {
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
         when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
 
-        for (String closed : new String[] {"2026-11-05T20:00:00", "2026-11-05T23:59:59", "2026-11-06T03:00:00",
-                "2026-11-06T07:59:59"}) {
+        for (String closed : new String[] {"2026-11-06T20:00:00", "2026-11-06T23:59:59", "2026-11-07T03:00:00",
+                "2026-11-07T07:59:59"}) {
             NextTurnCheckDTO check = serviceAt(closed).checkNextTurn(season);
             assertThat(check.afterMarketClose()).isTrue();
             assertThat(check.ready()).isTrue();
         }
+    }
+
+    @Test
+    void 같은_밤에_이미_넘긴_턴은_거래일_장_마감_전이라_다시_넘길_수_없다() {
+        givenAllReady();
+
+        // 5턴의 거래일은 11월 6일. 11월 5일 밤(4턴 거래일 마감 뒤)에 5턴으로 넘긴 직후와 다음 날 아침은 닫혀 있다
+        for (String sameNight : new String[] {"2026-11-05T21:00:00", "2026-11-05T23:59:59", "2026-11-06T07:00:00"}) {
+            NextTurnCheckDTO check = serviceAt(sameNight).checkNextTurn(season);
+            assertThat(check.afterMarketClose()).as(sameNight).isFalse();
+            assertThat(check.ready()).as(sameNight).isFalse();
+        }
+        // 5턴의 거래일(11월 6일) 장이 마감되면 다음 턴을 넘길 수 있다
+        assertThat(serviceAt("2026-11-06T21:00:00").checkNextTurn(season).ready()).isTrue();
+    }
+
+    @Test
+    void 거래일이_지났어도_장이_열려_있는_동안에는_넘길_수_없다() {
+        givenAllReady();
+
+        // 관리자가 11월 6일 밤에 넘기지 못한 채 11월 7일 낮이 된 경우에도 장이 열려 있는 동안은 막는다
+        NextTurnCheckDTO check = serviceAt("2026-11-07T12:00:00").checkNextTurn(season);
+
+        assertThat(check.afterMarketClose()).isFalse();
+        assertThat(check.ready()).isFalse();
     }
 
     @Test

@@ -30,4 +30,9 @@ public final class MarketHours {
     public static LocalDateTime opensAt(LocalDate tradeDate) {
         return tradeDate.atTime(OPEN);
     }
+
+    /** 그 거래일의 장 마감 시각 */
+    public static LocalDateTime closesAt(LocalDate tradeDate) {
+        return tradeDate.atTime(CLOSE);
+    }
 }
