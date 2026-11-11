@@ -97,13 +97,13 @@ class LevelTableTest {
     }
 
     @Test
-    @DisplayName("해금: Lv.8 에서 모의투자, Lv.12 에서 모의 청약이 열리고 여러 레벨을 건너뛰어도 빠지지 않는다")
+    @DisplayName("해금: 기본 설정(모의투자 8, 청약 12)에서 Lv.8 에 모의투자, Lv.12 에 모의 청약이 열리고 여러 레벨을 건너뛰어도 빠지지 않는다")
     void unlocks() {
-        assertThat(UnlockRules.unlockedAt(8)).containsExactly(UnlockRules.TRADING);
-        assertThat(UnlockRules.unlockedAt(12)).containsExactly(UnlockRules.HOUSING);
-        assertThat(UnlockRules.unlockedAt(5)).isEmpty();
-        assertThat(UnlockRules.unlockedBetween(6, 9)).containsExactly(UnlockRules.TRADING);
-        assertThat(UnlockRules.unlockedBetween(7, 13)).containsExactly(UnlockRules.TRADING, UnlockRules.HOUSING);
-        assertThat(UnlockRules.unlockedBetween(8, 11)).isEmpty();
+        assertThat(UnlockRules.unlockedAt(8, 8, 12)).containsExactly(UnlockRules.TRADING);
+        assertThat(UnlockRules.unlockedAt(12, 8, 12)).containsExactly(UnlockRules.HOUSING);
+        assertThat(UnlockRules.unlockedAt(5, 8, 12)).isEmpty();
+        assertThat(UnlockRules.unlockedBetween(6, 9, 8, 12)).containsExactly(UnlockRules.TRADING);
+        assertThat(UnlockRules.unlockedBetween(7, 13, 8, 12)).containsExactly(UnlockRules.TRADING, UnlockRules.HOUSING);
+        assertThat(UnlockRules.unlockedBetween(8, 11, 8, 12)).isEmpty();
     }
 }

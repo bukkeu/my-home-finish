@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.growth.model.service;
 
+import com.wanted.moneybeetle.support.UnlockLevelFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,7 +46,8 @@ class CashAdjustServiceTest {
                 cashHistoryRepository,
                 mock(com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository.class),
                 memberService, mock(GrowthService.class),
-                mock(com.wanted.moneybeetle.domain.notification.model.service.NotificationService.class));
+                mock(com.wanted.moneybeetle.domain.notification.model.service.NotificationService.class),
+                UnlockLevelFixture.defaults());
         service = new CashAdjustService(rewardService, adminLogService);
         when(memberService.lockBalance(MEMBER)).thenReturn(MemberBalanceDTO.of(MEMBER, 3, 100, 12_400));
         when(cashHistoryRepository.save(any(CashHistory.class))).thenAnswer(invocation -> {

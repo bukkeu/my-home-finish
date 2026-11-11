@@ -60,4 +60,27 @@ public interface LessonWatchRepository extends JpaRepository<LessonWatch, Long> 
     Page<LessonWatch> findVisibleByMemberId(@Param("memberId") Long memberId,
                                             @Param("courseStatus") String courseStatus,
                                             Pageable pageable);
+
+    /* 홈·내 정보의 본 영상 수 (#188): 시청 기록(findVisibleByMemberId)과 같은 조건으로 개수만 센다 (영상·강의 정보를 읽지 않음) */
+    @Query("""
+            select count(w) from LessonWatch w, Lesson l, Course c
+            where w.lessonId = l.lessonId and l.courseId = c.courseId
+              and w.memberId = :memberId
+              and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
+            """)
+    long countVisibleByMemberId(@Param("memberId") Long memberId, @Param("courseStatus") String courseStatus);
+
+    /* 홈 '이어서 볼 강의'의 마지막 영상 (#188): 이 강의에서 최근 본 순으로. 시청 기록(findVisibleByMemberId)과 같은 조건·순서라
+     * 첫 줄이 "최근 시청 목록에서 이 강의의 첫 항목"과 같다. 한 건만 필요하면 PageRequest.of(0, 1) 로 부른다 */
+    @Query("""
+            select w from LessonWatch w, Lesson l, Course c
+            where w.lessonId = l.lessonId and l.courseId = c.courseId
+              and w.memberId = :memberId and c.courseId = :courseId
+              and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
+            order by w.lastWatchedAt desc, w.lessonWatchId desc
+            """)
+    List<LessonWatch> findLatestVisibleByMemberIdAndCourseId(@Param("memberId") Long memberId,
+                                                             @Param("courseId") Long courseId,
+                                                             @Param("courseStatus") String courseStatus,
+                                                             Pageable pageable);
 }

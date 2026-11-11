@@ -149,6 +149,24 @@ public class TermService {
         }
     }
 
+    /**
+     * 한 날짜의 지정을 풀고 자동 선정으로 되돌린다 (API 100-1). 직접 지정한 일정만 지우고, 이미 저장된 자동 선정은 그대로 둔다. 지정이 지워진 날은 다음에 그날을 처음 볼 때 자동 선정된다.
+     * 이미 지정이 없는 날도 오류 없이 지나간다 (같은 요청을 다시 보내도 결과가 같다).
+     *
+     * @throws BusinessException PAST_DATE_LOCKED(지난 날짜)
+     */
+    @Transactional
+    public void clear(LocalDate date) {
+        if (date.isBefore(LocalDate.now(clock))) {
+            throw new BusinessException(TermErrorCode.PAST_DATE_LOCKED);
+        }
+        try {
+            termScheduleRepository.deleteManualByShowDate(date);   // 이미 저장된 자동 선정은 지우지 않는다 (같은 날 다른 용어가 보이지 않게)
+        } catch (PessimisticLockingFailureException e) {
+            throw new BusinessException(TermErrorCode.SCHEDULE_CONFLICT);
+        }
+    }
+
     private Map<Long, EconomicTerm> termsById(List<TermSchedule> rows) {
         List<Long> ids = rows.stream().map(TermSchedule::getEconomicTermId).distinct().toList();
         return economicTermRepository.findAllById(ids).stream()

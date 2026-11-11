@@ -5,7 +5,6 @@ import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceStatusDTO;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.LevelTable;
-import com.wanted.moneybeetle.domain.growth.model.service.UnlockRules;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
@@ -13,10 +12,11 @@ import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.file.FileStorageService;
+import com.wanted.moneybeetle.global.security.UnlockFeature;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,6 +38,8 @@ public class MemberProfileService {
     private final CourseService courseService;
     private final AttendanceService attendanceService;
     private final FileStorageService fileStorageService;
+    /** 해금 레벨은 운영 설정(관리자 API 112)에서 읽는다 → 모의투자·모의 청약 API·화면과 같은 기준 (#238) */
+    private final UnlockLevelProvider unlockLevelProvider;
 
     /** 내 정보 (API 13) */
     public MyInfoDTO getMyInfo(Long memberId) {
@@ -52,17 +54,19 @@ public class MemberProfileService {
 
         // 연속 출석은 회원 행에 저장된 값이 아니라 오늘(서울) 기준으로 이어지고 있는 일수다. 어제 빠졌으면 0이고, 남은 일수도 같은 기준으로 계산된다
         AttendanceStatusDTO attendance = attendanceService.getStatus(memberId);
-        long watchedLessons = courseService.findWatchHistories(memberId, PageRequest.of(0, 1)).getTotalElements();
-        long completedCourses = courseService.findCompletedCourses(memberId, PageRequest.of(0, 1)).getTotalElements();
+        // 목록을 만들지 않고 개수만 센다 (#188 의 개수 전용 조회, 시청 기록·학습 완료 목록과 같은 조건, #267)
+        long watchedLessons = courseService.countWatchedLessons(memberId);
+        long completedCourses = courseService.countCompletedCourses(memberId);
+        int tradingLevel = unlockLevelProvider.getLevel(UnlockFeature.TRADING);
+        int housingLevel = unlockLevelProvider.getLevel(UnlockFeature.HOUSING);
 
         return new MyInfoDTO(
                 profile.memberId(), profile.email(), profile.nickname(), profile.profileImageUrl(),
-                profile.birthDate(), profile.gender(), profile.role(),
+                profile.birthDate(), profile.gender(), profile.role(), memberService.getLoginProvider(memberId),
                 level, levelTable.titleOf(level), profile.exp(), expToNextLevel, profile.cash(),
                 new MyInfoDTO.Attendance(attendance.getStreak(), attendance.getDaysToReward()),
                 new MyInfoDTO.Learning(watchedLessons, completedCourses),
-                new MyInfoDTO.Unlocks(level >= UnlockRules.TRADING_LEVEL, level >= UnlockRules.HOUSING_LEVEL,
-                        UnlockRules.HOUSING_LEVEL));
+                new MyInfoDTO.Unlocks(level >= tradingLevel, level >= housingLevel, housingLevel));
     }
 
     /** 다른 회원 공개 프로필 (API 18). 개인정보는 담지 않는다 */
