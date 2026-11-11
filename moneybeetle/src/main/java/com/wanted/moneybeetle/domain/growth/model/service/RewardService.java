@@ -288,7 +288,8 @@ public class RewardService {
      */
     @Transactional
     public long spendCash(Long memberId, CashSource source, Long sourceId, long amount) {
-        if (memberId == null || sourceId == null || !USE_SOURCES.contains(source)) {
+        // List.of(...).contains(null) 은 NullPointerException 이라 null 을 먼저 거른다 (모르는 문자열 버전도 source 가 null 로 넘어온다)
+        if (memberId == null || sourceId == null || source == null || !USE_SOURCES.contains(source)) {
             throw new IllegalArgumentException("memberId, sourceId 와 사용 가능한 source 가 필요합니다: " + source);
         }
         if (amount <= 0) {

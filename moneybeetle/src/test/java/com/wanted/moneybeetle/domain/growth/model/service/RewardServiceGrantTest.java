@@ -687,6 +687,18 @@ class RewardServiceGrantTest {
     }
 
     @Test
+    @DisplayName("모르는 문자열 출처(옛 버전)와 null 출처는 NullPointerException 이 아니라 IllegalArgumentException 으로 거절하고 회원을 건드리지 않는다")
+    void unknownOrNullSourceIsRejected() {
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, "UNKNOWN", 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, (String) null, 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, (CashSource) null, 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
     @DisplayName("사용 금액이 0 이하면 INVALID_AMOUNT 이고 회원을 건드리지 않는다")
     void invalidAmount() {
         assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 0))
