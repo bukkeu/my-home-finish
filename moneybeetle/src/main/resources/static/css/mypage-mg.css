@@ -52,7 +52,7 @@ select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36p
 .mg-danger { color: #b3261e; }
 
 /* ---------- 설정 ---------- */
-.mg-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.mg-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 24px; }
 .mg-file { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
 .mg-leave { display: flex; justify-content: flex-end; }
 

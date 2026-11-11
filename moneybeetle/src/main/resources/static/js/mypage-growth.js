@@ -181,12 +181,13 @@
   // ------------------------------------------------------------------ 시작
   function load() {
     setupCash();
-    Promise.all([api('/api/v1/members/me'), api('/api/v1/levels')]).then(function (results) {
-      var me = results[0] || {};
-      var levels = (results[1] && results[1].levels) || [];
+    // 내 정보와 레벨 표는 서로 독립으로 불러온다. 한쪽이 실패해도 다른 쪽은 계속 보여 준다
+    var mePromise = api('/api/v1/members/me');
+    var levelsPromise = api('/api/v1/levels');
+    mePromise.then(function (me) {
+      me = me || {};
       setStatus('');
       byId('mg-cash').textContent = won(me.cash);
-      renderLevelTable(levels, me.level);
       loadCash().catch(function (error) {
         setStatus(message(error));
         // 실패한 것과 내역이 없는 것을 구분하려고 목록에도 오류 안내를 보여 준다
@@ -197,8 +198,23 @@
         root.querySelectorAll('.mg-filter').forEach(function (button) { button.disabled = true; });
       });
       loadExpHistory();
-    }).catch(function (error) {
+    }, function (error) {
       setStatus(message(error));
+    });
+    // 레벨 표: 내 레벨을 알면 내 줄을 표시하고, 내 정보가 실패해도 표 자체는 보여 준다. 레벨 표가 실패하면 표에만 오류를 보여 준다
+    Promise.all([levelsPromise.then(function (data) { return { ok: true, data: data }; }, function () { return { ok: false }; }),
+      mePromise.then(function (me) { return me || {}; }, function () { return {}; })]).then(function (results) {
+      if (!results[0].ok) {
+        var body = byId('mg-level-table');
+        body.textContent = '';
+        var tr = el('tr');
+        var td = el('td', 'mg-empty', '레벨 표를 불러오지 못했어요.');
+        td.colSpan = 4;
+        tr.appendChild(td);
+        body.appendChild(tr);
+        return;
+      }
+      renderLevelTable((results[0].data && results[0].data.levels) || [], results[1].level);
     });
   }
 
