@@ -29,6 +29,7 @@ import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -55,6 +56,8 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CourseService {
 
+    static final int SEARCH_LIMIT = 50;                 // 통합 검색 강의 최대 개수 (API 28, #296)
+
     private final CategoryRepository categoryRepository;
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
@@ -65,6 +68,7 @@ public class CourseService {
     private final Clock clock;                          // Asia/Seoul 공통 시계 (학습 완료 시각)
     private final MemberService memberService;          // member 도메인 (DBA②) - 회원 행 잠금
     private final InstructorService instructorService;  // member 도메인 - 강사 이름 (#52)
+    private final CategoryPathService categoryPathService; // 카테고리 표시 이름 (캐시, #296)
 
     /* ===== 카테고리·강의 조회 (#16) ===== */
 
@@ -266,12 +270,11 @@ public class CourseService {
 
         Map<Long, Course> courses = findCoursesByIds(
                 scraps.getContent().stream().map(Scrap::getCourseId).toList());
-        Map<Long, Category> categories = categoryRepository.findAll().stream()
-                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+        Map<Long, String> categoryPaths = categoryPathService.findCategoryPaths();
 
         return scraps.map(scrap -> {
             Course course = courses.get(scrap.getCourseId());
-            return ScrapListDTO.from(scrap, course, categoryPath(course.getCategoryId(), categories));
+            return ScrapListDTO.from(scrap, course, categoryPaths.get(course.getCategoryId()));
         });
     }
 
@@ -312,21 +315,24 @@ public class CourseService {
     }
 
     /* 퀴즈(quiz 도메인) 오답노트: 보이는 강의(허가+공개+미삭제)의 이름표.
-     * categoryId(하위 소주제 포함)·courseId로 좁힐 수 있고, 둘 다 null이면 보이는 강의 전체 */
+     * categoryId(하위 소주제 포함)·courseId로 좁힐 수 있고, 둘 다 null이면 보이는 강의 전체.
+     * courseId가 있으면 그 강의 1건만 ID로 조회한다 (공개 강의 전체를 읽고 거르지 않는다, #296) */
     public List<CourseLabelDTO> findVisibleCourseLabels(Long categoryId, Long courseId) {
-        List<Course> courses = (categoryId == null)
-                ? courseRepository.findByStatusAndIsPublicTrueAndDeletedAtIsNull(Course.STATUS_APPROVED)
-                : courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
-                findCategoryIdsWithChildren(categoryId), Course.STATUS_APPROVED);
-
-        Map<Long, Category> categories = categoryRepository.findAll().stream()
-                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
-
-        return courses.stream()
-                .filter(course -> courseId == null || course.getCourseId().equals(courseId))
-                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
-                        categoryPath(course.getCategoryId(), categories)))
-                .toList();
+        List<Course> courses;
+        if (courseId != null) {
+            courses = courseRepository.findById(courseId)
+                    .filter(Course::isVisibleToLearner)
+                    .filter(course -> categoryId == null
+                            || findCategoryIdsWithChildren(categoryId).contains(course.getCategoryId()))
+                    .map(List::of)
+                    .orElse(List.of());
+        } else if (categoryId == null) {
+            courses = courseRepository.findByStatusAndIsPublicTrueAndDeletedAtIsNull(Course.STATUS_APPROVED);
+        } else {
+            courses = courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
+                    findCategoryIdsWithChildren(categoryId), Course.STATUS_APPROVED);
+        }
+        return toLabels(courses);
     }
 
     /* 문의(inquiry 도메인): 이 강의의 강사 회원 ID. 강의가 없거나 삭제됐으면 null
@@ -384,20 +390,12 @@ public class CourseService {
         return progress.complete(LocalDateTime.now(clock));
     }
 
-    /* 이재성: 통합 검색 (#15). 보이는 강의(허가+공개+미삭제)만, 제목에 키워드가 들어간 것을 최근 강의부터 */
+    /* 이재성: 통합 검색 (#15). 보이는 강의(허가+공개+미삭제)만, 제목에 키워드가 들어간 것을 최근 강의부터 최대 50개 (#296) */
     public List<CourseLabelDTO> search(String keyword) {
         List<Course> courses = courseRepository
                 .findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-                        keyword, Course.STATUS_APPROVED);
-        if (courses.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, Category> categories = categoryRepository.findAll().stream()
-                .collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
-        return courses.stream()
-                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
-                        categoryPath(course.getCategoryId(), categories)))
-                .toList();
+                        keyword, Course.STATUS_APPROVED, Limit.of(SEARCH_LIMIT));
+        return toLabels(courses);
     }
 
     /* ===== 내부 도우미 ===== */
@@ -455,14 +453,16 @@ public class CourseService {
                 .collect(Collectors.toSet());
     }
 
-    /* "부동산 › 청약"처럼 상위 › 소주제 이름을 만든다 */
-    private String categoryPath(Long categoryId, Map<Long, Category> categories) {
-        Category category = categories.get(categoryId);
-        if (category == null) {
-            return null;
+    /* 강의 이름표 (강의 ID·제목·"상위 › 소주제"). 강의가 없으면 카테고리도 읽지 않는다 */
+    private List<CourseLabelDTO> toLabels(List<Course> courses) {
+        if (courses.isEmpty()) {
+            return List.of();
         }
-        Category parent = category.isSubCategory() ? categories.get(category.getParentId()) : null;
-        return parent != null ? parent.getName() + " › " + category.getName() : category.getName();
+        Map<Long, String> categoryPaths = categoryPathService.findCategoryPaths();
+        return courses.stream()
+                .map(course -> CourseLabelDTO.of(course.getCourseId(), course.getTitle(),
+                        categoryPaths.get(course.getCategoryId())))
+                .toList();
     }
 
     /* 상위 카테고리를 고르면 그 아래 소주제 강의까지 함께 보여 준다 */

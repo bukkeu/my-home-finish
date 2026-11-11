@@ -10,6 +10,8 @@ import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
+import com.wanted.moneybeetle.global.config.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
  *   담당 : DBA ① (강의·퀴즈)
  *   API 85~88 관리자 카테고리·소주제 관리 (ADM-02)
  *   삭제 규칙 (DB 설계 데이터 처리): 강의(삭제된 강의 포함)나 소주제가 연결돼 있으면 비활성, 없으면 실제 삭제
+ *   등록·수정·삭제하면 카테고리 표시 이름 캐시(CategoryPathService)를 비운다. 커밋된 뒤에 비워진다 (CacheConfig, #296)
  *  */
 @Service
 @RequiredArgsConstructor
@@ -56,6 +59,7 @@ public class AdminCategoryService {
 
     /* API 86 등록. parentId가 있으면 소주제 (2단계까지, Category가 확인) */
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CATEGORY_PATHS, allEntries = true)
     public Long create(CategoryCreateDTO request) {
         String name = request.name().strip();
         Category category = (request.parentId() == null)
@@ -66,6 +70,7 @@ public class AdminCategoryService {
 
     /* API 87 이름·순서·사용 여부 수정 */
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CATEGORY_PATHS, allEntries = true)
     public void update(Long categoryId, CategoryUpdateDTO request) {
         getCategoryOrThrow(categoryId).change(request.name().strip(), request.sortOrder(), request.isActive());
     }
@@ -74,6 +79,7 @@ public class AdminCategoryService {
      * 확인과 삭제 사이에 강의가 연결되면 FK 위반이 난다 → 500 대신 409 CATEGORY_IN_USE로 알리고 트랜잭션은 롤백.
      * (예외 뒤 같은 세션에서 비활성으로 바꾸면 Hibernate 세션이 깨질 수 있어서, 다시 요청하면 그때 비활성으로 처리된다) */
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CATEGORY_PATHS, allEntries = true)
     public void delete(Long categoryId) {
         Category category = getCategoryOrThrow(categoryId);
         boolean inUse = courseRepository.existsByCategoryId(categoryId)

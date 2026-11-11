@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.dao;
 
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,9 +32,9 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(String status);
 
-    // 통합 검색(#15): 허가 + 공개 + 삭제 안 됨 강의 중 제목에 키워드가 들어간 것, 최근 강의부터
+    // 통합 검색(#15): 허가 + 공개 + 삭제 안 됨 강의 중 제목에 키워드가 들어간 것, 최근 강의부터 limit 개까지 (#296)
     List<Course> findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-            String keyword, String status);
+            String keyword, String status, Limit limit);
 
     List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, String status);
 
