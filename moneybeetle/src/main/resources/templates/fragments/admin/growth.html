@@ -1,5 +1,44 @@
-<!-- comment.
-    담당 : DBA ② 김예린 (#39, 보상·캐시 운영 탭)
-    내용 : 관리자 - 경제 용어, 캐시 규칙·지급 탭
-    경로 : /admin/dashboard
--->
+<!--/* comment.
+    담당 : DBA ② 김예린 (#39, #61 성장·캐시 탭 - 보상 규칙·캐시 수동 조정, API 108~110)
+    내용 : 왼쪽 활동별 캐시·경험치 지급 규칙 / 오른쪽 캐시 수동 지급·회수 (회원 찾기, 지급·회수, 금액, 사유)
+    경로 : /admin/dashboard?view=growth  (경제 용어는 terms.html 탭으로 나뉘었다)
+    데이터 : static/js/admin-growth.js (요소 id 는 adm-… 로 그 파일과 맞춘다)
+*/-->
+<section class="adm-grid">
+  <div class="adm-box">
+    <h2>활동별 캐시·경험치 지급 규칙</h2>
+    <p class="adm-note">규칙마다 저장해요. 저장하면 작업 기록이 남아요.<br>사용을 끄면 그 활동에는 보상을 주지 않아요</p>
+    <div class="adm-rows" id="adm-rules"><p class="adm-empty">불러오고 있어요…</p></div>
+  </div>
+
+  <div class="adm-box">
+    <h2>캐시 수동 지급·회수</h2>
+    <p class="adm-note">오류를 바로잡을 때만 사용해요.<br>사유가 필수이고 기록이 남아요</p>
+
+    <div class="adm-field">
+      <label for="adm-member-keyword">회원 찾기</label>
+      <div class="adm-actions" style="justify-content: stretch">
+        <input class="adm-input" id="adm-member-keyword" type="search" style="flex: 1" placeholder="닉네임 또는 이메일" autocomplete="off">
+        <button type="button" class="btn btn-secondary" id="adm-member-search">찾기</button>
+      </div>
+    </div>
+    <div class="adm-col" id="adm-member-results" style="gap: 6px"></div>
+    <div class="adm-box adm-box--accent adm-picked" id="adm-picked" hidden></div>
+
+    <div class="adm-seg" id="adm-adj-type" role="group" aria-label="지급 또는 회수">
+      <button type="button" data-type="GIVE" aria-pressed="true">지급</button>
+      <button type="button" data-type="TAKE" aria-pressed="false">회수</button>
+    </div>
+    <label class="adm-field">금액 (캐시)
+      <input class="adm-input" id="adm-adj-amount" type="number" min="1" max="1000000000" step="1" inputmode="numeric" placeholder="예) 2000">
+      <small>1 이상 10억 이하. 회수로 잔액이 0보다 작아지면 거절돼요</small>
+    </label>
+    <label class="adm-field">사유 *
+      <input class="adm-input" id="adm-adj-reason" type="text" maxlength="200" placeholder="예) 출석 누락 보정">
+    </label>
+    <span class="adm-error" id="adm-adj-error" role="alert"></span>
+    <div class="adm-actions">
+      <button type="button" class="btn btn-primary" id="adm-adj-submit">지급하기</button>
+    </div>
+  </div>
+</section>
