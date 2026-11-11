@@ -28,13 +28,29 @@
 .at-head__season { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 700; }
 .at-head__season select { min-height: 40px; border: 1.5px solid var(--at-border); border-radius: 999px; padding: 0 12px; font: inherit; background: #fff; }
 
-.at-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
-.at-tabs button {
-  position: relative; flex: none; height: 40px; padding: 0 16px; border: 1.5px solid var(--at-border); border-radius: 999px;
-  background: #fff; font: inherit; font-size: 14px; font-weight: 700; color: var(--at-muted); cursor: pointer;
+/* ---------- 왼쪽 운영 메뉴 (시안 aside, 모의 청약 운영 화면과 같은 틀) ---------- */
+.at-side { gap: 20px; padding: 24px 16px; border-right: 1px solid var(--color-divider); z-index: 35; }
+.at-side [hidden] { display: none !important; }
+.at-side__brand { padding: 0 6px; }
+.at-side__brand img { height: 32px; max-width: 170px; }
+.at-side__label { padding: 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: var(--color-neutral-700); }
+.at-nav { display: flex; flex-direction: column; gap: 2px; margin-top: -12px; }
+.at-nav__item {
+  all: unset; box-sizing: border-box; position: relative; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  padding: 10px; border-radius: 10px; font-size: 15px; color: var(--color-text); font-weight: 500;
 }
-.at-tabs button[aria-selected="true"] { background: var(--at-dark); border-color: var(--at-dark); color: var(--at-mint); }
-.at-dot { position: absolute; top: 6px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: #e0a100; }
+.at-nav__item svg { flex: none; }
+.at-nav__item span { flex: 1; }
+.at-nav__item:hover { background: var(--color-accent-100); }
+.at-nav__item.is-active { background: var(--color-accent-100); font-weight: 800; }
+.at-nav__item:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.at-side__fill { flex: 1; }
+.at-side__back {
+  display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; border: 1px solid var(--color-divider);
+  font-size: 14px; font-weight: 600; color: var(--color-text); text-decoration: none;
+}
+.at-side__back:hover { background: var(--color-bg); }
+.at-dot { position: absolute; top: 12px; right: 12px; width: 7px; height: 7px; border-radius: 50%; background: #e0a100; }
 .at-panel { display: flex; flex-direction: column; gap: 20px; }
 
 /* ---------- 카드·격자 ---------- */

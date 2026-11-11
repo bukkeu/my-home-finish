@@ -140,10 +140,14 @@
   }
 
   /* ---------- 탭 ---------- */
-  var tabButtons = root.querySelectorAll('[data-at-tab]');
+  var tabButtons = document.querySelectorAll('[data-at-tab]');   // 왼쪽 운영 메뉴 (main 밖에 있다)
   function openTab(tab) {
     state.tab = tab;
-    tabButtons.forEach(function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-at-tab') === tab)); });
+    tabButtons.forEach(function (b) {
+      var on = b.getAttribute('data-at-tab') === tab;
+      b.classList.toggle('is-active', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
     root.querySelectorAll('[data-at-panel]').forEach(function (p) { p.hidden = p.getAttribute('data-at-panel') !== tab; });
     try { history.replaceState(null, '', '#' + tab); } catch (e) { /* 주소 표시만 못 바꾼다 */ }
     loadTab();

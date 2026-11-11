@@ -10,6 +10,8 @@ import com.wanted.moneybeetle.support.SecurityTestApp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -54,6 +56,10 @@ class AdminTradingPageRenderTest {
         assertThat(html).contains("/js/admin-trading.js", "/css/admin-trading.css", "/js/common.js");
         assertThat(html).contains("가상 실습이며 실제 금융 거래가 아니에요");   // 모의투자 화면 공통 안내 (NFR-12)
         assertThat(html).contains("mb-admin-side", "data-mb-pinned");   // 관리자 고정 사이드바
+        // 왼쪽 운영 메뉴에 보기 7개가 모두 있다
+        for (String tab : new String[] {"season", "turn", "stocks", "prices", "news", "people", "ranking"}) {
+            assertThat(html).contains("data-at-tab=\"" + tab + "\"");
+        }
     }
 
     @Test
@@ -65,16 +71,15 @@ class AdminTradingPageRenderTest {
         assertThat(html).containsPattern("id=\"at-next-btn\"[^>]*disabled");
     }
 
-    @Test
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"MEMBER", "INSTRUCTOR"})
     @DisplayName("관리자가 아니면 403")
-    void memberIsForbidden() throws Exception {
-        for (String role : new String[] {"MEMBER", "INSTRUCTOR"}) {
-            String body = mockMvc.perform(get("/admin/trading-management").with(as(role)))
-                    .andExpect(status().isForbidden())
-                    .andReturn().getResponse().getContentAsString();
+    void nonAdminIsForbidden(String role) throws Exception {
+        String body = mockMvc.perform(get("/admin/trading-management").with(as(role)))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse().getContentAsString();
 
-            // 403 이어도 운영 화면의 내용이 새어 나가지 않는다
-            assertThat(body).doesNotContain("id=\"at-panel-season\"");
-        }
+        // 403 이어도 운영 화면의 내용이 새어 나가지 않는다
+        assertThat(body).doesNotContain("id=\"at-panel-season\"");
     }
 }

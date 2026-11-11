@@ -13,11 +13,50 @@
     화면 틀만 서버가 그리고, 데이터는 static/js/admin-trading.js 가 관리자 API(API 명세서 114~141)로 채운다.
 -->
 <div class="mb-shell">
-  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('trading')}"></th:block>
+  <!--/* 모의투자 운영 메뉴 (시안의 관리자 왼쪽 메뉴). 모바일에서는 공통 햄버거 버튼으로 열린다 (drawer.js 의 data-mb-drawer) */-->
+  <div class="mb-overlay" data-mb-overlay data-open="false" aria-hidden="true"></div>
+  <aside class="mb-admin-side at-side" data-mb-drawer data-mb-pinned data-open="false" aria-label="모의투자 운영 메뉴">
+    <a class="mb-admin-side__brand at-side__brand" th:href="@{/admin/dashboard}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+    <span class="at-side__label">모의투자 운영</span>
+    <nav class="at-nav" aria-label="모의투자 운영" id="at-nav">
+      <button type="button" class="at-nav__item is-active" data-at-tab="season" aria-current="page">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18"></path><path d="M8 2v4"></path><path d="M16 2v4"></path></svg>
+        <span>시즌 관리</span>
+      </button>
+      <button type="button" class="at-nav__item" data-at-tab="turn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path><path d="M4 18V6"></path></svg>
+        <span>턴 진행</span><i class="at-dot" id="at-turn-dot" hidden></i>
+      </button>
+      <button type="button" class="at-nav__item" data-at-tab="stocks">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-6"></path></svg>
+        <span>분야·종목</span>
+      </button>
+      <button type="button" class="at-nav__item" data-at-tab="prices">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        <span>턴별 가격</span>
+      </button>
+      <button type="button" class="at-nav__item" data-at-tab="news">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"></path><path d="M8 8h7"></path><path d="M8 12h7"></path></svg>
+        <span>뉴스 관리</span>
+      </button>
+      <button type="button" class="at-nav__item" data-at-tab="people">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7"></path><path d="M18 14a6.5 6.5 0 0 1 3.5 6"></path></svg>
+        <span>참가자</span>
+      </button>
+      <button type="button" class="at-nav__item" data-at-tab="ranking">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v5a5 5 0 0 1-10 0z"></path></svg>
+        <span>정산·랭킹</span>
+      </button>
+    </nav>
+    <div class="at-side__fill"></div>
+    <a class="at-side__back" th:href="@{/admin/dashboard}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      관리자 대시보드로
+    </a>
+  </aside>
   <div class="mb-content">
     <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
     <main class="mb-main at" id="at-root">
-
       <header class="at-head">
         <div>
           <span class="at-eyebrow">MOCK INVEST · ADMIN</span>
@@ -34,16 +73,6 @@
           <span class="at-pill soft" id="at-season-turn">- / 12턴</span>
         </div>
       </header>
-
-      <nav class="at-tabs" role="tablist" aria-label="모의투자 운영 메뉴">
-        <button type="button" role="tab" data-at-tab="season" aria-selected="true">시즌 관리</button>
-        <button type="button" role="tab" data-at-tab="turn" aria-selected="false">턴 진행<i class="at-dot" id="at-turn-dot" hidden></i></button>
-        <button type="button" role="tab" data-at-tab="stocks" aria-selected="false">분야·종목</button>
-        <button type="button" role="tab" data-at-tab="prices" aria-selected="false">턴별 가격</button>
-        <button type="button" role="tab" data-at-tab="news" aria-selected="false">뉴스 관리</button>
-        <button type="button" role="tab" data-at-tab="people" aria-selected="false">참가자</button>
-        <button type="button" role="tab" data-at-tab="ranking" aria-selected="false">정산·랭킹</button>
-      </nav>
 
       <!-- ===== 시즌 관리 (ADM-09~12, API 114~117) ===== -->
       <section class="at-panel" id="at-panel-season" role="tabpanel" data-at-panel="season">
