@@ -169,6 +169,7 @@ class MypageFragmentsRenderTest {
         assertThat(settings.split("session !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(4);
         assertThat(growth).contains("mg-filter').forEach(function (button) { button.disabled = true; });");
         assertThat(read("/static/css/mypage-mg.css")).contains(".mg .mg-levels { overflow-x: auto; display: block; }");   // 좁은 화면에서 레벨 표가 페이지를 넘치지 않게
+        assertThat(read("/templates/fragments/mypage/settings.html")).contains("다음 화면에서 인증번호 받기를 누르면");   // 인증번호는 탈퇴하기가 아니라 다음 화면의 버튼으로 보낸다
         assertThat(growth).contains("filter.disabled = false;");            // 더 보기로 내역을 받으면 막아 둔 필터를 푼다
         assertThat(settings).contains("sentGender", "byId('mg-gender').value = me.gender");   // 성별을 비워 저장해도 서버에 남은 값을 보여 준다
     }
