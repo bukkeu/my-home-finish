@@ -11,7 +11,8 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #24 시세·뉴스 조회 : NO_RUNNING_SEASON
 *   - #111 턴 진행 규칙 : MARKET_HOLIDAY, LAST_TURN_REACHED
 *   - #44 턴 진행 : NEXT_TURN_NOT_READY, TURN_CONFLICT
-*   - #207 시즌 순서 : SEASON_PERIOD_OVERLAP (PREVIOUS_SEASON_NOT_SETTLED 는 #23 과 같은 코드를 쓴다)
+*   - #207 시즌 순서 : PREVIOUS_SEASON_SETTLE_REQUIRED, SEASON_PERIOD_OVERLAP
+*   - #208 정규장 시간 : MARKET_CLOSED, MARKET_STILL_OPEN
 *   - #25 매수·매도 : NOT_JOINED, NOT_ENOUGH_CASH, NOT_ENOUGH_QUANTITY, REASON_REQUIRED, STALE_TURN_PRICE
 *   - #26 시즌 랭킹 : RANKING_NOT_PUBLISHED
 *  */
@@ -39,19 +40,23 @@ public enum TradingErrorCode implements ErrorCode {
     CSV_INVALID(HttpStatus.BAD_REQUEST, "CSV 형식이 맞지 않는 행이 있어요"),                                        // 400
     START_DATE_NOT_MONDAY(HttpStatus.BAD_REQUEST, "시즌 시작일은 월요일이어야 해요"),                                 // 400
     INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "지금 상태에서는 그 상태로 바꿀 수 없어요"),                          // 409
-    SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요"),                                        // 409
-    MARKET_HOLIDAY(HttpStatus.CONFLICT, "오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요"),                            // 409
-    LAST_TURN_REACHED(HttpStatus.CONFLICT, "마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요"),                          // 409
-    NEXT_TURN_NOT_READY(HttpStatus.CONFLICT, "다음 턴의 가격이나 뉴스가 아직 다 준비되지 않았어요"),                          // 409
-    TURN_CONFLICT(HttpStatus.CONFLICT, "다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요"),                            // 409
-    SEASON_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요"),                            // 409
+    SEASON_CLOSED(HttpStatus.CONFLICT, "시즌이 끝났어요. 결과를 기다려 주세요"),                                       // 409
+    MARKET_HOLIDAY(HttpStatus.CONFLICT, "오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요"),                         // 409
+    LAST_TURN_REACHED(HttpStatus.CONFLICT, "마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요"),                    // 409
+    NEXT_TURN_NOT_READY(HttpStatus.CONFLICT, "다음 턴의 가격이나 뉴스가 아직 다 준비되지 않았어요"),                    // 409
+    TURN_CONFLICT(HttpStatus.CONFLICT, "다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요"),                      // 409
     NOT_JOINED(HttpStatus.FORBIDDEN, "이번 시즌에 참가하지 않았어요. 먼저 참가해 주세요"),                              // 403
     NOT_ENOUGH_CASH(HttpStatus.BAD_REQUEST, "현금이 부족해요"),                                                    // 400
     NOT_ENOUGH_QUANTITY(HttpStatus.BAD_REQUEST, "보유한 수량보다 많이 팔 수 없어요"),                                 // 400
     REASON_REQUIRED(HttpStatus.BAD_REQUEST, "매매 이유를 골라 주세요"),                                             // 400
     STALE_TURN_PRICE(HttpStatus.CONFLICT, "가격이 바뀌었어요. 현재 가격을 확인해 주세요"),                             // 409
+    MARKET_CLOSED(HttpStatus.CONFLICT, "지금은 장이 열리지 않았어요. 오전 8시에 다시 거래할 수 있어요"),                  // 409 (08:00~20:00 밖)
+    PREVIOUS_SEASON_SETTLE_REQUIRED(HttpStatus.CONFLICT, "이전 시즌 정산을 먼저 마쳐 주세요"),                       // 409 (관리자: 새 시즌 시작·다음 턴 전)
+    SEASON_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요"),               // 409
+    MARKET_STILL_OPEN(HttpStatus.CONFLICT, "장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요"),  // 409
     RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요"),                                       // 403
-    NOT_SETTLED(HttpStatus.CONFLICT, "정산을 먼저 해 주세요");                                                    // 409                                       // 403
+    NOT_SETTLED(HttpStatus.CONFLICT, "정산을 먼저 해 주세요");                                                    // 409
+
 
     private final HttpStatus status;
     private final String message;

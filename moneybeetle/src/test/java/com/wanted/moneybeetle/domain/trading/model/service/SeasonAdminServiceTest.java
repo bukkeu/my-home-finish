@@ -186,7 +186,7 @@ class SeasonAdminServiceTest {
         TradingSeason season = savedSeason(7L, "시즌 7");
         season.changeStatus(TradingSeason.STATUS_RUNNING);
         season.changeStatus(TradingSeason.STATUS_SETTLING);
-        when(seasonRepository.findById(7L)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
 
         assertThatThrownBy(() -> service.changeSetting(7L,
                 new SeasonSettingDTO(new BigDecimal("80.00"), null, 9)))
@@ -213,7 +213,7 @@ class SeasonAdminServiceTest {
 
         assertThatThrownBy(() -> service.changeStatus(8L, new SeasonStatusDTO("RUNNING")))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED);
         assertThat(next.isReady()).isTrue();
     }
 
