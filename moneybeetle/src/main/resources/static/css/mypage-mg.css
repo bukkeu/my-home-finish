@@ -1,0 +1,131 @@
+/* comment.
+*   담당 : DBA ② 김예린 (#69, 마이페이지 설정·캐시 내역·레벨 탭)
+*   moneybeetle-page/UserMyPage.dc.html 의 인라인 스타일을 클래스로 옮긴 것이다. 색·글꼴·.btn·.tag·.card 는 common.css 를 쓴다.
+*   마이페이지 틀(#54)과 다른 탭(mh- 청약통장, ml- 학습)의 class·id 와 겹치지 않게 모두 mg- 접두어를 쓴다.
+*   틀이 탭 조각을 th:replace 할 때 조각 안의 <link> 가 이 파일을 불러오므로, 틀은 이 파일을 따로 넣지 않아도 된다.
+*  */
+
+.mg { display: flex; flex-direction: column; gap: 24px; }
+.mg [hidden] { display: none !important; }
+.mg h2 { margin: 0; font-family: var(--font-heading); font-size: 22px; font-weight: 800; }
+.mg-status { margin: 0; color: var(--color-neutral-700); font-size: 14px; }
+.mg-status:empty { display: none; }
+.mg-sec { display: flex; flex-direction: column; gap: 16px; }
+
+/* ---------- 카드 (청사진 틀) ---------- */
+.mg .card { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+.mg .blueprint { position: relative; border: 1px solid var(--color-divider); border-radius: 0; overflow: visible; }
+.mg .blueprint > .corner { position: absolute; width: 11px; height: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+.mg .blueprint > .corner::before, .mg .blueprint > .corner::after { content: ""; position: absolute; background: currentColor; }
+.mg .blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+.mg .blueprint > .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
+.mg .blueprint > .corner.tl { top: -6px; left: -6px; }
+.mg .blueprint > .corner.tr { top: -6px; right: -6px; }
+.mg .blueprint > .corner.bl { bottom: -6px; left: -6px; }
+.mg .blueprint > .corner.br { bottom: -6px; right: -6px; }
+.mg .card-kicker { color: var(--color-accent-700); font-size: 10px; letter-spacing: .1em; }
+.mg .card-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; line-height: 1.2; }
+
+/* ---------- 입력 ---------- */
+.mg-field { display: flex; flex-direction: column; gap: 6px; }
+.mg-field label { color: var(--color-neutral-700); font-size: 13px; font-weight: 600; }
+.mg-input { width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid var(--color-divider); border-radius: 10px; background: #fff; color: var(--color-text); font: inherit; font-size: 15px; }
+.mg-input:focus { outline: 3px solid rgb(159 232 112 / 45%); border-color: var(--color-text); }
+.mg-input:disabled { opacity: .6; }
+select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23263B1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 5l4.5 4.5 4.5-4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 14px; }
+.mg-help { color: var(--color-neutral-700); font-size: 12px; }
+.mg-pw { position: relative; }
+.mg-pw .mg-input { padding-right: 56px; }
+.mg-pw button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--color-neutral-700); font: inherit; font-size: 13px; cursor: pointer; }
+.mg-pw button:hover { background: var(--color-accent-100); }
+.mg-msg { min-height: 0; margin: 0; color: #b3261e; font-size: 14px; line-height: 1.5; }
+.mg-msg:empty { display: none; }
+.mg-msg.is-ok { color: #27663a; }
+.mg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mg .btn { padding: 9px 18px; border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+.mg .btn:disabled { opacity: .5; cursor: not-allowed; }
+.mg-danger { color: #b3261e; }
+
+/* ---------- 설정 ---------- */
+.mg-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.mg-photo { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.mg-avatar { display: grid; place-items: center; flex: none; width: 72px; height: 72px; overflow: hidden; border-radius: 50%; background: var(--color-accent-200); color: var(--color-accent-700); font-size: 24px; font-weight: 700; }
+.mg-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.mg-photo__text { display: flex; flex-direction: column; gap: 4px; min-width: 200px; flex: 1; }
+.mg-file { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+.mg-leave { display: flex; justify-content: flex-end; }
+
+/* ---------- 탈퇴 팝업 ---------- */
+.mg-dialog-backdrop { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 16px; background: rgba(38, 59, 26, .45); }
+.mg-dialog-backdrop[hidden] { display: none; }
+.mg-dialog { display: flex; flex-direction: column; max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 20px; background: var(--color-bg); box-shadow: 0 12px 32px rgba(38, 59, 26, .25); }
+.mg-wd { width: min(440px, 100%); gap: 12px; padding: 28px; }
+.mg-wd__title { font-size: 18px; font-weight: 700; }
+.mg-wd__body { color: var(--color-neutral-800, #3d4a36); font-size: 14px; line-height: 1.6; }
+.mg-wd__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* ---------- 캐시 내역 ---------- */
+.mg-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.mg-stats .card { gap: 4px; padding: 18px; }
+.mg-stat__label { color: var(--color-neutral-700); font-size: 13px; }
+.mg-stat__value { display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 800; }
+.mg-stat__value img { flex: none; width: 26px; height: 26px; }
+.mg-stat--in { background: #EAF7D8; }
+.mg-stat--in .mg-stat__label, .mg-stat--in .mg-stat__value { color: #3d6120; }
+.mg-stat--out .mg-stat__label, .mg-stat--out .mg-stat__value { color: #8A5A00; }
+.mg-stat--in .mg-stat__label, .mg-stat--out .mg-stat__label { font-weight: 700; }
+.mg-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.mg-filter { padding: 7px 16px; border: 1.5px solid var(--color-divider); border-radius: 999px; background: #fff; color: #263B1A; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.mg-filter[aria-pressed="true"] { border-color: #9fe870; background: #9fe870; }
+.mg-list { padding: 6px 20px !important; gap: 0 !important; }
+.mg-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--color-divider); }
+.mg-row:last-child { border-bottom: 0; }
+.mg-row__kind { width: 52px; padding: 4px 0; border-radius: 999px; background: var(--bg); color: var(--fg); font-size: 12px; font-weight: 800; text-align: center; }
+.mg-row__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mg-row__text strong { font-size: 15px; font-weight: 600; }
+.mg-row__text span { color: var(--color-neutral-700); font-size: 12px; }
+.mg-row__amount { color: var(--fg); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.mg-empty { margin: 0; padding: 18px 0; color: var(--color-neutral-700); font-size: 14px; }
+
+/* ---------- 경험치·레벨 ---------- */
+.mg-level { gap: 12px !important; }
+.mg-level__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.mg-level__now { font-size: 24px; font-weight: 800; }
+.mg-level__tier { padding: 3px 12px; border-radius: 999px; background: var(--house, #EAF7D8); color: #263B1A; font-size: 13px; font-weight: 700; }
+.mg-level__note { color: var(--color-neutral-700); font-size: 14px; }
+.mg-bar { height: 10px; overflow: hidden; border-radius: 999px; background: var(--color-accent-100); }
+.mg-bar > i { display: block; width: var(--pct, 0%); height: 100%; border-radius: 999px; background: #9fe870; }
+.mg-levels { overflow-x: auto; }
+.mg-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mg-table th, .mg-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-divider); text-align: left; white-space: nowrap; }
+.mg-table th { color: var(--color-neutral-700); font-size: 12px; font-weight: 700; }
+.mg-table td.num, .mg-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.mg-table tr.is-now { background: #EAF7D8; font-weight: 700; }
+
+/* ---------- 수상 내역 · 프로필 요약 ---------- */
+.mg-award-list { display: flex; flex-wrap: wrap; gap: 12px; }
+.mg-award { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--color-divider); border-radius: 12px; background: #fff; }
+.mg-award__text { display: flex; flex-direction: column; font-size: 13px; }
+.mg-award__text strong { font-size: 14px; }
+.mg-medal { position: relative; display: inline-block; flex: none; width: 40px; height: 40px; background-image: url('/images/medals.png'); background-size: 300% 100%; background-repeat: no-repeat; background-position: var(--pos, 0% 50%); }
+.mg-medal > span { position: absolute; left: 50%; top: 52%; display: grid; place-items: center; width: 42%; height: 42%; transform: translate(-50%, -50%); border-radius: 50%; background: var(--disc); color: #263B1A; font-size: 11px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+
+.mg-profile { flex-direction: row !important; flex-wrap: wrap; align-items: center; gap: 20px !important; }
+.mg-profile__who { display: flex; flex-direction: column; flex: 1; gap: 4px; min-width: 200px; }
+.mg-profile__name { font-size: 20px; font-weight: 700; }
+.mg-profile__mail { color: var(--color-neutral-700); font-size: 14px; }
+.mg-profile__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.mg-profile__tags .tag { padding: 3px 10px; background: var(--color-accent-100); color: #263B1A; font-size: 12px; }
+.mg-profile__tags .tag img { width: 13px; height: 13px; }
+.mg-profile__tags .tag-accent { background: var(--color-accent-400); }
+.mg-profile__awards { display: flex; flex-direction: column; gap: 6px; }
+.mg-profile__medals { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+@media (max-width: 640px) {
+  .mg .card { padding: 18px; }
+  .mg-row { grid-template-columns: auto minmax(0, 1fr); }
+  .mg-row__amount { grid-column: 2; }
+  .mg-list { padding: 4px 14px !important; }
+}

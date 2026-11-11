@@ -1,5 +1,96 @@
-<!-- comment.
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>마이페이지 성장 탭 조각</title>
+</head>
+<body>
+<!--/* comment.
     담당 : DBA ② 김예린 (#69, 성장·캐시 내역 탭)
-    내용 : 마이페이지 - 캐시 내역, 레벨, 청약통장, 수상 내역
-    경로 : /user/my-page
--->
+    내용 : 마이페이지 - 캐시 내역, 경험치·레벨, 수상 내역 (청약통장은 이 탭이 아니라 housing 탭에서 다룬다, #70)
+    경로 : /user/my-page#growth
+    원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 "캐시 내역" 탭 (경험치·레벨·수상 내역은 헤더 프로필과 사이드 메뉴의 값을 한 곳에 모은 것)
+
+    사용 (마이페이지 틀 member/mypage.html):
+        <div th:replace="~{fragments/mypage/growth :: growthTabFragment}"></div>
+    - 이 조각 안의 <link>(mypage-mg.css)와 <script>(mypage-growth.js)가 스타일·데이터 불러오기를 맡는다. 틀은 탭 전환만 하면 된다.
+    - class·id 는 모두 mg- 로 시작한다 (설정 탭과 같은 접두어. 청약통장 mh-, 학습 ml- 과 겹치지 않는다).
+    데이터 (모두 로그인한 회원 본인의 값):
+        GET /api/v1/members/me                    API 13 : 레벨·칭호·경험치·다음 레벨까지·캐시·연속 출석, memberId
+        GET /api/v1/members/me/cash-histories     API 22 : 캐시 적립·사용 내역 (이번 달 합계도 이 값으로 계산)
+        GET /api/v1/members/me/exp-histories      API 23 : 최근 경험치 내역
+        GET /api/v1/levels                        API 24 : 레벨·칭호 표
+        GET /api/v1/members/{memberId}/profile    API 18 : 수상 내역 (1~3위만 메달로 보인다)
+*/-->
+<th:block th:fragment="growthTabFragment">
+  <link rel="stylesheet" th:href="@{/css/mypage-mg.css}">
+  <div class="mg mg-growth" id="mg-growth">
+    <p class="mg-status" id="mg-growth-status" role="status" aria-live="polite">불러오고 있어요…</p>
+
+    <!--/* ===== 캐시 내역 ===== */-->
+    <section class="mg-sec" aria-labelledby="mg-cash-title">
+      <h2 id="mg-cash-title">캐시 내역</h2>
+      <div class="mg-stats">
+        <div class="card blueprint">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <span class="mg-stat__label">보유 캐시</span>
+          <span class="mg-stat__value"><img th:src="@{/images/cash-coin.png}" alt="캐시"><span id="mg-cash">-</span></span>
+        </div>
+        <div class="card blueprint mg-stat--in">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <span class="mg-stat__label">이번 달 적립</span>
+          <span class="mg-stat__value" id="mg-cash-in">-</span>
+        </div>
+        <div class="card blueprint mg-stat--out">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <span class="mg-stat__label">이번 달 사용</span>
+          <span class="mg-stat__value" id="mg-cash-out">-</span>
+        </div>
+      </div>
+      <div class="mg-filters" role="group" aria-label="캐시 내역 종류">
+        <button type="button" class="mg-filter" data-filter="all" aria-pressed="true">전체</button>
+        <button type="button" class="mg-filter" data-filter="EARN" aria-pressed="false">적립</button>
+        <button type="button" class="mg-filter" data-filter="USE" aria-pressed="false">사용</button>
+      </div>
+      <div class="card blueprint mg-list" id="mg-cash-list">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      </div>
+      <div class="mg-actions"><button type="button" class="btn btn-secondary" id="mg-cash-more" hidden>더 보기</button></div>
+    </section>
+
+    <!--/* ===== 경험치·레벨 ===== */-->
+    <section class="mg-sec" aria-labelledby="mg-level-title">
+      <h2 id="mg-level-title">경험치·레벨</h2>
+      <div class="card blueprint mg-level">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="mg-level__head">
+          <span class="mg-level__now" id="mg-level-now">Lv.-</span>
+          <span class="mg-level__tier" id="mg-level-tier"></span>
+          <span class="mg-level__note" id="mg-level-streak"></span>
+        </div>
+        <div class="mg-bar" role="progressbar" aria-label="이번 레벨 경험치" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mg-level-bar"><i></i></div>
+        <span class="mg-level__note" id="mg-level-note"></span>
+      </div>
+      <div class="card blueprint mg-levels">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <table class="mg-table">
+          <caption class="mg-help" style="text-align:left;padding-bottom:8px">레벨·칭호 표</caption>
+          <thead><tr><th>레벨</th><th>칭호</th><th class="num">필요 경험치</th><th class="num">레벨업 캐시</th><th>열리는 기능</th></tr></thead>
+          <tbody id="mg-level-table"></tbody>
+        </table>
+      </div>
+      <div class="card blueprint mg-list" id="mg-exp-list">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      </div>
+    </section>
+
+    <!--/* ===== 수상 내역 ===== */-->
+    <section class="mg-sec" aria-labelledby="mg-award-title">
+      <h2 id="mg-award-title">수상 내역</h2>
+      <div class="mg-award-list" id="mg-awards"><p class="mg-empty">불러오고 있어요…</p></div>
+    </section>
+  </div>
+  <script th:src="@{/js/mypage-growth.js}" defer></script>
+</th:block>
+</body>
+</html>

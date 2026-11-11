@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>마이페이지 프로필 요약 조각</title>
+</head>
+<body>
+<!--/* comment.
+    담당 : DBA ② 김예린 (#69, 프로필 요약)
+    내용 : 마이페이지 맨 위의 프로필 요약 카드 - 프로필 이미지·닉네임·이메일, 레벨·칭호·경험치·캐시·연속 출석, 수상 내역(메달)
+    경로 : /user/my-page (탭 버튼 위)
+    원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 맨 위 프로필 카드
+
+    사용 (마이페이지 틀 member/mypage.html, 탭 버튼 위에 한 번):
+        <div th:replace="~{fragments/mypage/profile :: profileSummaryFragment}"></div>
+    - 이 조각 안의 <link>(mypage-mg.css)와 <script>(mypage-profile.js)가 스타일·데이터 불러오기를 맡는다.
+    - 설정 탭에서 프로필을 바꾸면 mg:profile-changed 이벤트로 이 카드도 다시 그려진다.
+    데이터 : GET /api/v1/members/me (API 13), GET /api/v1/members/{memberId}/profile (API 18, 수상 내역)
+    class·id 는 모두 mg- 로 시작한다.
+*/-->
+<th:block th:fragment="profileSummaryFragment">
+  <link rel="stylesheet" th:href="@{/css/mypage-mg.css}">
+  <section class="mg" id="mg-profile">
+    <div class="card blueprint mg-profile">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <span class="mg-avatar" id="mg-profile-avatar" aria-hidden="true">?</span>
+      <div class="mg-profile__who">
+        <span class="mg-profile__name" id="mg-profile-name">&nbsp;</span>
+        <span class="mg-profile__mail" id="mg-profile-mail"></span>
+        <div class="mg-profile__tags" id="mg-profile-tags"></div>
+      </div>
+      <div class="mg-profile__awards" id="mg-profile-awards" hidden>
+        <span class="card-kicker">수상내역</span>
+        <div class="mg-profile__medals" id="mg-profile-medals"></div>
+      </div>
+    </div>
+  </section>
+  <script th:src="@{/js/mypage-profile.js}" defer></script>
+</th:block>
+</body>
+</html>
