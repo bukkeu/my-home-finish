@@ -64,7 +64,7 @@ class AdminLoginTemplateRenderTest {
     void rendersWithoutLogin() throws Exception {
         String html = mockMvc.perform(get("/admin/login")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(html).contains("관리자 로그인", "id=\"admin-login-form\"", "id=\"admin-email\"", "id=\"admin-pw\"", "id=\"admin-login-alert\"",
+        assertThat(html).contains("관리자 로그인", "id=\"admin-login-form\"", "method=\"post\"", "action=\"/api/v1/admin/auth/login\"", "name=\"_csrf\"", "id=\"admin-email\"", "id=\"admin-pw\"", "id=\"admin-login-alert\"",
                 "관리자 화면의 모든 작업은 기록됩니다", "/css/auth.css", "/css/admin-login.css", "/js/admin-login.js", "발급받은 관리자 계정");
     }
 
