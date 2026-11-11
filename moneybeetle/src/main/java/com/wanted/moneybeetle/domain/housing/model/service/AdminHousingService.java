@@ -14,7 +14,7 @@ import com.wanted.moneybeetle.domain.housing.model.entity.HousingApplication;
 import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
 import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
-import com.wanted.moneybeetle.domain.notification.model.entity.Notification;   // 제목 길이 상수만 쓴다 (저장은 NotificationService)
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;   // 알림 종류 enum (#289). Notification 엔티티는 쓰지 않는다
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class AdminHousingService {
 
-    static final String NOTIFICATION_TYPE = "HOUSING_RESULT";                       // DB 설계 notification.type
+    static final NotificationType NOTIFICATION_TYPE = NotificationType.HOUSING_RESULT;   // 알림 종류 enum (#289)
     static final String NOTIFICATION_LINK = "/user/demo-housing-subscription";      // 화면 설계 모의 청약 화면
 
     // admin_log (DB 설계 admin_log.action / target_type)
@@ -236,11 +236,11 @@ public class AdminHousingService {
     }
 
     // 발표 알림 제목 "<단지 이름> 청약 결과가 발표됐어요"
-    //  단지 이름은 100자까지인데 알림 제목도 100자까지라(Notification.TITLE_MAX_LENGTH), 넘치면 알림 저장이 실패해 발표 전체가 롤백된다.
+    //  단지 이름은 100자까지인데 알림 제목도 100자까지라(NotificationService.TITLE_MAX_LENGTH), 넘치면 알림 저장이 실패해 발표 전체가 롤백된다.
     //  그래서 알림 제목에서만 이름을 줄이고 "…" 를 붙인다 (단지 이름 자체는 그대로)
     static String resultTitle(String complexName) {
         String suffix = " 청약 결과가 발표됐어요";
-        int maxName = Notification.TITLE_MAX_LENGTH - suffix.length();
+        int maxName = NotificationService.TITLE_MAX_LENGTH - suffix.length();
         if (complexName.length() <= maxName) {
             return complexName + suffix;
         }
