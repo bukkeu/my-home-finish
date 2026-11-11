@@ -84,6 +84,9 @@
     </div>
   </div>
 
+  <!--/* 가상 실습 고지 (NFR-12 : 모든 투자·청약 화면). 시안에는 없지만 모의 청약 화면(#58)과 같은 공통 안내 띠를 둔다 (팀 결정 2026-11-11) */-->
+  <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+
   <!--/* 납입 확인창 (시안의 "OO 캐시를 납입할까요?") */-->
   <dialog class="mh-dialog" id="mh-confirm" aria-labelledby="mh-confirm-title">
     <form method="dialog" class="mh-dialog__box">

@@ -114,6 +114,7 @@ class MyPageRenderTest {
         assertThat(panel).contains("id=\"mh\"").contains("나의 청약통장").contains("청약통장 잔액").contains("누적 인정금액")
                 .contains("납입하기").contains("납입 내역").contains("id=\"mh-confirm\"")
                 .contains("/css/mypage-mh.css").contains("/js/mypage-housing.js")
+                .contains("가상 실습이며 실제 금융 거래가 아니에요")          // NFR-12 공통 안내 띠
                 .doesNotContain("이 탭은 준비 중이에요.");
     }
 

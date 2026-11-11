@@ -15,6 +15,7 @@
   if (!root || !window.MB) return;
 
   var API = '/api/v1/housing';
+  var EMPTY_TEXT = '아직 납입 내역이 없어요.';
   var account = null;                                   // 마지막으로 불러온 통장 (API 65)
   var policy = { minAmount: 20000, maxAmount: 500000, dailyRecognizedLimit: 250000 };
   var amountInput = q('amount');
@@ -91,7 +92,9 @@
     return MB.api(API + '/account/deposits?page=0&size=20').then(function (page) {
       var items = (page && page.items) || [];
       box.querySelectorAll('.mh-row').forEach(function (n) { n.remove(); });
-      q('empty').hidden = items.length > 0;
+      var empty = q('empty');
+      empty.textContent = EMPTY_TEXT;                   // 앞서 실패했을 때의 오류 문구를 지운다
+      empty.hidden = items.length > 0;
       items.forEach(function (d) {
         box.appendChild(el('span', 'mh-row', fmtDate(d.paidDate) + ' · ' + d.paidCountAfter + '회차'));
         box.appendChild(el('span', 'mh-row is-num', fmt(d.amount)));
@@ -143,12 +146,13 @@
     error.hidden = !problem;
     amountInput.closest('.mh-input').classList.toggle('is-error', !!problem);
     drawCalc(q('calc'), amt);
-    submitBtn.disabled = !account || !!problem || !amt;
+    submitBtn.disabled = sending || !account || !!problem || !amt;   // 보내는 중에는 금액을 고쳐도 다시 누를 수 없다
   }
 
   // 결과를 모르는 납입(네트워크 끊김 등)을 다시 보낼 때는 같은 Idempotency-Key 를 쓴다 (DP-37, housing.js 와 같은 방식)
   // 금액을 고치면 새 납입이므로 키를 버린다. 성공했거나 결과가 분명한 실패면 다음 납입은 새 키로 보낸다
   var depositKey = null;
+  var sending = false;                                  // 납입 요청을 보내는 중인지
   var UNKNOWN_RESULT = ['NETWORK_ERROR', 'ERROR', 'DUPLICATE_REQUEST'];
 
   // 시안처럼 입력하는 동안 천 단위 쉼표를 붙인다
@@ -186,6 +190,7 @@
   });
 
   function deposit(amt) {
+    sending = true;
     submitBtn.disabled = true;
     if (!depositKey) depositKey = newKey();
     MB.api(API + '/account/deposits', {
@@ -202,6 +207,9 @@
       if (UNKNOWN_RESULT.indexOf(err.code) < 0) depositKey = null;   // 결과가 분명한 실패만 키를 버린다
       MB.toast(err.message, 'error');                                // 하루 1회 초과(이미 납입) 등 서버 안내 그대로
       return loadAccount();                                          // 다른 탭·화면에서 납입했을 수도 있어 다시 불러온다
+    }).finally(function () {
+      sending = false;
+      preview();                                                     // 다시 불러오기마저 실패해도 버튼을 지금 상태로 되살린다 (같은 키로 재시도 가능)
     });
   }
 
