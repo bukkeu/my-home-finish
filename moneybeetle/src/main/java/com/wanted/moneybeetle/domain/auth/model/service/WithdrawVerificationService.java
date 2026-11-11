@@ -63,6 +63,12 @@ public class WithdrawVerificationService implements WithdrawVerifier {
         long generation = cancelGenerationOf(session);
         String email = requireSocialMemberEmail(memberId);
         Instant now = clock.instant();
+        // 이미 취소된 요청은 발송 간격(60초)을 차지하지 않도록, 간격을 예약하기 전에 먼저 취소 여부를 본다 (잠금 안에서 비교)
+        synchronized (WebUtils.getSessionMutex(session)) {
+            if (generation != cancelGenerationOf(session)) {
+                throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);
+            }
+        }
         if (!reserveSendSlot(memberId, now)) {
             throw new BusinessException(MemberErrorCode.IDENTITY_CODE_TOO_SOON);
         }
