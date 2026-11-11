@@ -178,6 +178,23 @@ class TermServiceTest {
     }
 
     @Test
+    @DisplayName("지정 해제: 그 날짜의 일정을 지운다 (오늘·미래 날짜, 지정이 없는 날도 오류 없음)")
+    void clearsSchedule() {
+        service.clear(TODAY);
+        service.clear(TODAY.plusDays(3));
+
+        verify(scheduleRepository).deleteByShowDate(TODAY);
+        verify(scheduleRepository).deleteByShowDate(TODAY.plusDays(3));
+    }
+
+    @Test
+    @DisplayName("지정 해제: 지난 날짜는 PAST_DATE_LOCKED 이고 지우지 않는다")
+    void clearRejectsPastDate() {
+        assertCode(() -> service.clear(TODAY.minusDays(1)), TermErrorCode.PAST_DATE_LOCKED);
+        verify(scheduleRepository, never()).deleteByShowDate(any());
+    }
+
+    @Test
     @DisplayName("지난 날짜는 PAST_DATE_LOCKED")
     void pastDateLocked() {
         assertCode(() -> service.assign(TODAY.minusDays(1), List.of(1L, 2L, 3L, 4L, 5L)), TermErrorCode.PAST_DATE_LOCKED);

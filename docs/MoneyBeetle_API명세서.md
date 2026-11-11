@@ -259,6 +259,7 @@
 | 98 | `DELETE` | `/api/v1/admin/economic-terms/{termId}` | 경제 용어 삭제 | 관리자 | ADM-05 |
 | 99 | `GET` | `/api/v1/admin/term-schedules` | 날짜별 용어 일정 | 관리자 | ADM-05 |
 | 100 | `PUT` | `/api/v1/admin/term-schedules/{date}` | 오늘의 용어 지정 | 관리자 | ADM-05, SP-46~47 |
+| 100-1 | `DELETE` | `/api/v1/admin/term-schedules/{date}` | 오늘의 용어 지정 해제 (자동 선정으로) | 관리자 | ADM-05, SP-46 |
 | 101 | `GET` | `/api/v1/admin/members` | 사용자·강사 목록 | 관리자 | ADM-06 |
 | 102 | `PATCH` | `/api/v1/admin/members/{memberId}/status` | 계정 정지·해제 | 관리자 | ADM-06, SP-06, DP-43 |
 | 103 | `PATCH` | `/api/v1/admin/members/{memberId}/role` | 강사 권한 부여·회수 | 관리자 | ADM-06, SP-07 |
@@ -2799,6 +2800,22 @@ email=admin@moneybeetle.kr&password=...
 - 204 No Content
 
 **Error**: `PAST_DATE_LOCKED`, `TERMS_NOT_ENOUGH`
+
+#### 100-1. 오늘의 용어 지정 해제
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/admin/term-schedules/{date}` |
+| Method | `DELETE` |
+| 권한 | 관리자 |
+| 관련 | ADM-05, SP-46 |
+| 설명 | 그 날짜의 지정을 지워 자동 선정으로 되돌린다(이슈 #271). 지운 날은 다시 보여 줄 때 자동 선정되고, 월별 일정(API 99)에는 `isAuto: true` 로 나온다. 지난 날짜는 변경 불가. 지정이 없는 날도 오류 없이 204. |
+
+**Response**
+
+- 204 No Content
+
+**Error**: `PAST_DATE_LOCKED`
 
 #### 101. 사용자·강사 목록
 
