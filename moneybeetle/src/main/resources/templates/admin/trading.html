@@ -17,7 +17,14 @@
   <div class="mb-overlay" data-mb-overlay data-open="false" aria-hidden="true"></div>
   <aside class="mb-admin-side at-side" data-mb-drawer data-mb-pinned data-open="false" aria-label="모의투자 운영 메뉴">
     <a class="mb-admin-side__brand at-side__brand" th:href="@{/admin/dashboard}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
-    <span class="at-side__label">모의투자 운영</span>
+    <div class="at-side__card">
+      <div class="at-side__who">
+        <span class="at-side__avatar" aria-hidden="true">관</span>
+        <div><strong>관리자</strong><span>모의 투자 운영</span></div>
+      </div>
+      <div class="at-side__check"><span>다음 턴 점검</span><b id="at-side-check">확인 중</b></div>
+    </div>
+    <span class="at-side__label">모의 투자 관리</span>
     <nav class="at-nav" aria-label="모의투자 운영" id="at-nav">
       <button type="button" class="at-nav__item is-active" data-at-tab="season" aria-current="page">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18"></path><path d="M8 2v4"></path><path d="M16 2v4"></path></svg>
@@ -41,7 +48,7 @@
       </button>
       <button type="button" class="at-nav__item" data-at-tab="people">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7"></path><path d="M18 14a6.5 6.5 0 0 1 3.5 6"></path></svg>
-        <span>참가자</span>
+        <span>참가자 관리</span>
       </button>
       <button type="button" class="at-nav__item" data-at-tab="ranking">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v5a5 5 0 0 1-10 0z"></path></svg>
@@ -57,13 +64,8 @@
   <div class="mb-content">
     <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
     <main class="mb-main at" id="at-root">
-      <header class="at-head">
-        <div>
-          <span class="at-eyebrow">MOCK INVEST · ADMIN</span>
-          <h1>모의투자 운영</h1>
-          <p>시즌을 만들고, 가격·뉴스를 준비해 턴을 넘기고, 정산·랭킹을 공개해요</p>
-          <p class="at-muted">가상 실습이며 실제 금융 거래가 아니에요</p>
-        </div>
+      <!--/* 시안의 머리: 위쪽 줄에 시즌 선택·상태, 아래에 지금 메뉴의 이름과 설명 (메뉴를 바꾸면 JS 가 h1·설명을 바꾼다) */-->
+      <div class="at-topline">
         <div class="at-head__season">
           <label for="at-season-select">시즌</label>
           <select id="at-season-select" disabled>
@@ -71,6 +73,14 @@
           </select>
           <span class="at-pill gray" id="at-season-status">-</span>
           <span class="at-pill soft" id="at-season-turn">- / 12턴</span>
+        </div>
+      </div>
+      <header class="at-head">
+        <div>
+          <span class="at-eyebrow">MOCK INVEST · ADMIN</span>
+          <h1 id="at-title">시즌 관리</h1>
+          <p id="at-desc">시즌을 만들고 상태와 설정을 관리해요</p>
+          <p class="at-muted">가상 실습이며 실제 금융 거래가 아니에요</p>
         </div>
       </header>
 

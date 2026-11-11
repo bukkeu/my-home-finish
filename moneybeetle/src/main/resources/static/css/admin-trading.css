@@ -15,14 +15,17 @@
   --at-warn-bg: #fff7e0;
   --at-warn-text: #6b4a00;
   --at-danger: #b3261e;
-  display: flex; flex-direction: column; gap: 20px; max-width: 1280px;
+  display: flex; flex-direction: column; gap: 20px; max-width: none; line-height: 1.5;
 }
+.mb-main.at { padding: 20px 36px 80px; }
+.at-side { line-height: 1.5; }
 .at [hidden] { display: none !important; }
 
 /* ---------- 머리말·시즌 선택·탭 ---------- */
+.at-topline { display: flex; justify-content: flex-end; margin-bottom: -8px; }
 .at-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .at-head > div:first-child { flex: 1; min-width: 240px; }
-.at-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: var(--at-muted); }
+.at-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .13em; color: var(--color-text); }
 .at-head h1 { margin-top: 6px; font-size: 30px; font-weight: 900; letter-spacing: -.04em; }
 .at-head p { margin: 4px 0 0; font-size: 14px; color: var(--at-muted); }
 .at-head__season { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 700; }
@@ -33,6 +36,14 @@
 .at-side [hidden] { display: none !important; }
 .at-side__brand { padding: 0 6px; }
 .at-side__brand img { height: 32px; max-width: 170px; }
+.at-side__card { border: 1.5px dashed var(--color-divider); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.at-side__who { display: flex; align-items: center; gap: 10px; }
+.at-side__who strong { display: block; font-size: 14px; font-weight: 700; }
+.at-side__who span:not(.at-side__avatar) { display: block; font-size: 12px; color: var(--at-muted); }
+.at-side__avatar { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--at-dark); color: var(--at-mint); font-size: 14px; font-weight: 800; }
+.at-side__check { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--at-border); font-size: 12px; }
+.at-side__check span { font-weight: 600; }
+.at-side__check b { font-weight: 800; }
 .at-side__label { padding: 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: var(--color-neutral-700); }
 .at-nav { display: flex; flex-direction: column; gap: 2px; margin-top: -12px; }
 .at-nav__item {

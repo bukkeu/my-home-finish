@@ -141,8 +141,20 @@
 
   /* ---------- 탭 ---------- */
   var tabButtons = document.querySelectorAll('[data-at-tab]');   // 왼쪽 운영 메뉴 (main 밖에 있다)
+  /** 시안처럼 메뉴마다 머리의 제목·설명이 바뀐다 */
+  var TAB_HEAD = {
+    season: ['시즌 관리', '시즌을 만들고 상태와 설정을 관리해요'],
+    turn: ['턴 진행', '다음 턴의 가격·뉴스를 점검하고 턴을 넘겨요'],
+    stocks: ['분야·종목', '분야와 종목을 등록하고 고쳐요'],
+    prices: ['턴별 가격', '턴마다 종목 가격을 입력해요'],
+    news: ['뉴스 관리', '턴별 가상 뉴스를 등록해요. 턴당 2~3개를 내요'],
+    people: ['참가자 관리', '참가자의 자산·거래 내역을 보고 캐시를 지급·회수해요'],
+    ranking: ['정산·랭킹', '랭킹을 미리 보고, 정산·공개·보상을 진행해요']
+  };
   function openTab(tab) {
     state.tab = tab;
+    var head = TAB_HEAD[tab];
+    if (head) { $('at-title').textContent = head[0]; $('at-desc').textContent = head[1]; }
     tabButtons.forEach(function (b) {
       var on = b.getAttribute('data-at-tab') === tab;
       b.classList.toggle('is-active', on);
@@ -383,6 +395,7 @@
       else if (check.ready !== true) block = '다음 턴 준비가 끝나지 않았어요';
     }
     $('at-turn-dot').hidden = !block || s.status !== 'RUNNING';
+    $('at-side-check').textContent = s.status !== 'RUNNING' ? '해당 없음' : (block ? '점검 필요' : '이상 없음');
     $('at-next-block').textContent = block;
     nextBtn.disabled = !!block;
   }
@@ -976,5 +989,12 @@
 
   /* ---------- 시작 ---------- */
   var first = (location.hash || '').slice(1);
-  loadSeasons().then(function () { openTab(TABS.indexOf(first) >= 0 ? first : 'season'); });
+  loadSeasons().then(function () {
+    openTab(TABS.indexOf(first) >= 0 ? first : 'season');
+    // 왼쪽 메뉴 카드의 '다음 턴 점검' 표시: 턴 진행 메뉴를 열지 않아도 한 번 점검해 둔다
+    if (state.tab !== 'turn') {
+      if (!state.season) $('at-side-check').textContent = '해당 없음';
+      else api(seasonPath('/turns/next-check')).then(renderCheck, function (err) { renderCheck(null, err); });
+    }
+  });
 })();
