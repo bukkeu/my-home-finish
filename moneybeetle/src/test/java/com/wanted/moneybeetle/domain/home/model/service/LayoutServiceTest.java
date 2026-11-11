@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.home.model.service;
 
+import com.wanted.moneybeetle.support.UnlockLevelFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -33,7 +34,7 @@ class LayoutServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new LayoutService(memberService, growthService, attendanceService);
+        service = new LayoutService(memberService, growthService, attendanceService, UnlockLevelFixture.defaults());
         // 레벨표: Lv.1 0xp 고시원, Lv.2 100xp (캐시 1,000), Lv.3 250xp (캐시 2,000)
         List<LevelDTO> levels = List.of(level(1, 0, "고시원", 0), level(2, 100, "고시원", 1000), level(3, 250, "고시원", 2000));
         when(growthService.findLevels()).thenReturn(levels);
@@ -121,5 +122,17 @@ class LayoutServiceTest {
 
         assertThatThrownBy(() -> service.getLayout(7L)).isInstanceOfSatisfying(BusinessException.class,
                 e -> assertThat(e.getErrorCode()).isEqualTo(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("해금 레벨은 운영 설정을 따른다 (모의투자 10, 청약 15) (#266)")
+    void unlockLevelsFollowSettings() {
+        service = new LayoutService(memberService, growthService, attendanceService, UnlockLevelFixture.of(10, 15));
+        givenProfile(2, 160, 12400);
+
+        LayoutDTO layout = service.getLayout(7L);
+
+        assertThat(layout.getUnlockTradingLevel()).isEqualTo(10);
+        assertThat(layout.getUnlockHousingLevel()).isEqualTo(15);
     }
 }

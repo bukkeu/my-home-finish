@@ -20,6 +20,8 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.wanted.moneybeetle.global.security.UnlockFeature;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -91,6 +93,7 @@ public class RewardService {
     private final MemberService memberService;
     private final GrowthService growthService;
     private final NotificationService notificationService;
+    private final UnlockLevelProvider unlockLevelProvider;
 
     /**
      * 활동 보상(캐시·경험치)을 지급한다.
@@ -193,7 +196,10 @@ public class RewardService {
                 cashBalance = memberService.addReward(memberId, levelUpCash, 0).getCash();
                 saveLevelUpCashHistories(memberId, table, levelFrom, reached, cashBalance - levelUpCash);
                 levelTo = reached;
-                unlocks = UnlockRules.unlockedBetween(levelFrom, reached);
+                // 청약·모의투자는 각각 운영 설정의 해금 레벨에 닿을 때만 열린다 (여러 레벨을 한 번에 올라도 한 번, #266)
+                unlocks = UnlockRules.unlockedBetween(levelFrom, reached,
+                        unlockLevelProvider.getLevel(UnlockFeature.TRADING),
+                        unlockLevelProvider.getLevel(UnlockFeature.HOUSING));
                 sendUnlockNotifications(memberId, unlocks);
             }
             expHistoryRepository.save(ExpHistory.create(
