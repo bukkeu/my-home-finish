@@ -5,7 +5,7 @@ package com.wanted.moneybeetle.domain.housing.model.entity;
 *   테이블 subscription_account (가입 시 1인 1개)
 *   - 납입 규칙(SP-70, DP-35)은 통장이 지킨다 (#291) : 1회 20,000 ~ 500,000 캐시, 하루 1회, 인정금액은 하루 250,000 까지
 *     어디서 deposit 을 불러도 규칙이 깨지지 않게, 검사를 Service 가 아니라 이 메서드 안에서 한다
-*     TODO 운영 값은 system_setting 에서 읽도록 바꾼다 (설정 조회 Service 가 생기면, 해금 레벨과 같은 방식)
+*     TODO(#327): 한도 세 값은 운영 설정(system_setting)에서 읽도록 바꾼다 (해금 레벨과 같은 방식)
 *  */
 
 import com.wanted.moneybeetle.domain.housing.exception.HousingErrorCode;
