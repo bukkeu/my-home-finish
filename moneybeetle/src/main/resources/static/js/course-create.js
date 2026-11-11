@@ -77,7 +77,14 @@
 
   function locked() { return !!(st.course && st.course.status === 'REVIEW'); }
 
-  function markDirty(part) { st.dirty[part] = true; }
+  /* 입력이 바뀌면 검수 요청 버튼과 경고 문구도 바로 맞춘다 (화면 전체를 다시 그리면 입력 중인 칸의 포커스가 사라져서 해당 요소만 고친다) */
+  function markDirty(part) {
+    st.dirty[part] = true;
+    var btn = document.querySelector('[data-cc-review-btn]');
+    var warn = document.querySelector('[data-cc-unsaved]');
+    if (btn) btn.disabled = true;
+    if (warn) warn.hidden = false;
+  }
 
   function field(label, input, opts) {
     var o = opts || {};
@@ -334,12 +341,13 @@
   }
 
   function lessonCard(l, i) {
-    var msg = h('p', { class: 'ins-error', role: 'alert' });
-    var progress = h('span', { class: 'cc-progress', 'aria-live': 'polite', text: l.uploading ? '올리는 중 ' + (l.progress || 0) + '%' : '' });
+    if (!l.uid) l.uid = newKey();
+    var msg = h('p', { class: 'ins-error', role: 'alert', text: l.error || '' });
+    var progress = h('span', { class: 'cc-progress', 'aria-live': 'polite', 'data-cc-progress': l.uid, text: progressText(l) });
     var file = h('input', { type: 'file', accept: 'video/mp4', class: 'cc-file', disabled: locked() || l.uploading });
     file.addEventListener('change', function () {
       var f = file.files && file.files[0];
-      if (f) uploadVideo(l, f, msg, progress);
+      if (f) uploadVideo(l, f);
     });
     var move = function (d) {
       var j = i + d;
@@ -413,26 +421,36 @@
     });
   }
 
-  function uploadVideo(l, f, msg, progress) {
-    msg.textContent = '';
-    if (!/\.mp4$/i.test(f.name) && f.type !== 'video/mp4') { msg.textContent = 'mp4 파일만 올릴 수 있어요.'; return; }
-    if (f.size > 500 * 1024 * 1024) { msg.textContent = '영상은 500MB 이하로 올려 주세요.'; return; }
-    l.uploading = true; l.progress = 0;
-    progress.textContent = '영상 길이를 읽는 중이에요…';
+  function progressText(l) {
+    if (!l.uploading) return '';
+    return l.progress == null ? '영상 길이를 읽는 중이에요…' : '올리는 중 ' + l.progress + '%';
+  }
+
+  /* 업로드 중에 다른 조작으로 화면이 다시 그려질 수 있어서, 오류·진행률은 영상(l) 상태에 두고 화면은 그 상태로 그린다 */
+  function uploadVideo(l, f) {
+    l.error = '';
+    if (!/\.mp4$/i.test(f.name) && f.type !== 'video/mp4') { l.error = 'mp4 파일만 올릴 수 있어요.'; draw(); return; }
+    if (f.size > 500 * 1024 * 1024) { l.error = '영상은 500MB 이하로 올려 주세요.'; draw(); return; }
+    l.uploading = true; l.progress = null;
+    draw();   // 파일 고르기 버튼을 바로 잠근다
     readDuration(f).then(function (sec) {
       if (sec < 1) throw { message: '영상 길이를 확인해 주세요.' };
-      return sendVideo(f, function (p) { l.progress = p; progress.textContent = '올리는 중 ' + p + '%'; }).then(function (res) {
+      return sendVideo(f, function (p) {
+        l.progress = p;
+        var el = document.querySelector('[data-cc-progress="' + l.uid + '"]');
+        if (el) el.textContent = progressText(l);
+      }).then(function (res) {
         l.videoUrl = res.videoUrl;
         l.durationSeconds = sec;
         l.fileName = f.name;
         markDirty('lessons');
       });
     }).catch(function (err) {
-      msg.textContent = errorText(err, '영상을 올리지 못했어요.');
+      l.error = errorText(err, '영상을 올리지 못했어요.');
     }).then(function () {
       l.uploading = false;
-      if (!msg.textContent) { MB.toast('영상을 올렸어요. 저장을 눌러야 강의에 반영돼요.'); draw(); }
-      else progress.textContent = '';
+      if (!l.error) MB.toast('영상을 올렸어요. 저장을 눌러야 강의에 반영돼요.');
+      draw();
     });
   }
 
@@ -550,7 +568,7 @@
       reader.onload = function () {
         try {
           var rows = parseCsv(String(reader.result || '')).filter(function (r) { return r.some(function (c) { return c.trim(); }); });
-          if (rows.length && /문제/.test(rows[0][0] || '')) rows.shift();   // 첫 줄이 제목 줄이면 건너뛴다
+          if (rows.length && (rows[0][0] || '').trim() === '문제') rows.shift();   // 첫 칸이 정확히 "문제"일 때만 제목 줄로 보고 건너뛴다
           if (type === 'test') {
             if (rows.length !== TEST_COUNT) throw new Error('테스트 퀴즈는 문제가 정확히 5개여야 해요. (지금 ' + rows.length + '개)');
             st.test = rows.map(function (r, i) {
@@ -623,9 +641,11 @@
     var ready = checks.every(function (x) { return x.ok; }) && !unsaved;
     var requestable = c.status === 'DRAFT' || c.status === 'REJECTED';
     var msg = h('p', { class: 'ins-error', role: 'alert' });
-    var btn = h('button', { type: 'button', class: 'btn btn-primary', text: '검수 요청', disabled: !requestable || !ready });
+    var btn = h('button', { type: 'button', class: 'btn btn-primary', text: '검수 요청', 'data-cc-review-btn': '', disabled: !requestable || !ready });
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
+      // 마지막으로 그린 뒤에 고친 내용이 있으면 저장 전 내용이 검수로 넘어가지 않게 막는다
+      if (Object.keys(st.dirty).length) { msg.textContent = '저장하지 않은 구역이 있어요. 각 구역의 저장 버튼을 먼저 눌러 주세요.'; btn.disabled = true; return; }
       btn.disabled = true; msg.textContent = '';
       MB.api('/api/v1/instructor/courses/' + st.courseId + '/review-request', { method: 'POST' }).then(function () {
         MB.toast('검수를 요청했어요. 관리자가 확인하면 알려 드려요.');
@@ -639,7 +659,7 @@
       h('ul', { class: 'cc-checks' }, checks.map(function (x) {
         return h('li', { class: x.ok ? 'is-ok' : '' }, [h('span', { class: 'cc-check', 'aria-hidden': 'true', text: x.ok ? '✓' : '·' }), x.text, x.ok ? null : ' (아직)']);
       })),
-      unsaved ? h('p', { class: 'ins-meta cc-warn', text: '저장하지 않은 구역이 있어요. 각 구역의 저장 버튼을 먼저 눌러 주세요.' }) : null,
+      h('p', { class: 'ins-meta cc-warn', 'data-cc-unsaved': '', hidden: !unsaved, text: '저장하지 않은 구역이 있어요. 각 구역의 저장 버튼을 먼저 눌러 주세요.' }),
       !requestable ? h('p', { class: 'ins-meta', text: c.status === 'REVIEW' ? '검수 중이에요.' : '허가된 강의는 고쳐서 저장하면 자동으로 다시 검수를 받아요.' }) : null,
       msg,
       h('div', { class: 'cc-save__row' }, [
