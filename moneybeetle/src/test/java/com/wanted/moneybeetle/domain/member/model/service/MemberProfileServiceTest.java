@@ -31,8 +31,6 @@ import java.util.OptionalInt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 
 /* comment.
@@ -62,8 +60,8 @@ class MemberProfileServiceTest {
 
         LevelTable table = levelTable();   // when() 안에서 다른 Mock 을 만들지 않도록 먼저 만든다
         when(growthService.loadLevelTable()).thenReturn(table);
-        when(courseService.findWatchHistories(any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(), Pageable.ofSize(1), 14));
-        when(courseService.findCompletedCourses(any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(), Pageable.ofSize(1), 5));
+        when(courseService.countWatchedLessons(any())).thenReturn(14L);          // 개수 전용 조회 (#188, #267)
+        when(courseService.countCompletedCourses(any())).thenReturn(5L);
     }
 
     /** 레벨 1~20, 필요 경험치 = (레벨-1)*150, 칭호는 레벨 번호 */
