@@ -117,7 +117,7 @@
 .adm-modal-backdrop[hidden] { display: none; }
 .adm-modal { width: min(420px, 100%); background: #fff; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 32px rgba(43, 43, 45, .22); }
 .adm-modal h2 { font-size: 19px; line-height: 1.4; }
-.adm-modal p { margin: 0; font-size: 14px; color: var(--color-neutral-600); line-height: 1.6; white-space: pre-line; word-break: keep-all; }
+.adm-modal p { margin: 0; font-size: 14px; color: var(--color-neutral-600); line-height: 1.6; white-space: pre-line; word-break: keep-all; overflow-wrap: anywhere; }
 
 @media (max-width: 767px) {
   .adm-head h1 { font-size: 28px; }

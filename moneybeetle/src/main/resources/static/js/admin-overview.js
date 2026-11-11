@@ -3,7 +3,7 @@
 *   대시보드 탭: 숫자 카드, 처리할 일, 최근 작업 기록
 *   - GET /api/v1/admin/dashboard (API 84)  : 검수 대기 강의, 답변 대기 문의, 진행 중 시즌, 학습자 수
 *   - GET /api/v1/admin/admin-logs?size=5 (API 113) : 최근 작업 기록 (설정·작업 기록 탭의 같은 표)
-*   season 이 null 이면 진행 중 시즌이 없다. todayOrders · nextTurnReady 가 null 이면 아직 집계되지 않은 값이라 "-" 로 보여 준다.
+*   season 이 null 이면 진행 중 시즌이 없다. todayOrders 가 null 이면 "오늘 주문 정보 없음" 을 보여 주고, nextTurnReady 가 null 이면(아직 집계되지 않은 값) 아무것도 보여 주지 않는다.
 *  */
 (function () {
   'use strict';
