@@ -410,7 +410,8 @@
           }).catch(function (err) {
             msg.textContent = errorText(err, '수정하지 못했어요.');
             save.disabled = false;
-            if (err && err.code === 'INQUIRY_ALREADY_ANSWERED') refreshDetail(d.inquiryId);
+            // 그사이 답변이 달렸거나 관리자가 숨겼으면 상세를 다시 받아 버튼(수정 없이 삭제만)을 서버 상태에 맞춘다
+            if (err && (err.code === 'INQUIRY_ALREADY_ANSWERED' || err.code === 'INQUIRY_HIDDEN')) refreshDetail(d.inquiryId);
           });
         });
         fill(bar, h('div', { class: 'inq-form inq-form--edit' }, [
