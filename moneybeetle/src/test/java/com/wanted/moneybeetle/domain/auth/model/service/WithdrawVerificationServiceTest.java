@@ -125,6 +125,28 @@ class WithdrawVerificationServiceTest {
     }
 
     @Test
+    @DisplayName("취소: 이미 시작한 코드 요청이 취소 뒤에 코드를 저장·발송하지 못한다 (취소 횟수 비교). 예약한 발송 간격은 돌려준다")
+    void inFlightRequestCannotUndoCancel() {
+        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        // 요청이 회원을 조회하는 사이(= 세션 잠금을 얻기 전)에 탈퇴 창이 닫혀 취소가 먼저 끝난 상황을 만든다
+        when(memberService.findLoginMemberById(7L)).thenAnswer(invocation -> {
+            if (cancelled.compareAndSet(false, true)) {
+                service.cancel(7L, session);
+            }
+            return Optional.of(socialMember(7L));
+        });
+
+        assertCode(() -> service.requestCode(7L, session), MemberErrorCode.IDENTITY_CODE_EXPIRED);
+
+        org.mockito.Mockito.verifyNoInteractions(mailer);                  // 코드를 보내지 않았다
+        assertThat(service.consumeVerified(7L, session)).isFalse();
+        // 예약한 60초 간격이 풀려서 바로 새로 요청할 수 있고, 취소 뒤 새로 시작한 요청은 정상으로 처리된다
+        service.requestCode(7L, session);
+        service.verify(7L, sentCode(), session);
+        assertThat(service.consumeVerified(7L, session)).isTrue();
+    }
+
+    @Test
     @DisplayName("취소 뒤에도 새로 받은 코드로 처음부터 다시 확인할 수 있다 (60초 제한은 지킨다)")
     void canVerifyAgainAfterCancel() {
         service.requestCode(7L, session);

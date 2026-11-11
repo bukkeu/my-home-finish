@@ -35,6 +35,8 @@ import org.springframework.web.util.WebUtils;
 public class WithdrawVerificationService implements WithdrawVerifier {
 
     static final String SESSION_KEY = "withdrawVerification";
+    /** 세션별 취소 횟수. 코드 요청이 시작된 뒤 취소가 있었으면 그 요청은 코드를 저장하지 않는다 (이슈 #279) */
+    static final String CANCEL_GENERATION_KEY = "withdrawVerificationCancelGeneration";
     static final int CODE_LENGTH = 6;
     static final Duration CODE_TTL = Duration.ofMinutes(5);
     static final Duration RESEND_INTERVAL = Duration.ofSeconds(60);
@@ -57,6 +59,8 @@ public class WithdrawVerificationService implements WithdrawVerifier {
 
     @Override
     public void requestCode(Long memberId, HttpSession session) {
+        // 요청이 시작된 시점의 취소 횟수를 기억해 두고, 코드를 저장하기 직전에 다시 비교한다 (그 사이 취소가 있었으면 이 요청은 버린다)
+        long generation = cancelGenerationOf(session);
         String email = requireSocialMemberEmail(memberId);
         Instant now = clock.instant();
         if (!reserveSendSlot(memberId, now)) {
@@ -66,6 +70,11 @@ public class WithdrawVerificationService implements WithdrawVerifier {
         // 세션의 확인 상태를 바꾸는 요청(코드 요청·확인·사용)은 같은 세션이면 한 번에 하나씩 처리한다.
         // 이전 상태를 읽고 새 상태를 저장하고 발송이 거절되면 되돌리는 과정이 다른 요청에 끼어들리지 않게 한다 (메일은 비동기라 잠금은 짧다)
         synchronized (WebUtils.getSessionMutex(session)) {
+            if (generation != cancelGenerationOf(session)) {
+                // 이 요청이 진행되는 동안 탈퇴 창이 닫혀 취소됐다. 취소를 되돌리지 않도록 코드를 만들지도 보내지도 않고, 예약한 발송 간격도 돌려준다
+                lastSentAt.remove(memberId, now);
+                throw new BusinessException(MemberErrorCode.IDENTITY_CODE_EXPIRED);
+            }
             Object previousState = session.getAttribute(SESSION_KEY);   // 발송이 거절되면 되돌린다
             session.setAttribute(SESSION_KEY, IdentityVerificationState.issued(email, IdentityVerificationService.hash(email, code), now.plus(CODE_TTL)));
             try {
@@ -147,10 +156,18 @@ public class WithdrawVerificationService implements WithdrawVerifier {
                 .orElse(null);
         synchronized (WebUtils.getSessionMutex(session)) {
             IdentityVerificationState state = stateOf(session);
+            // 취소 횟수를 올린다. 이미 시작했지만 아직 코드를 저장하지 않은 코드 요청은 이 값이 달라진 것을 보고 스스로 그만둔다
+            session.setAttribute(CANCEL_GENERATION_KEY, cancelGenerationOf(session) + 1);
             if (state != null && (email == null || state.getEmail().equals(email))) {
                 session.removeAttribute(SESSION_KEY);
             }
         }
+    }
+
+    /** 이 세션에서 지금까지 취소한 횟수 (한 번도 없으면 0). 세션 잠금 안에서 바꾸고, 읽을 때는 잠그지 않아도 값이 늘기만 해서 안전하다 */
+    private static long cancelGenerationOf(HttpSession session) {
+        Object value = session == null ? null : session.getAttribute(CANCEL_GENERATION_KEY);
+        return value instanceof Long count ? count : 0L;
     }
 
     /** 비밀번호가 없는 간편 로그인 회원의 정규화한 가입 이메일. 회원이 없으면 MEMBER_NOT_FOUND, 비밀번호가 있는 회원이면 FORBIDDEN */
