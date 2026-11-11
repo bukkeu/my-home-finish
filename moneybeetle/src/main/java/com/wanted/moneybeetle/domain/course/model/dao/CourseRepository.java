@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.course.model.dao;
 
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,15 +29,15 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     // 목록: 허가 + 공개 + 삭제 안 됨
     Page<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
-            List<Long> categoryIds, String status, Pageable pageable);
+            List<Long> categoryIds, CourseStatus status, Pageable pageable);
 
-    List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(String status);
+    List<Course> findByStatusAndIsPublicTrueAndDeletedAtIsNull(CourseStatus status);
 
     // 통합 검색(#15): 허가 + 공개 + 삭제 안 됨 강의 중 제목에 키워드가 들어간 것, 최근 강의부터 limit 개까지 (#296)
     List<Course> findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-            String keyword, String status, Limit limit);
+            String keyword, CourseStatus status, Limit limit);
 
-    List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, String status);
+    List<Course> findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(List<Long> categoryIds, CourseStatus status);
 
     /* 문의(#22): 강사가 맡은 강의 (삭제된 강의 제외) */
     List<Course> findByInstructorIdAndDeletedAtIsNull(Long instructorId);
@@ -53,10 +54,10 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
             where c.deletedAt is null
               and (:status is null or c.status = :status)
             """)
-    Page<Course> searchForAdmin(@Param("status") String status, Pageable pageable);
+    Page<Course> searchForAdmin(@Param("status") CourseStatus status, Pageable pageable);
 
     /* 대시보드(#33) reviewWaiting: 상태별 강의 수 (삭제 제외) */
-    long countByStatusAndDeletedAtIsNull(String status);
+    long countByStatusAndDeletedAtIsNull(CourseStatus status);
 
     /* 카테고리 삭제 판단 (API 88): 삭제된 강의도 FK로 연결돼 있어서 포함해 센다 */
     boolean existsByCategoryId(Long categoryId);
@@ -83,7 +84,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
               and (:status is null or c.status = :status)
             order by c.courseId desc
             """)
-    List<Course> findMyCourses(@Param("instructorId") Long instructorId, @Param("status") String status);
+    List<Course> findMyCourses(@Param("instructorId") Long instructorId, @Param("status") CourseStatus status);
 
     /* 강의 목록·이어서 볼 강의의 영상 수를 강의 여러 개 한 번에 센다 (#87, 강의마다 count 하던 N+1 정리) */
     @Query("""

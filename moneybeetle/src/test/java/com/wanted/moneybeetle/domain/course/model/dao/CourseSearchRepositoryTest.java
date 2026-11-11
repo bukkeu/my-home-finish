@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.MoneyBeetleApplication;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -58,7 +59,7 @@ class CourseSearchRepositoryTest {
 
     private Course course(String title, boolean isPublic, boolean isDeleted) {
         Course course = Course.create(2L, 21L, title, "소개", null, null);
-        ReflectionTestUtils.setField(course, "status", Course.STATUS_APPROVED);
+        ReflectionTestUtils.setField(course, "status", CourseStatus.APPROVED);
         ReflectionTestUtils.setField(course, "isPublic", isPublic);
         if (isDeleted) {
             ReflectionTestUtils.setField(course, "deletedAt", NOW);
@@ -68,7 +69,7 @@ class CourseSearchRepositoryTest {
 
     private List<Course> search(String keyword, int limit) {
         return courseRepository.findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-                keyword, Course.STATUS_APPROVED, Limit.of(limit));
+                keyword, CourseStatus.APPROVED, Limit.of(limit));
     }
 
     @Test

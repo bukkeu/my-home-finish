@@ -24,6 +24,7 @@ import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.LocalDateTime;
@@ -469,7 +470,7 @@ class MemberServiceTest {
         Member member = Member.signup("m" + id + "@b.com", "hash", nickname,
                 java.time.LocalDate.of(1999, 4, 12), null, java.time.LocalDate.of(2026, 11, 9));
         ReflectionTestUtils.setField(member, "memberId", id);
-        ReflectionTestUtils.setField(member, "status", status);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.valueOf(status));
         return member;
     }
 

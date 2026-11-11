@@ -18,6 +18,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -114,7 +115,7 @@ class AuthLoginFlowTest {
                 LocalDate.of(2026, 11, 9));
         ReflectionTestUtils.setField(member, "memberId", 8L);
         ReflectionTestUtils.setField(member, "role", role);
-        ReflectionTestUtils.setField(member, "status", status);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.valueOf(status));
         when(memberRepository.findByEmail(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(member));

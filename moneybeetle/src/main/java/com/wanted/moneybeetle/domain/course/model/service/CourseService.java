@@ -20,6 +20,7 @@ import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.CourseReview;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
@@ -92,7 +93,7 @@ public class CourseService {
         List<Long> categoryIds = findCategoryIdsWithChildren(categoryId);
 
         Page<Course> courses = courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
-                categoryIds, Course.STATUS_APPROVED, pageable);
+                categoryIds, CourseStatus.APPROVED, pageable);
 
         // 이 페이지 강의 중 내가 스크랩한 것을 한 번에 조회 (강의마다 조회하지 않음)
         Set<Long> scrappedIds = (memberId == null)
@@ -187,7 +188,7 @@ public class CourseService {
 
     /* API 34. 시청 기록: 최근 본 영상 순 (LRN-06) */
     public Page<WatchHistoryDTO> findWatchHistories(Long memberId, Pageable pageable) {
-        Page<LessonWatch> watches = lessonWatchRepository.findVisibleByMemberId(memberId, Course.STATUS_APPROVED, pageable);
+        Page<LessonWatch> watches = lessonWatchRepository.findVisibleByMemberId(memberId, CourseStatus.APPROVED, pageable);
 
         Map<Long, Lesson> lessons = lessonRepository.findAllById(
                         watches.getContent().stream().map(LessonWatch::getLessonId).toList())
@@ -205,7 +206,7 @@ public class CourseService {
     /* API 35. 학습 완료 목록 (LRN-06, LRN-07) */
     public Page<CompletedCourseDTO> findCompletedCourses(Long memberId, Pageable pageable) {
         Page<LearningProgress> completed = learningProgressRepository.findVisibleByMemberIdAndStatus(
-                memberId, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED, pageable);
+                memberId, LearningProgress.STATUS_COMPLETED, CourseStatus.APPROVED, pageable);
 
         Map<Long, Course> courses = findCoursesByIds(
                 completed.getContent().stream().map(LearningProgress::getCourseId).toList());
@@ -217,13 +218,13 @@ public class CourseService {
 
     /* 본 영상 수: 시청 기록(API 34, findWatchHistories)과 같은 조건(이 회원, 허가 + 공개 + 삭제 안 된 강의)으로 개수만 센다 */
     public long countWatchedLessons(Long memberId) {
-        return lessonWatchRepository.countVisibleByMemberId(memberId, Course.STATUS_APPROVED);
+        return lessonWatchRepository.countVisibleByMemberId(memberId, CourseStatus.APPROVED);
     }
 
     /* 학습 완료한 강의 수: 학습 완료 목록(API 35, findCompletedCourses)과 같은 조건으로 개수만 센다 */
     public long countCompletedCourses(Long memberId) {
         return learningProgressRepository.countVisibleByMemberIdAndStatus(
-                memberId, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED);
+                memberId, LearningProgress.STATUS_COMPLETED, CourseStatus.APPROVED);
     }
 
     /* 이 강의에서 가장 최근에 본 영상 기록 한 건 (홈 '이어서 볼 강의').
@@ -231,7 +232,7 @@ public class CourseService {
      * 본 적 없거나 강의가 보이지 않으면(비공개·삭제) 빈 값 */
     public Optional<WatchHistoryDTO> findLastWatched(Long memberId, Long courseId) {
         return lessonWatchRepository.findLatestVisibleByMemberIdAndCourseId(
-                        memberId, courseId, Course.STATUS_APPROVED, PageRequest.of(0, 1))
+                        memberId, courseId, CourseStatus.APPROVED, PageRequest.of(0, 1))
                 .stream()
                 .findFirst()
                 .flatMap(watch -> lessonRepository.findById(watch.getLessonId())
@@ -327,10 +328,10 @@ public class CourseService {
                     .map(List::of)
                     .orElse(List.of());
         } else if (categoryId == null) {
-            courses = courseRepository.findByStatusAndIsPublicTrueAndDeletedAtIsNull(Course.STATUS_APPROVED);
+            courses = courseRepository.findByStatusAndIsPublicTrueAndDeletedAtIsNull(CourseStatus.APPROVED);
         } else {
             courses = courseRepository.findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(
-                    findCategoryIdsWithChildren(categoryId), Course.STATUS_APPROVED);
+                    findCategoryIdsWithChildren(categoryId), CourseStatus.APPROVED);
         }
         return toLabels(courses);
     }
@@ -394,7 +395,7 @@ public class CourseService {
     public List<CourseLabelDTO> search(String keyword) {
         List<Course> courses = courseRepository
                 .findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-                        keyword, Course.STATUS_APPROVED, Limit.of(SEARCH_LIMIT));
+                        keyword, CourseStatus.APPROVED, Limit.of(SEARCH_LIMIT));
         return toLabels(courses);
     }
 
@@ -404,13 +405,13 @@ public class CourseService {
     private Course getVisibleCourse(Long courseId) {
         return courseRepository.findById(courseId)
                 .filter(Course::isVisibleToLearner)
-                .orElseThrow(() -> new BusinessException(CourseErrorCode.COURSE_NOT_PUBLIC)); // TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.COURSE_NOT_PUBLIC));
     }
 
     /* 그 강의에 속한 영상인지 확인한다 */
     private Lesson getLessonOfCourse(Long courseId, Long lessonId) {
         return lessonRepository.findByLessonIdAndCourseId(lessonId, courseId)
-                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));// TODO 공통 설정 병합 후 BusinessException으로
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));
     }
 
     private Map<Long, Course> findCoursesByIds(List<Long> courseIds) {
@@ -476,7 +477,7 @@ public class CourseService {
 
     /* 대시보드(#33): 검수 대기(REVIEW) 강의 수 */
     public long countReviewWaiting() {
-        return courseRepository.countByStatusAndDeletedAtIsNull(Course.STATUS_REVIEW);
+        return courseRepository.countByStatusAndDeletedAtIsNull(CourseStatus.REVIEW);
     }
 
     /* 강사 강의 목록(API 79): 가장 최근 반려 사유. 반려 이력이 없으면 null */

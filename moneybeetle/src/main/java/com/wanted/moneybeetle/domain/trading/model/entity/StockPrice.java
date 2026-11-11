@@ -1,28 +1,26 @@
 package com.wanted.moneybeetle.domain.trading.model.entity;
 
-import jakarta.persistence.Column;
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 /* comment.
 *   담당 : PM (모의투자)
 *   테이블 stock_price (시즌 x 종목 x 턴)
+*   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#293)
 *  */
 @Entity
 @Table(name = "stock_price")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StockPrice {
+public class StockPrice extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,14 +36,6 @@ public class StockPrice {
 
     /** 지난 턴 대비 변동률(%), 1턴은 없음 */
     private BigDecimal changeRate;
-
-    // TODO(#2): BaseTimeEntity 가 생기면 상속으로 바꾼다
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 
     private StockPrice(Long tradingSeasonId, Long stockId, int turnNo, int price,
             BigDecimal changeRate) {

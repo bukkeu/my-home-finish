@@ -20,6 +20,7 @@ import com.wanted.moneybeetle.domain.course.model.dao.ScrapRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseLabelDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.member.model.service.InstructorService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import java.time.Clock;
@@ -73,7 +74,7 @@ class CourseLabelQueryTest {
     private static Course course(Long id, Long categoryId, boolean visible) {
         Course course = Course.create(2L, categoryId, "청약통장 기초", "소개", null, null);
         ReflectionTestUtils.setField(course, "courseId", id);
-        ReflectionTestUtils.setField(course, "status", Course.STATUS_APPROVED);
+        ReflectionTestUtils.setField(course, "status", CourseStatus.APPROVED);
         ReflectionTestUtils.setField(course, "isPublic", visible);
         return course;
     }
@@ -87,8 +88,8 @@ class CourseLabelQueryTest {
 
         assertThat(labels).extracting(CourseLabelDTO::getCourseId).containsExactly(COURSE);
         assertThat(labels.get(0).getCategoryName()).isEqualTo("부동산 › 청약");
-        verify(courseRepository, never()).findByStatusAndIsPublicTrueAndDeletedAtIsNull(anyString());
-        verify(courseRepository, never()).findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(anyList(), anyString());
+        verify(courseRepository, never()).findByStatusAndIsPublicTrueAndDeletedAtIsNull(any());
+        verify(courseRepository, never()).findByCategoryIdInAndStatusAndIsPublicTrueAndDeletedAtIsNull(anyList(), any());
         verifyNoInteractions(categoryRepository);   // 카테고리를 고르지 않았으면 하위 소주제도 찾지 않는다
     }
 
@@ -122,21 +123,21 @@ class CourseLabelQueryTest {
     @DisplayName("통합 검색은 최근 강의부터 50개까지만 요청한다")
     void searchLimitedTo50() {
         when(courseRepository.findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-                "청약", Course.STATUS_APPROVED, Limit.of(50)))
+                "청약", CourseStatus.APPROVED, Limit.of(50)))
                 .thenReturn(List.of(course(COURSE, SUBSCRIPTION, true)));
 
         List<CourseLabelDTO> result = courseService.search("청약");
 
         assertThat(result).extracting(CourseLabelDTO::getCategoryName).containsExactly("부동산 › 청약");
         verify(courseRepository).findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-                "청약", Course.STATUS_APPROVED, Limit.of(50));
+                "청약", CourseStatus.APPROVED, Limit.of(50));
     }
 
     @Test
     @DisplayName("검색 결과가 없으면 카테고리 이름도 읽지 않는다")
     void emptySearchSkipsCategories() {
         when(courseRepository.findByTitleContainingAndStatusAndIsPublicTrueAndDeletedAtIsNullOrderByCourseIdDesc(
-                anyString(), anyString(), any(Limit.class))).thenReturn(List.of());
+                anyString(), any(), any(Limit.class))).thenReturn(List.of());
 
         assertThat(courseService.search("없는말")).isEmpty();
         verifyNoInteractions(categoryPathService);
