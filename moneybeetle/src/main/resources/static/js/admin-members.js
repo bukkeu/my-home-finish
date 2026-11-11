@@ -117,6 +117,30 @@
     history.replaceState(null, '', location.pathname + '?' + q.toString());
   }
 
+
+  /* 같은 화면 안의 하위 메뉴 탭 (role=tab). ←·→ 로 옆 탭, Home·End 로 처음·끝 탭 */
+  function bindTabs(root, onPick) {
+    var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-ao-tab]'));
+    tabs.forEach(function (b, i) {
+      b.addEventListener('click', function () { onPick(b.dataset.aoTab); });
+      b.addEventListener('keydown', function (e) {
+        var to = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length
+          : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+        if (to < 0) return;
+        e.preventDefault();
+        onPick(tabs[to].dataset.aoTab);
+        tabs[to].focus();
+      });
+    });
+  }
+  function markTabs(root, tab) {
+    root.querySelectorAll('[data-ao-tab]').forEach(function (b) {
+      var on = b.dataset.aoTab === tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+  }
+
   /* =================== 회원·강사 =================== */
 
   var members = document.querySelector('[data-ao-members]');
@@ -137,7 +161,7 @@
 
     function showTab(tab, keepUrl) {
       if (tab !== 'applications') tab = 'users';
-      root.querySelectorAll('[data-ao-tab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.aoTab === tab)); });
+      markTabs(root, tab);
       root.querySelectorAll('[data-ao-pane]').forEach(function (p) { p.hidden = p.dataset.aoPane !== tab; });
       if (!keepUrl) setUrlTab('members', tab);
       if (!loaded[tab]) {
@@ -145,9 +169,7 @@
         if (tab === 'users') loadUsers(); else loadApps();
       }
     }
-    root.querySelectorAll('[data-ao-tab]').forEach(function (b) {
-      b.addEventListener('click', function () { showTab(b.dataset.aoTab); });
-    });
+    bindTabs(root, function (tab) { showTab(tab); });
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();

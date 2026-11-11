@@ -104,10 +104,33 @@
 
   /* ---------- 하위 메뉴 ---------- */
 
+  /* 같은 화면 안의 하위 메뉴 탭 (role=tab). ←·→ 로 옆 탭, Home·End 로 처음·끝 탭 */
+  function bindTabs(root, onPick) {
+    var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-ao-tab]'));
+    tabs.forEach(function (b, i) {
+      b.addEventListener('click', function () { onPick(b.dataset.aoTab); });
+      b.addEventListener('keydown', function (e) {
+        var to = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length
+          : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+        if (to < 0) return;
+        e.preventDefault();
+        onPick(tabs[to].dataset.aoTab);
+        tabs[to].focus();
+      });
+    });
+  }
+  function markTabs(root, tab) {
+    root.querySelectorAll('[data-ao-tab]').forEach(function (b) {
+      var on = b.dataset.aoTab === tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+  }
+
   function showTab(tab, keepUrl) {
     if (TABS.indexOf(tab) < 0) tab = 'review';
     st.tab = tab;
-    root.querySelectorAll('[data-ao-tab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.aoTab === tab)); });
+    markTabs(root, tab);
     root.querySelectorAll('[data-ao-pane]').forEach(function (p) { p.hidden = p.dataset.aoPane !== tab; });
     if (!keepUrl && history.replaceState) {
       var q = new URLSearchParams(location.search);
@@ -123,9 +146,7 @@
     }
   }
 
-  root.querySelectorAll('[data-ao-tab]').forEach(function (b) {
-    b.addEventListener('click', function () { if (st.tab !== b.dataset.aoTab) showTab(b.dataset.aoTab); });
-  });
+  bindTabs(root, function (tab) { if (st.tab !== tab) showTab(tab); });
 
   /* 카테고리 경로 (검수 상세에 '부동산 › 청약'으로 보이기). 실패해도 화면은 그대로 쓴다 */
   var pathsReady = null;

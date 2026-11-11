@@ -50,12 +50,16 @@ class AdminOpsTabsRenderTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
-    private String render(String url) throws Exception {
+    private AuthDetails login(long memberId, String authority) {
         AuthDetails details = mock(AuthDetails.class);
-        when(details.getMemberId()).thenReturn(1L);
-        when(details.getUsername()).thenReturn("admin@moneybeetle.local");
-        doReturn(List.of(new SimpleGrantedAuthority("ADMIN"))).when(details).getAuthorities();
-        return mockMvc.perform(get(url).with(user(details)))
+        when(details.getMemberId()).thenReturn(memberId);
+        when(details.getUsername()).thenReturn(authority.toLowerCase() + "@moneybeetle.local");
+        doReturn(List.of(new SimpleGrantedAuthority(authority))).when(details).getAuthorities();
+        return details;
+    }
+
+    private String render(String url) throws Exception {
+        return mockMvc.perform(get(url).with(user(login(1L, "ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/dashboard"))
                 .andReturn().getResponse().getContentAsString();
@@ -66,7 +70,7 @@ class AdminOpsTabsRenderTest {
     void coursesTab() throws Exception {
         String html = render("/admin/dashboard?view=courses");
 
-        assertThat(html).contains("data-ao-courses", "data-ao-pane=\"review\"", "data-ao-pane=\"all\"", "data-ao-pane=\"categories\"",
+        assertThat(html).contains("data-ao-courses", "role=\"tablist\"", "aria-controls=\"ao-pane-review\"", "data-ao-pane=\"review\"", "data-ao-pane=\"all\"", "data-ao-pane=\"categories\"",
                         "/css/admin-ops.css", "/js/admin-common.js", "/js/admin-courses.js")
                 .doesNotContain("/js/admin-members.js", "/js/admin-overview.js");
     }
@@ -87,5 +91,22 @@ class AdminOpsTabsRenderTest {
 
         assertThat(html).contains("data-ao-board", "data-ao-filter=\"hidden\"", "/js/admin-members.js")
                 .doesNotContain("data-ao-members", "/js/admin-courses.js");
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 회원·강사는 세 탭 모두 서버에서 막힌다")
+    void forbiddenForNonAdmin() throws Exception {
+        for (String authority : List.of("MEMBER", "INSTRUCTOR")) {
+            for (String view : List.of("courses", "members", "board")) {
+                mockMvc.perform(get("/admin/dashboard?view=" + view).with(user(login(2L, authority))))
+                        .andExpect(status().isForbidden());
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("로그인하지 않으면 강의 운영 탭에 들어오지 못하고 로그인으로 보낸다")
+    void anonymousRedirected() throws Exception {
+        mockMvc.perform(get("/admin/dashboard?view=courses")).andExpect(status().is3xxRedirection());
     }
 }

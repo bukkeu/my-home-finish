@@ -108,3 +108,6 @@
 }
 @media (prefers-reduced-motion: reduce) { .ao-switch__track, .ao-switch__track::after { transition: none; } }
 .ao .adm-seg button { display: inline-flex; align-items: center; }
+/* 하위 메뉴 탭(role=tab)은 aria-selected 로 고른 상태를 나타낸다 (틀의 .adm-seg 는 aria-pressed 기준이라 같은 모양을 더한다) */
+.adm-seg button[aria-selected="true"] { background: var(--color-accent-700); color: var(--color-accent-400); }
+.adm-seg button[aria-selected="true"] .ao-count { background: var(--color-accent-400); color: var(--color-accent-700); }

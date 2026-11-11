@@ -8,14 +8,14 @@
 <link rel="stylesheet" type="text/css" th:href="@{/css/admin-ops.css}">
 <section class="ao" id="ao-courses" data-ao-courses>
   <div class="ao-toolbar">
-    <div class="adm-seg" role="group" aria-label="강의 운영 메뉴">
-      <button type="button" data-ao-tab="review" aria-pressed="true">검수 대기<span class="ao-count" data-ao-review-count hidden></span></button>
-      <button type="button" data-ao-tab="all" aria-pressed="false">전체 강의</button>
-      <button type="button" data-ao-tab="categories" aria-pressed="false">카테고리</button>
+    <div class="adm-seg" role="tablist" aria-label="강의 운영 메뉴">
+      <button type="button" role="tab" id="ao-tab-review" aria-controls="ao-pane-review" data-ao-tab="review" aria-selected="true">검수 대기<span class="ao-count" data-ao-review-count hidden></span></button>
+      <button type="button" role="tab" id="ao-tab-all" aria-controls="ao-pane-all" data-ao-tab="all" aria-selected="false" tabindex="-1">전체 강의</button>
+      <button type="button" role="tab" id="ao-tab-categories" aria-controls="ao-pane-categories" data-ao-tab="categories" aria-selected="false" tabindex="-1">카테고리</button>
     </div>
   </div>
 
-  <div data-ao-pane="review">
+  <div data-ao-pane="review" role="tabpanel" id="ao-pane-review" aria-labelledby="ao-tab-review">
     <div class="ao-review">
       <div class="adm-box ao-queue" aria-label="검수 대기 강의" data-ao-queue>
         <p class="adm-empty">불러오고 있어요…</p>
@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <div data-ao-pane="all" hidden>
+  <div data-ao-pane="all" role="tabpanel" id="ao-pane-all" aria-labelledby="ao-tab-all" hidden>
     <div class="ao" data-ao-all>
       <div class="ao-toolbar">
         <label class="adm-field">상태
@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <div data-ao-pane="categories" hidden>
+  <div data-ao-pane="categories" role="tabpanel" id="ao-pane-categories" aria-labelledby="ao-tab-categories" hidden>
     <div class="ao" data-ao-cats-root>
       <div class="ao-cats" data-ao-cats><p class="adm-empty">불러오고 있어요…</p></div>
       <div class="adm-box">
