@@ -18,6 +18,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -175,7 +176,7 @@ class WithdrawnSessionHttpTest {
         MockHttpSession session = new MockHttpSession();
         loginForm(EMAIL, PASSWORD, session).andExpect(status().isOk());
 
-        ReflectionTestUtils.setField(member, "status", Member.STATUS_SUSPENDED);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.SUSPENDED);
 
         mockMvc.perform(get("/api/v1/courses").session(session)).andExpect(status().isUnauthorized());
     }

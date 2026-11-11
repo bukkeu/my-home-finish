@@ -3,6 +3,7 @@ package com.wanted.moneybeetle.domain.member.model.dao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
 import com.wanted.moneybeetle.MoneyBeetleApplication;
 import java.time.LocalDate;
@@ -140,7 +141,7 @@ class MemberPurgeRepositoryTest {
     /** Member 의 상태 필드를 직접 바꾸는 테스트 도우미 (정지 상태를 만들 공개 메서드가 아직 없다) */
     private static final class ReflectionTestUtilsHelper {
         static void setStatus(Member member, String status) {
-            org.springframework.test.util.ReflectionTestUtils.setField(member, "status", status);
+            org.springframework.test.util.ReflectionTestUtils.setField(member, "status", MemberStatus.valueOf(status));
         }
     }
 }
