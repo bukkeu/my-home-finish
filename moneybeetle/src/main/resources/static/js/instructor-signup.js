@@ -12,7 +12,7 @@
   var titleEl = document.querySelector('[data-ins-title]');
 
   var STEPS = ['이메일 인증', '비밀번호', '약관 동의', '강사 정보'];
-  var PASSWORD = /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/;   // SignupRules.PASSWORD_PATTERN 과 같다
+  var PASSWORD = /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/u;   // SignupRules.PASSWORD_PATTERN 과 같다. u: 이모지 같은 글자도 서버처럼 한 글자로 센다
   var NICKNAME = /^[가-힣A-Za-z0-9]{2,12}$/;
   var STEP_OF_CODE = {
     EMAIL_INVALID: 0, EMAIL_DUPLICATED: 0, IDENTITY_NOT_VERIFIED: 0,
@@ -56,10 +56,8 @@
   }
 
   function errorText(err, fallback) {
-    if (err && err.fields) {
-      var first = Object.keys(err.fields)[0];
-      if (first) return err.fields[first];
-    }
+    // 입력값 오류(@Valid)면 error.fields 는 [{ field, message }] 목록이다 (GlobalExceptionHandler)
+    if (err && Array.isArray(err.fields) && err.fields.length && err.fields[0].message) return err.fields[0].message;
     return (err && err.message) || fallback;
   }
 
@@ -185,7 +183,20 @@
 
   function drawTerms() {
     if (!st.terms) {
-      loadTerms().then(draw).catch(function (err) { st.terms = []; st.error = errorText(err, '약관을 불러오지 못했어요.'); draw(); });
+      // 불러오지 못했으면 빈 목록으로 넘어가지 않고, 다시 시도할 수 있게 한다 (오류 문구는 아래 ins-error 에 보인다)
+      if (st.termsFailed) {
+        return h('div', { class: 'ins-state' }, [
+          h('button', { type: 'button', class: 'btn btn-secondary', text: '약관 다시 불러오기',
+            onclick: function () { st.termsFailed = false; st.error = ''; draw(); } }),
+          h('br'),
+          h('button', { type: 'button', class: 'btn btn-ghost', text: '이전', onclick: function () { go(st.step - 1); } })
+        ]);
+      }
+      loadTerms().then(draw).catch(function (err) {
+        st.termsFailed = true;
+        st.error = errorText(err, '약관을 불러오지 못했어요.');
+        draw();
+      });
       return h('div', { class: 'ins-state', text: '약관을 불러오는 중이에요…' });
     }
     var all = st.terms.length > 0 && st.terms.every(function (t) { return st.agreed[t.termsId]; });
@@ -240,7 +251,7 @@
       clearInterval(timer);
     }).catch(function (err) {
       var step = STEP_OF_CODE[err && err.code];
-      if (step === undefined && err && err.fields) step = STEP_OF_FIELD[Object.keys(err.fields)[0]];
+      if (step === undefined && err && Array.isArray(err.fields) && err.fields.length) step = STEP_OF_FIELD[err.fields[0].field];
       if (err && err.code === 'IDENTITY_NOT_VERIFIED') { st.verified = false; st.codeSent = false; }   // 세션이 바뀌었으면 다시 인증
       st.busy = false;
       if (step !== undefined) st.step = step;

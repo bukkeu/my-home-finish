@@ -34,17 +34,22 @@
   /* 강사 권한이 없는 계정으로 로그인됐으면 세션을 바로 끝낸다.
    * 로그인하면 세션과 CSRF 토큰이 새로 바뀌므로, 이 화면을 한 번 더 받아 새 토큰을 읽은 뒤 로그아웃한다 */
   function logout() {
-    return fetch(location.pathname, { credentials: 'same-origin' }).then(function (res) { return res.text(); })
-      .then(function (html) {
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        ['_csrf', '_csrf_header'].forEach(function (name) {
-          var fresh = doc.querySelector('meta[name="' + name + '"]');
-          var old = document.querySelector('meta[name="' + name + '"]');
-          if (fresh && old) old.setAttribute('content', fresh.getAttribute('content'));
-        });
-        return fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'same-origin', headers: csrfHeaders() });
-      })
-      .catch(function () { /* 로그아웃 실패는 안내만 보여 준다 */ });
+    return fetch(location.pathname, { credentials: 'same-origin' }).then(function (res) {
+      if (!res.ok) throw new Error('CSRF 토큰을 다시 받지 못했어요');
+      return res.text();
+    }).then(function (html) {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      ['_csrf', '_csrf_header'].forEach(function (name) {
+        var fresh = doc.querySelector('meta[name="' + name + '"]');
+        var old = document.querySelector('meta[name="' + name + '"]');
+        if (!fresh || !old || !fresh.getAttribute('content')) throw new Error('CSRF 토큰이 없어요');
+        old.setAttribute('content', fresh.getAttribute('content'));
+      });
+      return fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'same-origin', headers: csrfHeaders() });
+    }).then(function (res) {
+      // fetch 로그아웃은 성공하면 204 (API 7). 그 밖이면 세션이 남아 있을 수 있어 실패로 본다
+      if (res.status !== 204) throw new Error('로그아웃하지 못했어요');
+    });
   }
 
   toggle.addEventListener('click', function () {
@@ -56,6 +61,7 @@
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    if (submit.disabled) return;   // 처리 중에 엔터로 다시 들어온 제출은 무시한다
     var email = form.email.value.trim();
     var password = pw.value;
     if (!email || !password) { showError('이메일과 비밀번호를 입력해 주세요.'); return; }
@@ -84,6 +90,8 @@
             showError(data.role === 'ADMIN'
               ? '관리자 계정은 관리자 로그인에서 들어와 주세요.'
               : '강사 권한이 없는 계정이에요. 강사 가입을 신청했다면 관리자 승인 뒤에 로그인할 수 있어요.');
+          }, function () {
+            showError('강사 권한이 없는 계정인데 로그아웃하지 못했어요. 로그인 상태가 남아 있을 수 있으니 페이지를 새로고침한 뒤 다시 시도해 주세요.');
           });
         }
         var code = r.json && r.json.error && r.json.error.code;

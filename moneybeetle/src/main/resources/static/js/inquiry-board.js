@@ -66,10 +66,8 @@
   }
 
   function errorText(err, fallback) {
-    if (err && err.fields) {
-      var first = Object.keys(err.fields)[0];
-      if (first) return err.fields[first];
-    }
+    // 입력값 오류(@Valid)면 error.fields 는 [{ field, message }] 목록이다 (GlobalExceptionHandler)
+    if (err && Array.isArray(err.fields) && err.fields.length && err.fields[0].message) return err.fields[0].message;
     return (err && err.message) || fallback;
   }
 
