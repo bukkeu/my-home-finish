@@ -72,6 +72,13 @@
     ]);
   }
 
+  /* 강의 상세 링크. 강의 ID가 없으면(비정상 응답) courseId=undefined 주소를 만들지 않고 링크를 그리지 않는다 (h 는 null 자식을 건너뛴다) */
+  function courseLink(courseId, text, cls, lessonId) {
+    if (!courseId) return null;
+    var href = '/user/lecture-detail?courseId=' + encodeURIComponent(courseId) + (lessonId ? '&lessonId=' + encodeURIComponent(lessonId) : '');
+    return h('a', { class: cls, href: href, text: text });
+  }
+
   function badge(text, kind) {
     return h('span', { class: 'ml-badge ml-badge--' + kind, text: text });
   }
@@ -190,7 +197,7 @@
     ] : [
       h('button', { type: 'button', class: 'btn btn-secondary', text: retrying ? '그만 풀기' : '다시 풀기',
         disabled: !retrying && !choices.length, onclick: function () { toggleRetry(id); } }),
-      h('a', { class: 'btn btn-ghost', href: '/user/lecture-detail?courseId=' + n.courseId, text: '강의 보기' }),
+      courseLink(n.courseId, '강의 보기', 'btn btn-ghost'),
       h('button', { type: 'button', class: 'btn btn-ghost ml-muted', text: '오답 지우기',
         onclick: function () { wrong.asking[id] = true; drawWrong(); } })
     ]);
@@ -282,7 +289,7 @@
             h('span', { class: 'ml-meta', text: day(c.scrappedAt) + ' 스크랩' })
           ]),
           h('div', { class: 'ml-row__side' }, [
-            h('a', { class: 'btn btn-secondary', href: '/user/lecture-detail?courseId=' + c.courseId, text: '강의 보기' }),
+            courseLink(c.courseId, '강의 보기', 'btn btn-secondary'),
             h('button', { type: 'button', class: 'btn btn-ghost ml-muted', text: busy ? '해제하는 중…' : '스크랩 해제',
               disabled: busy, onclick: function () { unscrap(c); } })
           ])
@@ -337,8 +344,7 @@
           ]),
           h('div', { class: 'ml-row__side' }, [
             r.isCompleted ? badge('시청 완료', 'done') : badge('시청 중', 'doing'),
-            h('a', { class: 'btn btn-secondary', href: '/user/lecture-detail?courseId=' + r.courseId + '&lessonId=' + r.lessonId,
-              text: r.isCompleted ? '다시 보기' : '이어보기' })
+            courseLink(r.courseId, r.isCompleted ? '다시 보기' : '이어보기', 'btn btn-secondary', r.lessonId)
           ])
         ]);
       })) : h('div', { class: 'card ml-state', text: '최근 본 영상이 없어요.' }),
@@ -352,7 +358,7 @@
           ]),
           h('div', { class: 'ml-row__side' }, [
             badge('학습 완료', 'done'),
-            h('a', { class: 'btn btn-secondary', href: '/user/lecture-detail?courseId=' + c.courseId, text: '강의 보기' })
+            courseLink(c.courseId, '강의 보기', 'btn btn-secondary')
           ])
         ]);
       })) : h('div', { class: 'card ml-state', text: '아직 학습을 완료한 강의가 없어요. 영상을 다 보고 퀴즈를 통과하면 완료돼요.' }),
@@ -407,7 +413,7 @@
         h('button', { type: 'button', class: 'btn btn-ghost', 'aria-expanded': String(open), 'aria-controls': open ? detailId : null,
           text: open ? '접기' : '내용·답변 보기', onclick: function () { toggleQna(id); } }),
         h('a', { class: 'btn btn-ghost', href: '/user/inquiry/' + id, text: '문의 게시판에서 보기' }),
-        q.courseTitle ? h('a', { class: 'btn btn-secondary ml-push', href: '/user/lecture-detail?courseId=' + q.courseId, text: '해당 강의 보러 가기' }) : null
+        q.courseTitle ? courseLink(q.courseId, '해당 강의 보러 가기', 'btn btn-secondary ml-push') : null
       ])
     ]);
   }
