@@ -101,6 +101,8 @@
         box.appendChild(el('span', 'mh-row is-num', fmt(d.recognizedAmount)));
       });
     }).catch(function (err) {
+      // 실패하면 예전 내역을 지우고 오류 문구만 보인다 (모의 청약 화면 housing.js 의 납입 내역과 같은 방식)
+      box.querySelectorAll('.mh-row').forEach(function (n) { n.remove(); });
       var empty = q('empty');
       empty.textContent = err.message;
       empty.hidden = false;
