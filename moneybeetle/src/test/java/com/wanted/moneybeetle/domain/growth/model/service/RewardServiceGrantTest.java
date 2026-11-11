@@ -16,6 +16,7 @@ import com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
@@ -72,7 +73,7 @@ class RewardServiceGrantTest {
         return ExpHistory.create(MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L, null, 100, 100, 1);
     }
 
-    private static CashHistory existingCash(String sourceType) {
+    private static CashHistory existingCash(CashSource sourceType) {
         return CashHistory.earn(MEMBER, sourceType, 15L, null, 30_000, 30_000);
     }
 
@@ -102,7 +103,7 @@ class RewardServiceGrantTest {
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository).save(cash.capture());
         assertThat(cash.getValue().getHistoryType()).isEqualTo(CashHistory.EARN);
-        assertThat(cash.getValue().getSourceType()).isEqualTo(CashHistory.SOURCE_COURSE_COMPLETE);
+        assertThat(cash.getValue().getSourceType()).isEqualTo(CashSource.COURSE_COMPLETE);
         assertThat(cash.getValue().getSourceId()).isEqualTo(15L);
         assertThat(cash.getValue().getAmount()).isEqualTo(30_000);
         assertThat(cash.getValue().getBalanceAfter()).isEqualTo(35_000);
@@ -137,7 +138,7 @@ class RewardServiceGrantTest {
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository, org.mockito.Mockito.times(2)).save(cash.capture());
         CashHistory levelCash = cash.getAllValues().get(1);
-        assertThat(levelCash.getSourceType()).isEqualTo(CashHistory.SOURCE_LEVEL_UP);
+        assertThat(levelCash.getSourceType()).isEqualTo(CashSource.LEVEL_UP);
         assertThat(levelCash.getSourceId()).isEqualTo(4L);           // 원인 ID = 오른 레벨
         assertThat(levelCash.getAmount()).isEqualTo(40_000);
         assertThat(levelCash.getBalanceAfter()).isEqualTo(75_000);
@@ -172,7 +173,7 @@ class RewardServiceGrantTest {
             int level = i + 2;
             running += level * 10_000L;
             CashHistory history = cash.getAllValues().get(i);
-            assertThat(history.getSourceType()).isEqualTo(CashHistory.SOURCE_LEVEL_UP);
+            assertThat(history.getSourceType()).isEqualTo(CashSource.LEVEL_UP);
             assertThat(history.getSourceId()).isEqualTo((long) level);   // 레벨마다 한 줄
             assertThat(history.getBalanceAfter()).isEqualTo(running);
         }
@@ -403,7 +404,7 @@ class RewardServiceGrantTest {
         givenRule(RewardRule.COURSE_COMPLETE, 0, 100);
         givenBalance(3, 500, 35_000);
         when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingCash(CashHistory.SOURCE_COURSE_COMPLETE)));
+                MEMBER, CashSource.COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingCash(CashSource.COURSE_COMPLETE)));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -437,18 +438,18 @@ class RewardServiceGrantTest {
         when(memberService.deductCash(MEMBER, 1_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 1, 100, 79_000));
 
         rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
-        rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 1_000);
+        rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 1_000);
 
         verify(expHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
                 MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L);
         verify(cashHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L);
+                MEMBER, CashSource.COURSE_COMPLETE, 15L);
         verify(cashHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L);
+                MEMBER, CashSource.SEASON_JOIN, 1L);
         verify(expHistoryRepository, never()).existsByMemberIdAndSourceTypeAndSourceId(
                 org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
         verify(cashHistoryRepository, never()).existsByMemberIdAndSourceTypeAndSourceId(
-                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(CashSource.class), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -464,7 +465,7 @@ class RewardServiceGrantTest {
         assertThat(result.getGrantedExp()).isZero();
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository).save(cash.capture());
-        assertThat(cash.getValue().getSourceType()).isEqualTo(CashHistory.SOURCE_ATTENDANCE);
+        assertThat(cash.getValue().getSourceType()).isEqualTo(CashSource.ATTENDANCE);
         verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -643,7 +644,7 @@ class RewardServiceGrantTest {
         givenBalance(8, 1250, 50_000);
         when(memberService.deductCash(MEMBER, 20_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1250, 30_000));
 
-        long balance = rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000);
+        long balance = rewardService.spendCash(MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L, 20_000);
 
         assertThat(balance).isEqualTo(30_000);
         ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
@@ -658,7 +659,7 @@ class RewardServiceGrantTest {
     void notEnoughCash() {
         givenBalance(8, 1250, 10_000);
 
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L, 20_000))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.NOT_ENOUGH_CASH));
         verify(memberService, never()).deductCash(anyLong(), anyLong());
         verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
@@ -670,7 +671,7 @@ class RewardServiceGrantTest {
         givenBalance(8, 1250, 20_000);
         when(memberService.deductCash(MEMBER, 20_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1250, 0));
 
-        assertThat(rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 20_000)).isZero();
+        assertThat(rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 20_000)).isZero();
     }
 
     @Test
@@ -678,19 +679,31 @@ class RewardServiceGrantTest {
     void alreadyUsed() {
         givenBalance(8, 1250, 50_000);
         when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L)).thenReturn(Optional.of(existingCash(CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT)));
+                MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L)).thenReturn(Optional.of(existingCash(CashSource.SUBSCRIPTION_DEPOSIT)));
 
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L, 20_000))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.ALREADY_USED));
         verify(memberService, never()).deductCash(anyLong(), anyLong());
     }
 
     @Test
+    @DisplayName("모르는 문자열 출처(옛 버전)와 null 출처는 NullPointerException 이 아니라 IllegalArgumentException 으로 거절하고 회원을 건드리지 않는다")
+    void unknownOrNullSourceIsRejected() {
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, "UNKNOWN", 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, (String) null, 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, (CashSource) null, 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
     @DisplayName("사용 금액이 0 이하면 INVALID_AMOUNT 이고 회원을 건드리지 않는다")
     void invalidAmount() {
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 0))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 0))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.INVALID_AMOUNT));
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, -5))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, -5))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.INVALID_AMOUNT));
         verify(memberService, never()).lockBalance(anyLong());
     }
@@ -698,9 +711,9 @@ class RewardServiceGrantTest {
     @Test
     @DisplayName("사용할 수 없는 원인 종류(출석 등)나 빠진 ID 는 호출한 쪽의 실수라 거절한다")
     void invalidSource() {
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_ATTENDANCE, 1L, 1_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.ATTENDANCE, 1L, 1_000))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, null, 1_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, null, 1_000))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -735,7 +748,7 @@ class RewardServiceGrantTest {
 
         ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository, org.mockito.Mockito.times(3)).save(history.capture());
-        assertThat(history.getAllValues()).extracting(CashHistory::getSourceType).containsOnly(CashHistory.SOURCE_RANKING);
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceType).containsOnly(CashSource.RANKING);
         assertThat(history.getAllValues()).extracting(CashHistory::getSourceId).containsExactly(71L, 72L, 73L);
         assertThat(history.getAllValues()).extracting(CashHistory::getAmount).containsExactly(50_000L, 30_000L, 10_000L);
         verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
@@ -747,8 +760,8 @@ class RewardServiceGrantTest {
         givenRule(RewardRule.RANKING_RANK_1, 50_000, 0);
         givenBalance(5, 900, 150_000);
         when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_RANKING, 71L))
-                .thenReturn(Optional.of(CashHistory.earn(MEMBER, CashHistory.SOURCE_RANKING, 71L, 1L, 50_000, 150_000)));
+                MEMBER, CashSource.RANKING, 71L))
+                .thenReturn(Optional.of(CashHistory.earn(MEMBER, CashSource.RANKING, 71L, 1L, 50_000, 150_000)));
 
         RewardResultDTO result = rewardService.grantRankingReward(MEMBER, 1, 71L);
 
