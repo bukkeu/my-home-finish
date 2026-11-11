@@ -51,6 +51,11 @@
     if (name) name.textContent = me.nickname;
     var avatar = document.querySelector('.mb-profile .mb-avatar');
     if (avatar && me.nickname) avatar.textContent = me.nickname.charAt(0);
+    // 틀(member/mypage.html)의 프로필 카드도 같이 바꾼다. 틀 파일은 건드리지 않고 카드의 data-p 자리만 갱신한다 (서수영 님 틀의 약속된 자리)
+    var cardName = document.querySelector('.mp-profile [data-p="nickname"]');
+    if (cardName && me.nickname) cardName.textContent = me.nickname;
+    var cardInitial = document.querySelector('.mp-profile [data-p="initial"]');
+    if (cardInitial && me.nickname) cardInitial.textContent = me.nickname.charAt(0);
   }
 
   function setupProfile() {
