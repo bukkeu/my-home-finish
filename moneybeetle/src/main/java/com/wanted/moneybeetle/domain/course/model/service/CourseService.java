@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -312,6 +313,16 @@ public class CourseService {
     /* 문의(inquiry 도메인) 강사 문의함(API 82): 이 강사가 맡은 강의(삭제 제외)의 ID → 제목 */
     public Map<Long, String> findCourseTitlesByInstructor(Long instructorId) {
         return courseRepository.findByInstructorIdAndDeletedAtIsNull(instructorId).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
+    }
+
+    /* 문의(inquiry 도메인) 마이페이지 문의 모음(API 149, #71): 수강생에게 보이는 강의(허가+공개+미삭제)만 ID → 제목 */
+    public Map<Long, String> findVisibleCourseTitles(Collection<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Map.of();
+        }
+        return courseRepository.findAllById(courseIds).stream()
+                .filter(Course::isVisibleToLearner)
                 .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
     }
 

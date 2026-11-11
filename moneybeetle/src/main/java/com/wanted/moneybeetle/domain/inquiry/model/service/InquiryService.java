@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryDetailDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryListItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryReplyCreateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryUpdateDTO;
+import com.wanted.moneybeetle.domain.inquiry.model.dto.MyInquiryItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.InquiryReply;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /* comment.
  *   담당 : DBA ① (문의)
@@ -87,6 +89,20 @@ public class InquiryService {
                 inquiry,
                 maskIfHidden(inquiry.isHidden(), admin, inquiry.getTitle()),
                 nicknames.get(inquiry.getMemberId()))));
+    }
+
+    /* API 149 내가 쓴 문의 모음 (마이페이지, #71). 숨긴 글은 제목을 안내 문구로 가린다.
+     * 강의 제목은 수강생에게 보이는 강의만 넣는다 (비공개·삭제된 강의로 가는 버튼을 만들지 않게) */
+    public PageResponse<MyInquiryItemDTO> findMyInquiries(Long memberId, Pageable pageable) {
+        Page<Inquiry> page = inquiryRepository.findMine(memberId, pageable);
+        Map<Long, String> courseTitles = courseService.findVisibleCourseTitles(page.getContent().stream()
+                .map(Inquiry::getCourseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return PageResponse.from(page.map(inquiry -> MyInquiryItemDTO.from(
+                inquiry,
+                maskIfHidden(inquiry.isHidden(), false, inquiry.getTitle()),
+                inquiry.getCourseId() == null ? null : courseTitles.get(inquiry.getCourseId()))));
     }
 
     /* API 48 문의 작성 */

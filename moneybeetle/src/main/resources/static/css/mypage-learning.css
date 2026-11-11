@@ -1,0 +1,94 @@
+/* comment.
+*  담당 : DBA ① 신아림 (#71, 마이페이지 학습 기록·스크랩·오답노트·Q&A 탭)
+*  원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 wrong·scrap·history·qna 보기 (배지 색·간격은 시안 값)
+*  공통 토큰(var(--color-*))과 .btn · .card 는 common.css 것을 쓰고, 이 탭에만 쓰는 것은 ml- 로 시작한다
+*  */
+
+.ml, .ml-body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ml [hidden] { display: none !important; }
+.ml .card { display: flex; flex-direction: column; }
+
+/* 불러오는 중·비었음·오류 */
+.ml-state { padding: 32px 20px; gap: 12px; align-items: center; text-align: center; font-size: 14px; color: var(--color-neutral-700); word-break: keep-all; }
+.ml-more { align-self: center; }
+.ml-h2 { margin: 8px 0 0; font-size: 18px; font-weight: 800; }
+
+/* 공통 글자 */
+.ml-kicker { color: var(--color-accent-700); font-weight: 600; font-size: 12px; opacity: .8; }
+.ml-title { font-size: 16px; font-weight: 700; text-wrap: pretty; word-break: keep-all; overflow-wrap: anywhere; }
+.ml-meta, .ml-date { font-size: 13px; color: var(--color-neutral-700); }
+.ml-hint { font-size: 13px; color: var(--color-neutral-700); line-height: 1.6; word-break: keep-all; }
+.ml-miss { font-size: 13px; font-weight: 700; color: #B3261E; }
+.ml-muted { color: var(--color-neutral-700); }
+.ml-danger { background: #FDE7E7; color: #B3261E; }
+.ml-danger:hover { background: #F9D2D2; }
+
+/* 배지 : 시안 시청 중 #FFF0D6 · 학습완료 #9fe870 · 숨김 #EEF0EC */
+.ml-badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 800; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+.ml-badge--doing { background: #FFF0D6; color: #8A5A00; }
+.ml-badge--done { background: var(--color-accent-400); color: var(--color-accent-700); }
+.ml-badge--hidden { background: #EEF0EC; color: var(--color-neutral-700); }
+
+/* 줄 목록 (스크랩·학습 기록) : 시안 padding 6px 20px, 줄마다 16px */
+.ml-rows { padding: 6px 20px; }
+.ml-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-divider); }
+.ml-row:last-child { border-bottom: 0; }
+.ml-row__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ml-row__side { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+/* 오답노트 */
+.ml-chips { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ml-chip { font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 999px; }
+.ml-chip--warn { background: #FFF0D6; color: #8A5A00; }
+.ml-list { display: flex; flex-direction: column; gap: 16px; }
+.ml-wrong { padding: 20px; gap: 12px; }
+.ml-row-head { display: flex; align-items: center; gap: 10px; }
+.ml-row-head .ml-kicker { flex: 1; min-width: 0; }
+.ml-question { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ml-answer { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; }
+.ml-mine { color: var(--color-neutral-700); }
+.ml-correct { color: #3d6120; font-weight: 600; }
+.ml-why { margin: 0; font-size: 14px; line-height: 1.6; color: var(--color-text); white-space: pre-wrap; text-wrap: pretty; }
+.ml-retry { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: var(--color-bg); }
+.ml-retry__title { font-size: 13px; font-weight: 700; }
+.ml-choices { display: flex; flex-direction: column; gap: 8px; }
+.ml-choice {
+  all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 16px; border-radius: 12px; background: #fff; border: 1.5px solid var(--color-divider);
+  font-size: 14px; line-height: 1.5; overflow-wrap: anywhere;
+}
+.ml-choice b { flex: none; width: 20px; color: var(--color-neutral-700); }
+.ml-choice:hover:not(:disabled) { border-color: var(--color-accent-400); }
+.ml-choice:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.ml-choice:disabled { cursor: default; }
+.ml-choice.is-correct { border-color: var(--color-accent-500); background: var(--color-accent-100); font-weight: 700; }
+.ml-choice.is-wrong { border-color: #E5A3A3; background: #FDF1F1; }
+.ml-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ml-push { margin-left: auto; }
+
+/* Q&A·문의 모음 */
+.ml-qna-head { padding: 22px; gap: 12px; }
+.ml-qna-head__row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ml-qna-head__title { flex: 1; min-width: 200px; font-weight: 800; font-size: 18px; }
+.ml-qna-list { padding: 22px; gap: 12px; }
+.ml-qna { border: 1px solid var(--color-divider); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; background: var(--color-bg); }
+.ml-qna__tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ml-src { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-divider); background: #fff; }
+.ml-qna__detail { display: flex; flex-direction: column; gap: 8px; }
+.ml-qna__body { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ml-replies { display: flex; flex-direction: column; gap: 8px; }
+.ml-reply {
+  display: flex; flex-direction: column; gap: 2px; border-left: 3px solid var(--color-accent-400); background: #fff;
+  padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.ml-reply b { font-size: 12px; color: #4E8A24; }
+
+/* 모바일 (NFR-10) : 줄 목록의 버튼을 글 아래로 */
+@media (max-width: 767px) {
+  .ml-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .ml-row__side { justify-content: flex-start; }
+  .ml-wrong, .ml-qna-head, .ml-qna-list { padding: 16px; }
+  .ml-rows { padding: 4px 16px; }
+  .ml-question { font-size: 16px; }
+  .ml-push { margin-left: 0; }
+}
