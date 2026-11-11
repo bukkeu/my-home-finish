@@ -853,7 +853,13 @@
       if (fatal(err)) return;
       // MSG 에 없는 코드(예: 500 INTERNAL_ERROR)는 서버가 주문을 저장했는지 알 수 없다 -> 내역을 다시 불러오고 확인을 안내한다
       var unknown = UNKNOWN_RESULT.indexOf(err.code) < 0 && !MSG[err.code];
-      orderError(unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err), err.code);
+      // 응답을 못 받으면(NETWORK_ERROR·ERROR) 서버가 주문을 저장했을 수 있다. 수량·이유·키는 그대로 두므로
+      // 같은 주문을 다시 누르면 서버가 처음 결과를 돌려줘 중복 체결되지 않는다
+      var noReply = err.code === 'NETWORK_ERROR' || err.code === 'ERROR';
+      orderError(noReply ? '응답을 받지 못해 주문이 처리됐는지 알 수 없어요. 내 거래 내역을 확인해 주세요. 같은 주문을 다시 누르면 중복 없이 처리돼요'
+        : unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err), err.code);
+      // 거래 내역·보유는 새로 불러오되 종목 화면은 다시 그리지 않는다 (다시 그리면 고른 수량·이유가 초기화돼 같은 주문을 다시 내기 어렵다)
+      if (noReply) return refreshAll(false);
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
       if (unknown || err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
         return refreshAll(true, true);
