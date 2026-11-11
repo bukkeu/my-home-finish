@@ -46,7 +46,10 @@
   function renderCash() {
     var list = byId('mg-cash-list');
     Array.prototype.slice.call(list.querySelectorAll('.mg-row, .mg-empty')).forEach(function (node) { node.remove(); });
-    var rows = cash.items.filter(function (item) { return cash.filter === 'all' || item.historyType === cash.filter; });
+    // 적립·사용은 금액의 부호로 가른다. historyType 은 EARN·USE 말고도 관리자 지급(ADMIN_GIVE)·회수(ADMIN_TAKE)가 있어서, 종류 값으로 거르면 놓친다
+    var rows = cash.items.filter(function (item) {
+      return cash.filter === 'all' || (cash.filter === 'EARN' ? item.amount > 0 : item.amount < 0);
+    });
     if (!rows.length) {
       list.appendChild(el('p', 'mg-empty', '캐시 내역이 아직 없어요.'));
     }
