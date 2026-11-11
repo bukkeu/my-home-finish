@@ -309,6 +309,20 @@ class QuizServiceTest {
         }
 
         @Test
+        @DisplayName("통과 점수 설정을 따른다: 80으로 설정되면 70점은 불합격이고 학습 완료·보상이 없다")
+        void configuredPassScore80Rejects70() {
+            when(settingService.findIntValue("QUIZ_PASS_SCORE")).thenReturn(OptionalInt.of(80));
+            givenQuestions(QuizQuestion.QUIZ_TYPE_MAIN, 10);
+
+            QuizResultDTO result = quizService.submitQuiz(MEMBER, COURSE, answersWithCorrect(10, 7));
+
+            assertThat(result.score()).isEqualTo(70);
+            assertThat(result.isPassed()).isFalse();
+            verify(courseService, never()).completeLearning(anyLong(), anyLong());
+            verifyNoInteractions(rewardService);
+        }
+
+        @Test
         @DisplayName("응시 기록과 문항별 답안을 저장한다. 다른 문항의 보기를 고른 답은 보기 없이(null) 오답으로 남긴다")
         void savesAttemptAndAnswers() {
             givenQuestions(QuizQuestion.QUIZ_TYPE_MAIN, 3);
@@ -382,13 +396,18 @@ class QuizServiceTest {
         void perfectFirstPass() {
             givenQuestions(QuizQuestion.QUIZ_TYPE_MAIN, 5);
             when(courseService.completeLearning(MEMBER, COURSE)).thenReturn(true);
+            // 두 보상을 서로 다른 값으로 둬서, 한쪽만 두 번 더해도 합계가 틀리게 한다
+            when(rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, COURSE))
+                    .thenReturn(RewardResultDTO.granted(50, 100, 0, 1_100, 150, 3, 3, List.of()));
+            when(rewardService.grant(MEMBER, RewardRule.QUIZ_PERFECT, COURSE))
+                    .thenReturn(RewardResultDTO.granted(20, 30, 0, 1_130, 170, 3, 3, List.of()));
 
             QuizResultDTO result = quizService.submitQuiz(MEMBER, COURSE, answersWithCorrect(5, 5));
 
             verify(rewardService).grant(MEMBER, RewardRule.COURSE_COMPLETE, COURSE);
             verify(rewardService).grant(MEMBER, RewardRule.QUIZ_PERFECT, COURSE);
-            assertThat(result.rewards().exp()).isEqualTo(100);                 // 50 + 50
-            assertThat(result.rewards().cash()).isEqualTo(200);                // 100 + 100
+            assertThat(result.rewards().exp()).isEqualTo(70);                  // 50 + 20
+            assertThat(result.rewards().cash()).isEqualTo(130);                // 100 + 30
             assertThat(result.rewards().levelUp()).isNull();                   // 레벨은 그대로(3 → 3)
         }
 
