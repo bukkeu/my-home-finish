@@ -62,7 +62,7 @@ public class MemberProfileService {
 
         return new MyInfoDTO(
                 profile.memberId(), profile.email(), profile.nickname(), profile.profileImageUrl(),
-                profile.birthDate(), profile.gender(), profile.role(),
+                profile.birthDate(), profile.gender(), profile.role(), memberService.getLoginProvider(memberId),
                 level, levelTable.titleOf(level), profile.exp(), expToNextLevel, profile.cash(),
                 new MyInfoDTO.Attendance(attendance.getStreak(), attendance.getDaysToReward()),
                 new MyInfoDTO.Learning(watchedLessons, completedCourses),
