@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   POST /api/v1/auth/login, /logout, /admin/auth/login  (로그인·로그아웃은 Security 가 처리한다, #6·#33)
-*   GET  /api/v1/auth/oauth/{provider}, GET·POST /api/v1/auth/oauth-signup   (#9, 간편 로그인: 구글·카카오 실제 OAuth)
+*   GET  /api/v1/auth/oauth/{provider}, GET·POST /api/v1/auth/oauth-signup   (#9, 간편 로그인: 구글 실제 OAuth)
 *   POST /api/v1/auth/find-email, /password-reset/request, /password-reset/confirm   (#8)
 *   POST /api/v1/auth/identity-verification/request, /identity-verification   (#9, 가입 중 이메일 코드 본인인증)
 *   화면 : /login(LoginSelect), /login/user, /instructor/login, /admin/login
@@ -83,7 +83,7 @@ public class AuthController {
         return ApiResponse.success(IdentityVerificationDTO.Result.of(true));
     }
 
-    // API 8. 간편 로그인 시작: 제공자(구글·카카오) 로그인 화면으로 보낸다. 키가 없는 제공자는 OAUTH_PROVIDER_UNAVAILABLE
+    // API 8. 간편 로그인 시작: 제공자(구글) 로그인 화면으로 보낸다. 키가 없는 제공자는 OAUTH_PROVIDER_UNAVAILABLE
     @GetMapping("/api/v1/auth/oauth/{provider}")
     public ResponseEntity<Void> startOAuth(@PathVariable String provider) {
         socialLoginService.requireAvailableProvider(provider);

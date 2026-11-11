@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 *   - GET /signup         : member/signup (이메일 인증 4단계 가입)
 *   - GET /signup/social  : member/social-signup (간편 로그인으로 처음 온 사람의 추가 정보 입력, API 8-1·8-2)
 *   - GET /password-reset : auth/password-reset (메일의 ?token= 으로 새 비밀번호 입력)
-*   - Model 값 googleOAuthEnabled · kakaoOAuthEnabled : 로그인·회원가입 화면이 간편 로그인 버튼을 보일지 정한다.
+*   - Model 값 googleOAuthEnabled : 로그인·회원가입 화면이 구글 간편 로그인 버튼을 보일지 정한다.
 *     API 8 과 같은 기준(SocialLoginService.isProviderAvailable: 지원하는 제공자이고 ID·시크릿으로 등록됨)이라 키가 없으면 버튼이 보이지 않는다.
 *   - 이 주소들은 SecurityConfig 에서 로그인 없이 열려 있다 (/signup/social 은 간편 로그인 가입 중인 세션이 쓴다).
 *  */
@@ -52,6 +52,5 @@ public class AuthPageController {
 
     private void addProviderFlags(Model model) {
         model.addAttribute("googleOAuthEnabled", socialLoginService.isProviderAvailable(SocialProfileExtractor.REGISTRATION_GOOGLE));
-        model.addAttribute("kakaoOAuthEnabled", socialLoginService.isProviderAvailable(SocialProfileExtractor.REGISTRATION_KAKAO));
     }
 }

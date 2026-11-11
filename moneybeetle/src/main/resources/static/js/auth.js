@@ -310,7 +310,7 @@
     var socialTerms = byId('social-terms');
     var socialNicknameAvailable = false;
     api('/api/v1/auth/oauth-signup').then(function (profile) {
-      byId('social-provider').value = profile.provider === 'google' ? 'Google' : '카카오';
+      byId('social-provider').value = 'Google';
       byId('social-email').value = profile.email;
       byId('social-nickname').value = profile.nickname || '';
     }).catch(function (error) {

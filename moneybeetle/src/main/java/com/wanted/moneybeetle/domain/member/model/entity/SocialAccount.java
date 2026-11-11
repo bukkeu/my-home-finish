@@ -14,9 +14,9 @@ import org.hibernate.annotations.CreationTimestamp;
 
 /* comment.
 *   담당 : DBA ② (회원·인증)
-*   테이블 social_account (구글·카카오 간편 로그인 연결, 이슈 #9)
+*   테이블 social_account (구글 간편 로그인 연결, 이슈 #9)
 *   - 같은 (provider, provider_user_id) 는 한 번만 연결된다 (DB UNIQUE uk_social_account_1). 회원은 ID 로 참조한다.
-*   - provider 는 GOOGLE / KAKAO (대문자). 탈퇴 30일 뒤 Hard Delete (DB설계 탈퇴 보관 규칙)
+*   - provider 는 GOOGLE (대문자). 탈퇴 30일 뒤 Hard Delete (DB설계 탈퇴 보관 규칙)
 *  */
 @Entity
 @Table(name = "social_account")
@@ -25,7 +25,6 @@ import org.hibernate.annotations.CreationTimestamp;
 public class SocialAccount {
 
     public static final String PROVIDER_GOOGLE = "GOOGLE";
-    public static final String PROVIDER_KAKAO = "KAKAO";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,8 +53,8 @@ public class SocialAccount {
         if (memberId == null) {
             throw new IllegalArgumentException("회원이 필요합니다.");
         }
-        if (!PROVIDER_GOOGLE.equals(provider) && !PROVIDER_KAKAO.equals(provider)) {
-            throw new IllegalArgumentException("provider 는 GOOGLE 또는 KAKAO 여야 합니다.");
+        if (!PROVIDER_GOOGLE.equals(provider)) {
+            throw new IllegalArgumentException("provider 는 GOOGLE 이어야 합니다.");
         }
         if (providerUserId == null || providerUserId.isBlank() || providerUserId.length() > 100) {
             throw new IllegalArgumentException("제공자 쪽 사용자 ID 가 올바르지 않습니다.");

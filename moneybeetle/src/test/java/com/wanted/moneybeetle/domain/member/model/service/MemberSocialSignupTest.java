@@ -164,12 +164,12 @@ class MemberSocialSignupTest {
         assertThat(found).isPresent();
         assertThat(found.get().getMemberId()).isEqualTo(42L);
         assertThat(found.get().getPasswordHash()).isNull();
-        assertThat(memberService.findLoginMemberBySocial("KAKAO", "none")).isEmpty();
+        assertThat(memberService.findLoginMemberBySocial("GOOGLE", "none")).isEmpty();
         verify(socialAccountRepository).findByProviderAndProviderUserId("GOOGLE", "g-1");
     }
 
     @Test
-    @DisplayName("SocialAccount 는 GOOGLE·KAKAO 외 제공자나 빈 사용자 ID 를 받지 않는다")
+    @DisplayName("SocialAccount 는 GOOGLE 외 제공자나 빈 사용자 ID 를 받지 않는다")
     void socialAccountRules() {
         assertThatThrownBy(() -> SocialAccount.create(1L, "NAVER", "x")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> SocialAccount.create(1L, "GOOGLE", " ")).isInstanceOf(IllegalArgumentException.class);
