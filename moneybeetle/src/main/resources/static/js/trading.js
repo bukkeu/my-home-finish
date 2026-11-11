@@ -804,11 +804,18 @@
       : S.reasonId ? (buy ? '매수' : '매도') + ' · ' + fmt(qty) + '주 ' + won(qty * price) : '매매 이유를 골라주세요';
   }
 
-  function orderError(text) {
+  function orderError(text, code) {
     var errBox = $('trd-o-error');
     errBox.textContent = text;
     errBox.dataset.from = 'server';
+    errBox.dataset.code = code || '';
     show(errBox, true);
+  }
+
+  /** 수량·현금 부족 오류는 수량을 바꾸면 지운다. 주문 처리 여부 확인 안내 같은 다른 서버 안내는 남긴다 */
+  function clearQuantityError() {
+    var errBox = $('trd-o-error');
+    if (errBox.dataset.code === 'NOT_ENOUGH_QUANTITY' || errBox.dataset.code === 'NOT_ENOUGH_CASH') delete errBox.dataset.from;
   }
 
   function submitOrder(e) {
@@ -842,7 +849,7 @@
       if (fatal(err)) return;
       // MSG 에 없는 코드(예: 500 INTERNAL_ERROR)는 서버가 주문을 저장했는지 알 수 없다 -> 내역을 다시 불러오고 확인을 안내한다
       var unknown = err.code !== 'NETWORK_ERROR' && err.code !== 'ERROR' && !MSG[err.code];
-      orderError(unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err));
+      orderError(unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err), err.code);
       // 턴이 넘어가 가격이 바뀌었으면 현재 가격과 시즌 정보를 다시 불러온다 (INV-12)
       if (unknown || err.code === 'STALE_TURN_PRICE' || err.code === 'MARKET_HOLIDAY' || err.code === 'SEASON_CLOSED') {
         return refreshAll(true, true);
@@ -917,7 +924,8 @@
       if (keepDetail && S.selectedStockId && !$('trd-detail').hidden) {
         var errBox = $('trd-o-error');
         var keepText = skipOrderReset ? errBox.textContent : null;
-        return loadStock(S.selectedStockId).then(function () { if (keepText) orderError(keepText); return true; });
+        var keepCode = errBox.dataset.code;
+        return loadStock(S.selectedStockId).then(function () { if (keepText) orderError(keepText, keepCode); return true; });
       }
       return true;
     }).catch(function (err) {
@@ -955,10 +963,11 @@
     if (ds.trdStep) {
       var q = $('trd-qty');
       q.value = Math.max(1, (parseInt(q.value, 10) || 1) + Number(ds.trdStep));
+      clearQuantityError();
       updateOrder();
       return;
     }
-    if (ds.trdPct) { $('trd-qty').value = Math.max(1, Math.floor(maxQty() * Number(ds.trdPct))); updateOrder(); return; }
+    if (ds.trdPct) { $('trd-qty').value = Math.max(1, Math.floor(maxQty() * Number(ds.trdPct))); clearQuantityError(); updateOrder(); return; }
     if (ds.trdReason) { S.reasonId = ds.trdReason; delete $('trd-o-error').dataset.from; updateOrder(); return; }
     if (t.id === 'trd-join-btn') join();
   }
