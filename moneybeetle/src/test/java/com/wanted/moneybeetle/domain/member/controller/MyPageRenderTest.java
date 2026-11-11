@@ -76,7 +76,10 @@ class MyPageRenderTest {
         String html = render();
 
         for (String tab : TABS) {
-            assertThat(html).contains("data-tab=\"" + tab + "\"").contains("data-panel=\"" + tab + "\"");
+            assertThat(html).contains("data-tab=\"" + tab + "\"").contains("data-panel=\"" + tab + "\"")
+                    // 탭과 패널이 서로를 가리킨다 (화면 낭독기)
+                    .contains("id=\"mp-tab-" + tab + "\" aria-controls=\"mp-panel-" + tab + "\"")
+                    .contains("id=\"mp-panel-" + tab + "\" aria-labelledby=\"mp-tab-" + tab + "\"");
         }
         assertThat(html).contains("계정 설정").contains("캐시 내역").contains("나의 청약통장").contains("퀴즈 오답노트")
                 .contains("강의 스크랩").contains("학습 기록").contains("Q&amp;A·문의 모음");

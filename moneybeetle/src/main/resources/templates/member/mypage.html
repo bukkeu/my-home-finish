@@ -61,29 +61,29 @@
       </section>
 
       <nav class="mp-tabs" role="tablist" aria-label="마이페이지 메뉴">
-        <button type="button" role="tab" class="btn btn-primary" data-tab="settings" aria-selected="true">계정 설정</button>
-        <button type="button" role="tab" class="btn btn-secondary" data-tab="growth" aria-selected="false">캐시 내역</button>
-        <button type="button" role="tab" class="btn btn-secondary" data-tab="housing" aria-selected="false">나의 청약통장</button>
-        <button type="button" role="tab" class="btn btn-secondary" data-tab="wrong" aria-selected="false">퀴즈 오답노트</button>
-        <button type="button" role="tab" class="btn btn-secondary" data-tab="scrap" aria-selected="false">강의 스크랩</button>
-        <button type="button" role="tab" class="btn btn-secondary" data-tab="learning" aria-selected="false">학습 기록</button>
-        <button type="button" role="tab" class="btn btn-secondary" data-tab="qna" aria-selected="false">Q&amp;A·문의 모음</button>
+        <button type="button" role="tab" id="mp-tab-settings" aria-controls="mp-panel-settings" class="btn btn-primary" data-tab="settings" aria-selected="true">계정 설정</button>
+        <button type="button" role="tab" id="mp-tab-growth" aria-controls="mp-panel-growth" class="btn btn-secondary" data-tab="growth" aria-selected="false">캐시 내역</button>
+        <button type="button" role="tab" id="mp-tab-housing" aria-controls="mp-panel-housing" class="btn btn-secondary" data-tab="housing" aria-selected="false">나의 청약통장</button>
+        <button type="button" role="tab" id="mp-tab-wrong" aria-controls="mp-panel-wrong" class="btn btn-secondary" data-tab="wrong" aria-selected="false">퀴즈 오답노트</button>
+        <button type="button" role="tab" id="mp-tab-scrap" aria-controls="mp-panel-scrap" class="btn btn-secondary" data-tab="scrap" aria-selected="false">강의 스크랩</button>
+        <button type="button" role="tab" id="mp-tab-learning" aria-controls="mp-panel-learning" class="btn btn-secondary" data-tab="learning" aria-selected="false">학습 기록</button>
+        <button type="button" role="tab" id="mp-tab-qna" aria-controls="mp-panel-qna" class="btn btn-secondary" data-tab="qna" aria-selected="false">Q&amp;A·문의 모음</button>
       </nav>
 
       <!--/* 탭 영역 : 조각이 없으면 "준비 중" 자리로 대신 그린다 */-->
-      <section class="mp-panel" role="tabpanel" data-panel="settings"
+      <section class="mp-panel" role="tabpanel" id="mp-panel-settings" aria-labelledby="mp-tab-settings" data-panel="settings"
                th:insert="~{fragments/mypage/settings :: settingsTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('계정 설정')}"></section>
-      <section class="mp-panel" role="tabpanel" data-panel="growth" hidden
+      <section class="mp-panel" role="tabpanel" id="mp-panel-growth" aria-labelledby="mp-tab-growth" data-panel="growth" hidden
                th:insert="~{fragments/mypage/growth :: growthTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('캐시 내역')}"></section>
-      <section class="mp-panel" role="tabpanel" data-panel="housing" hidden
+      <section class="mp-panel" role="tabpanel" id="mp-panel-housing" aria-labelledby="mp-tab-housing" data-panel="housing" hidden
                th:insert="~{fragments/mypage/housing :: housingTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('나의 청약통장')}"></section>
-      <section class="mp-panel" role="tabpanel" data-panel="wrong" hidden
+      <section class="mp-panel" role="tabpanel" id="mp-panel-wrong" aria-labelledby="mp-tab-wrong" data-panel="wrong" hidden
                th:insert="~{fragments/mypage/learning :: wrongTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('퀴즈 오답노트')}"></section>
-      <section class="mp-panel" role="tabpanel" data-panel="scrap" hidden
+      <section class="mp-panel" role="tabpanel" id="mp-panel-scrap" aria-labelledby="mp-tab-scrap" data-panel="scrap" hidden
                th:insert="~{fragments/mypage/learning :: scrapTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('강의 스크랩')}"></section>
-      <section class="mp-panel" role="tabpanel" data-panel="learning" hidden
+      <section class="mp-panel" role="tabpanel" id="mp-panel-learning" aria-labelledby="mp-tab-learning" data-panel="learning" hidden
                th:insert="~{fragments/mypage/learning :: historyTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('학습 기록')}"></section>
-      <section class="mp-panel" role="tabpanel" data-panel="qna" hidden
+      <section class="mp-panel" role="tabpanel" id="mp-panel-qna" aria-labelledby="mp-tab-qna" data-panel="qna" hidden
                th:insert="~{fragments/mypage/learning :: qnaTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('Q&A·문의 모음')}"></section>
     </main>
   </div>

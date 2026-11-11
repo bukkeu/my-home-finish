@@ -37,6 +37,7 @@
       b.classList.toggle('btn-primary', on);
       b.classList.toggle('btn-secondary', !on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;          // Tab 키로는 고른 탭에만 들어오고, 탭끼리는 방향키로 옮긴다
     });
     panels.forEach(function (p) { p.hidden = p.dataset.panel !== name; });
     window.MyPage.current = name;
@@ -46,8 +47,20 @@
     document.dispatchEvent(new CustomEvent('mypage:tab', { detail: { tab: name } }));
   }
 
-  buttons.forEach(function (b) {
+  buttons.forEach(function (b, i) {
     b.addEventListener('click', function () { showTab(b.dataset.tab); });
+    // ←·→ 로 이전·다음 탭, Home·End 로 처음·마지막 탭 (끝에서는 반대쪽으로 돌아간다)
+    b.addEventListener('keydown', function (e) {
+      var to = null;
+      if (e.key === 'ArrowRight') to = (i + 1) % buttons.length;
+      else if (e.key === 'ArrowLeft') to = (i - 1 + buttons.length) % buttons.length;
+      else if (e.key === 'Home') to = 0;
+      else if (e.key === 'End') to = buttons.length - 1;
+      if (to === null) return;
+      e.preventDefault();
+      showTab(buttons[to].dataset.tab);
+      buttons[to].focus();
+    });
   });
   // 같은 화면에서 주소 끝 #탭이름 만 바뀌어도 그 탭으로
   window.addEventListener('hashchange', function () {
@@ -120,6 +133,7 @@
     if (!file) return;
     var form = new FormData();
     form.append('file', file);
+    photoInput.disabled = true;          // 올리는 동안 다른 사진을 또 고르지 못하게 (중복 요청 방지)
     MB.api('/api/v1/members/me/profile-image', { method: 'POST', body: form }).then(function (r) {
       showPhoto(r && r.profileImageUrl);
       MB.toast('프로필 사진을 바꿨어요');
@@ -127,6 +141,7 @@
       MB.toast(err.message, 'error');   // 2MB 초과(FILE_TOO_LARGE)·jpg·png 아님(FILE_TYPE_NOT_ALLOWED) 등
     }).finally(function () {
       photoInput.value = '';            // 같은 파일을 다시 골라도 change 가 오게
+      photoInput.disabled = false;
     });
   });
 
