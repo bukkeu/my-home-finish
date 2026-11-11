@@ -94,7 +94,7 @@ public class SeasonAdminService {
     /** API 116 시즌 설정 */
     @Transactional
     public void changeSetting(Long seasonId, SeasonSettingDTO request) {
-        getSeason(seasonId).changeSetting(request.getCarryoverRate(), request.getCarryoverCap(),
+        getSeasonForUpdate(seasonId).changeSetting(request.getCarryoverRate(), request.getCarryoverCap(),
                 request.getUnlockLevel());
     }
 
@@ -106,13 +106,22 @@ public class SeasonAdminService {
         // 이전 시즌 정산을 빠뜨린 채 새 시즌을 시작하면 안 된다 (#207). 준비 → 진행 중으로 바꿀 때 확인한다
         if (season.isReady() && TradingSeason.STATUS_RUNNING.equals(request.getStatus())
                 && !tradingService.isPreviousSeasonSettled(season)) {
-            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED);
         }
         season.changeStatus(request.getStatus());
     }
 
     private TradingSeason getSeason(Long seasonId) {
         return seasonRepository.findById(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 시즌 행을 바꿀 때는 턴 넘기기(#44)와 같은 행 잠금으로 읽는다.
+     * 잠그지 않으면 턴 넘기기와 겹쳤을 때 예전 현재 턴 값이 다시 저장돼 넘긴 턴이 되돌아갈 수 있다
+     */
+    private TradingSeason getSeasonForUpdate(Long seasonId) {
+        return seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 }

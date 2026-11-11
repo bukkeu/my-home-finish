@@ -43,8 +43,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 class TradingServiceTurnCheckTest {
 
     private static final long SEASON_ID = 7L;
-    /** 한국 시간 2026-11-05 12:00 */
-    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-05T03:00:00Z"), ZoneId.of("Asia/Seoul"));
+    /** 한국 시간 2026-11-05 21:00 (장 마감 뒤) */
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-06T12:00:00Z"), ZoneId.of("Asia/Seoul"));
 
     private TradingSeasonRepository seasonRepository;
     private SectorRepository sectorRepository;
@@ -169,8 +169,8 @@ class TradingServiceTurnCheckTest {
     @Test
     void 대시보드_요약은_오늘_주문_수와_점검_결과를_준다() {
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
-        when(orderRepository.countOrdersBetween(eq(SEASON_ID), eq(LocalDateTime.of(2026, 11, 5, 0, 0)),
-                eq(LocalDateTime.of(2026, 11, 6, 0, 0)))).thenReturn(37L);
+        when(orderRepository.countOrdersBetween(eq(SEASON_ID), eq(LocalDateTime.of(2026, 11, 6, 0, 0)),
+                eq(LocalDateTime.of(2026, 11, 7, 0, 0)))).thenReturn(37L);
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L)));
         when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(0L);
 
@@ -250,19 +250,90 @@ class TradingServiceTurnCheckTest {
         assertThat(service.checkNextTurn(season).ready()).isTrue();
     }
 
+    // ===== #208 장 마감 뒤에만 턴을 넘긴다 =====
+
+    private TradingService serviceAt(String localDateTime) {
+        ZoneId zone = ZoneId.of("Asia/Seoul");
+        return new TradingService(seasonRepository, sectorRepository, stockRepository, priceRepository,
+                newsRepository, mock(NewsTagRepository.class), mock(SeasonParticipantRepository.class),
+                mock(HoldingRepository.class), orderRepository,
+                Clock.fixed(LocalDateTime.parse(localDateTime).atZone(zone).toInstant(), zone));
+    }
+
+    @Test
+    void 장이_열려_있는_동안에는_가격과_뉴스가_있어도_ready_가_아니다() {
+        when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
+        when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
+
+        for (String open : new String[] {"2026-11-06T08:00:00", "2026-11-06T12:00:00", "2026-11-06T19:59:59"}) {
+            NextTurnCheckDTO check = serviceAt(open).checkNextTurn(season);
+            assertThat(check.afterMarketClose()).isFalse();
+            assertThat(check.ready()).isFalse();
+        }
+    }
+
+    @Test
+    void 장이_닫히는_20시_정각부터_다음_날_아침_8시_전까지는_ready_다() {
+        when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
+        when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
+
+        for (String closed : new String[] {"2026-11-06T20:00:00", "2026-11-06T23:59:59", "2026-11-07T03:00:00",
+                "2026-11-07T07:59:59"}) {
+            NextTurnCheckDTO check = serviceAt(closed).checkNextTurn(season);
+            assertThat(check.afterMarketClose()).isTrue();
+            assertThat(check.ready()).isTrue();
+        }
+    }
+
+    @Test
+    void 같은_밤에_이미_넘긴_턴은_거래일_장_마감_전이라_다시_넘길_수_없다() {
+        givenAllReady();
+
+        // 5턴의 거래일은 11월 6일. 11월 5일 밤(4턴 거래일 마감 뒤)에 5턴으로 넘긴 직후와 다음 날 아침은 닫혀 있다
+        for (String sameNight : new String[] {"2026-11-05T21:00:00", "2026-11-05T23:59:59", "2026-11-06T07:00:00"}) {
+            NextTurnCheckDTO check = serviceAt(sameNight).checkNextTurn(season);
+            assertThat(check.afterMarketClose()).as(sameNight).isFalse();
+            assertThat(check.ready()).as(sameNight).isFalse();
+        }
+        // 5턴의 거래일(11월 6일) 장이 마감되면 다음 턴을 넘길 수 있다
+        assertThat(serviceAt("2026-11-06T21:00:00").checkNextTurn(season).ready()).isTrue();
+    }
+
+    @Test
+    void 거래일이_지났어도_장이_열려_있는_동안에는_넘길_수_없다() {
+        givenAllReady();
+
+        // 관리자가 11월 6일 밤에 넘기지 못한 채 11월 7일 낮이 된 경우에도 장이 열려 있는 동안은 막는다
+        NextTurnCheckDTO check = serviceAt("2026-11-07T12:00:00").checkNextTurn(season);
+
+        assertThat(check.afterMarketClose()).isFalse();
+        assertThat(check.ready()).isFalse();
+    }
+
+    @Test
+    void 첫_턴을_시작하는_0턴에서는_시각을_따지지_않는다() {
+        TradingSeason notStarted = TradingSeason.create("시즌 8", LocalDate.of(2026, 11, 16), 1L);
+        ReflectionTestUtils.setField(notStarted, "tradingSeasonId", 8L);
+        notStarted.changeStatus(TradingSeason.STATUS_RUNNING);
+        when(priceRepository.findByTradingSeasonIdAndTurnNo(8L, 1)).thenReturn(List.of(
+                StockPrice.create(8L, 1L, 1, 10_000, new BigDecimal("0.00")),
+                StockPrice.create(8L, 2L, 1, 10_000, new BigDecimal("0.00"))));
+        when(newsRepository.countByTradingSeasonIdAndTurnNo(8L, 1)).thenReturn(1L);
+
+        NextTurnCheckDTO check = serviceAt("2026-11-16T12:00:00").checkNextTurn(notStarted);   // 장이 열려 있는 한낮
+
+        assertThat(check.afterMarketClose()).isTrue();
+        assertThat(check.ready()).isTrue();
+    }
+
     // ===== 일요일은 시즌 상태와 상관없이 휴장일 =====
 
     @Test
     void 일요일에는_시즌이_진행_중으로_남아_있어도_휴장일이고_ready_가_아니다() {
         when(priceRepository.findByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(List.of(price(1L), price(2L)));
         when(newsRepository.countByTradingSeasonIdAndTurnNo(SEASON_ID, 6)).thenReturn(1L);
-        ZoneId zone = ZoneId.of("Asia/Seoul");
-        TradingService onSunday = new TradingService(seasonRepository, sectorRepository, stockRepository,
-                priceRepository, newsRepository, mock(NewsTagRepository.class),
-                mock(SeasonParticipantRepository.class), mock(HoldingRepository.class), orderRepository,
-                Clock.fixed(LocalDateTime.parse("2026-11-08T12:00:00").atZone(zone).toInstant(), zone));
 
-        NextTurnCheckDTO check = onSunday.checkNextTurn(season);
+        NextTurnCheckDTO check = serviceAt("2026-11-08T21:00:00").checkNextTurn(season);   // 일요일 장 마감 뒤
 
         assertThat(season.isRunning()).isTrue();
         assertThat(check.isHoliday()).isTrue();

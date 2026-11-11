@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.SectorRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.StockRepository;
+import com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository;
 import com.wanted.moneybeetle.domain.trading.model.dto.AdminStockDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.SectorSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSaveDTO;
@@ -38,14 +39,14 @@ class MarketAdminServiceTest {
 
     private SectorRepository sectorRepository;
     private StockRepository stockRepository;
-    private com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository seasonRepository;
+    private TradingSeasonRepository seasonRepository;
     private MarketAdminService service;
 
     @BeforeEach
     void setUp() {
         sectorRepository = mock(SectorRepository.class);
         stockRepository = mock(StockRepository.class);
-        seasonRepository = org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository.class);
+        seasonRepository = mock(TradingSeasonRepository.class);
         service = new MarketAdminService(sectorRepository, stockRepository, seasonRepository);
     }
 
