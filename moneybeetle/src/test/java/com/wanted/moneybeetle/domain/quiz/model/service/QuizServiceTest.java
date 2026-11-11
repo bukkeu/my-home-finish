@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +47,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
@@ -416,7 +418,9 @@ class QuizServiceTest {
             assertThatThrownBy(() -> quizService.submitQuiz(MEMBER, COURSE, answersWithCorrect(5, 5)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode").isEqualTo(QuizErrorCode.QUIZ_LOCKED);
-            verify(memberService).lockBalance(MEMBER);
+            InOrder order = inOrder(memberService, courseService);       // 회원 행을 잠근 뒤에 시청 여부를 본다
+            order.verify(memberService).lockBalance(MEMBER);
+            order.verify(courseService).hasWatchedAllLessons(MEMBER, COURSE);
             verifyNoInteractions(attemptRepository, answerRepository, wrongNoteRepository, rewardService);
         }
     }

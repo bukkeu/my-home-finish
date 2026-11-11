@@ -106,7 +106,16 @@ class WrongNoteServiceTest {
         givenVisibleCourse();
         when(wrongNoteRepository.findByMemberIdAndQuizQuestionIdIn(eq(MEMBER), anyList()))
                 .thenReturn(List.of(WrongAnswerNote.create(MEMBER, 1L, wrong(1)), WrongAnswerNote.create(MEMBER, 2L, wrong(2))));
-        when(questionRepository.findAllById(any())).thenReturn(List.of(mine, hiddenCourse));
+        // 조회한 ID의 문항만 돌려준다. 3번은 보이는 강의지만 내 오답노트에는 없다 → 서비스가 오답노트로 거르지 않으면 결과에 섞인다
+        QuizQuestion notInMyNotes = question(3, COURSE);
+        when(questionRepository.findAllById(any())).thenAnswer(invocation -> {
+            Iterable<Long> requestedIds = invocation.getArgument(0);
+            List<Long> ids = new ArrayList<>();
+            requestedIds.forEach(ids::add);
+            return List.of(mine, hiddenCourse, notInMyNotes).stream()
+                    .filter(q -> ids.contains(q.getQuizQuestionId()))
+                    .toList();
+        });
         when(choiceRepository.findByQuizQuestionIdInOrderBySortOrderAsc(anyList())).thenReturn(List.of(
                 choice(correct(1), 1, true, 1), choice(wrong(1), 1, false, 2)));
 
