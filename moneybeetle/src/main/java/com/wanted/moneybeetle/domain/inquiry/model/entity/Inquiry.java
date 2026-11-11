@@ -24,8 +24,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Inquiry extends BaseTimeEntity {
 
-    public static final String STATUS_WAITING = "WAITING";
-    public static final String STATUS_ANSWERED = "ANSWERED";
+    public static final String STATUS_WAITING = InquiryStatus.WAITING.name();     // 상태 값은 InquiryStatus 가 정한다 (#297)
+    public static final String STATUS_ANSWERED = InquiryStatus.ANSWERED.name();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
