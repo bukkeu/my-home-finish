@@ -1,0 +1,92 @@
+/* comment.
+*  담당 : SCM 서수영 (#70, 마이페이지 나의 청약통장 탭)
+*  원본 디자인 : moneybeetle-page/UserMyPage.dc.html "나의 청약통장" 탭 — 크기·색·간격은 시안의 인라인 스타일 값을 그대로 옮겼다
+*  공통 .btn · .card · .card-title 는 common.css 것을 쓰고, 이 탭에만 쓰는 것은 mh- 로 시작한다
+*  */
+
+/* 시안 본문 줄 간격 1.55 · 시안 .btn 크기(높이 자동, 6.8px 12.24px) — 이 탭 안에서만 */
+.mh, .mh-dialog { line-height: 1.55; }
+.mh { display: flex; flex-direction: column; gap: 16px; }
+.mh .btn, .mh-dialog .btn { height: auto; padding: 6.8px 12.24px; line-height: 1.2; }
+.mh [hidden] { display: none !important; }
+
+/* ---------- 제목 ---------- */
+.mh-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mh-head__text { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 240px; }
+.mh-title { line-height: 1.2; font-size: 22px; font-family: var(--font-heading); font-weight: 800; letter-spacing: -0.02em; color: var(--color-text); }
+.mh-lead { font-size: 14px; color: var(--color-neutral-700); word-break: keep-all; }
+
+/* ---------- 통장 현황 (짙은 초록 판) ---------- */
+.mh-board {
+  background: #263B1A; color: #fff; border-radius: 20px; padding: clamp(18px, 3vw, 28px);
+  display: flex; flex-direction: column; gap: 20px; box-shadow: 0 12px 32px rgba(38, 59, 26, .18);
+}
+.mh-board__main { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 20px 24px; }
+.mh-stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mh-stat__label { font-size: 13px; color: #B9EF8E; font-weight: 600; }
+.mh-stat__value {
+  font-size: clamp(20px, 2.4vw, 28px); font-weight: 800; letter-spacing: -0.02em; color: #fff;
+  display: flex; align-items: center; gap: 8px;
+}
+.mh-stat__value.is-recognized { color: #B9EF8E; }
+.mh-stat__value img { width: 1em; height: 1em; flex: none; }
+.mh-board__sub { display: flex; flex-wrap: wrap; gap: 10px 28px; padding-top: 16px; border-top: 1px solid rgba(185, 239, 142, .3); }
+.mh-sub { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.mh-sub__label { color: #B9EF8E; }
+.mh-sub b { color: #fff; }
+.mh-sub b.is-unpaid { color: #F2C14E; }
+
+/* ---------- 안내 ---------- */
+.mh-note {
+  display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+  background: #EAF7D8; font-size: 13px; line-height: 1.6;
+}
+.mh-note > span:last-child { word-break: keep-all; }
+.mh-note__label { font-weight: 800; flex: none; }
+
+/* ---------- 납입하기 · 납입 내역 ---------- */
+.mh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 20px; align-items: stretch; }
+.mh-card { padding: 22px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mh-card + .mh-card { gap: 12px; }
+.mh-card__title { font-weight: 800; font-size: 18px; }
+.mh-field { display: flex; flex-direction: column; gap: 6px; }
+.mh-field__label { font-size: 13px; color: var(--color-neutral-700); }
+.mh-input { position: relative; display: block; }
+.mh-input input {
+  width: 100%; box-sizing: border-box; height: 52px; border: 1.5px solid #263B1A; border-radius: 12px;
+  padding: 0 64px 0 16px; font-size: 20px; font-weight: 700; font-family: inherit; color: #263B1A; background: #fff;
+}
+.mh-input.is-error input { border-color: #B3261E; }
+.mh-input__unit {
+  position: absolute; right: 16px; top: 0; height: 52px; display: flex; align-items: center;
+  font-size: 14px; color: var(--color-neutral-700);
+}
+.mh-quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mh-quick .btn { font-size: 13px; padding: 6px 4px; min-width: 0; width: 100%; justify-content: center; }
+.mh-error { font-size: 13px; color: #B3261E; font-weight: 600; }
+.mh-calc { display: flex; flex-direction: column; border-top: 1px solid var(--color-divider); }
+.mh-calc.is-dialog { border-top: 0; }
+.mh-calc__row {
+  display: flex; justify-content: space-between; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider); font-size: 14px;
+}
+.mh-calc.is-dialog .mh-calc__row { padding: 9px 0; }
+.mh-calc__row span:first-child { color: var(--color-neutral-700); }
+.mh-calc__row b { font-weight: 700; color: #263B1A; }
+.mh-calc__row b.is-recognized { color: #3d6120; }
+.mh-hint { font-size: 12px; color: var(--color-neutral-700); line-height: 1.5; word-break: keep-all; }
+.mh .mh-submit { height: 48px; font-size: 16px; }
+.mh-submit:disabled { opacity: .45; cursor: default; }
+.mh-empty { font-size: 13px; color: var(--color-neutral-700); padding: 20px 0; text-align: center; }
+.mh-hist { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0; font-size: 13px; }
+.mh-hist > span { padding: 10px 0; border-bottom: 1px solid var(--color-divider); }
+.mh-hist > span.is-num { padding-left: 20px; text-align: right; font-weight: 600; }
+.mh-hist > span.mh-hist__head { padding-top: 8px; padding-bottom: 8px; color: var(--color-neutral-700); font-weight: 400; }
+
+/* ---------- 납입 확인창 ---------- */
+.mh-dialog { border: 0; padding: 0; border-radius: 20px; width: min(420px, calc(100% - 32px)); background: var(--color-bg); color: var(--color-text); }
+.mh-dialog::backdrop { background: rgba(38, 59, 26, .45); }
+.mh-dialog__box { margin: 0; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+.mh-dialog__title { font-weight: 800; font-size: 20px; }
+.mh-dialog__note { font-size: 12px; color: var(--color-neutral-700); }
+.mh-dialog__actions { display: flex; justify-content: flex-end; gap: 9px; }
