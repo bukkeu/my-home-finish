@@ -317,6 +317,7 @@
       state.newsTurn = null;
       closeNewsForm();
       renderHeader();
+      refreshSideCheck();   // 턴 진행 메뉴 밖에서도 사이드바 점검이 이전 시즌 값으로 남지 않게
       loadTab();
     });
   });
@@ -1179,19 +1180,25 @@
     });
   });
 
+  /**
+   * 왼쪽 메뉴 카드의 '다음 턴 점검' 표시를 지금 시즌으로 새로 고친다 (처음 열 때·시즌을 바꿀 때).
+   * 이전 시즌의 결과를 먼저 지우고, 턴 진행 메뉴가 열려 있으면 loadTurn() 의 점검이 같은 표시를 채우므로 따로 요청하지 않는다.
+   * loadTurn() 과 같은 begin/stale 검사로, 그사이 시즌을 또 바꾸거나 다시 점검했으면 늦은 응답은 버린다
+   */
+  function refreshSideCheck() {
+    $('at-side-check').textContent = state.season ? '확인 중' : '해당 없음';
+    $('at-turn-dot').hidden = true;
+    nextBtn.disabled = true;   // 새 점검 결과를 받기 전에는 다음 턴 버튼을 켜지 않는다
+    if (!state.season || state.tab === 'turn') return;
+    var t = begin('turn');
+    api(seasonPath('/turns/next-check')).then(function (d) { if (!stale('turn', t)) renderCheck(d); },
+      function (err) { if (!stale('turn', t)) renderCheck(null, err); });
+  }
+
   /* ---------- 시작 ---------- */
   var first = (location.hash || '').slice(1);
   loadSeasons().then(function () {
     openTab(TABS.indexOf(first) >= 0 ? first : 'season');
-    // 왼쪽 메뉴 카드의 '다음 턴 점검' 표시: 턴 진행 메뉴를 열지 않아도 한 번 점검해 둔다
-    if (state.tab !== 'turn') {
-      if (!state.season) $('at-side-check').textContent = '해당 없음';
-      else {
-        // loadTurn() 과 같은 검사: 그사이 시즌을 바꾸거나 턴 진행 메뉴에서 다시 점검했으면 이 응답은 버린다
-        var t = begin('turn');
-        api(seasonPath('/turns/next-check')).then(function (d) { if (!stale('turn', t)) renderCheck(d); },
-          function (err) { if (!stale('turn', t)) renderCheck(null, err); });
-      }
-    }
+    refreshSideCheck();
   });
 })();
