@@ -149,6 +149,82 @@ class MemberEntityTest {
         assertThat(m.currentStreak(LocalDate.of(2026, 11, 12))).isZero();       // 하루 빠져서 끊김
     }
 
+    private static Member newMember() {
+        return Member.signup("minji@gmail.com", "hash", "민지", LocalDate.of(1999, 4, 12), "FEMALE", TODAY);
+    }
+
+    @Test
+    @DisplayName("상태는 enum 으로 들고 있고, 문자열 이름(getStatus)과 옛 상수 값이 같다 (#288)")
+    void statusIsEnumWithCompatibleName() {
+        Member m = newMember();
+
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.ACTIVE);
+        assertThat(m.getStatus()).isEqualTo("ACTIVE").isEqualTo(Member.STATUS_ACTIVE);
+        assertThat(MemberStatus.from("SUSPENDED")).isEqualTo(MemberStatus.SUSPENDED);
+        assertThatThrownBy(() -> MemberStatus.from("DELETED")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("changeStatus: 지금과 같은 상태로 바꾸면 아무것도 바꾸지 않고 false")
+    void changeStatusToSameStateReturnsFalse() {
+        Member m = newMember();
+
+        assertThat(m.changeStatus(MemberStatus.ACTIVE, null)).isFalse();
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.ACTIVE);
+
+        m.changeStatus(MemberStatus.SUSPENDED, "광고글");
+        assertThat(m.changeStatus(MemberStatus.SUSPENDED, "다른 사유")).isFalse();
+        assertThat(m.getSuspendedReason()).isEqualTo("광고글");   // 같은 상태라 사유도 그대로다
+    }
+
+    @Test
+    @DisplayName("changeStatus: SUSPENDED 로 바꾸면 사유를 남기고 true, ACTIVE 로 되돌리면 사유를 지운다")
+    void changeStatusSuspendAndActivate() {
+        Member m = newMember();
+
+        assertThat(m.changeStatus(MemberStatus.SUSPENDED, "광고글")).isTrue();
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.SUSPENDED);
+        assertThat(m.getSuspendedReason()).isEqualTo("광고글");
+        assertThat(m.isActive()).isFalse();
+
+        assertThat(m.changeStatus(MemberStatus.ACTIVE, null)).isTrue();
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.ACTIVE);
+        assertThat(m.getSuspendedReason()).isNull();
+        assertThat(m.isActive()).isTrue();
+    }
+
+    @Test
+    @DisplayName("changeStatus: 사유 없이 정지하면 예외이고 상태는 그대로다")
+    void changeStatusSuspendWithoutReason() {
+        Member m = newMember();
+
+        assertThatThrownBy(() -> m.changeStatus(MemberStatus.SUSPENDED, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.changeStatus(MemberStatus.SUSPENDED, "  ")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("changeStatus: 탈퇴한 회원은 정지하거나 되살릴 수 없다 (같은 WITHDRAWN 으로는 false)")
+    void changeStatusOfWithdrawnMember() {
+        Member m = newMember();
+        m.withdraw(LocalDateTime.of(2026, 11, 9, 9, 0));
+
+        assertThatThrownBy(() -> m.changeStatus(MemberStatus.SUSPENDED, "사유")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.changeStatus(MemberStatus.ACTIVE, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(m.changeStatus(MemberStatus.WITHDRAWN, null)).isFalse();
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.WITHDRAWN);
+    }
+
+    @Test
+    @DisplayName("changeStatus: WITHDRAWN 으로는 바꿀 수 없고(탈퇴는 withdraw), 상태가 없으면 예외")
+    void changeStatusCannotWithdraw() {
+        Member m = newMember();
+
+        assertThatThrownBy(() -> m.changeStatus(MemberStatus.WITHDRAWN, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> m.changeStatus(null, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.ACTIVE);
+    }
+
     @Test
     @DisplayName("약관은 이름·본문이 있어야 하고, 동의 기록은 회원·약관이 있어야 한다")
     void termsAndAgreement() {

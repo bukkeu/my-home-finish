@@ -48,6 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 *   PATCH  /api/v1/members/me, /members/me/password
 *   POST   /api/v1/members/me/profile-image
 *   POST   /api/v1/members/me/withdraw-verification/request, /members/me/withdraw-verification (간편 로그인 회원의 탈퇴 본인 확인, #232)
+*   DELETE /api/v1/members/me/withdraw-verification (탈퇴 본인 확인 취소, #279)
 *   DELETE /api/v1/members/me (탈퇴)
 *   화면 : /signup, /instructor/signup, /user/my-page(설정·탈퇴 탭)
 *  */
@@ -127,6 +128,13 @@ public class MemberController {
                                                    @Valid @RequestBody WithdrawVerificationDTO request,
                                                    HttpServletRequest httpRequest) {
         withdrawVerifier.verify(me.getMemberId(), request.getCode(), httpRequest.getSession());
+        return ResponseEntity.noContent().build();
+    }
+
+    // API 17-3. 탈퇴 본인 확인 취소 (세션에 남은 코드·확인 완료 표시를 지운다. 없어도 204, 세션이 없어도 새로 만들지 않는다)
+    @DeleteMapping("/api/v1/members/me/withdraw-verification")
+    public ResponseEntity<Void> cancelWithdrawVerification(@AuthenticationPrincipal AuthDetails me, HttpServletRequest httpRequest) {
+        withdrawVerifier.cancel(me.getMemberId(), httpRequest.getSession(false));
         return ResponseEntity.noContent().build();
     }
 

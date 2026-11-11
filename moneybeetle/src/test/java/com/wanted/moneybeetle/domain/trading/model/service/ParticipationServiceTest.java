@@ -125,7 +125,9 @@ class ParticipationServiceTest {
         assertThat(result.getCarryoverIn()).isEqualTo(1_620_000L);
         assertThat(result.getInvestAmount()).isEqualTo(4_820_000L);
         verify(seasonRepository).findByIdForUpdate(SEASON_ID);
-        verify(rewardService, never()).spendCash(any(), any(), any(), anyLong());
+        // spendCash 는 원인 종류가 String 인 옛 버전과 CashSource 버전이 있어서 둘 다 호출되지 않았음을 확인한다 (any() 하나로는 모호하다, #287)
+        verify(rewardService, never()).spendCash(any(), any(String.class), any(), anyLong());
+        verify(rewardService, never()).spendCash(any(), any(com.wanted.moneybeetle.domain.growth.model.entity.CashSource.class), any(), anyLong());
     }
 
     @Test

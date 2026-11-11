@@ -103,8 +103,9 @@ class MyPageRenderTest {
     void 아직_없는_탭_조각은_준비_중_자리로_대신_그린다() throws Exception {
         String html = render();
 
-        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth) — 이미 만든 housing(#70)·학습 탭 4개(#71)만 빼고 모두
-        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 1 - LEARNING_TABS.size());
+        // 설정(#69)·캐시 내역(#69)·나의 청약통장(#70)·학습 탭 4개(#71)가 모두 자기 조각으로 그려져서 "준비 중" 자리는 남지 않는다
+        assertThat(html).contains("id=\"mg-settings\"").contains("id=\"mg-growth\"");
+        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 3 - LEARNING_TABS.size());
     }
 
     @Test

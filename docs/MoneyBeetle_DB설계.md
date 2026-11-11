@@ -189,6 +189,7 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | 테이블 | 인덱스 | 컬럼 | 쓰는 곳 |
 | --- | --- | --- | --- |
 | `notification` | `idx_notification_1` | member_id, is_read, created_at | 안 읽은 알림 조회 |
+| `notification` | `idx_notification_2` | member_id, created_at, notification_id | 알림 목록 최신순 (#282) |
 | `cash_history` | `idx_cash_history_1` | member_id, created_at | 캐시 내역 최신순 |
 | `exp_history` | `idx_exp_history_1` | member_id, created_at | 경험치 내역 최신순 |
 | `course` | `idx_course_1` | category_id, status, is_public | 카테고리별 공개 강의 목록 |
@@ -201,6 +202,8 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `news` | `idx_news_1` | trading_season_id, turn_no | 턴별 뉴스 |
 | `season_participant` | `idx_season_participant_1` | trading_season_id, final_net_asset | 순자산 랭킹 정렬 |
 | `season_participant` | `idx_season_participant_2` | trading_season_id, return_rate | 수익률 랭킹 정렬 |
+| `season_participant` | `idx_season_participant_3` | trading_season_id, asset_rank, season_participant_id | 시즌 랭킹 조회(순자산 순위, `RankingService`) (#282) |
+| `season_participant` | `idx_season_participant_4` | trading_season_id, return_rank, season_participant_id | 시즌 랭킹 조회(수익률 순위, `RankingService`) (#282) |
 | `trade_order` | `idx_trade_order_1` | season_participant_id, turn_no | 참가자 거래 내역 |
 | `housing_complex` | `idx_housing_complex_1` | apply_start_date, apply_end_date | 청약 캘린더 기간 조회 |
 | `housing_application` | `idx_housing_application_1` | housing_complex_id, total_score | 단지별 가점순 산정 |
@@ -210,6 +213,15 @@ PK, UNIQUE, FK 컬럼은 MySQL이 자동으로 인덱스를 만듭니다. 아래
 | `admin_log` | `idx_admin_log_3` | created_at | 필터 없는 작업 기록 최신순 (#87) |
 | `member` | `idx_member_1` | role, status | 관리자 대시보드 회원·강사 수, 회원·강사 목록 필터 (#87) |
 | `member` | `idx_member_2` | status, withdrawn_at | 탈퇴 회원 개인정보 정리 대상 (#87) |
+
+**인덱스·쿼리 점검 후속 (#282, 알림·시즌 랭킹)**: 임시 복사 테이블에 알림 2.5만 건(한 회원 5,000건)·참가자 1만~3만 명을 넣고 `EXPLAIN ANALYZE`로 확인했다. 기존 DB는 `sql/migration/2026-11-11_index_notification_ranking.sql`을 실행한다(여러 번 실행해도 안전).
+
+| 조회 | 점검 전 | 조치 후 |
+| --- | --- | --- |
+| 알림 목록 (`findByMemberIdOrderByCreatedAtDescNotificationIdDesc`) | `idx_notification_1`로 찾고 filesort, 알림 5,000건 회원 15.4ms | `idx_notification_2` 역순 스캔, 0.08ms |
+| 시즌 랭킹 (`RankingService`, `asset_rank`·`return_rank` 순) | 있는 랭킹 인덱스가 `final_net_asset`·`return_rate` 기준이라 쓰이지 않고 filesort, 참가자 2천 명 2.7ms·2만 명 69ms | `idx_season_participant_3·4`, 2천 명 0.27ms·2만 명 1.2ms |
+
+`idx_season_participant_1·2`(`final_net_asset`·`return_rate`)는 지금 코드에서 쓰는 조회가 없어 보인다(관리자 참가자 목록은 메모리에서 정렬). 이번에는 지우지 않았다.
 
 **인덱스·쿼리 점검 (#87, 신아림 구역: 회원·강의·문의·운영)**: 시드 + 회원 3만·강의 5천·작업 기록 5만 행으로 주요 조회의 `EXPLAIN`을 확인했다. 기존 DB는 `sql/migration/2026-11-10_index_review_member_course_admin_log.sql`을 실행한다(여러 번 실행해도 안전).
 

@@ -3,6 +3,8 @@ package com.wanted.moneybeetle.domain.member.model.entity;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,9 +37,15 @@ public class Member {
     public static final String ROLE_INSTRUCTOR = "INSTRUCTOR";
     public static final String ROLE_ADMIN = "ADMIN";
 
-    /** 계정 상태 (SP-06) */
+    /**
+     * 계정 상태 (SP-06). 이제 {@link MemberStatus} enum 을 쓴다. 다른 도메인 코드가 깨지지 않도록 남겨 둔 옛 문자열 상수이고,
+     * 모두 옮긴 뒤 마지막 정리 이슈(#301)에서 지운다.
+     */
+    @Deprecated
     public static final String STATUS_ACTIVE = "ACTIVE";
+    @Deprecated
     public static final String STATUS_SUSPENDED = "SUSPENDED";
+    @Deprecated
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
 
     /** 탈퇴한 회원의 개인정보를 지우기까지 두는 기간(일) (DP-06) */
@@ -92,8 +100,9 @@ public class Member {
     @Column(nullable = false, length = 20)
     private String role;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private MemberStatus status;
 
     @Column(length = 200)
     private String suspendedReason;
@@ -133,7 +142,7 @@ public class Member {
         this.birthDate = birthDate;
         this.gender = gender;
         this.role = ROLE_MEMBER;
-        this.status = STATUS_ACTIVE;
+        this.status = MemberStatus.ACTIVE;
         this.level = 1;
         this.exp = 0;
         this.cash = 0;
@@ -264,7 +273,7 @@ public class Member {
      * 정지된 회원은 그대로 보인다.
      */
     public String displayNickname() {
-        return STATUS_WITHDRAWN.equals(status) ? WITHDRAWN_NICKNAME : nickname;
+        return status == MemberStatus.WITHDRAWN ? WITHDRAWN_NICKNAME : nickname;
     }
 
 
@@ -309,8 +318,8 @@ public class Member {
      * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
      */
     public void withdraw(LocalDateTime now) {
-        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
-        this.status = STATUS_WITHDRAWN;
+        require(status != MemberStatus.WITHDRAWN, "이미 탈퇴한 회원입니다.");
+        this.status = MemberStatus.WITHDRAWN;
         this.withdrawnAt = now;
     }
 
@@ -320,7 +329,7 @@ public class Member {
      * 행은 학습·거래 기록 보존을 위해 남긴다. 탈퇴한 회원만 지울 수 있다.
      */
     public void purgePersonalInfo() {
-        require(STATUS_WITHDRAWN.equals(status), "탈퇴한 회원만 개인정보를 지울 수 있습니다.");
+        require(status == MemberStatus.WITHDRAWN, "탈퇴한 회원만 개인정보를 지울 수 있습니다.");
         this.email = null;
         this.passwordHash = null;
         this.birthDate = null;
@@ -354,17 +363,51 @@ public class Member {
      * 이미 로그인한 세션도 다음 요청에서 끊긴다(ActiveMemberFilter 가 isActive 를 본다). 사유는 서비스가 확인한다.
      */
     public void suspend(String reason) {
-        require(!STATUS_WITHDRAWN.equals(status), "탈퇴한 회원은 정지할 수 없습니다.");
+        require(status != MemberStatus.WITHDRAWN, "탈퇴한 회원은 정지할 수 없습니다.");
         require(reason != null && !reason.isBlank(), "정지 사유가 필요합니다.");
-        this.status = STATUS_SUSPENDED;
+        this.status = MemberStatus.SUSPENDED;
         this.suspendedReason = reason;
     }
 
     /** 관리자가 정지를 푼다 (#37, API 102). 정지 사유도 지운다 */
     public void activate() {
-        require(!STATUS_WITHDRAWN.equals(status), "탈퇴한 회원은 바꿀 수 없습니다.");
-        this.status = STATUS_ACTIVE;
+        require(status != MemberStatus.WITHDRAWN, "탈퇴한 회원은 바꿀 수 없습니다.");
+        this.status = MemberStatus.ACTIVE;
         this.suspendedReason = null;
+    }
+
+    /**
+     * 관리자가 계정 상태를 바꾼다 (#288, API 102). 어떤 상태로 바꿀 수 있는지는 엔티티가 판단한다.
+     * - 지금과 같은 상태이면 아무것도 바꾸지 않고 false 를 돌려준다
+     * - SUSPENDED 이면 suspend(reason) (탈퇴 회원이면 예외, 사유가 없으면 예외), ACTIVE 이면 activate() (탈퇴 회원이면 예외)
+     * - 그 밖의 상태(WITHDRAWN)는 이 메서드로 만들 수 없다. 탈퇴는 withdraw(now) 로만 한다 (IllegalArgumentException)
+     *
+     * @return 실제로 바뀌었으면 true
+     */
+    public boolean changeStatus(MemberStatus target, String reason) {
+        require(target != null, "바꿀 상태가 필요합니다.");
+        if (status == target) {
+            return false;
+        }
+        switch (target) {
+            case SUSPENDED -> suspend(reason);
+            case ACTIVE -> activate();
+            default -> throw new IllegalArgumentException("이 상태로는 바꿀 수 없습니다: " + target);
+        }
+        return true;
+    }
+
+    /**
+     * 계정 상태 이름("ACTIVE" 등). 화면·JSON·다른 도메인 코드가 문자열로 읽던 방식을 그대로 지키려고 name() 을 돌려준다.
+     * enum 자체가 필요하면 {@link #getMemberStatus()} 를 쓴다.
+     */
+    public String getStatus() {
+        return status == null ? null : status.name();
+    }
+
+    /** 계정 상태 (enum) */
+    public MemberStatus getMemberStatus() {
+        return status;
     }
 
     /**
@@ -379,12 +422,12 @@ public class Member {
 
     /** 탈퇴한 회원인가 */
     public boolean isWithdrawn() {
-        return STATUS_WITHDRAWN.equals(status);
+        return status == MemberStatus.WITHDRAWN;
     }
 
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
-        return STATUS_ACTIVE.equals(status);
+        return status == MemberStatus.ACTIVE;
     }
 
     /** 탈퇴·삭제 대상이 아닌 일반 회원인가 */

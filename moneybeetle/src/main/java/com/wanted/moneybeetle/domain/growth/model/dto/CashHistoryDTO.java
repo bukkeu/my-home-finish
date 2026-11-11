@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.growth.model.dto;
 
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import java.time.LocalDateTime;
 import lombok.Getter;
 
@@ -39,16 +40,12 @@ public class CashHistoryDTO {
                 history.getCreatedAt());
     }
 
+    /** 원인 종류의 기본 문구(CashSource.label). 관리자 조정만 사유가 있으면 뒤에 붙인다 */
     private static String titleOf(CashHistory history) {
-        return switch (history.getSourceType()) {
-            case CashHistory.SOURCE_ATTENDANCE -> "연속 출석 보상";
-            case CashHistory.SOURCE_COURSE_COMPLETE -> "강의 완료";
-            case CashHistory.SOURCE_LEVEL_UP -> "레벨업 보상";
-            case CashHistory.SOURCE_SEASON_JOIN -> "모의투자 시즌 참가";
-            case CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT -> "청약통장 납입";
-            case CashHistory.SOURCE_RANKING -> "시즌 랭킹 보상";
-            case CashHistory.SOURCE_ADMIN -> history.getReason() == null ? "관리자 조정" : "관리자 조정 · " + history.getReason();
-            default -> history.getSourceType();
-        };
+        CashSource source = history.getSourceType();
+        if (source == CashSource.ADMIN && history.getReason() != null) {
+            return source.getLabel() + " · " + history.getReason();
+        }
+        return source.getLabel();
     }
 }

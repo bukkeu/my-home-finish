@@ -5,6 +5,7 @@ import com.wanted.moneybeetle.domain.inquiry.model.dao.InquiryRepository;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InstructorInquiryItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InstructorInquiryListDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
+import com.wanted.moneybeetle.domain.inquiry.model.entity.InquiryStatus;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -42,7 +43,7 @@ public class InstructorInquiryService {
         }
 
         Set<Long> courseIds = courseId != null ? Set.of(courseId) : courseTitles.keySet();
-        String statusFilter = isKnownStatus(status) ? status : null;
+        String statusFilter = InquiryStatus.filterOf(status);
         Page<Inquiry> page = inquiryRepository.searchForInstructor(
                 courseIds, statusFilter, Inquiry.STATUS_WAITING, pageable);
         long waitingCount = inquiryRepository.countByCourseIdInAndStatusAndDeletedAtIsNullAndIsHiddenFalse(
@@ -61,9 +62,5 @@ public class InstructorInquiryService {
                 .collect(Collectors.toMap(
                         InquiryRepository.CourseWaitingCount::getCourseId,
                         InquiryRepository.CourseWaitingCount::getWaiting));
-    }
-
-    private boolean isKnownStatus(String status) {
-        return Inquiry.STATUS_WAITING.equals(status) || Inquiry.STATUS_ANSWERED.equals(status);
     }
 }
