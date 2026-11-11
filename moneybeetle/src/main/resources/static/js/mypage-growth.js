@@ -139,6 +139,17 @@
 
   // ------------------------------------------------------------------ 경험치·레벨
   /** 레벨 → 집 종류 번호: 고시원 Lv.1~3, 원룸 4~7, 투룸 8~11, 아파트 12~16, 내 집 17~ (원본 houseBg) */
+  /** 레벨 표 자리에 한 줄짜리 안내(불러오는 중·오류)를 보여 준다. 표를 그리면(renderLevelTable) 이 줄은 지워진다 */
+  function levelTableMessage(text) {
+    var body = byId('mg-level-table');
+    body.textContent = '';
+    var tr = el('tr');
+    var td = el('td', 'mg-empty', text);
+    td.colSpan = 4;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
   function renderLevelTable(levels, myLevel) {
     var body = byId('mg-level-table');
     body.textContent = '';
@@ -186,6 +197,7 @@
     var myLevel;            // 내 정보를 받았으면 내 레벨 (두 값이 모두 있어야 내 줄을 강조한다)
     var mePromise = api('/api/v1/members/me');
     var levelsPromise = api('/api/v1/levels');
+    levelTableMessage('레벨 표를 불러오고 있어요…');   // 내 정보가 공용 안내 문구를 지워도 레벨 표는 자기 자리에서 상태를 보여 준다
     mePromise.then(function (me) {
       me = me || {};
       myLevel = me.level;
@@ -210,13 +222,7 @@
       levelRows = (data && data.levels) || [];
       renderLevelTable(levelRows, myLevel);
     }, function () {
-      var body = byId('mg-level-table');
-      body.textContent = '';
-      var tr = el('tr');
-      var td = el('td', 'mg-empty', '레벨 표를 불러오지 못했어요.');
-      td.colSpan = 4;
-      tr.appendChild(td);
-      body.appendChild(tr);
+      levelTableMessage('레벨 표를 불러오지 못했어요.');
     });
   }
 
