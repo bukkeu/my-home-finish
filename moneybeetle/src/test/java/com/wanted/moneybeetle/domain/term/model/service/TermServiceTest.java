@@ -183,15 +183,17 @@ class TermServiceTest {
         service.clear(TODAY);
         service.clear(TODAY.plusDays(3));
 
-        verify(scheduleRepository).deleteByShowDate(TODAY);
-        verify(scheduleRepository).deleteByShowDate(TODAY.plusDays(3));
+        // 직접 지정한 행만 지운다. 자동 선정 행까지 지우는 deleteByShowDate 는 부르지 않는다
+        verify(scheduleRepository).deleteManualByShowDate(TODAY);
+        verify(scheduleRepository).deleteManualByShowDate(TODAY.plusDays(3));
+        verify(scheduleRepository, never()).deleteByShowDate(any());
     }
 
     @Test
     @DisplayName("지정 해제: 지난 날짜는 PAST_DATE_LOCKED 이고 지우지 않는다")
     void clearRejectsPastDate() {
         assertCode(() -> service.clear(TODAY.minusDays(1)), TermErrorCode.PAST_DATE_LOCKED);
-        verify(scheduleRepository, never()).deleteByShowDate(any());
+        verify(scheduleRepository, never()).deleteManualByShowDate(any());
     }
 
     @Test
