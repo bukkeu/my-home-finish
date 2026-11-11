@@ -96,7 +96,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        # 요청(세션)마다 실행한 쿼리 수·시간을 로그에 남긴다 (#285 리팩토링 전후 수치 비교, 코드 점검표 R-1). local 에서만
+        # Hibernate 세션마다 실행한 쿼리 수·시간(Session Metrics)을 로그에 남긴다 (#285 리팩토링 전후 수치 비교, 코드 점검표 R-1). local 에서만
+        # 한 요청에 세션이 여러 개일 수 있어(로그인 확인 필터 등) 요청 하나의 수치는 같은 요청 ID([요청ID|m=]) 줄의 Session Metrics 를 모두 더한다
         generate_statistics: true
 # local 로그 (#84) : 우리 코드는 DEBUG 까지, 파일은 logs/moneybeetle.log 에 JSON 한 줄씩(요청 ID·회원 ID 포함), 7일 보관
 logging:
