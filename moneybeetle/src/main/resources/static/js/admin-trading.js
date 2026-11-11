@@ -59,6 +59,8 @@
   function dateTime(iso) { return iso ? String(iso).replace(/^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2}).*$/, '$1.$2 $3') : '-'; }
   function api(path, opts) { return MB.api(BASE + path, opts); }
   function seasonPath(suffix) { return '/seasons/' + state.season.seasonId + suffix; }
+  /** 확인창을 연 시점의 시즌처럼, 정해 둔 시즌 번호로 경로를 만든다 */
+  function pathOf(seasonId, suffix) { return '/seasons/' + seasonId + suffix; }
   // 응답을 받은 시점에 관리자가 고른 시즌. 요청 중에 다른 시즌을 골랐다면 그 선택을 유지한다
   function currentSeasonId() { return state.season ? state.season.seasonId : null; }
   // 시즌별 요청의 순번. 시즌을 A -> B -> A 로 바꿔도 먼저 보낸 요청의 늦은 응답이 지금 화면을 덮어쓰지 않게 한다
@@ -77,11 +79,24 @@
     fill(tbody, [el('tr', {}, [el('td', { colspan: colspan, class: 'at-empty' + (isError ? ' error' : ''), text: text })])]);
   }
   function emptyBox(box, text, isError) { fill(box, [el('div', { class: 'at-empty' + (isError ? ' error' : ''), text: text })]); }
-  function formError(form, msg) {
+  /**
+   * 폼 오류 표시. field(입력란 name)를 주면 그 입력란에 aria-invalid 와 오류 문구 연결(aria-describedby)을 단다.
+   * 오류를 지우면(msg 없음) 연결도 함께 지운다. 오류 영역은 role="alert" 라 화면 읽기 도구가 바로 읽는다
+   */
+  function formError(form, msg, field) {
     var e = form.querySelector('[data-at-error]');
     e.textContent = msg || '';
     e.hidden = !msg;
+    form.querySelectorAll('[aria-invalid]').forEach(function (x) { x.removeAttribute('aria-invalid'); x.removeAttribute('aria-describedby'); });
+    var input = msg && field ? form.elements[field] : null;
+    if (input && input.setAttribute) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', e.id);
+      input.focus();
+    }
   }
+  /** 서버 입력값 오류(@Valid)가 가리키는 입력란 이름 (없으면 null) */
+  function fieldOf(err) { return err && err.fields && err.fields.length ? err.fields[0].field || null : null; }
   /** 요청하는 동안 버튼을 잠가 두 번 눌리지 않게 한다 */
   function busy(btn, promise) {
     if (btn) btn.disabled = true;
@@ -100,6 +115,7 @@
 
   /* ---------- 확인창 ---------- */
   var modal = $('at-modal');
+  var modalOpener = null;   // 확인창을 연 요소 (닫으면 포커스를 돌려준다)
   var modalOk = modal.querySelector('[data-at-modal="ok"]');
   var modalResolve = null;
   function confirmModal(o) {
@@ -110,22 +126,47 @@
     list.hidden = !(o.list && o.list.length);
     modalOk.textContent = o.ok || '확인';
     modalOk.className = 'at-btn ' + (o.danger ? 'danger' : 'primary');
+    modalOpener = document.activeElement;
+    setBackgroundInert(true);   // 창이 열린 동안 배경(메뉴·시즌 선택·버튼)으로 포커스·클릭이 가지 않는다
     modal.hidden = false;
     modalOk.focus();
     return new Promise(function (resolve) { modalResolve = resolve; });
   }
   function closeModal(value) {
     modal.hidden = true;
+    setBackgroundInert(false);
     var r = modalResolve;
     modalResolve = null;
+    // 작업을 시작한 버튼으로 포커스를 돌려준다 (그 버튼이 화면에 남아 있을 때)
+    if (modalOpener && document.contains(modalOpener) && modalOpener.focus) modalOpener.focus();
+    else if (modal.contains(document.activeElement)) document.activeElement.blur();   // 숨은 창 안에 포커스가 남지 않게
+    modalOpener = null;
     if (r) r(value);
+  }
+  function setBackgroundInert(on) {
+    document.querySelectorAll('body > *').forEach(function (n) {
+      if (n === modal || n.tagName === 'SCRIPT') return;
+      if (on) { n.setAttribute('inert', ''); n.setAttribute('aria-hidden', 'true'); }
+      else { n.removeAttribute('inert'); n.removeAttribute('aria-hidden'); }
+    });
   }
   modal.addEventListener('click', function (e) {
     var b = e.target.closest('[data-at-modal]');
     if (b) closeModal(b.getAttribute('data-at-modal') === 'ok');
     else if (e.target === modal) closeModal(false);
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) closeModal(false); });
+  document.addEventListener('keydown', function (e) {
+    if (modal.hidden) return;
+    if (e.key === 'Escape') { closeModal(false); return; }
+    if (e.key !== 'Tab') return;
+    // Tab·Shift+Tab 은 창 안의 버튼 사이에서만 돈다 (inert 를 지원하지 않는 브라우저 대비)
+    var items = Array.prototype.slice.call(modal.querySelectorAll('button:not([disabled])'));
+    if (!items.length) return;
+    var first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    else if (!modal.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  });
 
   /* ---------- 14일 달력 (월요일 시작, 7일·14일째 일요일은 휴장) ---------- */
   function isoOf(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -265,6 +306,11 @@
     go.then(function (ok) {
       if (!ok) { seasonSelect.value = previous; return; }
       state.season = pickSeason(state.seasons, wanted);
+      if (String(currentSeasonId()) !== previous) {
+        // A → B → A 처럼 돌아와도 A 의 이전 페이지·이전 점검 응답이 남지 않게 한다
+        state.peoplePage = 0;
+        req.turn += 1;
+      }
       state.edits = {};
       state.prices = null;   // 새 가격표를 받기 전에는 이전 시즌 가격표로 저장 버튼이 켜져 있지 않게 한다
       updatePriceStatus();
@@ -317,7 +363,7 @@
     confirmModal({ title: '시즌 상태를 ‘' + statusLabel(to) + '’(으)로 바꿀까요?', body: '시즌 상태는 정해진 순서로만 바뀌고 거꾸로 돌아갈 수 없어요.', ok: '변경하기' })
       .then(function (ok) {
         if (!ok) return;
-        return busy(btn, api(seasonPath('/status'), { method: 'PATCH', body: { status: to } })).then(function () {
+        return busy(btn, api(pathOf(s.seasonId, '/status'), { method: 'PATCH', body: { status: to } })).then(function () {
           MB.toast('시즌 상태를 ‘' + statusLabel(to) + '’(으)로 바꿨어요');
           return loadSeasons(currentSeasonId()).then(renderSeasonTab);
         }, toastError);
@@ -329,8 +375,8 @@
     var f = e.currentTarget;
     if (!state.season) return formError(f, noSeasonText());
     var rate = f.carryoverRate.value.trim(), cap = f.carryoverCap.value.trim();
-    if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number(rate) > 100) return formError(f, '이월 비율은 0~100 사이, 소수 둘째 자리까지 입력해 주세요');
-    if (cap !== '' && !/^\d+$/.test(cap)) return formError(f, '이월 상한은 0 이상의 정수로 입력하거나 비워 두세요');
+    if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number(rate) > 100) return formError(f, '이월 비율은 0~100 사이, 소수 둘째 자리까지 입력해 주세요', 'carryoverRate');
+    if (cap !== '' && !/^\d+$/.test(cap)) return formError(f, '이월 상한은 0 이상의 정수로 입력하거나 비워 두세요', 'carryoverCap');
     formError(f, '');
     var body = { carryoverRate: Number(rate), carryoverCap: cap === '' ? null : Number(cap) };
     var target = state.season;   // 요청을 보낸 시즌 (저장하는 사이 다른 시즌으로 바꿔도 이 시즌에 반영한다)
@@ -339,7 +385,7 @@
       target.carryoverRate = body.carryoverRate;
       target.carryoverCap = body.carryoverCap;
       MB.toast('시즌 설정을 저장했어요');
-    }, function (err) { formError(f, errText(err)); });
+    }, function (err) { formError(f, errText(err), fieldOf(err)); });
   });
 
   function isMonday(v) { return !!v && new Date(v + 'T00:00:00').getDay() === 1; }
@@ -353,8 +399,8 @@
   createForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var name = createForm.elements.name.value.trim(), start = createForm.startDate.value, copy = createForm.copyFromSeasonId.value;
-    if (!name) return formError(createForm, '시즌 이름을 입력해 주세요');
-    if (!isMonday(start)) return formError(createForm, '시즌 시작일은 월요일이어야 해요');
+    if (!name) return formError(createForm, '시즌 이름을 입력해 주세요', 'name');
+    if (!isMonday(start)) return formError(createForm, '시즌 시작일은 월요일이어야 해요', 'startDate');
     formError(createForm, '');
     var body = { name: name, startDate: start, copyFromSeasonId: copy ? Number(copy) : null };
     busy(createForm.querySelector('[type=submit]'), api('/seasons', { method: 'POST', body: body })).then(function (data) {
@@ -362,7 +408,7 @@
       createForm.reset();
       $('at-create-cal').hidden = true;
       return loadSeasons(data && data.seasonId).then(renderSeasonTab);
-    }, function (err) { formError(createForm, errText(err)); });
+    }, function (err) { formError(createForm, errText(err), fieldOf(err)); });
   });
 
   /* =====================================================================
@@ -438,7 +484,7 @@
     confirmModal({ title: next + '턴으로 넘길까요?', body: '새 가격과 뉴스가 모든 참가자에게 공개되고, 전원의 총자산 스냅샷이 저장돼요. 되돌릴 수 없어요.', ok: '턴 넘기기' })
       .then(function (ok) {
         if (!ok) return;
-        return busy(nextBtn, api(seasonPath('/turns/next'), { method: 'POST', body: { expectedCurrentTurn: s.currentTurn } })).then(function (data) {
+        return busy(nextBtn, api(pathOf(s.seasonId, '/turns/next'), { method: 'POST', body: { expectedCurrentTurn: s.currentTurn } })).then(function (data) {
           MB.toast((data && data.currentTurn ? data.currentTurn : next) + '턴으로 넘겼어요');
         }, toastError).then(function () { return loadSeasons(currentSeasonId()); }).then(loadTurn);
       });
@@ -560,9 +606,9 @@
   $('at-stock-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var f = e.currentTarget, price = f.startPrice.value.trim();
-    if (!f.sectorId.value) return formError(f, '분야를 골라 주세요');
-    if (!f.elements.name.value.trim()) return formError(f, '종목명을 입력해 주세요');
-    if (!/^\d+$/.test(price) || Number(price) < 1) return formError(f, '시작 가격은 1 이상의 정수로 입력해 주세요');
+    if (!f.sectorId.value) return formError(f, '분야를 골라 주세요', 'sectorId');
+    if (!f.elements.name.value.trim()) return formError(f, '종목명을 입력해 주세요', 'name');
+    if (!/^\d+$/.test(price) || Number(price) < 1) return formError(f, '시작 가격은 1 이상의 정수로 입력해 주세요', 'startPrice');
     formError(f, '');
     var body = { sectorId: Number(f.sectorId.value), name: f.elements.name.value.trim(), startPrice: Number(price),
       intro: f.intro.value, business: f.business.value, revenue: f.revenue.value, operatingProfit: f.operatingProfit.value };
@@ -574,7 +620,7 @@
       // 그사이 다른 종목을 고르거나 새 종목 폼을 열었으면 등록된 번호를 지금 폼에 붙이지 않는다 (붙이면 지금 폼 저장이 그 종목을 덮어쓴다)
       if (!id && data && data.stockId && seq === state.stockEditSeq) state.stockEditId = data.stockId;
       loadStocksTab();
-    }, function (err) { if (seq === state.stockEditSeq) formError(f, errText(err)); else toastError(err); });
+    }, function (err) { if (seq === state.stockEditSeq) formError(f, errText(err), fieldOf(err)); else toastError(err); });
   });
 
   $('at-sector-form').addEventListener('submit', function (e) {
@@ -595,6 +641,14 @@
     if (!state.season) { fill($('at-price-head'), []); return emptyRow(priceRows, 1, noSeasonText()); }
     // 탭을 다녀온 것만으로는 저장하지 않은 입력을 지우지 않는다. 저장·CSV 올리기 뒤(force)와 시즌 변경은 새로 불러온다
     if (!force && state.prices && state.prices.seasonId === state.season.seasonId && Object.keys(state.edits).length) {
+      // 그사이 턴이 넘어갔으면 공개된 턴까지 잠근다. 새로 잠긴 턴의 저장하지 않은 입력은 빼고 알린다 (미래 턴 입력은 둔다)
+      var T = state.season.currentTurn;
+      if (T > state.prices.currentTurn) {
+        state.prices.currentTurn = T;
+        var dropped = Object.keys(state.edits).filter(function (k) { return state.edits[k].turnNo <= T; });
+        dropped.forEach(function (k) { delete state.edits[k]; });
+        if (dropped.length) MB.toast('턴이 넘어가 ' + T + '턴까지 잠겼어요. 그 턴의 저장하지 않은 입력 ' + dropped.length + '칸을 뺐어요', 'error');
+      }
       return renderPrices();
     }
     emptyRow(priceRows, 1, '불러오는 중…');
@@ -717,13 +771,25 @@
     });
     var bad = cells.filter(function (c) { return c.price != null && (c.price < 1 || c.price % 1 !== 0); });
     if (bad.length) return MB.toast('가격은 1원 이상의 정수로 입력해 주세요', 'error');
-    return busy($('at-price-save'), api(seasonPath('/prices'), { method: 'PUT', body: { confirm: confirm, cells: cells } })).then(function (res) {
+    var seasonId = state.season.seasonId, sent = JSON.stringify(cells);
+    return busy($('at-price-save'), api(pathOf(seasonId, '/prices'), { method: 'PUT', body: { confirm: confirm, cells: cells } })).then(function (res) {
       var warnings = (res && res.warnings) || [];
       if (!confirm && warnings.length && !(res && res.saved)) {
         return confirmModal({
           title: '한 턴에 ±30%를 넘는 변동이에요. 그대로 저장할까요?', body: '아래 칸의 가격을 확인해 주세요.', ok: '그대로 저장',
           list: warnings.map(function (w) { var r = rowOf(w.stockId); return (r ? r.stockName : w.stockId) + ' ' + w.turnNo + '턴 · ' + w.message; })
-        }).then(function (ok) { if (ok) return savePrices(true); });
+        }).then(function (ok) {
+          if (!ok) return;
+          // 경고를 기다리는 동안 시즌을 바꾸거나 가격을 더 고쳤으면, 확인하지 않은 내용이 저장되지 않게 멈춘다
+          var now = Object.keys(state.edits).map(function (k) {
+            var ed = state.edits[k];
+            return ed.mode === 'rate' ? { stockId: ed.stockId, turnNo: ed.turnNo, changeRate: ed.value } : { stockId: ed.stockId, turnNo: ed.turnNo, price: ed.value };
+          });
+          if (!state.season || state.season.seasonId !== seasonId || JSON.stringify(now) !== sent) {
+            return MB.toast('경고를 확인하는 동안 시즌이나 입력한 가격이 바뀌었어요. 다시 저장해 주세요', 'error');
+          }
+          return savePrices(true);
+        });
       }
       MB.toast(((res && res.saved) || 0) + '칸을 저장했어요');
       loadPrices(true);
@@ -893,7 +959,7 @@
   newsForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var n = state.newsEdit, title = newsForm.elements.title.value.trim(), content = newsForm.content.value.trim();
-    if (!title || !content) return formError(newsForm, '제목과 본문을 입력해 주세요');
+    if (!title || !content) return formError(newsForm, '제목과 본문을 입력해 주세요', !title ? 'title' : 'content');
     formError(newsForm, '');
     var body = { turnNo: Number(newsForm.turnNo.value), title: title, content: content,
       sectorIds: state.newsSel.sectorIds.slice(), stockIds: state.newsSel.stockIds.slice(), adminMemo: newsForm.adminMemo.value.trim() || null };
@@ -908,7 +974,7 @@
         closeNewsForm();
       }
       loadNews();
-    }, function (err) { if (seq === state.newsFormSeq) formError(newsForm, errText(err)); else toastError(err); });
+    }, function (err) { if (seq === state.newsFormSeq) formError(newsForm, errText(err), fieldOf(err)); else toastError(err); });
   });
 
   function deleteNews(n, btn) {
@@ -1092,8 +1158,8 @@
     var btn = e.currentTarget, s = state.season;
     confirmModal({ title: '정산을 실행할까요?', body: '최종 순자산·수익률·순위·이월금을 한 번에 확정해요. 실행한 뒤에는 되돌릴 수 없어요.', ok: '정산 실행' }).then(function (ok) {
       if (!ok) return;
-      var id = s.seasonId;
-      return busyOnce(btn, api(seasonPath('/settle'), { method: 'POST' })).then(function (d) {
+      var id = s.seasonId;   // 확인창을 연 시점의 시즌 (요청 경로와 오류 처리가 같은 시즌을 가리킨다)
+      return busyOnce(btn, api(pathOf(id, '/settle'), { method: 'POST' })).then(function (d) {
         state.settledIds[id] = true;
         MB.toast((d && d.participants != null ? fmt(d.participants) + '명의 ' : '') + '정산을 마쳤어요');
         return loadSeasons(currentSeasonId()).then(loadRanking);
@@ -1104,8 +1170,8 @@
     var btn = e.currentTarget, s = state.season;
     confirmModal({ title: '랭킹을 공개할까요?', body: '모든 사용자에게 ' + s.name + ' 순자산·수익률 랭킹이 공개돼요. 되돌릴 수 없어요.', ok: '랭킹 공개' }).then(function (ok) {
       if (!ok) return;
-      var id = s.seasonId;
-      return busyOnce(btn, api(seasonPath('/rankings/publish'), { method: 'POST' })).then(function () {
+      var id = s.seasonId;   // 확인창을 연 시점의 시즌
+      return busyOnce(btn, api(pathOf(id, '/rankings/publish'), { method: 'POST' })).then(function () {
         MB.toast('랭킹을 공개했어요');
         // 시즌은 서버에서 종료로 바뀐다 -> 머리 알약·상태 버튼·정산 탭을 새 상태로 다시 그린다 (정산 버튼과 같다)
         return loadSeasons(currentSeasonId()).then(loadRanking);

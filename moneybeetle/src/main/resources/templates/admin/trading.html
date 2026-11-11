@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
   <th:block th:replace="~{fragments/layout/header :: headFragment('모의투자 운영')}"></th:block>
@@ -102,7 +102,7 @@
               <label>이월 상한 (캐시)
                 <input type="number" name="carryoverCap" min="0" step="1" placeholder="비워 두면 상한 없음">
               </label>
-              <em class="at-err" data-at-error hidden></em>
+              <em class="at-err" id="at-settings-error" role="alert" data-at-error hidden></em>
               <div class="at-row end"><button type="submit" class="at-btn primary">설정 저장</button></div>
             </form>
           </section>
@@ -119,7 +119,7 @@
                 <small class="at-muted">고른 시즌의 이월 비율·상한을 그대로 써요. 분야·종목은 모든 시즌이 함께 써요</small>
               </label>
               <div class="at-cal" id="at-create-cal" hidden></div>
-              <em class="at-err" data-at-error hidden></em>
+              <em class="at-err" id="at-create-error" role="alert" data-at-error hidden></em>
               <div class="at-row end"><button type="submit" class="at-btn primary">시즌 만들기</button></div>
             </form>
           </section>
@@ -171,8 +171,10 @@
           <div class="at-card__head"><div><h2>분야</h2><p>15개 분야를 등록·수정해요. 분야마다 사용 중인 종목은 2개예요</p></div></div>
           <div class="at-sectors" id="at-sector-list"><div class="at-empty">불러오는 중…</div></div>
           <form class="at-row" id="at-sector-form" novalidate>
-            <input type="text" name="name" class="at-input" maxlength="30" placeholder="새 분야 이름" required>
-            <input type="number" name="sortOrder" class="at-input at-input--sm" min="1" placeholder="순서">
+            <label class="sr-only" for="at-sector-name">새 분야 이름</label>
+            <input type="text" id="at-sector-name" name="name" class="at-input" maxlength="30" placeholder="새 분야 이름" required>
+            <label class="sr-only" for="at-sector-order">표시 순서</label>
+            <input type="number" id="at-sector-order" name="sortOrder" class="at-input at-input--sm" min="1" placeholder="순서">
             <button type="submit" class="at-btn soft">분야 추가</button>
           </form>
         </section>
@@ -200,7 +202,7 @@
                 <label>가상 영업이익<input type="text" name="operatingProfit" maxlength="50" placeholder="예) 1,450억"></label>
               </div>
               <p class="at-muted">한 분야에는 사용 중인 종목을 2개까지 둘 수 있어요</p>
-              <em class="at-err" data-at-error hidden></em>
+              <em class="at-err" id="at-stock-error" role="alert" data-at-error hidden></em>
               <div class="at-row end">
                 <button type="button" class="at-btn ghost" id="at-stock-cancel">새로 쓰기</button>
                 <button type="submit" class="at-btn primary">저장</button>
@@ -260,7 +262,7 @@
               <div class="at-field"><span>관련 종목</span><div class="at-chips" id="at-news-stocks"></div></div>
               <label>관리자 메모 <small class="at-muted">사용자에게 보이지 않아요</small>
                 <textarea name="adminMemo" rows="2" maxlength="500" placeholder="이 뉴스의 설계 의도"></textarea></label>
-              <em class="at-err" data-at-error hidden></em>
+              <em class="at-err" id="at-news-error" role="alert" data-at-error hidden></em>
               <div class="at-row end">
                 <button type="button" class="at-btn ghost" id="at-news-cancel">취소</button>
                 <button type="submit" class="at-btn primary">저장</button>
