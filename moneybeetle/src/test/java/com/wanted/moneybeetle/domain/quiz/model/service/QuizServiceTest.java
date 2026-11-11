@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -49,6 +50,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
@@ -420,7 +422,9 @@ class QuizServiceTest {
             assertThatThrownBy(() -> quizService.submitQuiz(MEMBER, COURSE, answersWithCorrect(5, 5)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode").isEqualTo(QuizErrorCode.QUIZ_LOCKED);
-            verify(memberService).lockBalance(MEMBER);
+            InOrder order = inOrder(memberService, courseService);       // 회원 행을 잠근 뒤에 시청 여부를 본다
+            order.verify(memberService).lockBalance(MEMBER);
+            order.verify(courseService).hasWatchedAllLessons(MEMBER, COURSE);
             verifyNoInteractions(attemptRepository, answerRepository, wrongNoteRepository, rewardService);
         }
     }
@@ -440,7 +444,16 @@ class QuizServiceTest {
                     .thenReturn(List.of(CourseLabelDTO.of(COURSE, "청약통장 기초", "부동산 › 청약")));
             when(wrongNoteRepository.findByMemberIdAndQuizQuestionIdIn(eq(MEMBER), anyList()))
                     .thenReturn(List.of(WrongAnswerNote.create(MEMBER, 1L, wrong(1)), WrongAnswerNote.create(MEMBER, 2L, wrong(2))));
-            when(questionRepository.findAllById(any())).thenReturn(List.of(mine, hiddenCourse));
+            // 조회한 ID의 문항만 돌려준다. 3번은 보이는 강의지만 내 오답노트에는 없다 → 서비스가 오답노트로 거르지 않으면 결과에 섞인다
+            QuizQuestion notInMyNotes = question(3, COURSE, QuizQuestion.QUIZ_TYPE_MAIN, 3);
+            when(questionRepository.findAllById(any())).thenAnswer(invocation -> {
+                Iterable<Long> requestedIds = invocation.getArgument(0);
+                List<Long> ids = new ArrayList<>();
+                requestedIds.forEach(ids::add);
+                return List.of(mine, hiddenCourse, notInMyNotes).stream()
+                        .filter(q -> ids.contains(q.getQuizQuestionId()))
+                        .toList();
+            });
             when(choiceRepository.findByQuizQuestionIdInOrderBySortOrderAsc(anyList())).thenReturn(List.of(
                     choice(correct(1), 1, true, 1), choice(wrong(1), 1, false, 2)));
 
