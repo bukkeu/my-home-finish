@@ -50,7 +50,8 @@ public enum TradingErrorCode implements ErrorCode {
     NOT_ENOUGH_QUANTITY(HttpStatus.BAD_REQUEST, "보유한 수량보다 많이 팔 수 없어요"),                                 // 400
     REASON_REQUIRED(HttpStatus.BAD_REQUEST, "매매 이유를 골라 주세요"),                                             // 400
     STALE_TURN_PRICE(HttpStatus.CONFLICT, "가격이 바뀌었어요. 현재 가격을 확인해 주세요"),                             // 409
-    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요");                                       // 403
+    RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요"),                                       // 403
+    NOT_SETTLED(HttpStatus.CONFLICT, "정산을 먼저 해 주세요");                                                    // 409                                       // 403
 
     private final HttpStatus status;
     private final String message;
