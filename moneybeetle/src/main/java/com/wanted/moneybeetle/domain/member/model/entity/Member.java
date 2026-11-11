@@ -40,6 +40,11 @@ public class Member {
     public static final String STATUS_SUSPENDED = "SUSPENDED";
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
 
+    /** 탈퇴한 회원의 개인정보를 지우기까지 두는 기간(일) (DP-06) */
+    public static final int PERSONAL_INFO_RETENTION_DAYS = 30;
+    /** 개인정보를 지운 뒤 닉네임은 "탈퇴한 사용자#회원ID" 가 된다 (닉네임 컬럼은 NULL 불가·고유라서 ID 를 붙인다) */
+    public static final String PURGED_NICKNAME_PREFIX = "탈퇴한 사용자#";
+
     /** 최대 레벨 (SP-20) */
     public static final int MAX_LEVEL = 20;
 
@@ -152,6 +157,43 @@ public class Member {
     }
 
     /**
+     * 간편 로그인(구글)으로 가입한다 (이슈 #9). 비밀번호는 없고(NULL) 제공자가 확인해 준 이메일을 쓰므로 본인인증을 마친 것으로 둔다.
+     * 레벨 1·경험치 0·캐시 0으로 시작하는 것은 일반 가입과 같다.
+     *
+     * @param today 가입 연령 계산 기준일 (KST 오늘)
+     */
+    public static Member signupSocial(String email, String nickname, LocalDate birthDate, String gender, LocalDate today) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null && SignupRules.isAtLeastMinAge(birthDate, today), "만 14세 이상만 가입할 수 있습니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        Member member = new Member(SignupRules.normalizeEmail(email), null, nickname, birthDate, gender);
+        member.completeIdentityVerification();
+        return member;
+    }
+
+    /**
+     * 강사 가입 신청으로 회원을 만든다 (API 12, #30). 강사명을 닉네임으로 쓴다.
+     * 강사 신청 화면에는 생년월일·성별이 없어 비워 둔다 (member.birth_date 는 NULL 허용).
+     * 권한은 MEMBER 로 시작한다: 관리자가 승인하면(InstructorService.approve) INSTRUCTOR 로 바뀐다 (SP-07).
+     * 본인인증은 가입 흐름(MemberSignupService)이 확인하고, 마쳤으면 completeIdentityVerification 으로 남긴다.
+     *
+     * @param passwordHash 이미 BCrypt 로 만든 해시 (평문을 넘기지 않는다, DP-02)
+     */
+    public static Member signupInstructor(String email, String passwordHash, String nickname) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, null, null);
+    }
+
+    /** 가입 중 본인인증(이메일 코드)을 마쳤다고 기록한다 (결과값만 저장한다, DB설계 member.is_identity_verified) */
+    public void completeIdentityVerification() {
+        this.identityVerified = true;
+    }
+
+    /**
      * 활동 보상으로 캐시·경험치를 받는다 (growth.RewardService 가 MemberService 를 통해 부른다).
      * 레벨은 여기서 바꾸지 않는다 - 경험치로 레벨이 오르면 growth 가 {@link #levelUp} 을 이어서 부른다.
      */
@@ -170,6 +212,40 @@ public class Member {
         require(newLevel > this.level, "새 레벨은 현재 레벨보다 높아야 합니다.");
         require(newLevel <= MAX_LEVEL, "레벨은 " + MAX_LEVEL + " 이하여야 합니다.");
         this.level = newLevel;
+    }
+
+    /**
+     * 오늘 출석을 기록한다 (growth.AttendanceService 가 MemberService 를 통해 부른다). 하루에 한 번만 기록된다 (SP-10).
+     * 어제도 출석했으면 연속 일수가 1 늘고, 하루라도 빠졌거나 처음이면 1 부터 다시 센다 (SP-11).
+     *
+     * @param today 서울(KST) 오늘 날짜. 테스트하기 쉽게 밖에서 받는다
+     * @return 오늘 처음 기록했으면 true, 이미 오늘 출석했으면 false (값은 바뀌지 않는다)
+     */
+    public boolean checkAttendance(LocalDate today) {
+        require(today != null, "오늘 날짜가 필요합니다.");
+        if (lastAttendedDate != null && !today.isAfter(lastAttendedDate)) {
+            return false;   // 오늘(또는 기기 시간이 어긋난 미래 날짜) 이미 기록됨
+        }
+        boolean consecutive = lastAttendedDate != null && lastAttendedDate.plusDays(1).equals(today);
+        this.attendanceStreak = consecutive ? attendanceStreak + 1 : 1;
+        this.lastAttendedDate = today;
+        return true;
+    }
+
+    /**
+     * 오늘 기준으로 이어지고 있는 연속 출석 일수. 어제나 오늘 출석했으면 저장된 값이고, 그보다 오래됐으면 이미 끊겨서 0 이다.
+     * (저장된 값은 다음 출석 때 1 로 다시 시작하므로, 화면에는 이 값을 보여 준다)
+     */
+    public int currentStreak(LocalDate today) {
+        if (lastAttendedDate == null || lastAttendedDate.plusDays(1).isBefore(today)) {
+            return 0;
+        }
+        return attendanceStreak;
+    }
+
+    /** 오늘 이미 출석했는가 */
+    public boolean hasAttended(LocalDate today) {
+        return lastAttendedDate != null && lastAttendedDate.equals(today);
     }
 
     /** 캐시를 쓴다. 잔액은 0 미만이 될 수 없다 (SP-15) */
@@ -222,6 +298,90 @@ public class Member {
         lockedUntil = null;
         lastLoginAt = now;
     }
+    /** 비밀번호를 바꾼다 (#8). 평문이 아니라 이미 BCrypt 로 만든 해시를 받는다 (DP-02) */
+    public void changePasswordHash(String passwordHash) {
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        this.passwordHash = passwordHash;
+    }
+
+    /**
+     * 탈퇴한다 (#8, USR-14, DP-06). 계정을 비활성화(WITHDRAWN)하고 탈퇴 시각을 남긴다.
+     * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
+     */
+    public void withdraw(LocalDateTime now) {
+        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
+        this.status = STATUS_WITHDRAWN;
+        this.withdrawnAt = now;
+    }
+
+    /**
+     * 탈퇴한 지 PERSONAL_INFO_RETENTION_DAYS 일이 지난 회원의 개인정보를 지운다 (DP-06, DH-05).
+     * 이메일·비밀번호 해시·생년월일·성별·프로필 이미지는 NULL 로 만들고, 닉네임은 "탈퇴한 사용자#회원ID" 로 바꾼다.
+     * 행은 학습·거래 기록 보존을 위해 남긴다. 탈퇴한 회원만 지울 수 있다.
+     */
+    public void purgePersonalInfo() {
+        require(STATUS_WITHDRAWN.equals(status), "탈퇴한 회원만 개인정보를 지울 수 있습니다.");
+        this.email = null;
+        this.passwordHash = null;
+        this.birthDate = null;
+        this.gender = null;
+        this.profileImageUrl = null;
+        this.nickname = PURGED_NICKNAME_PREFIX + memberId;
+    }
+
+    /**
+     * 설정(닉네임·생년월일·성별)을 바꾼다 (#7). 이메일은 바꿀 수 없어 받지 않는다.
+     * 중복·금칙어·만 14세처럼 DB·오늘 날짜가 필요한 규칙은 MemberService 가 먼저 확인한다. 여기서는 값의 모양만 확인한다.
+     */
+    public void changeProfile(String nickname, LocalDate birthDate, String gender) {
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null, "생년월일이 필요합니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    /** 프로필 이미지 주소를 바꾼다 (#7) */
+    public void changeProfileImageUrl(String profileImageUrl) {
+        require(profileImageUrl != null && !profileImageUrl.isBlank(), "프로필 이미지 주소가 필요합니다.");
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    /**
+     * 관리자가 계정을 정지한다 (#37, API 102, SP-06). 정지된 계정은 로그인할 수 없고,
+     * 이미 로그인한 세션도 다음 요청에서 끊긴다(ActiveMemberFilter 가 isActive 를 본다). 사유는 서비스가 확인한다.
+     */
+    public void suspend(String reason) {
+        require(!STATUS_WITHDRAWN.equals(status), "탈퇴한 회원은 정지할 수 없습니다.");
+        require(reason != null && !reason.isBlank(), "정지 사유가 필요합니다.");
+        this.status = STATUS_SUSPENDED;
+        this.suspendedReason = reason;
+    }
+
+    /** 관리자가 정지를 푼다 (#37, API 102). 정지 사유도 지운다 */
+    public void activate() {
+        require(!STATUS_WITHDRAWN.equals(status), "탈퇴한 회원은 바꿀 수 없습니다.");
+        this.status = STATUS_ACTIVE;
+        this.suspendedReason = null;
+    }
+
+    /**
+     * 관리자가 강사 권한을 주거나 회수한다 (#37, API 103·105, SP-07). MEMBER ↔ INSTRUCTOR 만 바꾼다.
+     * 실제 INSTRUCTOR 권한은 강사 정보(instructor_profile)가 승인(APPROVED)일 때만 생긴다 (MemberService.grantedRole).
+     */
+    public void changeRole(String newRole) {
+        require(!ROLE_ADMIN.equals(role), "관리자 권한은 바꿀 수 없습니다.");
+        require(ROLE_MEMBER.equals(newRole) || ROLE_INSTRUCTOR.equals(newRole), "MEMBER 또는 INSTRUCTOR 만 줄 수 있습니다.");
+        this.role = newRole;
+    }
+
+    /** 탈퇴한 회원인가 */
+    public boolean isWithdrawn() {
+        return STATUS_WITHDRAWN.equals(status);
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);

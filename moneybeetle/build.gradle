@@ -21,11 +21,13 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    // 간편 로그인(구글·카카오) - USR-07
+    // 간편 로그인(구글) - USR-07
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // 서버 상태 확인 /actuator/health·info (#84, 발표 전 로컬 점검)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     // 비밀번호 재설정 메일 - USR-09
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'

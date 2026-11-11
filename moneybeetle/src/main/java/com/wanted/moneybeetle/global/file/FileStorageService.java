@@ -96,8 +96,13 @@ public class FileStorageService {
     private static final List<String> MP4_BRANDS =
             List.of("isom", "iso2", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1", "M4V ", "dash");
 
+    // 형식 검사에 읽는 맨 앞 바이트 수 = MP4 ftyp 상자 머리 [크기 4]["ftyp" 4][브랜드 4] (JPEG·PNG 는 이보다 짧다)
+    private static final int HEADER_LENGTH = 12;
+    // 올바른 ftyp 상자의 최소 크기 = 머리 12 + minor version 4 (#114 : 숫자 대신 이름 있는 상수)
+    private static final int MIN_FTYP_BOX_SIZE = 16;
+
     private boolean matchesContent(MultipartFile file, String ext) throws IOException {
-        byte[] head = new byte[12];
+        byte[] head = new byte[HEADER_LENGTH];
         int read;
         try (InputStream in = file.getInputStream()) {
             read = in.readNBytes(head, 0, head.length);
@@ -114,16 +119,16 @@ public class FileStorageService {
     /* comment.
     *   MP4 는 맨 앞에 ftyp 상자가 있다 : [상자 크기 4바이트]["ftyp"][브랜드 4바이트]...
     *   - 브랜드가 MP4 계열이어야 하고
-    *   - 상자 크기가 16 이상이며, ftyp 상자 뒤에 실제 영상 데이터가 더 있어야 한다 (잘린 파일 거절)
+    *   - 상자 크기가 MIN_FTYP_BOX_SIZE(16) 이상이며, ftyp 상자 뒤에 실제 영상 데이터가 더 있어야 한다 (잘린 파일 거절)
     *  */
     private boolean isMp4(byte[] head, int read, long fileSize) {
-        if (read < 12 || head[4] != 'f' || head[5] != 't' || head[6] != 'y' || head[7] != 'p') {
+        if (read < HEADER_LENGTH || head[4] != 'f' || head[5] != 't' || head[6] != 'y' || head[7] != 'p') {
             return false;
         }
         long boxSize = ((head[0] & 0xFFL) << 24) | ((head[1] & 0xFFL) << 16)
                 | ((head[2] & 0xFFL) << 8) | (head[3] & 0xFFL);
         String brand = new String(head, 8, 4, StandardCharsets.US_ASCII);
-        return boxSize >= 16 && fileSize > boxSize && MP4_BRANDS.contains(brand);
+        return boxSize >= MIN_FTYP_BOX_SIZE && fileSize > boxSize && MP4_BRANDS.contains(brand);
     }
 
     // head 의 앞부분이 signature 와 같은지 비교 (읽은 길이가 모자라면 false)

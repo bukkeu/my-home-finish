@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.auth.config;
 
+import com.wanted.moneybeetle.support.SecurityTestApp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -10,16 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
-import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,11 +26,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,8 +45,8 @@ import org.springframework.web.context.WebApplicationContext;
 *   로그인·로그아웃을 실제 HTTP 요청으로 확인한다 (이슈 #6). Security 필터 체인(formLogin·CSRF·세션·로그아웃)과 핸들러를 모두 띄우고,
 *   회원 저장소만 가짜로 둔다 (DB 없이 돈다). 로그인 요청이 폼 형식(email, password)이라는 것과 CSRF 토큰이 필요하다는 것도 여기서 고정한다.
 *  */
-@SpringBootTest(classes = {LoginHttpTest.TestApp.class, SecurityConfig.class, SecurityErrorHandler.class,
-        AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class, AuthService.class,
+@SpringBootTest(classes = {SecurityTestApp.class, LoginHttpTest.TestApp.class,
+        AuthService.class,
         com.wanted.moneybeetle.domain.auth.model.service.LoginAuthenticationProvider.class,
         MemberService.class,
         LoginHttpTest.ProtectedController.class})
@@ -63,10 +55,8 @@ class LoginHttpTest {
     private static final String EMAIL = "minji@gmail.com";
     private static final String PASSWORD = "beetle1234";
 
+    // SecurityConfig·로그인 핸들러·DB 제외 설정은 SecurityTestApp(#161). 여기는 이 테스트에만 필요한 빈
     @Configuration
-    @EnableAutoConfiguration(exclude = {
-            DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
-            HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
     static class TestApp {
         @Bean
         org.springframework.transaction.PlatformTransactionManager transactionManager() {
@@ -92,10 +82,18 @@ class LoginHttpTest {
         }
     }
 
+    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 출석 자체를 보지 않아 가짜로 둔다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
     @MockitoBean
     private MemberRepository memberRepository;
     @MockitoBean
     private InstructorProfileRepository instructorProfileRepository;
+    /** 간편 로그인(#9): MemberService 가 쓰는 연결 저장소, SecurityConfig 의 OAuth 성공 처리 핸들러가 쓰는 서비스. 이 테스트는 이메일 로그인만 본다 */
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService socialLoginService;
     @MockitoBean
     private TermsRepository termsRepository;
     @MockitoBean
@@ -119,6 +117,7 @@ class LoginHttpTest {
         when(memberRepository.findByEmail(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(member));
         when(memberRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(8L)).thenReturn(Optional.of(member));
     }
 
     private org.springframework.test.web.servlet.ResultActions loginForm(String email, String password, MockHttpSession session)

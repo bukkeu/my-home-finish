@@ -1,5 +1,33 @@
-<!-- comment.
-    담당 : DBA ① 신아림 (#59, 강사 대시보드)
-    원본 디자인 : InstructorDashboard.dc.html
-    경로 : /instructor/dashboard
--->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('강사 센터')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/instructor.css}">
+  <link rel="stylesheet" type="text/css" th:href="@{/css/inquiry.css}">
+</head>
+<body>
+<!--/* comment.
+  담당 : DBA ① 신아림 (#59, 강사 대시보드)
+  원본 디자인 : InstructorDashboard.dc.html (화면설계 5.3.1)
+  경로 : /instructor/dashboard?tab=dashboard|courses|qna|mypage (승인된 강사만, SecurityConfig)
+  데이터 : GET /api/v1/instructor/courses (내 강의·검수 상태, API 72), DELETE ·POST .../review-request (삭제·검수 요청, API 76·81),
+           GET /api/v1/instructor/inquiries (내 강의 문의, API 82), GET /api/v1/inquiries/{id}·POST .../replies (상세·답변, API 49·52)
+  - 본인 강의와 그 강의의 문의만 보인다 (서버가 로그인한 강사 기준으로 거른다)
+  - 강의 만들기·수정 화면은 #60 (/instructor/course-create)
+*/-->
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment(${tab})}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+    <main class="mb-main">
+      <div class="ins-page" data-ins-dashboard th:attr="data-tab=${tab}">
+        <div class="ins-state">강사 센터를 불러오는 중이에요…</div>
+      </div>
+    </main>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/inquiry-board.js}"></script>
+<script th:src="@{/js/instructor-dashboard.js}"></script>
+</body>
+</html>

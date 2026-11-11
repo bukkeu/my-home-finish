@@ -6,21 +6,30 @@ package com.wanted.moneybeetle.domain.auth.config;
 *   - PasswordEncoder(BCrypt) Bean
 *   - URL 권한 : /api/v1/admin/** ADMIN, /api/v1/instructor/** INSTRUCTOR, 나머지 /api/v1/** 로그인
 *   - 경로는 도메인 단위로 미리 등록해 두고, 새 API 를 만들 때마다 고치지 않는다 (충돌 방지)
-*   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글·카카오)
+*   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글)
 *  */
 
+import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.handler.OAuth2FailHandler;
+import com.wanted.moneybeetle.domain.auth.handler.OAuth2SuccessHandler;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 
 @Configuration                                 // ① 설정 클래스
 @EnableWebSecurity                             // ② Security 설정을 켜는 어노테이션
@@ -31,20 +40,60 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();    // ③ BCrypt 암호화 클래스
     }
 
+    /**
+     * 관리자 로그인 (API 83, 이슈 #33). 일반 로그인과 같은 인증 제공자(잠금·실패 기록 공유)를 쓰고, 이 주소로 온 시도에는
+     * AdminLoginDetails 표시를 붙여 ADMIN 권한이 아니면 인증 제공자가 막게 한다. 이 주소만 따로 처리하려고 필터 체인을 하나 더 둔다.
+     * 요청은 일반 로그인처럼 폼 형식(email, password)이고 CSRF 토큰이 필요하다.
+     */
     @Bean
+    @Order(1)
+    public SecurityFilterChain adminLoginChain(HttpSecurity http,
+                                               SecurityErrorHandler securityErrorHandler,
+                                               AdminAuthSuccessHandler adminAuthSuccessHandler,
+                                               AuthFailHandler authFailHandler) throws Exception {
+        http.securityMatcher("/api/v1/admin/auth/login")
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .formLogin(login -> {
+                    login.loginPage("/admin/login");
+                    login.loginProcessingUrl("/api/v1/admin/auth/login");
+                    login.usernameParameter("email");
+                    login.passwordParameter("password");
+                    login.authenticationDetailsSource(AdminLoginDetails::new);
+                    login.successHandler(adminAuthSuccessHandler);
+                    login.failureHandler(authFailHandler);
+                })
+                .exceptionHandling(ex -> {
+                    ex.authenticationEntryPoint(securityErrorHandler);
+                    ex.accessDeniedHandler(securityErrorHandler);
+                });
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain configure(HttpSecurity http,
                                          SecurityErrorHandler securityErrorHandler,
                                          AuthSuccessHandler authSuccessHandler,
                                          AuthFailHandler authFailHandler,
-                                         AuthLogoutSuccessHandler authLogoutSuccessHandler) throws Exception {
+                                         AuthLogoutSuccessHandler authLogoutSuccessHandler,
+                                         MemberService memberService,
+                                         ObjectProvider<ClientRegistrationRepository> clientRegistrations,
+                                         OAuth2SuccessHandler oAuth2SuccessHandler,
+                                         OAuth2FailHandler oAuth2FailHandler) throws Exception {
 
         // 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶는 인증 제공자 LoginAuthenticationProvider 는
         // 빈으로 등록돼 있어 Spring Security 가 인증 관리자에 자동으로 넣는다. 여기서 http.authenticationProvider 로 한 번 더 넣으면
         // 같은 제공자가 위·아래 두 인증 관리자에 모두 들어가 로그인 한 번에 실패가 두 번 기록된다 (LoginHttpTest 가 이를 확인한다)
 
         http.authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/login", "/signup", "/instructor/login",
+                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login", "/instructor/signup",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
+                    // 화면에 쓰는 정적 파일(CSS·JS·이미지): 로그인 전 화면(/login, /signup)도 그려야 하므로 누구나 (#230)
+                    auth.requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();
+                    // 간편 로그인(구글, #9): 인증 시작·제공자가 돌려보내는 주소, 처음 온 사람의 추가 정보 화면
+                    auth.requestMatchers("/oauth2/**", "/login/oauth2/**", "/signup/social").permitAll();
+                    // 서버 상태 확인(#84) : health·info 만 누구나. 나머지 actuator 주소는 웹에 열지 않아(application.yaml) 로그인해도 404
+                    auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
                     auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
                     // ⑥ 승인된 강사만 INSTRUCTOR 권한을 받도록 하는 것은 로그인(AuthService, 김예린 #6)에서 확인
                     auth.requestMatchers("/instructor/**", "/api/v1/instructor/**").hasAuthority("INSTRUCTOR");
@@ -67,11 +116,22 @@ public class SecurityConfig {
                     // fetch 요청은 204, 브라우저가 보낸 폼 요청은 "/"로 이동 (API 7)
                     logout.logoutSuccessHandler(authLogoutSuccessHandler);
                 })
+                // 로그인해 둔 세션도 탈퇴·정지된 뒤에는 막는다 (다른 기기에서 탈퇴해도 이 세션의 다음 요청이 거부된다, SP-06)
+                .addFilterBefore(new ActiveMemberFilter(memberService, securityErrorHandler), AuthorizationFilter.class)
                 // ⑫ 인증·권한 실패 응답 (API 는 401·403 JSON, 화면은 로그인 화면·403 화면)
                 .exceptionHandling(ex -> {
                     ex.authenticationEntryPoint(securityErrorHandler);   // 로그인 안 함
                     ex.accessDeniedHandler(securityErrorHandler);        // 권한 없음
                 });
+
+        // 간편 로그인(구글, #9): GOOGLE_CLIENT_ID 와 GOOGLE_CLIENT_SECRET 이 모두 있어 등록 정보가 만들어졌을 때만 켠다. 하나라도 비면 서버는 그대로 뜨고 이 로그인만 없다.
+        if (clientRegistrations.getIfAvailable() != null) {
+            http.oauth2Login(oauth -> {
+                oauth.loginPage("/login");
+                oauth.successHandler(oAuth2SuccessHandler);   // 가입한 사람은 로그인, 처음이면 추가 정보 화면으로
+                oauth.failureHandler(oAuth2FailHandler);      // 실패는 로그인 화면으로 (?oauthError=OAUTH_FAILED)
+            });
+        }
 
         return http.build();
     }

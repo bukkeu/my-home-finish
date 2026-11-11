@@ -1,11 +1,10 @@
 package com.wanted.moneybeetle.domain.course.model.entity;
 
+import com.wanted.moneybeetle.global.common.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -15,12 +14,13 @@ import java.time.LocalDateTime;
 /* comment.
 *   담당 : DBA ① (강의·퀴즈)
 *   테이블 learning_progress (이어보기 위치, 학습 완료)
+*   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#157)
 *  */
 @Entity
 @Table(name = "learning_progress")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class LearningProgress {
+public class LearningProgress extends BaseTimeEntity {
 
     public static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     public static final String STATUS_COMPLETED = "COMPLETED";
@@ -35,8 +35,6 @@ public class LearningProgress {
     private Long lastLessonId;
     private int lastPositionSeconds;
     private LocalDateTime completedAt;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     private LearningProgress(Long memberId, Long courseId) {
         this.memberId = memberId;
@@ -65,16 +63,13 @@ public class LearningProgress {
         return STATUS_COMPLETED.equals(status);
     }
 
-    // TODO 공통 설정(SCM)의 BaseTimeEntity가 생기면 상속으로 바꾸기
-    @PrePersist
-    void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    /* 학습 완료 (퀴즈 최초 통과, SP-34·LRN-07). 이미 완료였으면 아무것도 바꾸지 않고 false → 보상은 최초 통과 때만 */
+    public boolean complete(LocalDateTime completedAt) {
+        if (isCompleted()) {
+            return false;
+        }
+        this.status = STATUS_COMPLETED;
+        this.completedAt = completedAt;
+        return true;
     }
 }

@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.global.exception;
 /* comment.
 *   담당 : SCM (공통 기반·보안)
 *   공통 에러 (API 명세서 4장) : UNAUTHORIZED, SESSION_EXPIRED, FORBIDDEN, LEVEL_LOCKED, NOT_FOUND,
-*   DUPLICATE_REQUEST, IDEMPOTENCY_KEY_CONFLICT, FORBIDDEN_WORD, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, INTERNAL_ERROR
+*   DUPLICATE_REQUEST, IDEMPOTENCY_KEY_CONFLICT, IDEMPOTENCY_KEY_TOO_LONG, FORBIDDEN_WORD, FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, INVALID_INPUT, INTERNAL_ERROR
 *   : 양식에 맞춰 미리 써 둔 신고서 묶음
 *  */
 
@@ -22,9 +22,11 @@ public enum CommonErrorCode implements ErrorCode{
     NOT_FOUND(HttpStatus.NOT_FOUND, "찾을 수 없는 페이지예요"),                                                   // 404
     DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 처리된 요청이에요"),                                      // 409
     IDEMPOTENCY_KEY_CONFLICT(HttpStatus.CONFLICT, "같은 요청 번호로 내용이 다른 요청을 보냈어요. 새로 시도해 주세요"),   // 409
+    IDEMPOTENCY_KEY_TOO_LONG(HttpStatus.BAD_REQUEST, "요청 번호(Idempotency-Key)가 너무 길어요. 100자 이하로 보내 주세요"),   // 400
     FORBIDDEN_WORD(HttpStatus.BAD_REQUEST, "사용할 수 없는 표현이 들어 있어요"),                                    // 400
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기가 허용 범위를 넘었어요"),
     FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "올릴 수 없는 파일 형식이에요"),
+    INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력한 값을 다시 확인해 주세요"),                                       // 400 (#142, 입력칸별 안내는 error.fields)
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "처리하지 못했어요. 내 정보는 바뀌지 않았어요");                  // 500
 
 
