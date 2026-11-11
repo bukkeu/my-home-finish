@@ -1,12 +1,19 @@
 package com.wanted.moneybeetle.domain.course.model.dao;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import com.wanted.moneybeetle.MoneyBeetleApplication;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
+import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
+import com.wanted.moneybeetle.domain.course.model.service.CourseService;
+import com.wanted.moneybeetle.domain.member.model.service.InstructorService;
+import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +39,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 *   - 개수 전용 조회가 기존 목록 조회(시청 기록 API 34, 학습 완료 API 35)의 전체 개수와 같은 조건으로 센다
 *     (이 회원만, 허가 + 공개 + 삭제 안 된 강의만, 학습 완료 상태만)
 *   - 마지막 시청 기록 조회가 "최근 시청 목록에서 이 강의의 첫 항목"과 같고, 다른 강의 기록이 아주 많아도 놓치지 않는다
+*     (저장소와 CourseService.findLastWatched 둘 다 확인. 서비스가 다시 최근 N건만 넘겨 찾게 바뀌면 실패한다)
+*   - 시청 시각이 같으면 나중에 저장된 기록(lessonWatchId 큰 쪽)이 먼저다
 *  */
 @EntityScan(basePackages = "com.wanted.moneybeetle.domain.course.model.entity")
 @EnableJpaRepositories(basePackages = "com.wanted.moneybeetle.domain.course.model.dao")
@@ -69,6 +78,14 @@ class LearningCountRepositoryTest {
     private LessonWatchRepository watchRepository;
     @Autowired
     private LearningProgressRepository progressRepository;
+    @Autowired
+    private CategoryRepository categoryRepository;
+    @Autowired
+    private ScrapRepository scrapRepository;
+    @Autowired
+    private CourseReviewRepository courseReviewRepository;
+
+    private CourseService courseService;
 
     private Course visible;
     private Course other;
@@ -77,6 +94,11 @@ class LearningCountRepositoryTest {
 
     @BeforeEach
     void setUp() {
+        // 실제 저장소(H2)로 서비스를 만든다. 다른 도메인 서비스는 이 조회에 쓰이지 않아 가짜로 둔다
+        courseService = new CourseService(categoryRepository, courseRepository, lessonRepository, progressRepository,
+                watchRepository, scrapRepository, courseReviewRepository,
+                Clock.fixed(NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
+                mock(MemberService.class), mock(InstructorService.class));
         visible = course("보이는 강의", true, false);
         other = course("다른 보이는 강의", true, false);
         hidden = course("비공개 강의", false, false);
@@ -166,6 +188,24 @@ class LearningCountRepositoryTest {
                 .filter(w -> w.getLessonId().equals(first.getLessonId()) || w.getLessonId().equals(second.getLessonId()))
                 .findFirst().orElseThrow();
         assertThat(found.get(0).getLessonWatchId()).isEqualTo(firstOfCourseInHistory.getLessonWatchId());
+
+        // 서비스도 같은 기록을 돌려준다 (최근 1,000건 안에 없던 기록)
+        assertThat(courseService.findLastWatched(ME, visible.getCourseId()))
+                .get()
+                .extracting(WatchHistoryDTO::getLessonId)
+                .isEqualTo(second.getLessonId());
+    }
+
+    @Test
+    @DisplayName("시청 시각이 같으면 나중에 저장된 기록이 마지막 시청 기록이다")
+    void findLatestWatchTieBreak() {
+        watch(ME, lesson(visible, 1), 10);
+        LessonWatch later = watch(ME, lesson(visible, 2), 10);   // 같은 시각, 나중에 저장
+
+        List<LessonWatch> found = watchRepository.findLatestVisibleByMemberIdAndCourseId(
+                ME, visible.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1));
+
+        assertThat(found).extracting(LessonWatch::getLessonWatchId).containsExactly(later.getLessonWatchId());
     }
 
     @Test
@@ -177,5 +217,6 @@ class LearningCountRepositoryTest {
                 ME, hidden.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1))).isEmpty();
         assertThat(watchRepository.findLatestVisibleByMemberIdAndCourseId(
                 ME, visible.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1))).isEmpty();
+        assertThat(courseService.findLastWatched(ME, hidden.getCourseId())).isEmpty();
     }
 }
