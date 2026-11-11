@@ -1,5 +1,72 @@
-<!-- comment.
-    담당 : DBA ① 신아림 (#37, 사용자·강사 관리 탭)
-    내용 : 관리자 - 사용자·강사, 문의 게시판, 설정, 작업 기록 탭
-    경로 : /admin/dashboard
--->
+<!--/* comment.
+    담당 : DBA ① 신아림 (#253, 회원·강사 탭 #37 · 문의 게시판 탭 #38)
+    원본 디자인 : moneybeetle-page/AdminDashboard.dc.html 의 users·board 보기
+    경로 : /admin/dashboard?view=members (&tab=users|applications) · /admin/dashboard?view=board
+    내용 : 틀이 members·board 두 탭에 이 파일을 함께 쓴다. ${view} 로 어느 탭인지 나눠 그린다
+      - members : 사용자·강사 목록(검색·필터), 계정 정지·해제, 강사 권한 부여·회수 / 강사 가입 신청 목록·승인 (API 101~105)
+      - board   : 문의 목록(전체·답변 대기·숨김·삭제된 글), 내용·답글 보기, 숨김·해제 (API 106·107, 내용은 API 49)
+    데이터 : static/js/admin-members.js (요소는 data-ao-… 로 찾는다)
+*/-->
+<link rel="stylesheet" type="text/css" th:href="@{/css/admin-ops.css}">
+
+<section class="ao" id="ao-members" data-ao-members th:if="${view == 'members'}">
+  <div class="ao-toolbar">
+    <div class="adm-seg" role="tablist" aria-label="회원·강사 메뉴">
+      <button type="button" role="tab" id="ao-tab-users" aria-controls="ao-pane-users" data-ao-tab="users" aria-selected="true">사용자·강사</button>
+      <button type="button" role="tab" id="ao-tab-applications" aria-controls="ao-pane-applications" data-ao-tab="applications" aria-selected="false" tabindex="-1">강사 가입 신청<span class="ao-count" data-ao-app-count hidden></span></button>
+    </div>
+  </div>
+
+  <div class="ao" data-ao-pane="users" role="tabpanel" id="ao-pane-users" aria-labelledby="ao-tab-users">
+    <form class="ao-toolbar" data-ao-user-filter role="search" aria-label="사용자 찾기">
+      <label class="adm-field">권한
+        <select class="adm-select" name="role" aria-label="권한">
+          <option value="">전체</option>
+          <option value="MEMBER">학습자</option>
+          <option value="INSTRUCTOR">강사</option>
+        </select>
+      </label>
+      <label class="adm-field">상태
+        <select class="adm-select" name="status" aria-label="상태">
+          <option value="">전체</option>
+          <option value="ACTIVE">정상</option>
+          <option value="SUSPENDED">정지</option>
+          <option value="WITHDRAWN">탈퇴</option>
+        </select>
+      </label>
+      <label class="adm-field ao-grow">닉네임·이메일
+        <input class="adm-input" type="search" name="keyword" maxlength="50" placeholder="닉네임·이메일 일부">
+      </label>
+      <button type="submit" class="btn btn-primary">검색</button>
+    </form>
+    <div data-ao-users><p class="adm-empty">불러오고 있어요…</p></div>
+    <p class="adm-note">정지하면 바로 로그인할 수 없고, 이미 로그인한 세션도 끊겨요. 강사 권한은 다음 로그인부터 적용되고, 회수하면 강사 화면이 바로 막혀요.</p>
+  </div>
+
+  <div class="ao" data-ao-pane="applications" role="tabpanel" id="ao-pane-applications" aria-labelledby="ao-tab-applications" hidden>
+    <div class="ao-toolbar">
+      <label class="adm-field">신청 상태
+        <select class="adm-select" data-ao-app-status aria-label="신청 상태">
+          <option value="PENDING">승인 대기</option>
+          <option value="APPROVED">승인됨</option>
+          <option value="REVOKED">회수됨</option>
+        </select>
+      </label>
+    </div>
+    <div data-ao-apps><p class="adm-empty">불러오고 있어요…</p></div>
+    <p class="adm-note">승인하면 다음 로그인부터 강사 센터를 쓸 수 있어요.</p>
+  </div>
+</section>
+
+<section class="ao" id="ao-board" data-ao-board th:if="${view == 'board'}">
+  <div class="ao-toolbar">
+    <div class="adm-seg" role="group" aria-label="문의 거르기">
+      <button type="button" data-ao-filter="all" aria-pressed="true">전체</button>
+      <button type="button" data-ao-filter="waiting" aria-pressed="false">답변 대기</button>
+      <button type="button" data-ao-filter="hidden" aria-pressed="false">숨김</button>
+      <button type="button" data-ao-filter="deleted" aria-pressed="false">삭제된 글</button>
+    </div>
+  </div>
+  <div data-ao-posts><p class="adm-empty">불러오고 있어요…</p></div>
+  <p class="adm-note">숨긴 글은 사용자 목록에서 빠지고, 상세에는 "관리자에 의해 숨김 처리된 글이에요"로 보여요.</p>
+</section>

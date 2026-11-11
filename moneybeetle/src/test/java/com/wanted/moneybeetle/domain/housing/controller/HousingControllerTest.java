@@ -9,13 +9,16 @@ import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.ComplexDetailDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositDTO;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositPolicyDTO;
+import com.wanted.moneybeetle.domain.housing.model.policy.DepositLimits;
 import com.wanted.moneybeetle.domain.housing.model.dto.DepositResultDTO;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingApplicationService;
 import com.wanted.moneybeetle.domain.housing.model.service.HousingService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.security.LevelCheckInterceptor;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,7 +96,8 @@ class HousingControllerTest {
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver(),     // Boot 처럼 Pageable 받기
                         new AuthenticationPrincipalArgumentResolver())                       // @AuthenticationPrincipal 받기
                 .setMessageConverters(json)
-                .addInterceptors(new LevelCheckInterceptor(growthService))
+                .addInterceptors(new LevelCheckInterceptor(growthService,
+                        new UnlockLevelProvider(mock(SystemSettingService.class))))   // 설정 없음 → 기본 Lv.12
                 .build();
     }
 
@@ -142,7 +146,7 @@ class HousingControllerTest {
     void 내_청약통장은_Lv1_이어도_로그인_회원_번호로_조회한다() throws Exception {
         when(housingService.getAccount(MEMBER_ID)).thenReturn(new AccountDTO(
                 1L, 1_840_000L, 1_590_000L, 14, LocalDate.of(2026, 11, 4), false,
-                DepositPolicyDTO.current(), 1_250_000L));
+                DepositPolicyDTO.from(DepositLimits.DEFAULT), 1_250_000L));
 
         mockMvcAtLevel(1).perform(get("/api/v1/housing/account"))
                 .andExpect(status().isOk())
@@ -177,6 +181,19 @@ class HousingControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("ALREADY_PAID_TODAY"))
                 .andExpect(jsonPath("$.error.message").value("오늘은 이미 납입했어요"));
+    }
+
+    @Test
+    void 운영_설정_값을_넣은_업무_예외_문구는_코드는_그대로_두고_문구만_바꿔_돌려준다() throws Exception {   // #327
+        when(housingService.deposit(any(), anyLong()))
+                .thenThrow(new BusinessException(HousingErrorCode.DEPOSIT_BELOW_MIN, "최소 30,000 캐시부터 납입할 수 있어요"));
+
+        mockMvcAtLevel(1).perform(post("/api/v1/housing/account/deposits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": 20000}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("DEPOSIT_BELOW_MIN"))
+                .andExpect(jsonPath("$.error.message").value("최소 30,000 캐시부터 납입할 수 있어요"));
     }
 
     @Test

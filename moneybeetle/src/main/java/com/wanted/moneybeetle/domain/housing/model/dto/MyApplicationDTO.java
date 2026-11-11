@@ -21,7 +21,7 @@ public class MyApplicationDTO {
 
     public static MyApplicationDTO from(HousingApplication application) {
         return new MyApplicationDTO(
-                application.getId(),
+                application.getHousingApplicationId(),
                 application.getReceiptNo(),
                 application.getTotalScore(),
                 application.getAppliedAt()

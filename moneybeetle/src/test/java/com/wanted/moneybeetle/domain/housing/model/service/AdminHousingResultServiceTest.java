@@ -12,6 +12,7 @@ import com.wanted.moneybeetle.domain.housing.model.entity.HousingComplex;
 import com.wanted.moneybeetle.domain.housing.model.policy.HousingWinnerPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.global.config.TimeConfig;
@@ -72,9 +73,9 @@ class AdminHousingResultServiceTest {
         complex = HousingComplex.create("비틀 파크", "서울 강서구", "84㎡", 650_000_000L, 2, "일반공급",
                 LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
                 LocalDate.of(2026, 11, 10), ANNOUNCE_DAY, 1L);
-        ReflectionTestUtils.setField(complex, "id", 1L);
+        ReflectionTestUtils.setField(complex, "housingComplexId", 1L);
         when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findByHousingComplexIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
     }
 
     private AdminHousingService serviceOn(LocalDate today) {
@@ -86,7 +87,7 @@ class AdminHousingResultServiceTest {
     private HousingApplication app(long id, long memberId, int totalScore, int paidCount) {
         HousingApplication app = HousingApplication.create(memberId, 1L, "MB-261105-000" + id, 0, 0, paidCount,
                 totalScore, 0, 0, LocalDateTime.of(2026, 11, 5, 9, (int) id));
-        ReflectionTestUtils.setField(app, "id", id);
+        ReflectionTestUtils.setField(app, "housingApplicationId", id);
         return app;
     }
 
@@ -190,8 +191,8 @@ class AdminHousingResultServiceTest {
         assertThat(complex.isAnnounced()).isTrue();
         assertThat(complex.getAnnouncedAt()).isEqualTo(ANNOUNCE_DAY.atStartOfDay());
         assertThat(result.getNotified()).isEqualTo(2);
-        verify(notificationService).send(eq(7L), eq("HOUSING_RESULT"), anyString(), eq("/user/demo-housing-subscription"));
-        verify(notificationService).send(eq(8L), eq("HOUSING_RESULT"), anyString(), eq("/user/demo-housing-subscription"));
+        verify(notificationService).send(eq(7L), eq(NotificationType.HOUSING_RESULT), anyString(), eq("/user/demo-housing-subscription"));
+        verify(notificationService).send(eq(8L), eq(NotificationType.HOUSING_RESULT), anyString(), eq("/user/demo-housing-subscription"));
     }
 
     @Test
@@ -221,7 +222,7 @@ class AdminHousingResultServiceTest {
         complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
 
         assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 16)).announce(ADMIN_ID, 1L), HousingErrorCode.BEFORE_ANNOUNCE_DATE);
-        verify(notificationService, never()).send(any(), any(), any(), any());
+        verify(notificationService, never()).send(any(), any(NotificationType.class), any(), any());   // 발표 알림은 NotificationType 버전 send 를 쓴다 (#291). any() 만으로는 String 버전과 모호하다
     }
 
     @Test
@@ -230,6 +231,6 @@ class AdminHousingResultServiceTest {
         complex.announce(LocalDateTime.of(2026, 11, 17, 9, 0));
 
         assertRejected(() -> serviceOn(ANNOUNCE_DAY).announce(ADMIN_ID, 1L), HousingErrorCode.ALREADY_ANNOUNCED);
-        verify(notificationService, times(0)).send(any(), any(), any(), any());
+        verify(notificationService, times(0)).send(any(), any(NotificationType.class), any(), any());   // 발표 알림은 NotificationType 버전 send 를 쓴다 (#291). any() 만으로는 String 버전과 모호하다
     }
 }

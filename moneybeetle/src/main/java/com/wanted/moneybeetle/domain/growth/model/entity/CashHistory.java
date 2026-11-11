@@ -2,6 +2,8 @@ package com.wanted.moneybeetle.domain.growth.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,13 +32,25 @@ public class CashHistory {
     public static final String ADMIN_GIVE = "ADMIN_GIVE";
     public static final String ADMIN_TAKE = "ADMIN_TAKE";
 
-    /** 원인 종류 (source_type) */
+    /**
+     * 원인 종류 (source_type)의 옛 문자열 상수. 원인 종류는 {@link CashSource} enum 으로 옮겼다 (이슈 #287).
+     * 다른 도메인(housing 등)이 아직 이 상수를 쓰고 있어서 값(enum 이름과 같은 문자열)만 남겨 둔다.
+     * 모두 옮기면 마지막 정리 이슈(#301)에서 지운다.
+     */
+    @Deprecated
     public static final String SOURCE_ATTENDANCE = "ATTENDANCE";
+    @Deprecated
     public static final String SOURCE_COURSE_COMPLETE = "COURSE_COMPLETE";
+    @Deprecated
     public static final String SOURCE_LEVEL_UP = "LEVEL_UP";
+    @Deprecated
     public static final String SOURCE_SEASON_JOIN = "SEASON_JOIN";
+    @Deprecated
     public static final String SOURCE_SUBSCRIPTION_DEPOSIT = "SUBSCRIPTION_DEPOSIT";
+    @Deprecated
     public static final String SOURCE_ADMIN = "ADMIN";
+    @Deprecated
+    public static final String SOURCE_RANKING = "RANKING";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,8 +63,10 @@ public class CashHistory {
     @Column(nullable = false, length = 20)
     private String historyType;
 
+    /** 원인 종류. DB 에는 enum 이름이 문자열로 저장된다 (컬럼은 그대로 VARCHAR) */
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String sourceType;
+    private CashSource sourceType;
 
     /** 원인 데이터 ID (출석 ID, 강의 ID, 레벨 등). 관리자 조정은 NULL 가능 */
     private Long sourceId;
@@ -73,7 +89,7 @@ public class CashHistory {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    private CashHistory(Long memberId, String historyType, String sourceType, Long sourceId, Long rewardRuleId,
+    private CashHistory(Long memberId, String historyType, CashSource sourceType, Long sourceId, Long rewardRuleId,
                         long amount, long balanceAfter, String reason, Long adminId) {
         this.memberId = memberId;
         this.historyType = historyType;
@@ -87,7 +103,7 @@ public class CashHistory {
     }
 
     /** 활동 보상으로 캐시를 받았다 (amount > 0) */
-    public static CashHistory earn(Long memberId, String sourceType, Long sourceId, Long rewardRuleId,
+    public static CashHistory earn(Long memberId, CashSource sourceType, Long sourceId, Long rewardRuleId,
                                    long amount, long balanceAfter) {
         validate(amount > 0, "적립 금액은 0보다 커야 합니다.");
         validate(balanceAfter >= 0, "잔액은 0 미만이 될 수 없습니다.");
@@ -95,7 +111,7 @@ public class CashHistory {
     }
 
     /** 시즌 참가·청약통장 납입 등으로 캐시를 썼다. 금액은 양수로 받아 음수로 기록한다 */
-    public static CashHistory use(Long memberId, String sourceType, Long sourceId, long amount, long balanceAfter) {
+    public static CashHistory use(Long memberId, CashSource sourceType, Long sourceId, long amount, long balanceAfter) {
         validate(amount > 0, "사용 금액은 0보다 커야 합니다.");
         validate(balanceAfter >= 0, "잔액은 0 미만이 될 수 없습니다.");
         return new CashHistory(memberId, USE, sourceType, sourceId, null, -amount, balanceAfter, null, null);
@@ -106,7 +122,7 @@ public class CashHistory {
         validate(amount > 0, "지급 금액은 0보다 커야 합니다.");
         validate(reason != null && !reason.isBlank(), "관리자 지급 사유를 입력해야 합니다.");
         validate(balanceAfter >= 0, "잔액은 0 미만이 될 수 없습니다.");
-        return new CashHistory(memberId, ADMIN_GIVE, SOURCE_ADMIN, null, null, amount, balanceAfter, reason, adminId);
+        return new CashHistory(memberId, ADMIN_GIVE, CashSource.ADMIN, null, null, amount, balanceAfter, reason, adminId);
     }
 
     /** 관리자가 캐시를 수동 회수했다. 금액은 양수로 받아 음수로 기록한다. 사유 필수 */
@@ -114,7 +130,7 @@ public class CashHistory {
         validate(amount > 0, "회수 금액은 0보다 커야 합니다.");
         validate(reason != null && !reason.isBlank(), "관리자 회수 사유를 입력해야 합니다.");
         validate(balanceAfter >= 0, "잔액은 0 미만이 될 수 없습니다.");
-        return new CashHistory(memberId, ADMIN_TAKE, SOURCE_ADMIN, null, null, -amount, balanceAfter, reason, adminId);
+        return new CashHistory(memberId, ADMIN_TAKE, CashSource.ADMIN, null, null, -amount, balanceAfter, reason, adminId);
     }
 
     /** 잔액이 늘어난 내역인가 (적립·관리자 지급) */

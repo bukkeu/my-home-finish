@@ -48,7 +48,7 @@
 
 | 키 | 쓰이는 곳 | 비밀 | 로컬 기본값 | 관련 |
 | --- | --- | --- | --- | --- |
-| `MAIL_HOST` | 비밀번호 재설정 메일 발송 (`spring-boot-starter-mail`, `PasswordResetService`) | | `localhost` | USR-09, DP-12 |
+| `MAIL_HOST` | 비밀번호 재설정·가입 본인인증 메일 발송 (`spring-boot-starter-mail`, `PasswordResetService`, `IdentityVerificationService`) | | `localhost` | USR-09, DP-12, USR-05, DP-44 |
 | `MAIL_PORT` | 메일 서버 포트 | | `1025` (로컬 메일 확인 도구) | 〃 |
 | `MAIL_USERNAME` | 메일 계정 | | 비워 둠 | 〃 |
 | `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호) | ✅ | 비워 둠 | 〃 |
@@ -56,13 +56,15 @@
 | `APP_BASE_URL` | 재설정 메일 속 링크의 서버 주소 (`{APP_BASE_URL}/password-reset?token=...`) | | `http://localhost:8080` | 〃 |
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
 | `GOOGLE_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
-| `KAKAO_CLIENT_ID` | 카카오 간편 로그인 | | 개인 테스트 앱의 값 | 〃 |
-| `KAKAO_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
-| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결) | | `./uploads` | DP-32·33 |
+| `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
-- 간편 로그인은 요구사항 우선순위가 **하**입니다. 구현 전에는 `GOOGLE_*`, `KAKAO_*`를 비워 둬도 됩니다. 단, 값이 비어 있는 채로 로그인 등록 설정을 켜면 서버가 뜨지 않을 수 있으므로, 구현할 때 "키가 없으면 해당 로그인을 끄는" 처리를 함께 넣습니다.
+- 간편 로그인(#9)은 **실제 OAuth** 로 구현했습니다. 키(`GOOGLE_*`)가 없어도 서버는 뜨고, **ID 와 시크릿이 모두 있어야 켜지고, 하나라도 비어 있으면 간편 로그인 전체가 꺼집니다**(`OAuthClientConfig`). 값이 비어 있는 채로 등록하지 않으므로 서버가 못 뜨는 일은 없습니다.
+- 키 발급과 등록 (각자 개인 테스트 앱):
+  - 구글: Google Cloud 콘솔 → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹 애플리케이션). 승인된 리디렉션 URI 에 `http://localhost:8080/login/oauth2/code/google` 를 등록합니다. 범위는 `profile`, `email` 입니다.
+  - 포트나 주소가 다르면 `{주소}/login/oauth2/code/google` 로 등록합니다. 받은 값은 `.env` 에만 넣고 코드·깃에는 올리지 않습니다.
+  - 제공자가 이메일을 주지 않거나 확인되지 않은 이메일이면 그 로그인은 막힙니다(`OAUTH_FAILED`).
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
 - `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다.
 
@@ -118,18 +120,16 @@ DB_URL=jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&charac
 DB_USERNAME=moneybeetle
 DB_PASSWORD=change-me
 
-# 메일 (비밀번호 재설정) - 기능 구현 시
+# 메일 (비밀번호 재설정·가입 본인인증) - 기능 구현 시
 MAIL_HOST=localhost
 MAIL_PORT=1025
 MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM=no-reply@moneybeetle.local
 
-# 간편 로그인 (우선순위 하) - 기능 구현 시
+# 간편 로그인 (#9). 키가 없으면 꺼진다 (비워 둬도 서버는 뜬다)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-KAKAO_CLIENT_ID=
-KAKAO_CLIENT_SECRET=
 
 # 로그인 상태 유지 키 (로컬 전용 임의 문자열)
 REMEMBER_ME_KEY=change-me-local-only
@@ -193,7 +193,7 @@ spring:
 | --- | --- | --- |
 | `.gitignore` | ✅ 루트 `.gitignore`에 `.env`, `.env.*`, `!.env.example` 추가 (#67) | 없음 |
 | 메일 발송 방식 | 정책(10분 유효 1회용 토큰)은 있으나 SMTP 서비스 미정 | 사용할 메일 서비스(예: Gmail SMTP 앱 비밀번호) |
-| 간편 로그인 | 우선순위 하. 구글·카카오 앱 등록 필요 | 구현 시점, 개인 테스트 앱을 쓸지 팀 공용 앱을 쓸지 |
+| 간편 로그인 | 우선순위 하. 구글 앱 등록 필요 | 구현 시점, 개인 테스트 앱을 쓸지 팀 공용 앱을 쓸지 |
 | 파일 저장 | ✅ 로컬 폴더 `./uploads`로 확정 (배포하지 않음, 팀 결정 2026-11-08). 영상 업로드 500MB·mp4 확정 (DP-33) | 없음 |
 | 관리자 계정 | ✅ `sample-data.sql`의 로컬 개발용 계정을 그대로 씀 (배포하지 않음) | 없음 |
 | 환경변수 키 이름 | 이 문서의 이름은 제안 | 팀 합의 후 확정 (Spring 기본 이름 `SPRING_DATASOURCE_URL` 등을 쓸 수도 있음) |

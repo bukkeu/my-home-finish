@@ -14,4 +14,7 @@ public interface QuizChoiceRepository extends JpaRepository<QuizChoice, Long> {
 
     /* 여러 문항의 보기를 한 번에 조회 (문항마다 조회하지 않음) */
     List<QuizChoice> findByQuizQuestionIdInOrderBySortOrderAsc(List<Long> quizQuestionIds);
+
+    /* 강사가 문항을 뺄 때 그 문항의 보기도 함께 지운다 (API 79·80) */
+    void deleteByQuizQuestionIdIn(List<Long> quizQuestionIds);
 }

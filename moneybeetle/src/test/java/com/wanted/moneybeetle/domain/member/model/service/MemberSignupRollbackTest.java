@@ -1,5 +1,7 @@
 package com.wanted.moneybeetle.domain.member.model.service;
 
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -9,7 +11,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementReposi
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -70,6 +72,8 @@ import org.springframework.transaction.support.TransactionTemplate;
         com.wanted.moneybeetle.domain.housing.model.service.HousingService.class,
         com.wanted.moneybeetle.domain.growth.model.service.RewardService.class,
         com.wanted.moneybeetle.domain.growth.model.service.GrowthService.class,
+        UnlockLevelProvider.class,
+        com.wanted.moneybeetle.domain.housing.model.policy.DepositLimitPolicy.class,   // HousingService 의 납입 한도 (설정이 없으면 기본값, #327)
         com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService.class,
         MemberSignupRollbackTest.TestBeans.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)   // 테스트가 감싸는 트랜잭션 없이, 서비스가 여는 트랜잭션이 실제로 커밋·롤백되게 한다
@@ -90,9 +94,19 @@ class MemberSignupRollbackTest {
         }
     }
 
+    /** 해금 레벨 운영 설정(#266)은 이 테스트가 보지 않는다. 설정이 없는 것으로 두면 기본 해금 레벨을 쓴다 */
+    @MockitoBean
+    private SystemSettingService systemSettingService;
+
     /** #171(레벨업 해금 알림)이 병합되면 RewardService 가 알림 서비스를 쓴다. 이 테스트는 알림을 보지 않아 가짜로 둔다 */
     @MockitoBean
     private com.wanted.moneybeetle.domain.notification.model.service.NotificationService notificationService;
+
+    /** 본인인증 확인은 IdentityVerificationServiceTest 가 따로 본다. 여기서는 인증을 마친 것으로 두고 가입·통장의 한 묶음만 본다 */
+    @MockitoBean
+    private SignupIdentityVerifier identityVerificationService;
+
+    private final org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
 
     @Autowired
     private MemberSignupService signupService;
@@ -124,10 +138,14 @@ class MemberSignupRollbackTest {
     @Test
     @DisplayName("가입하면 회원과 청약통장이 함께 저장된다")
     void savesMemberAndAccount() {
-        Long memberId = signupService.signup(request).getMemberId();
+        Long memberId = signupService.signup(request, session).getMemberId();
 
         assertThat(memberRepository.existsByEmail("minji@gmail.com")).isTrue();
         assertThat(accountRepository.findByMemberId(memberId)).isPresent();
+        // 본인인증을 마친 가입이라 그 결과가 회원에 저장되고, 가입이 끝나면 인증 표시를 지운다
+        assertThat(memberRepository.findById(memberId).orElseThrow().isIdentityVerified()).isTrue();
+        org.mockito.Mockito.verify(identityVerificationService).requireVerified("minji@gmail.com", session);
+        org.mockito.Mockito.verify(identityVerificationService).clear(session);
     }
 
     @Test
@@ -137,7 +155,7 @@ class MemberSignupRollbackTest {
 
         // 아무 예외나 받지 않는다: 나이·약관 검증 같은 가입 규칙(BusinessException)에서 먼저 실패해도 통과하는 일이 없도록,
         // 청약통장 테이블이 없어서 생긴 DB 오류인지 확인한다. 같은 요청이 savesMemberAndAccount 에서는 가입에 성공한다.
-        assertThatThrownBy(() -> signupService.signup(request))
+        assertThatThrownBy(() -> signupService.signup(request, session))
                 .isInstanceOf(DataAccessException.class)
                 .hasStackTraceContaining("SUBSCRIPTION_ACCOUNT");
 

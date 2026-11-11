@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.member.model.dao;
 
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,16 +23,25 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     /** 이메일 중복 확인 (SP-01). 넘기는 값은 이미 소문자여야 한다 */
     boolean existsByEmail(String email);
 
+    /** 역할별 회원 수 (관리자 대시보드, #33) */
+    long countByRole(String role);
+
+    /** 역할·상태별 회원 수 (관리자 대시보드, #33) */
+    long countByRoleAndStatus(String role, MemberStatus status);
+
     /** 닉네임 중복 확인 (SP-02) */
     boolean existsByNickname(String nickname);
 
     /**
      * 개인정보를 지울 차례가 된 탈퇴 회원 (#66, DP-06). 탈퇴 시각이 cutoff 이전이고 아직 지워지지 않은 값이 하나라도 남은 회원을
-     * 번호 순으로 돌려준다. 지운 회원은 값이 모두 NULL 이라 다음 조회에 나오지 않는다.
+     * 번호 순으로 돌려준다. 간편 로그인 연결(social_account)이 남은 회원도 대상이다 (제공자 계정 ID 도 개인정보라 함께 지운다).
+     * 지운 회원은 값이 모두 NULL 이고 연결도 없어 다음 조회에 나오지 않는다.
      */
-    @Query("select m from Member m where m.status = 'WITHDRAWN' and m.withdrawnAt <= :cutoff "
+    @Query("select m from Member m where m.status = com.wanted.moneybeetle.domain.member.model.entity.MemberStatus.WITHDRAWN "
+            + "and m.withdrawnAt <= :cutoff "
             + "and (m.email is not null or m.passwordHash is not null or m.birthDate is not null "
-            + "or m.gender is not null or m.profileImageUrl is not null) order by m.memberId asc")
+            + "or m.gender is not null or m.profileImageUrl is not null "
+            + "or exists (select 1 from SocialAccount s where s.memberId = m.memberId)) order by m.memberId asc")
     List<Member> findPurgeTargets(@Param("cutoff") LocalDateTime cutoff, Pageable pageable);
 
     /** 아이디(이메일) 찾기 (API 9, #8). 닉네임은 고유하다 */

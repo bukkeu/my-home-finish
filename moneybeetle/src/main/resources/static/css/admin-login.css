@@ -1,0 +1,17 @@
+/* comment.
+*   담당 : DBA ② 김예린 (#61, 관리자 로그인 화면)
+*   사용자 로그인과 같은 auth.css 위에 관리자 화면에만 필요한 부분(알림 상자·필드 오류·안내 문구)을 더한다.
+*   moneybeetle-page/AdminLogin.dc.html 의 인라인 스타일을 클래스로 옮긴 것이다. class 는 모두 al- 로 시작한다.
+*  */
+
+.al-lead { margin: 16px 0 0; color: var(--auth-muted); font-size: 18px; text-align: left; }
+.auth-body h1 { text-align: left; }
+.al-alert { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; padding: 12px 18px; border-radius: 12px; background: #FDECEA; color: #8C1D18; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.al-alert svg { flex: none; }
+.al-alert--info { background: #EEF2EA; color: #263B1A; }
+.al-alert--lock { background: #FDF1DC; color: #7A4A00; }
+.al-error { margin-top: 8px; color: #b3261e; font-size: 14px; }
+.al-help { margin: 18px 0 0; color: var(--auth-muted); font-size: 15px; }
+.auth-form input[aria-invalid="true"] { border-color: #b3261e; }
+.auth-form input:disabled { background: #EEF2EA; cursor: not-allowed; }
+.auth-button:disabled { background: var(--auth-line); }

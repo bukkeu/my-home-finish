@@ -7,6 +7,8 @@ import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
+import com.wanted.moneybeetle.global.security.UnlockFeature;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class GrowthService {
 
     private final LevelPolicyRepository levelPolicyRepository;
     private final MemberService memberService;
+    private final UnlockLevelProvider unlockLevelProvider;
 
     /** 회원의 현재 레벨. 없는 회원이면 MEMBER_NOT_FOUND */
     public int getLevel(Long memberId) {
@@ -36,8 +39,12 @@ public class GrowthService {
 
     /** 레벨 정책표 전체 (API 24) */
     public List<LevelDTO> findLevels() {
+        // 해금 기능은 운영 설정의 해금 레벨에서만 열린 것으로 보여 준다 (청약·모의투자 API·화면과 같은 기준, #266)
+        int tradingLevel = unlockLevelProvider.getLevel(UnlockFeature.TRADING);
+        int housingLevel = unlockLevelProvider.getLevel(UnlockFeature.HOUSING);
         return loadLevelTable().all().stream()
-                .map(policy -> LevelDTO.of(policy, UnlockRules.unlockedAt(policy.getLevel())))
+                .map(policy -> LevelDTO.of(policy,
+                        UnlockRules.unlockedAt(policy.getLevel(), tradingLevel, housingLevel)))
                 .toList();
     }
 

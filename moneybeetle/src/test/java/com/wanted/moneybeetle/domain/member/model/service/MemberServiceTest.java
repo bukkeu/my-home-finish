@@ -24,6 +24,7 @@ import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.time.LocalDateTime;
@@ -50,6 +51,7 @@ class MemberServiceTest {
     private PasswordEncoder passwordEncoder;
     private ForbiddenWordService forbiddenWordService;
     private Clock clock;
+    private com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository socialAccountRepository;
     private MemberService memberService;
 
     @BeforeEach
@@ -59,6 +61,7 @@ class MemberServiceTest {
         memberTermsAgreementRepository = mock(MemberTermsAgreementRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         forbiddenWordService = mock(ForbiddenWordService.class);
+        socialAccountRepository = mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class);
 
         clock = Clock.fixed(
                 Instant.parse("2026-11-08T00:00:00Z"),
@@ -72,7 +75,8 @@ class MemberServiceTest {
                 passwordEncoder,
                 forbiddenWordService,
                 clock,
-                org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository.class)
+                org.mockito.Mockito.mock(com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepository.class),
+                socialAccountRepository
         );
     }
 
@@ -466,7 +470,7 @@ class MemberServiceTest {
         Member member = Member.signup("m" + id + "@b.com", "hash", nickname,
                 java.time.LocalDate.of(1999, 4, 12), null, java.time.LocalDate.of(2026, 11, 9));
         ReflectionTestUtils.setField(member, "memberId", id);
-        ReflectionTestUtils.setField(member, "status", status);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.valueOf(status));
         return member;
     }
 

@@ -58,7 +58,7 @@ class AdminHousingLogTest {
         complex = HousingComplex.create("비틀 파크", "서울 강서구", "84㎡", 650_000_000L, 2, "일반공급",
                 LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
                 LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 17), ADMIN_ID);
-        ReflectionTestUtils.setField(complex, "id", 5L);
+        ReflectionTestUtils.setField(complex, "housingComplexId", 5L);
         when(complexRepository.findForUpdate(5L)).thenReturn(Optional.of(complex));
     }
 
@@ -86,7 +86,7 @@ class AdminHousingLogTest {
     void 공고_등록을_기록한다() throws Exception {
         when(complexRepository.save(any())).thenAnswer(inv -> {
             HousingComplex saved = inv.getArgument(0);
-            ReflectionTestUtils.setField(saved, "id", 5L);
+            ReflectionTestUtils.setField(saved, "housingComplexId", 5L);
             return saved;
         });
 

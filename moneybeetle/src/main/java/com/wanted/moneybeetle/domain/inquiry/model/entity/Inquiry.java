@@ -24,8 +24,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Inquiry extends BaseTimeEntity {
 
-    public static final String STATUS_WAITING = "WAITING";
-    public static final String STATUS_ANSWERED = "ANSWERED";
+    public static final String STATUS_WAITING = InquiryStatus.WAITING.name();     // 상태 값은 InquiryStatus 가 정한다 (#297)
+    public static final String STATUS_ANSWERED = InquiryStatus.ANSWERED.name();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,8 +63,12 @@ public class Inquiry extends BaseTimeEntity {
         return STATUS_ANSWERED.equals(status);
     }
 
-    /* 답변이 달리기 전에만 고칠 수 있다 (API 50) */
+    /* 답변이 달리기 전에만 고칠 수 있다 (API 50).
+     * 관리자가 숨긴 글도 고칠 수 없다 (#245): 숨긴 글은 화면에 안내 문구만 보여서, 수정하면 안내 문구로 원래 글을 덮어쓸 수 있다 */
     public void change(String title, String content) {
+        if (isHidden) {
+            throw new BusinessException(InquiryErrorCode.INQUIRY_HIDDEN);
+        }
         if (isAnswered()) {
             throw new BusinessException(InquiryErrorCode.INQUIRY_ALREADY_ANSWERED);
         }

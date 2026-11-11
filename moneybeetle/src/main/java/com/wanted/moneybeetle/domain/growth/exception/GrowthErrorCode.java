@@ -19,6 +19,8 @@ public enum GrowthErrorCode implements ErrorCode {
     REWARD_RULE_NOT_FOUND("REWARD_RULE_NOT_FOUND", HttpStatus.NOT_FOUND, "사용 중인 보상 규칙이 없습니다."),
     /** 보상 규칙에 지급할 캐시·경험치가 있는데, 그 규칙 코드가 어떤 원인 종류로 기록할지 정해져 있지 않다 (설정 오류) */
     REWARD_NOT_SUPPORTED("REWARD_NOT_SUPPORTED", HttpStatus.INTERNAL_SERVER_ERROR, "지원하지 않는 보상 설정입니다."),
+    /** 관리자가 사용 중인 보상 규칙에 그 규칙이 줄 수 없는 캐시·경험치를 넣었다 (#244. 저장하면 지급 때 REWARD_NOT_SUPPORTED 가 된다) */
+    INVALID_REWARD_RULE_AMOUNTS("INVALID_REWARD_RULE_AMOUNTS", HttpStatus.BAD_REQUEST, "이 보상 규칙은 지급할 수 없는 캐시 또는 경험치가 있습니다."),
     /** 같은 원인(시즌 참가, 청약통장 납입 등)으로 이미 캐시를 썼다 (이중 차감 방지) */
     ALREADY_USED("ALREADY_USED", HttpStatus.CONFLICT, "이미 처리된 요청입니다."),
     INVALID_HISTORY_TYPE("INVALID_HISTORY_TYPE", HttpStatus.BAD_REQUEST, "내역 종류는 EARN 또는 USE 만 쓸 수 있습니다."),

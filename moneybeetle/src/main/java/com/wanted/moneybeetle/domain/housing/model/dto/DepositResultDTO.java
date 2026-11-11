@@ -23,7 +23,7 @@ public class DepositResultDTO {
 
     public static DepositResultDTO from(SubscriptionDeposit deposit, SubscriptionAccount account, long cash) {
         return new DepositResultDTO(
-                deposit.getId(),
+                deposit.getSubscriptionDepositId(),
                 deposit.getAmount(),
                 deposit.getRecognizedAmount(),
                 account.getBalance(),

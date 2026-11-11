@@ -85,6 +85,7 @@ class ParticipationServiceTest {
             }
         }
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(SEASON_ID)).thenReturn(Optional.of(season));
         when(seasonRepository.findFirstByStatusInOrderByStartDateDesc(anyList())).thenReturn(Optional.of(season));
         return season;
     }
@@ -109,7 +110,7 @@ class ParticipationServiceTest {
         when(rewardService.getBalance(MEMBER_ID)).thenReturn(3_200_000L);
         SeasonParticipant previous = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
         previous.settle(1_620_000L, new BigDecimal("62.00"), 1_620_000L);
-        when(participantRepository.findFirstByMemberIdAndTradingSeasonIdNotOrderByJoinedAtDesc(MEMBER_ID, SEASON_ID))
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID))
                 .thenReturn(Optional.of(previous));
         when(participantRepository.saveAndFlush(any(SeasonParticipant.class))).thenAnswer(invocation -> {
             SeasonParticipant saved = invocation.getArgument(0);
@@ -123,7 +124,10 @@ class ParticipationServiceTest {
         assertThat(result.getSavedCash()).isEqualTo(3_200_000L);
         assertThat(result.getCarryoverIn()).isEqualTo(1_620_000L);
         assertThat(result.getInvestAmount()).isEqualTo(4_820_000L);
-        verify(rewardService, never()).spendCash(any(), any(), any(), anyLong());
+        verify(seasonRepository).findByIdForUpdate(SEASON_ID);
+        // spendCash 는 원인 종류가 String 인 옛 버전과 CashSource 버전이 있어서 둘 다 호출되지 않았음을 확인한다 (any() 하나로는 모호하다, #287)
+        verify(rewardService, never()).spendCash(any(), any(String.class), any(), anyLong());
+        verify(rewardService, never()).spendCash(any(), any(com.wanted.moneybeetle.domain.growth.model.entity.CashSource.class), any(), anyLong());
     }
 
     @Test
@@ -136,6 +140,19 @@ class ParticipationServiceTest {
 
         assertThat(result.getCarryoverIn()).isZero();
         assertThat(result.getInvestAmount()).isEqualTo(500_000L);
+    }
+
+    @Test
+    void rejectsUnsettledPreviousSeasonWithoutCreatingParticipation() {
+        season(1);
+        SeasonParticipant unsettled = SeasonParticipant.create(6L, MEMBER_ID, 1_000_000L, 0L);
+        when(participantRepository.findPreviousParticipation(MEMBER_ID, SEASON_ID)).thenReturn(Optional.of(unsettled));
+
+        assertThatThrownBy(() -> service.join(SEASON_ID, MEMBER_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+        verify(participantRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(rewardService);
     }
 
     @Test
@@ -181,7 +198,7 @@ class ParticipationServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.UNAUTHORIZED);
 
-        when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.join(99L, MEMBER_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.NOT_FOUND);
@@ -202,7 +219,7 @@ class ParticipationServiceTest {
         assertThat(calendar.get(5).getState()).isEqualTo(TradingHomeDTO.CalendarDay.UPCOMING);
         assertThat(calendar.get(6).getTurnNo()).isNull();   // 10-25 일요일
         assertThat(calendar.get(6).getState()).isEqualTo(TradingHomeDTO.CalendarDay.HOLIDAY);
-        assertThat(home.getSeason().getNextTurnAt()).isEqualTo(LocalDate.of(2026, 10, 24).atStartOfDay());
+        assertThat(home.getSeason().getNextTurnAt()).isEqualTo(LocalDate.of(2026, 10, 24).atTime(8, 0));
         // 로그인 회원이 없으면 참가 정보 없이 보인다
         assertThat(home.getParticipation()).isNull();
         assertThat(home.getHoldings()).isEmpty();
@@ -255,6 +272,51 @@ class ParticipationServiceTest {
         assertThatThrownBy(() -> service.join(SEASON_ID, MEMBER_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.JOIN_CLOSED);
+    }
+
+    @Test
+    void 홈은_먼저_시작해_랭킹을_공개한_가장_최근_시즌을_지난_시즌으로_알려_준다() {
+        season(5);
+        givenTurns();
+        TradingSeason previous = TradingSeason.create("시즌 6", MONDAY.minusWeeks(2), new BigDecimal("100.00"), null, 1L);
+        ReflectionTestUtils.setField(previous, "tradingSeasonId", 6L);
+        when(seasonRepository.findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.of(previous));
+
+        TradingHomeDTO home = service.getHome(null);
+
+        assertThat(home.getSeason().getPreviousSeasonId()).isEqualTo(6L);
+        verify(seasonRepository).findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(MONDAY);
+    }
+
+    @Test
+    void 랭킹을_공개한_지난_시즌이_없으면_지난_시즌_번호는_null() {
+        season(5);
+        givenTurns();
+        when(seasonRepository.findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(MONDAY))
+                .thenReturn(Optional.empty());
+
+        TradingHomeDTO home = service.getHome(null);
+
+        assertThat(home.getSeason().getPreviousSeasonId()).isNull();
+    }
+
+    @Test
+    void 홈의_참가_정보에_시작_자금_구성_모은_캐시와_이월금이_들어간다() {
+        season(5);
+        givenTurns();
+        SeasonParticipant participant = SeasonParticipant.create(SEASON_ID, MEMBER_ID, 3_200_000L, 1_620_000L);
+        ReflectionTestUtils.setField(participant, "seasonParticipantId", 120L);
+        when(participantRepository.findByTradingSeasonIdAndMemberId(SEASON_ID, MEMBER_ID))
+                .thenReturn(Optional.of(participant));
+        when(holdingRepository.findBySeasonParticipantIdAndQuantityGreaterThanOrderByStockIdAsc(120L, 0))
+                .thenReturn(List.of());
+
+        TradingHomeDTO.Participation p = service.getHome(MEMBER_ID).getParticipation();
+
+        assertThat(p.getSavedCash()).isEqualTo(3_200_000L);
+        assertThat(p.getCarryoverIn()).isEqualTo(1_620_000L);
+        assertThat(p.getInvestAmount()).isEqualTo(4_820_000L);   // = 모은 캐시 + 이월금
     }
 
     @Test

@@ -2,6 +2,8 @@ package com.wanted.moneybeetle.domain.trading.model.dao;
 
 import com.wanted.moneybeetle.domain.trading.model.entity.TradeOrder;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +28,52 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
 
         long getOrderCount();
     }
+
+    /** 시즌 안에서 주어진 시각 범위에 들어온 주문 수 (관리자 대시보드의 오늘 주문 수, #193) */
+    @Query("""
+            select count(o)
+            from TradeOrder o, SeasonParticipant p
+            where o.seasonParticipantId = p.seasonParticipantId and p.tradingSeasonId = :seasonId
+              and o.createdAt >= :from and o.createdAt < :to
+            """)
+    long countOrdersBetween(@Param("seasonId") Long tradingSeasonId, @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to);
+
+    /** 내 거래 내역 한 쪽. 정렬은 Pageable 로 (최근 거래부터) (#25) */
+    Page<TradeOrder> findBySeasonParticipantId(Long seasonParticipantId, Pageable pageable);
+    /** 한 참가자의 거래 내역, 최근 거래부터 (관리자 참가자 상세 #45) */
+    List<TradeOrder> findBySeasonParticipantIdOrderByTradeOrderIdDesc(Long seasonParticipantId);
+
+    /** 시즌 안에서 종목별 매수 건수 (시즌 통계의 많이 산 종목 #46) */
+    @Query("""
+            select o.stockId as stockId, count(o) as orderCount
+            from TradeOrder o, SeasonParticipant p
+            where o.seasonParticipantId = p.seasonParticipantId and p.tradingSeasonId = :seasonId
+              and o.orderType = 'BUY'
+            group by o.stockId
+            """)
+    List<StockOrderCount> countBuysByStock(@Param("seasonId") Long tradingSeasonId);
+
+    /** 시즌 안에서 매매 이유별 주문 건수 (시즌 통계의 매매 이유 비율 #46) */
+    @Query("""
+            select o.tradeReasonId as reasonId, count(o) as orderCount
+            from TradeOrder o, SeasonParticipant p
+            where o.seasonParticipantId = p.seasonParticipantId and p.tradingSeasonId = :seasonId
+            group by o.tradeReasonId
+            """)
+    List<ReasonOrderCount> countOrdersByReason(@Param("seasonId") Long tradingSeasonId);
+
+    interface ReasonOrderCount {
+        Long getReasonId();
+        long getOrderCount();
+    }
+
+    /** 시즌 안의 모든 매도 주문 (시즌 통계의 급락 턴 매도 비율 #46) */
+    @Query("""
+            select o
+            from TradeOrder o, SeasonParticipant p
+            where o.seasonParticipantId = p.seasonParticipantId and p.tradingSeasonId = :seasonId
+              and o.orderType = 'SELL'
+            """)
+    List<TradeOrder> findSellOrdersBySeason(@Param("seasonId") Long tradingSeasonId);
 }

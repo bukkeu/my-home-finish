@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +34,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
@@ -70,6 +73,7 @@ class NewsAdminServiceTest {
             season.advanceTurn();
         }
         when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(seasonRepository.findByIdForUpdate(SEASON_ID)).thenReturn(Optional.of(season));
         // 분야 1, 종목 1 은 있다
         when(sectorRepository.findAllById(Set.of(1L))).thenReturn(List.of(sector(1L, "반도체")));
         when(stockRepository.findAllById(Set.of(1L))).thenReturn(List.of(stock(1L, "한빛반도체")));
@@ -92,7 +96,8 @@ class NewsAdminServiceTest {
     private News savedNews(long id, int turnNo) {
         News news = News.create(SEASON_ID, turnNo, "원래 제목", "원래 본문", "원래 메모");
         ReflectionTestUtils.setField(news, "newsId", id);
-        when(newsRepository.findById(id)).thenReturn(Optional.of(news));
+        when(newsRepository.findSeasonIdByNewsId(id)).thenReturn(Optional.of(SEASON_ID));
+        when(newsRepository.findByIdForUpdate(id)).thenReturn(Optional.of(news));
         return news;
     }
 
@@ -141,6 +146,7 @@ class NewsAdminServiceTest {
     @Test
     void 없는_시즌이면_NOT_FOUND() {
         when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(seasonRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findNews(99L, null))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -213,7 +219,7 @@ class NewsAdminServiceTest {
 
     @Test
     void 없는_뉴스를_고치거나_지우면_NOT_FOUND() {
-        when(newsRepository.findById(99L)).thenReturn(Optional.empty());
+        when(newsRepository.findSeasonIdByNewsId(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.changeNews(99L, request(6, List.of(), List.of())))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -238,5 +244,41 @@ class NewsAdminServiceTest {
         assertThat(items.get(0).getAdminMemo()).isEqualTo("원래 메모");
         assertThat(items.get(0).getSectors()).extracting(AdminNewsDTO.Tag::getName).containsExactly("반도체");
         assertThat(items.get(0).getStocks()).extracting(AdminNewsDTO.Tag::getId).containsExactly(1L);
+    }
+
+    @Test
+    void 뉴스_등록_수정_삭제는_턴_진행과_같은_시즌_행_잠금을_잡고_현재_턴을_확인한다() {
+        when(newsRepository.save(any(News.class))).thenAnswer(invocation -> {
+            News saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "newsId", 40L);
+            return saved;
+        });
+        savedNews(50L, 6);
+        savedNews(51L, 7);
+
+        service.createNews(SEASON_ID, request(6, List.of(1L), List.of(1L)));
+        service.changeNews(50L, request(6, List.of(1L), List.of(1L)));
+        service.deleteNews(51L);
+
+        verify(seasonRepository, times(3)).findByIdForUpdate(SEASON_ID);
+    }
+
+    @Test
+    void 수정_삭제는_시즌_잠금_뒤에_뉴스를_잠금_읽기로_다시_읽는다() {
+        savedNews(50L, 6);
+        savedNews(51L, 7);
+
+        service.changeNews(50L, request(6, List.of(1L), List.of(1L)));
+        service.deleteNews(51L);
+
+        // 뉴스 객체를 먼저 올리지 않고(시즌 번호만 읽음), 시즌 잠금 -> 뉴스 잠금 읽기 순서로 읽는다. 단순 findById 는 쓰지 않는다
+        InOrder order = inOrder(newsRepository, seasonRepository);
+        order.verify(newsRepository).findSeasonIdByNewsId(50L);
+        order.verify(seasonRepository).findByIdForUpdate(SEASON_ID);
+        order.verify(newsRepository).findByIdForUpdate(50L);
+        order.verify(newsRepository).findSeasonIdByNewsId(51L);
+        order.verify(seasonRepository).findByIdForUpdate(SEASON_ID);
+        order.verify(newsRepository).findByIdForUpdate(51L);
+        verify(newsRepository, never()).findById(any());
     }
 }

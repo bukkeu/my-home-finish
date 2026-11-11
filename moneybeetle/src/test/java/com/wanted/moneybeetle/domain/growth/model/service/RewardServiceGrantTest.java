@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.growth.model.service;
 
+import com.wanted.moneybeetle.support.UnlockLevelFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -15,6 +16,7 @@ import com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
@@ -54,7 +56,7 @@ class RewardServiceGrantTest {
         // 레벨 정책표는 이슈 #11 확정값(Lv.8 = 1,250, Lv.12 = 2,450)을 쓴다
         when(growthService.loadLevelTable()).thenReturn(LevelTableFixture.table());
         rewardService = new RewardService(ruleRepository, cashHistoryRepository, expHistoryRepository,
-                memberService, growthService, notificationService);
+                memberService, growthService, notificationService, UnlockLevelFixture.defaults());
     }
 
     private void givenRule(String code, int cash, int exp) {
@@ -71,7 +73,7 @@ class RewardServiceGrantTest {
         return ExpHistory.create(MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L, null, 100, 100, 1);
     }
 
-    private static CashHistory existingCash(String sourceType) {
+    private static CashHistory existingCash(CashSource sourceType) {
         return CashHistory.earn(MEMBER, sourceType, 15L, null, 30_000, 30_000);
     }
 
@@ -101,7 +103,7 @@ class RewardServiceGrantTest {
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository).save(cash.capture());
         assertThat(cash.getValue().getHistoryType()).isEqualTo(CashHistory.EARN);
-        assertThat(cash.getValue().getSourceType()).isEqualTo(CashHistory.SOURCE_COURSE_COMPLETE);
+        assertThat(cash.getValue().getSourceType()).isEqualTo(CashSource.COURSE_COMPLETE);
         assertThat(cash.getValue().getSourceId()).isEqualTo(15L);
         assertThat(cash.getValue().getAmount()).isEqualTo(30_000);
         assertThat(cash.getValue().getBalanceAfter()).isEqualTo(35_000);
@@ -136,7 +138,7 @@ class RewardServiceGrantTest {
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository, org.mockito.Mockito.times(2)).save(cash.capture());
         CashHistory levelCash = cash.getAllValues().get(1);
-        assertThat(levelCash.getSourceType()).isEqualTo(CashHistory.SOURCE_LEVEL_UP);
+        assertThat(levelCash.getSourceType()).isEqualTo(CashSource.LEVEL_UP);
         assertThat(levelCash.getSourceId()).isEqualTo(4L);           // 원인 ID = 오른 레벨
         assertThat(levelCash.getAmount()).isEqualTo(40_000);
         assertThat(levelCash.getBalanceAfter()).isEqualTo(75_000);
@@ -162,7 +164,7 @@ class RewardServiceGrantTest {
         assertThat(result.getLevelTo()).isEqualTo(8);
         assertThat(result.getLevelUpCash()).isEqualTo(350_000);
         assertThat(result.getUnlocks()).containsExactly(UnlockRules.TRADING);
-        verify(notificationService).send(MEMBER, "UNLOCK", "모의투자가 열렸어요", "/user/demo-trading");
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
 
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository, org.mockito.Mockito.times(7)).save(cash.capture());
@@ -171,7 +173,7 @@ class RewardServiceGrantTest {
             int level = i + 2;
             running += level * 10_000L;
             CashHistory history = cash.getAllValues().get(i);
-            assertThat(history.getSourceType()).isEqualTo(CashHistory.SOURCE_LEVEL_UP);
+            assertThat(history.getSourceType()).isEqualTo(CashSource.LEVEL_UP);
             assertThat(history.getSourceId()).isEqualTo((long) level);   // 레벨마다 한 줄
             assertThat(history.getBalanceAfter()).isEqualTo(running);
         }
@@ -189,9 +191,9 @@ class RewardServiceGrantTest {
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
         assertThat(result.getUnlocks()).containsExactly(UnlockRules.HOUSING);
-        verify(notificationService).send(MEMBER, "UNLOCK", "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의 청약이 열렸어요", "/user/demo-housing-subscription");
         verify(notificationService, org.mockito.Mockito.times(1))
-                .send(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                .send(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.class),
                         org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 
@@ -402,7 +404,7 @@ class RewardServiceGrantTest {
         givenRule(RewardRule.COURSE_COMPLETE, 0, 100);
         givenBalance(3, 500, 35_000);
         when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingCash(CashHistory.SOURCE_COURSE_COMPLETE)));
+                MEMBER, CashSource.COURSE_COMPLETE, 15L)).thenReturn(Optional.of(existingCash(CashSource.COURSE_COMPLETE)));
 
         RewardResultDTO result = rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
 
@@ -436,18 +438,18 @@ class RewardServiceGrantTest {
         when(memberService.deductCash(MEMBER, 1_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 1, 100, 79_000));
 
         rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 15L);
-        rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 1_000);
+        rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 1_000);
 
         verify(expHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
                 MEMBER, ExpHistory.SOURCE_COURSE_COMPLETE, 15L);
         verify(cashHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_COURSE_COMPLETE, 15L);
+                MEMBER, CashSource.COURSE_COMPLETE, 15L);
         verify(cashHistoryRepository).findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L);
+                MEMBER, CashSource.SEASON_JOIN, 1L);
         verify(expHistoryRepository, never()).existsByMemberIdAndSourceTypeAndSourceId(
                 org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
         verify(cashHistoryRepository, never()).existsByMemberIdAndSourceTypeAndSourceId(
-                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(CashSource.class), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -463,7 +465,7 @@ class RewardServiceGrantTest {
         assertThat(result.getGrantedExp()).isZero();
         ArgumentCaptor<CashHistory> cash = ArgumentCaptor.forClass(CashHistory.class);
         verify(cashHistoryRepository).save(cash.capture());
-        assertThat(cash.getValue().getSourceType()).isEqualTo(CashHistory.SOURCE_ATTENDANCE);
+        assertThat(cash.getValue().getSourceType()).isEqualTo(CashSource.ATTENDANCE);
         verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -480,6 +482,118 @@ class RewardServiceGrantTest {
         verify(expHistoryRepository).save(org.mockito.ArgumentMatchers.any(ExpHistory.class));
         verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    @DisplayName("출석 경험치: 규칙 기본값에 배수를 곱해 경험치만 지급하고, 이력 원인은 ATTENDANCE (#205)")
+    void grantAttendanceDailyWithMultiplier() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 30)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 230, 1_000));
+
+        RewardResultDTO result = rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3).orElseThrow();
+
+        assertThat(result.getGrantedExp()).isEqualTo(30);
+        assertThat(result.getGrantedCash()).isZero();
+        ArgumentCaptor<ExpHistory> exp = ArgumentCaptor.forClass(ExpHistory.class);
+        verify(expHistoryRepository).save(exp.capture());
+        assertThat(exp.getValue().getSourceType()).isEqualTo(ExpHistory.SOURCE_ATTENDANCE);
+        assertThat(exp.getValue().getSourceId()).isEqualTo(500L);
+        assertThat(exp.getValue().getAmount()).isEqualTo(30);
+        verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("배수가 1 보다 작으면 거절하고 아무것도 바꾸지 않는다")
+    void multiplierMustBePositive() {
+        assertThatThrownBy(() -> rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("지급할 규칙이 없으면(꺼짐·없음) 예외 없이 빈 결과를 돌려주고 회원 행도 잠그지 않는다")
+    void multiplierGrantSkipsWhenRuleMissing() {
+        when(ruleRepository.findByCodeAndActiveTrue(RewardRule.ATTENDANCE_DAILY)).thenReturn(Optional.empty());
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 2)).isEmpty();
+
+        verify(memberService, never()).lockBalance(anyLong());
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("경험치 기본값이 0 이면 빈 결과를 돌려주고 아무것도 바꾸지 않는다 (규칙은 한 번만 읽는다)")
+    void multiplierGrantSkipsWhenExpIsZero() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 0);
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 3)).isEmpty();
+
+        verify(ruleRepository, org.mockito.Mockito.times(1)).findByCodeAndActiveTrue(RewardRule.ATTENDANCE_DAILY);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("규칙은 한 번만 읽는다 (지급 중에 다시 조회하지 않는다)")
+    void multiplierGrantReadsRuleOnce() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 20)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 220, 1_000));
+
+        rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 2);
+
+        verify(ruleRepository, org.mockito.Mockito.times(1)).findByCodeAndActiveTrue(RewardRule.ATTENDANCE_DAILY);
+    }
+
+    @Test
+    @DisplayName("출석 경험치는 하루 50 XP 를 넘지 않는다: 기본값 10 × 5 = 50 은 그대로, 기본값을 20 으로 바꿔도 ×5 는 50 으로 자른다 (SP-22)")
+    void attendanceExpIsCappedAtFifty() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 10);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 50)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 250, 1_000));
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 5).orElseThrow().getGrantedExp())
+                .isEqualTo(50);
+
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 20);
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 501L, 5).orElseThrow().getGrantedExp())
+                .isEqualTo(50);   // 20 × 5 = 100 → 50
+    }
+
+    @Test
+    @DisplayName("상한 아래의 값은 자르지 않는다 (기본값 20 × 2 = 40)")
+    void attendanceExpBelowCapIsKept() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 20);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 40)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 240, 1_000));
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 2).orElseThrow().getGrantedExp())
+                .isEqualTo(40);
+    }
+
+    @Test
+    @DisplayName("기본값이 아주 커도 곱셈이 넘치지 않고(long 계산) 상한 50 으로 자른다")
+    void attendanceExpDoesNotOverflow() {
+        givenRule(RewardRule.ATTENDANCE_DAILY, 0, 2_000_000_000);   // 2,000,000,000 × 5 는 int 범위를 넘는다
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 50)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 250, 1_000));
+
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.ATTENDANCE_DAILY, 500L, 5).orElseThrow().getGrantedExp())
+                .isEqualTo(50);
+    }
+
+    @Test
+    @DisplayName("상한은 출석 경험치에만 적용한다: 다른 규칙(여기서는 경험치 40)은 배수를 곱해도 50 으로 자르지 않고, 배수 없는 기존 grant 도 그대로다")
+    void capAppliesOnlyToAttendance() {
+        givenRule(RewardRule.COURSE_COMPLETE, 0, 40);
+        givenBalance(2, 200, 1_000);
+        when(memberService.addReward(MEMBER, 0L, 80)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 280, 1_000));
+        assertThat(rewardService.grantWithExpMultiplier(MEMBER, RewardRule.COURSE_COMPLETE, 15L, 2).orElseThrow().getGrantedExp())
+                .isEqualTo(80);   // 40 × 2 = 80 은 출석 상한(50)보다 크지만 다른 규칙이라 자르지 않는다
+
+        when(memberService.addReward(MEMBER, 0L, 40)).thenReturn(MemberBalanceDTO.of(MEMBER, 2, 240, 1_000));
+        assertThat(rewardService.grant(MEMBER, RewardRule.COURSE_COMPLETE, 16L).getGrantedExp()).isEqualTo(40);
+    }
+
+
 
     @Test
     @DisplayName("사용 중인 보상 규칙이 없으면 REWARD_RULE_NOT_FOUND 이고 아무것도 바꾸지 않는다")
@@ -530,7 +644,7 @@ class RewardServiceGrantTest {
         givenBalance(8, 1250, 50_000);
         when(memberService.deductCash(MEMBER, 20_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1250, 30_000));
 
-        long balance = rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000);
+        long balance = rewardService.spendCash(MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L, 20_000);
 
         assertThat(balance).isEqualTo(30_000);
         ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
@@ -545,7 +659,7 @@ class RewardServiceGrantTest {
     void notEnoughCash() {
         givenBalance(8, 1250, 10_000);
 
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L, 20_000))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.NOT_ENOUGH_CASH));
         verify(memberService, never()).deductCash(anyLong(), anyLong());
         verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
@@ -557,7 +671,7 @@ class RewardServiceGrantTest {
         givenBalance(8, 1250, 20_000);
         when(memberService.deductCash(MEMBER, 20_000L)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1250, 0));
 
-        assertThat(rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 20_000)).isZero();
+        assertThat(rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 20_000)).isZero();
     }
 
     @Test
@@ -565,19 +679,31 @@ class RewardServiceGrantTest {
     void alreadyUsed() {
         givenBalance(8, 1250, 50_000);
         when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
-                MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L)).thenReturn(Optional.of(existingCash(CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT)));
+                MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L)).thenReturn(Optional.of(existingCash(CashSource.SUBSCRIPTION_DEPOSIT)));
 
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 3L, 20_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SUBSCRIPTION_DEPOSIT, 3L, 20_000))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.ALREADY_USED));
         verify(memberService, never()).deductCash(anyLong(), anyLong());
     }
 
     @Test
+    @DisplayName("모르는 문자열 출처(옛 버전)와 null 출처는 NullPointerException 이 아니라 IllegalArgumentException 으로 거절하고 회원을 건드리지 않는다")
+    void unknownOrNullSourceIsRejected() {
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, "UNKNOWN", 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, (String) null, 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, (CashSource) null, 1L, 1_000))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
     @DisplayName("사용 금액이 0 이하면 INVALID_AMOUNT 이고 회원을 건드리지 않는다")
     void invalidAmount() {
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, 0))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, 0))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.INVALID_AMOUNT));
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, 1L, -5))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, 1L, -5))
                 .satisfies(e -> assertErrorCode(e, GrowthErrorCode.INVALID_AMOUNT));
         verify(memberService, never()).lockBalance(anyLong());
     }
@@ -585,9 +711,9 @@ class RewardServiceGrantTest {
     @Test
     @DisplayName("사용할 수 없는 원인 종류(출석 등)나 빠진 ID 는 호출한 쪽의 실수라 거절한다")
     void invalidSource() {
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_ATTENDANCE, 1L, 1_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.ATTENDANCE, 1L, 1_000))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashHistory.SOURCE_SEASON_JOIN, null, 1_000))
+        assertThatThrownBy(() -> rewardService.spendCash(MEMBER, CashSource.SEASON_JOIN, null, 1_000))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -597,5 +723,170 @@ class RewardServiceGrantTest {
         when(memberService.getBalance(MEMBER)).thenReturn(MemberBalanceDTO.of(MEMBER, 8, 1250, 12_000));
 
         assertThat(rewardService.getBalance(MEMBER)).isEqualTo(12_000);
+    }
+
+    // ---- 시즌 랭킹 보상 (이슈 #10, SP-64) ----
+
+    @Test
+    @DisplayName("랭킹 1·2·3위 보상은 순위별 규칙(50,000 / 30,000 / 10,000)의 캐시만 지급하고 RANKING 원인·수상 기록 ID 로 남긴다")
+    void grantRankingRewardByRank() {
+        givenBalance(5, 900, 100_000);
+        long[][] expected = {{1, 50_000, 71L}, {2, 30_000, 72L}, {3, 10_000, 73L}};
+        for (long[] row : expected) {
+            int rank = (int) row[0];
+            long cash = row[1];
+            long awardId = row[2];
+            givenRule(RewardRule.rankingRuleCode(rank), (int) cash, 0);
+            when(memberService.addReward(MEMBER, cash, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 5, 900, 100_000 + cash));
+
+            RewardResultDTO result = rewardService.grantRankingReward(MEMBER, rank, awardId);
+
+            assertThat(result.getGrantedCash()).isEqualTo(cash);
+            assertThat(result.getGrantedExp()).isZero();
+            assertThat(result.isAlreadyGranted()).isFalse();
+        }
+
+        ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
+        verify(cashHistoryRepository, org.mockito.Mockito.times(3)).save(history.capture());
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceType).containsOnly(CashSource.RANKING);
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceId).containsExactly(71L, 72L, 73L);
+        assertThat(history.getAllValues()).extracting(CashHistory::getAmount).containsExactly(50_000L, 30_000L, 10_000L);
+        verify(expHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("같은 수상 기록으로 다시 지급을 부르면 한 번만 지급된다 (이중 지급 방지)")
+    void rankingRewardTwiceIsIgnored() {
+        givenRule(RewardRule.RANKING_RANK_1, 50_000, 0);
+        givenBalance(5, 900, 150_000);
+        when(cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(
+                MEMBER, CashSource.RANKING, 71L))
+                .thenReturn(Optional.of(CashHistory.earn(MEMBER, CashSource.RANKING, 71L, 1L, 50_000, 150_000)));
+
+        RewardResultDTO result = rewardService.grantRankingReward(MEMBER, 1, 71L);
+
+        assertThat(result.isAlreadyGranted()).isTrue();
+        verify(memberService, never()).addReward(anyLong(), anyLong(), anyInt());
+        verify(cashHistoryRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("순자산·수익률 랭킹에 모두 들면 수상 기록이 둘이라 두 번 받는다 (같은 순위여도 원인 ID 가 다르다)")
+    void bothRankingsPayTwice() {
+        givenRule(RewardRule.RANKING_RANK_1, 50_000, 0);
+        givenBalance(5, 900, 0);
+        when(memberService.addReward(MEMBER, 50_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 5, 900, 50_000));
+
+        RewardResultDTO asset = rewardService.grantRankingReward(MEMBER, 1, 81L);    // 순자산 랭킹 수상
+        RewardResultDTO returnRate = rewardService.grantRankingReward(MEMBER, 1, 82L);   // 수익률 랭킹 수상
+
+        assertThat(asset.getGrantedCash()).isEqualTo(50_000);
+        assertThat(returnRate.getGrantedCash()).isEqualTo(50_000);
+        ArgumentCaptor<CashHistory> history = ArgumentCaptor.forClass(CashHistory.class);
+        verify(cashHistoryRepository, org.mockito.Mockito.times(2)).save(history.capture());
+        assertThat(history.getAllValues()).extracting(CashHistory::getSourceId).containsExactly(81L, 82L);
+    }
+
+    @Test
+    @DisplayName("랭킹 보상 규칙이 없거나 꺼져 있으면 REWARD_RULE_NOT_FOUND 이고 아무것도 바꾸지 않는다")
+    void rankingRuleMissing() {
+        when(ruleRepository.findByCodeAndActiveTrue(RewardRule.RANKING_RANK_2)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> rewardService.grantRankingReward(MEMBER, 2, 72L))
+                .satisfies(e -> assertErrorCode(e, GrowthErrorCode.REWARD_RULE_NOT_FOUND));
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    @Test
+    @DisplayName("관리자가 랭킹 보상 금액을 바꾸면 바뀐 금액으로 지급한다 (금액은 규칙에서 읽는다)")
+    void rankingAmountComesFromRule() {
+        givenRule(RewardRule.RANKING_RANK_3, 20_000, 0);   // 기본값 10,000 을 관리자가 20,000 으로 바꿈
+        givenBalance(5, 900, 0);
+        when(memberService.addReward(MEMBER, 20_000L, 0)).thenReturn(MemberBalanceDTO.of(MEMBER, 5, 900, 20_000));
+
+        assertThat(rewardService.grantRankingReward(MEMBER, 3, 73L).getGrantedCash()).isEqualTo(20_000);
+    }
+
+    @Test
+    @DisplayName("1~3위가 아닌 순위는 거절하고 아무것도 조회하지 않는다")
+    void rankOutOfRange() {
+        for (int rank : new int[] {0, 4, -1}) {
+            assertThatThrownBy(() -> rewardService.grantRankingReward(MEMBER, rank, 70L))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        verify(ruleRepository, never()).findByCodeAndActiveTrue(org.mockito.ArgumentMatchers.anyString());
+        verify(memberService, never()).lockBalance(anyLong());
+    }
+
+    // ===== #266 해금 알림은 운영 설정의 해금 레벨에서만 =====
+
+    private RewardService rewardServiceWith(Integer tradingLevel, Integer housingLevel) {
+        return new RewardService(ruleRepository, cashHistoryRepository, expHistoryRepository, memberService,
+                growthService, notificationService, UnlockLevelFixture.of(tradingLevel, housingLevel));
+    }
+
+    /** Lv.fromLevel → Lv.toLevel 로 오르는 지급을 흉내 낸다 (경험치는 레벨표의 필요 경험치에 맞춘다) */
+    private void givenLevelUp(int fromLevel, int toLevel) {
+        int fromExp = LevelTableFixture.policies().get(fromLevel - 1).getRequiredExp();
+        int toExp = LevelTableFixture.policies().get(toLevel - 1).getRequiredExp();
+        int gained = toExp - fromExp;
+        givenRule(RewardRule.COURSE_COMPLETE, 0, gained);
+        givenBalance(fromLevel, fromExp, 0);
+        when(memberService.addReward(MEMBER, 0L, gained)).thenReturn(MemberBalanceDTO.of(MEMBER, fromLevel, toExp, 0));
+        when(memberService.levelUp(MEMBER, toLevel)).thenReturn(MemberBalanceDTO.of(MEMBER, toLevel, toExp, 0));
+        when(memberService.addReward(org.mockito.ArgumentMatchers.eq(MEMBER),
+                org.mockito.ArgumentMatchers.longThat(cash -> cash > 0), org.mockito.ArgumentMatchers.eq(0)))
+                .thenAnswer(invocation -> MemberBalanceDTO.of(MEMBER, toLevel, toExp, invocation.<Long>getArgument(1)));
+    }
+
+    @Test
+    @DisplayName("청약 설정이 15 이면 Lv.12 에 올라도 청약 알림이 가지 않고, Lv.15 에 오를 때 간다")
+    void housingNotificationAtSettingLevel() {
+        RewardService service = rewardServiceWith(null, 15);
+        givenLevelUp(11, 12);
+
+        RewardResultDTO atTwelve = service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 20L);
+
+        assertThat(atTwelve.getUnlocks()).isEmpty();
+        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.any(com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.class),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+
+        givenLevelUp(14, 15);
+        RewardResultDTO atFifteen = service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 21L);
+
+        assertThat(atFifteen.getUnlocks()).containsExactly(UnlockRules.HOUSING);
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+    }
+
+    @Test
+    @DisplayName("모의투자 설정이 6 이면 Lv.6 에서 알림이 가고, 한 번에 Lv.2 → Lv.12 로 올라도 알림은 기능마다 한 번이다")
+    void tradingNotificationAtSettingLevelAndOncePerFeature() {
+        RewardService service = rewardServiceWith(6, null);
+        givenLevelUp(5, 6);
+
+        assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 30L).getUnlocks())
+                .containsExactly(UnlockRules.TRADING);
+        verify(notificationService).send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
+
+        org.mockito.Mockito.clearInvocations(notificationService);
+        givenLevelUp(2, 12);
+
+        assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 31L).getUnlocks())
+                .containsExactly(UnlockRules.TRADING, UnlockRules.HOUSING);
+        verify(notificationService, org.mockito.Mockito.times(1))
+                .send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
+        verify(notificationService, org.mockito.Mockito.times(1))
+                .send(MEMBER, com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.UNLOCK, "모의 청약이 열렸어요", "/user/demo-housing-subscription");
+    }
+
+    @Test
+    @DisplayName("이미 해금 레벨을 지난 회원이 더 올라도 알림이 다시 가지 않는다 (청약 8, 모의투자 10)")
+    void noRepeatAfterUnlock() {
+        RewardService service = rewardServiceWith(10, 8);
+        givenLevelUp(8, 9);
+
+        assertThat(service.grant(MEMBER, RewardRule.COURSE_COMPLETE, 40L).getUnlocks()).isEmpty();
+        verify(notificationService, never()).send(anyLong(), org.mockito.ArgumentMatchers.any(com.wanted.moneybeetle.domain.notification.model.entity.NotificationType.class),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 }

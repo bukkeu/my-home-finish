@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.course.model.dao;
 
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,7 +28,7 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
             where p.courseId = c.courseId
               and p.memberId = :memberId and p.status = :progressStatus
               and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
-            order by p.completedAt desc
+            order by p.completedAt desc, p.learningProgressId desc
             """,
             countQuery = """
             select count(p) from LearningProgress p, Course c
@@ -37,14 +38,28 @@ public interface LearningProgressRepository extends JpaRepository<LearningProgre
             """)
     Page<LearningProgress> findVisibleByMemberIdAndStatus(@Param("memberId") Long memberId,
                                                           @Param("progressStatus") String progressStatus,
-                                                          @Param("courseStatus") String courseStatus,
+                                                          @Param("courseStatus") CourseStatus courseStatus,
                                                           Pageable pageable);
+
+    /* 홈·내 정보의 학습 완료 강의 수 (#188): 학습 완료 목록(findVisibleByMemberIdAndStatus)과 같은 조건으로 개수만 센다 */
+    @Query("""
+            select count(p) from LearningProgress p, Course c
+            where p.courseId = c.courseId
+              and p.memberId = :memberId and p.status = :progressStatus
+              and c.status = :courseStatus and c.isPublic = true and c.deletedAt is null
+            """)
+    long countVisibleByMemberIdAndStatus(@Param("memberId") Long memberId,
+                                         @Param("progressStatus") String progressStatus,
+                                         @Param("courseStatus") CourseStatus courseStatus);
 
     /* 홈 '이어서 볼 강의' (최근에 본 순서 5개) */
     List<LearningProgress> findTop5ByMemberIdAndStatusOrderByUpdatedAtDesc(Long memberId, String status);
 
     /* 학습 기록이 하나라도 있는지 (홈 vr1/vr2 분기) */
     boolean existsByMemberId(Long memberId);
+
+    /* 강의 목록 한 페이지에서 내 학습 상태를 한 번에 (#52) */
+    List<LearningProgress> findByMemberIdAndCourseIdIn(Long memberId, Collection<Long> courseIds);
 
     /* 강의 삭제 가능 여부 (SP-32): 한 명이라도 학습 기록이 있으면 삭제 불가 */
     boolean existsByCourseId(Long courseId);

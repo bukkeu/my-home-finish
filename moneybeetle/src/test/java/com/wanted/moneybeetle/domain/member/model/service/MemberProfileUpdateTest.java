@@ -18,6 +18,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -52,7 +53,7 @@ class MemberProfileUpdateTest {
         Clock clock = Clock.fixed(Instant.parse("2026-11-08T00:00:00Z"), ZoneId.of("Asia/Seoul"));
         memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), forbiddenWordService,
-                clock, mock(InstructorProfileRepository.class));
+                clock, mock(InstructorProfileRepository.class), mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class));
 
         member = Member.signup("minji@gmail.com", "hash", "민지", LocalDate.of(1999, 4, 12), "FEMALE",
                 LocalDate.of(2026, 11, 8));
@@ -157,7 +158,7 @@ class MemberProfileUpdateTest {
     @Test
     @DisplayName("공개 프로필 원본은 탈퇴·정지 회원이면 MEMBER_NOT_FOUND")
     void inactiveMemberHidden() {
-        ReflectionTestUtils.setField(member, "status", Member.STATUS_WITHDRAWN);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.WITHDRAWN);
 
         assertThatThrownBy(() -> memberService.getActiveProfile(1L))
                 .isInstanceOfSatisfying(BusinessException.class,

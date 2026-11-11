@@ -58,6 +58,7 @@
 | Policy | `대상+규칙Policy` | `MenuNamePolicy`, `MenuDeletionPolicy` | 학습 |
 | 메서드 | camelCase, 동사로 시작 | `findMenuByMenuCode`, `stopSelling` | 학습 |
 | 변수·필드 | camelCase | `menuPrice`, `refCategoryCode` | 학습 |
+| Entity PK 필드 | `<엔티티 이름>Id` (camelCase). 컬럼 `<테이블>_id`와 짝을 맞추고, `id` 하나만 쓰지 않는다 | `courseId` ↔ `course_id`, `subscriptionAccountId` ↔ `subscription_account_id` | 팀 결정 (#303). `id` 를 쓰던 housing 엔티티 4개는 #318 에서 맞춘다 |
 | 상수·enum 값 | UPPER_SNAKE_CASE | `MENU_NOT_FOUND`, `ACTIVE` | 학습·DB 문서 |
 
 **메서드 이름 접두어**
@@ -97,8 +98,9 @@ Java 필드(camelCase)와 DB 컬럼(snake_case)은 Spring Boot가 자동으로 �
 
 ```
 com.wanted.moneybeetle
+├─ MoneyBeetleApplication 시작 클래스 (루트 패키지라 아래를 모두 스캔, #114)
 ├─ global                 공통 (여러 도메인이 함께 씀)
-│  ├─ config              Application, ContextConfig, JpaConfig, WebConfig
+│  ├─ config              JpaConfig, TimeConfig, WebConfig
 │  ├─ common              ApiResponse, PageResponse, BaseTimeEntity
 │  ├─ exception           ErrorCode, CommonErrorCode, BusinessException, GlobalExceptionHandler
 │  ├─ security            레벨 해금 확인, 중복 요청 방지
@@ -383,6 +385,7 @@ public class MyInfoDTO {
 | 중괄호 | 같은 줄에서 열고(`{`), 한 줄짜리 `if`도 중괄호를 쓴다 | 제안 |
 | import | 와일드카드(`.*`) 금지, 안 쓰는 import는 지운다 | 제안 |
 | 주석 | 클래스 상단: 담당·역할·정책 번호. 메서드: **왜** 이렇게 하는지가 불분명할 때만. 코드를 그대로 설명하는 주석은 쓰지 않는다 | 골격·제안 |
+| TODO | 새 TODO는 **`TODO(#이슈번호): 내용`** 으로 쓴다 (예: `// TODO(#291): 운영 값은 system_setting 에서 읽는다`). 이슈 번호 없는 TODO는 남기지 않는다. 기다리던 일이 끝나면 그 이슈를 닫는 PR에서 TODO도 지운다. 이슈 번호가 있어야 기다리던 기능이 만들어졌을 때 기다리던 쪽을 찾을 수 있다 (점검 때 TODO 13개 중 10개가 이미 끝난 일이었다) | 팀 결정 (#303) |
 | 파일 인코딩 | UTF-8 | 제안 |
 | Lombok | `@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@RequiredArgsConstructor`(생성자 주입)만 허용. `@Data`·`@Setter`는 Entity에 쓰지 않는다 | 제안 |
 | 의존성 주입 | **생성자 주입** (`private final` 필드 + `@RequiredArgsConstructor`). `@Autowired` 필드 주입 금지. 생성자가 하나면 `@Autowired`는 생략한다. Lombok 없이 직접 생성자를 써도 된다 | 학습(생성자 주입, 07 chap02)·제안(Lombok) |
@@ -390,7 +393,7 @@ public class MyInfoDTO {
 | 매직 넘버 | 해금 레벨·통과 점수·보상 금액 등 바뀔 수 있는 값은 코드에 직접 쓰지 않고 `system_setting`·`reward_rule`·`level_policy`에서 읽는다 (NFR-13) | DB·정책 문서 |
 | 템플릿(Thymeleaf) | 공통 조각은 `templates/fragments/`에 둔다. 조각 이름은 `headerFragment`처럼 camelCase + `Fragment`로 정하고, 정의는 `th:fragment="headerFragment"`, 호출은 `th:replace="~{fragments/layout/header :: headerFragment}"`로 쓴다 (경로는 templates 기준, `.html` 생략, 앞에 `/` 없음). 태그째 바꿀 때는 `th:replace`, 바깥 태그를 남기고 안에 넣을 때만 `th:insert`. 값은 `th:fragment="x(a, b)"`로 받고 `~{... :: x(${v1}, ${v2})}`로 넘긴다. 링크·정적 파일은 `th:href`·`th:src` + `@{}`, 조건은 `th:if`·`th:unless`, 반복은 `th:each`, 첫 줄은 `<html xmlns:th="http://www.thymeleaf.org">`. 인라인 `<script>`보다 `static/js`로 분리한다 | 학습 (08 chap07)·제안 |
 | 인터셉터 | `HandlerInterceptor` 구현 클래스에 `@Component`를 붙이고 `global/config/WebConfig`(`WebMvcConfigurer.addInterceptors`)에서 등록한다. 적용 경로는 `/**`(하위 전체, `/*`는 한 단계만)로 쓰고 `/css/**`·`/js/**`·`/images/**`는 `excludePathPatterns`로 뺀다. `/api` 인터셉터는 JSON 응답이라 `postHandle`의 `ModelAndView`가 `null`일 수 있으니 `preHandle`에서 처리한다 | 학습 (08 chap05) |
-| 컴포넌트 스캔 | `@SpringBootApplication`은 자기 패키지와 하위만 스캔한다. `MoneyBeetleApplication`이 `global.config`에 있으므로 `ContextConfig`의 `@ComponentScan(basePackages = "com.wanted.moneybeetle")`를 지우지 않는다. 시작 설정은 이슈 #2에서 만든다. 지금은 `MoneyBeetleApplication`이 빈 클래스이고 `ContextConfig`·`JpaConfig`의 `@ComponentScan`·`@EntityScan`·`@EnableJpaRepositories`는 주석으로만 있다(아직 적용되지 않았다). 그전의 화면 테스트는 테스트 코드 안의 전용 설정을 쓴다(예: `LayoutFragmentRenderTest`는 **화면 렌더링 확인용**이라 DB·JPA 자동 설정을 빼서 Repository를 주입할 수 없다). #2 이전에 JPA·Repository를 테스트하려면 Entity 스캔과 Repository 활성화를 넣은 별도 테스트 설정과 테스트용 DB 연결이 있어야 한다. #2가 올라온 뒤에는 시작 설정에 컴포넌트 스캔과 `@EntityScan`·`@EnableJpaRepositories`를 넣고, 테스트를 `@SpringBootTest(classes = MoneyBeetleApplication.class)`로 지정한다 | 학습 (07 chap02, 09 module07) |
+| 컴포넌트 스캔 | `@SpringBootApplication`은 자기 패키지와 하위만 스캔한다. 그래서 시작 클래스 `MoneyBeetleApplication`은 **루트 패키지 `com.wanted.moneybeetle`**에 두고, Component·Entity·Repository 스캔을 따로 지정하지 않는다(#114. 예전에 `global.config`에 있을 때 쓰던 `ContextConfig`의 `@ComponentScan`과 `JpaConfig`의 `@EntityScan`·`@EnableJpaRepositories`는 지웠고, `JpaConfig`에는 Auditing만 남았다). DB를 쓰는 테스트는 `@DataJpaTest` + `@ContextConfiguration(classes = MoneyBeetleApplication.class)`처럼 시작 클래스를 지정하고, 실제 `SecurityConfig`를 띄우는 테스트는 `support/SecurityTestApp`(#161)을 쓴다. 화면 렌더링만 확인하는 테스트는 DB·JPA 자동 설정을 뺀 전용 설정을 쓴다(예: `LayoutFragmentRenderTest`) | 학습 (07 chap02, 09 module07) |
 | 포매터 | IntelliJ 기본 포매터 (Settings → Code Style → Java, 위 규칙에 맞게 설정) | 제안 |
 
 ---
@@ -403,7 +406,7 @@ public class MyInfoDTO {
 2. 다른 도메인의 테이블(Repository)을 직접 쓰지 않는다. 그 도메인의 Service 메서드를 부른다.
 3. 에러 코드는 도메인별 enum(`XxxErrorCode`)에 추가한다. `CommonErrorCode`는 SCM만 고친다.
 4. SQL은 `resources/sql`의 `schema.sql`(테이블)과 `sample-data.sql`(시드)로 나누고 DBA가 관리한다. 테이블 변경은 DBA에게 요청한다. `schema.sql`을 다시 실행하면 데이터가 지워지므로, 이미 만든 DB에 변경만 적용해야 할 때에 한해 DBA가 `sql/migration/<날짜>_<설명>.sql`(ALTER 등)을 추가하고 같은 변경을 `schema.sql`에도 반영한다.
-5. 마이페이지 틀은 PM(#54), 관리자 대시보드 틀은 DBA ②(#61)가 맡고, 탭 내용(`templates/fragments/...`)은 `docs/MoneyBeetle_역할분담.md` §6의 해당 이슈 담당자가 맡는다.
+5. 마이페이지 틀은 SCM(#54, 2026-11-11 PM에게서 넘겨받음), 관리자 대시보드 틀은 DBA ②(#61)가 맡고, 탭 내용(`templates/fragments/...`)은 `docs/MoneyBeetle_역할분담.md` §6의 해당 이슈 담당자가 맡는다.
 
 **아직 구현이 없는 도메인과 협업할 때** (학습 25·26일차): 필요한 쪽이 **인터페이스**를 먼저 정의하고, 상대 팀의 실제 구현이 나올 때까지 `Fake` 구현으로 대신한다. 실제 구현이 생기면 Fake만 지우면 되고 사용하는 쪽 코드는 바뀌지 않는다.
 

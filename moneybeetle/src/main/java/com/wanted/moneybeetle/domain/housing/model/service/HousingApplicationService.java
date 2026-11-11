@@ -108,7 +108,7 @@ public class HousingApplicationService {
         Map<Long, HousingComplex> complexes = complexRepository
                 .findAllById(page.getContent().stream().map(HousingApplication::getHousingComplexId).toList())
                 .stream()
-                .collect(Collectors.toMap(HousingComplex::getId, Function.identity()));
+                .collect(Collectors.toMap(HousingComplex::getHousingComplexId, Function.identity()));
         return PageResponse.from(page.map(app -> ApplicationDTO.from(app, complexes.get(app.getHousingComplexId()))));
     }
 

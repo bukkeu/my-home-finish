@@ -3,8 +3,9 @@ package com.wanted.moneybeetle.domain.member.model.dao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,6 +39,8 @@ class MemberPurgeRepositoryTest {
     private MemberRepository memberRepository;
     @Autowired
     private PasswordResetTokenRepository tokenRepository;
+    @Autowired
+    private SocialAccountRepository socialAccountRepository;
 
     private Member member(String email, String nickname, LocalDateTime withdrawnAt) {
         Member member = Member.signup(email, "hash", nickname, LocalDate.of(1999, 4, 12), "FEMALE",
@@ -71,6 +74,24 @@ class MemberPurgeRepositoryTest {
 
         member.purgePersonalInfo();
         memberRepository.saveAndFlush(member);
+
+        assertThat(memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("개인정보는 지웠지만 간편 로그인 연결이 남은 회원은 다시 나오고, 연결을 지우면 나오지 않는다")
+    void purgedMemberWithRemainingSocialAccountIsStillTarget() {
+        Member member = member("old@gmail.com", "오래전", CUTOFF.minusDays(5));
+        socialAccountRepository.saveAndFlush(
+                com.wanted.moneybeetle.domain.member.model.entity.SocialAccount.create(member.getMemberId(), "GOOGLE", "g-1"));
+        member.purgePersonalInfo();
+        memberRepository.saveAndFlush(member);
+
+        assertThat(memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100))).extracting(Member::getMemberId)
+                .containsExactly(member.getMemberId());
+
+        socialAccountRepository.deleteByMemberIdIn(List.of(member.getMemberId()));
+        socialAccountRepository.flush();
 
         assertThat(memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100))).isEmpty();
     }
@@ -120,7 +141,7 @@ class MemberPurgeRepositoryTest {
     /** Member 의 상태 필드를 직접 바꾸는 테스트 도우미 (정지 상태를 만들 공개 메서드가 아직 없다) */
     private static final class ReflectionTestUtilsHelper {
         static void setStatus(Member member, String status) {
-            org.springframework.test.util.ReflectionTestUtils.setField(member, "status", status);
+            org.springframework.test.util.ReflectionTestUtils.setField(member, "status", MemberStatus.valueOf(status));
         }
     }
 }

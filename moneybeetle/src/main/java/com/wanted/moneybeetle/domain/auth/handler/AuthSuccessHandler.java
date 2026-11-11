@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.auth.model.dto.LoginResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceResultDTO;
+import com.wanted.moneybeetle.domain.auth.model.service.MaskedException;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.global.common.ApiResponse;
@@ -65,7 +66,7 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
         try {
             return attendanceService.checkToday(details.getMemberId());
         } catch (RuntimeException e) {
-            log.warn("로그인 출석 기록에 실패했어요: memberId={}, {}", details.getMemberId(), e.getClass().getSimpleName());
+            log.warn("로그인 출석 기록에 실패했어요: memberId={}", details.getMemberId(), MaskedException.of(e));
             return null;
         }
     }

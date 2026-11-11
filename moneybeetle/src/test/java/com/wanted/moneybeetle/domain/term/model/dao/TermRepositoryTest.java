@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.wanted.moneybeetle.domain.term.model.entity.EconomicTerm;
 import com.wanted.moneybeetle.domain.term.model.entity.TermSchedule;
-import com.wanted.moneybeetle.global.config.MoneyBeetleApplication;
+import com.wanted.moneybeetle.MoneyBeetleApplication;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -158,5 +158,24 @@ class TermRepositoryTest {
         assertThatThrownBy(() -> scheduleRepository.saveAndFlush(
                 TermSchedule.create(day, t2.getEconomicTermId(), 1, false)))   // 같은 날짜·같은 순서
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("지정 해제: 직접 지정한 행만 지우고 이미 저장된 자동 선정 행은 남긴다 (API 100-1)")
+    void deleteManualKeepsAutoRows() {
+        EconomicTerm t1 = saveTerm("가", "뜻");
+        EconomicTerm t2 = saveTerm("나", "뜻");
+        LocalDate manualDay = LocalDate.of(2026, 11, 10);
+        LocalDate autoDay = LocalDate.of(2026, 11, 11);
+        scheduleRepository.saveAndFlush(TermSchedule.create(manualDay, t1.getEconomicTermId(), 1, false));
+        scheduleRepository.saveAndFlush(TermSchedule.create(manualDay, t2.getEconomicTermId(), 2, false));
+        scheduleRepository.saveAndFlush(TermSchedule.create(autoDay, t1.getEconomicTermId(), 1, true));
+
+        assertThat(scheduleRepository.deleteManualByShowDate(manualDay)).isEqualTo(2);
+        assertThat(scheduleRepository.deleteManualByShowDate(autoDay)).isZero();   // 자동 선정 행은 그대로
+        entityManager.clear();
+
+        assertThat(scheduleRepository.findByShowDateOrderBySortOrderAsc(manualDay)).isEmpty();
+        assertThat(scheduleRepository.findByShowDateOrderBySortOrderAsc(autoDay)).hasSize(1);
     }
 }

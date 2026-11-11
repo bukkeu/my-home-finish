@@ -4,7 +4,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   담당 : PM (모의투자)
 *   관리자 시즌 관리 (#40, API 114~117)
 *   - 시즌 생성 : 시작일 월요일 확인 -> 시즌 저장 -> 12턴 달력(일요일 제외) 저장. 이전 시즌의 이월·해금 설정 복사
-*   - 설정 변경 : 이월 비율·상한·해금 레벨 (정산 중·종료 시즌은 막음)
+*   - 설정 변경 : 이월 비율·상한 (정산 중·종료 시즌은 막음). 해금 레벨은 시즌 설정이 아니라 운영 설정이다 (#242)
 *   - 상태 변경 : SP-65 순서만 허용 (규칙은 TradingSeason 엔티티)
 *   다음 턴 점검·진행(#44)은 이 서비스에 이어서 추가한다
 *  */
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ public class SeasonAdminService {
     private final TradingSeasonRepository seasonRepository;
     private final SeasonTurnRepository turnRepository;
     private final SeasonParticipantRepository participantRepository;
+    private final TradingService tradingService;
 
     /** API 114 시즌 목록 */
     public List<SeasonSummaryDTO> findSeasons() {
@@ -59,15 +61,22 @@ public class SeasonAdminService {
     @Transactional
     public SeasonCreatedDTO createSeason(SeasonSaveDTO request, Long adminId) {
         // trading_season.created_by 는 NOT NULL + FK 라, 로그인한 관리자 번호가 없으면 저장 단계에서 500 이 난다
-        if (adminId == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
+        TradingAdminCheck.requireAdmin(adminId);
         request.checkStartDate();
+        // 생성 요청을 차례로 처리한다. 기존 시즌 행을 모두 잠근 뒤 겹침을 확인해야 동시에 들어온 두 요청이
+        // 같이 통과하지 못한다. 시즌이 하나도 없으면 잠글 행이 없다(맨 처음 시즌을 동시에 두 번 만드는 경우만 남는다)
+        seasonRepository.findAllForUpdate();
+        // 기간이 하루라도 겹치는 시즌은 만들 수 없다 (#207)
+        LocalDate periodEnd = request.getStartDate().plusDays(TradingSeason.SEASON_DAYS - 1);
+        if (seasonRepository.existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(periodEnd,
+                request.getStartDate())) {
+            throw new BusinessException(TradingErrorCode.SEASON_PERIOD_OVERLAP);
+        }
 
         TradingSeason season = TradingSeason.create(request.getName(), request.getStartDate(), adminId);
         if (request.getCopyFromSeasonId() != null) {
             TradingSeason source = getSeason(request.getCopyFromSeasonId());
-            season.changeSetting(source.getCarryoverRate(), source.getCarryoverCap(), source.getUnlockLevel());
+            season.changeSetting(source.getCarryoverRate(), source.getCarryoverCap());
         }
         TradingSeason saved = seasonRepository.save(season);
 
@@ -83,18 +92,33 @@ public class SeasonAdminService {
     /** API 116 시즌 설정 */
     @Transactional
     public void changeSetting(Long seasonId, SeasonSettingDTO request) {
-        getSeason(seasonId).changeSetting(request.getCarryoverRate(), request.getCarryoverCap(),
-                request.getUnlockLevel());
+        getSeasonForUpdate(seasonId).changeSetting(request.getCarryoverRate(), request.getCarryoverCap());
     }
 
     /** API 117 시즌 상태 변경 */
     @Transactional
     public void changeStatus(Long seasonId, SeasonStatusDTO request) {
-        getSeason(seasonId).changeStatus(request.getStatus());
+        TradingSeason season = seasonRepository.findByIdForUpdate(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+        // 이전 시즌 정산을 빠뜨린 채 새 시즌을 시작하면 안 된다 (#207). 준비 → 진행 중으로 바꿀 때 확인한다
+        if (season.isReady() && TradingSeason.STATUS_RUNNING.equals(request.getStatus())
+                && !tradingService.isPreviousSeasonSettled(season)) {
+            throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED);
+        }
+        season.changeStatus(request.getStatus());
     }
 
     private TradingSeason getSeason(Long seasonId) {
         return seasonRepository.findById(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 시즌 행을 바꿀 때는 턴 넘기기(#44)와 같은 행 잠금으로 읽는다.
+     * 잠그지 않으면 턴 넘기기와 겹쳤을 때 예전 현재 턴 값이 다시 저장돼 넘긴 턴이 되돌아갈 수 있다
+     */
+    private TradingSeason getSeasonForUpdate(Long seasonId) {
+        return seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 }

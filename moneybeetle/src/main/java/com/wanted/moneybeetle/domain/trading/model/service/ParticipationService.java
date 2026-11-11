@@ -5,6 +5,7 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *   모의투자 홈·시즌 참가 (#23, API 53~54, INV-01~05, INV-14, SP-51~52, SP-61, DP-40)
 *   - 홈 : 지금 보이는 시즌(진행 중·휴장 중·정산 중·종료)과 14일 턴 달력, 내 참가(현금·순자산·수익률)와 보유 종목
 *     순자산 = 현금 + 보유 종목 평가금액(현재 턴 가격, 가격이 없으면 평균 단가), 수익률 = (순자산 - 투자 가능 금액) / 투자 가능 금액
+*     지난 시즌 = 먼저 시작해 랭킹을 공개한 가장 최근 시즌(없으면 null), 참가 정보에 시작 자금 구성(모은 캐시·이월금)을 함께 준다 (#310)
 *   - 참가 : Lv.8 이상(LevelCheckInterceptor), 시즌당 1회(DB UNIQUE 도 함께), 시즌 시작 후 첫 턴이 끝나기 전까지(SP-51 초안)
 *     투자 가능 금액 = 참가할 때의 캐시 잔액 + 지난 시즌 이월금. 참가해도 회원 캐시는 빼지 않는다 (PM 결정, 이슈 #23)
 *  */
@@ -70,8 +71,13 @@ public class ParticipationService {
     public TradingHomeDTO getHome(Long memberId) {
         TradingSeason season = seasonRepository.findFirstByStatusInOrderByStartDateDesc(VISIBLE_STATUSES)
                 .orElseThrow(() -> new BusinessException(TradingErrorCode.NO_RUNNING_SEASON));
+        // 지난 시즌 랭킹 (#310) : 이 시즌보다 먼저 시작해 랭킹을 공개한 시즌 중 가장 최근 것
+        Long previousSeasonId = seasonRepository
+                .findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(season.getStartDate())
+                .map(TradingSeason::getTradingSeasonId)
+                .orElse(null);
         TradingHomeDTO.Season seasonView = toSeasonView(season,
-                turnRepository.findByTradingSeasonIdOrderByTurnNoAsc(season.getTradingSeasonId()));
+                turnRepository.findByTradingSeasonIdOrderByTurnNoAsc(season.getTradingSeasonId()), previousSeasonId);
 
         SeasonParticipant participant = memberId == null ? null
                 : participantRepository.findByTradingSeasonIdAndMemberId(season.getTradingSeasonId(), memberId)
@@ -100,7 +106,8 @@ public class ParticipationService {
         long netAsset = participant.getCash() + items.stream().mapToLong(TradingHomeDTO.HoldingItem::getEvaluation).sum();
 
         return TradingHomeDTO.of(seasonView,
-                new TradingHomeDTO.Participation(participant.getSeasonParticipantId(), participant.getInvestAmount(),
+                new TradingHomeDTO.Participation(participant.getSeasonParticipantId(), participant.getSavedCash(),
+                        participant.getCarryoverIn(), participant.getInvestAmount(),
                         participant.getCash(), netAsset,
                         rate(netAsset - participant.getInvestAmount(), participant.getInvestAmount())),
                 items);
@@ -112,7 +119,7 @@ public class ParticipationService {
         if (memberId == null) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
-        TradingSeason season = seasonRepository.findById(seasonId)
+        TradingSeason season = seasonRepository.findByIdForUpdate(seasonId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         if (!season.isRunning() || season.getCurrentTurn() > LAST_JOIN_TURN) {
             throw new BusinessException(TradingErrorCode.JOIN_CLOSED);
@@ -121,11 +128,17 @@ public class ParticipationService {
             throw new BusinessException(TradingErrorCode.ALREADY_JOINED);
         }
 
-        long savedCash = rewardService.getBalance(memberId);
+        // 이월금은 이전 시즌 정산 때 정해진다(SP-63). 정산 전 값(0)으로 투자 가능 금액을 확정하면 이후 바꿀 수 없으므로 거절한다
         long carryoverIn = participantRepository
-                .findFirstByMemberIdAndTradingSeasonIdNotOrderByJoinedAtDesc(memberId, seasonId)
-                .map(SeasonParticipant::getCarryoverOut)
+                .findPreviousParticipation(memberId, seasonId)
+                .map(previous -> {
+                    if (!previous.isSettled()) {
+                        throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+                    }
+                    return previous.getCarryoverOut();
+                })
                 .orElse(0L);
+        long savedCash = rewardService.getBalance(memberId);
         try {
             SeasonParticipant participant = participantRepository.saveAndFlush(
                     SeasonParticipant.create(seasonId, memberId, savedCash, carryoverIn));
@@ -141,7 +154,8 @@ public class ParticipationService {
     }
 
     /** 14일 달력 : 거래일은 턴 번호와 상태, 거래일이 아닌 날(일요일)은 휴장 */
-    private static TradingHomeDTO.Season toSeasonView(TradingSeason season, List<SeasonTurn> turns) {
+    private static TradingHomeDTO.Season toSeasonView(TradingSeason season, List<SeasonTurn> turns,
+            Long previousSeasonId) {
         Map<LocalDate, SeasonTurn> turnByDate = turns.stream()
                 .collect(Collectors.toMap(SeasonTurn::getTradeDate, Function.identity()));
         List<TradingHomeDTO.CalendarDay> calendar = new ArrayList<>();
@@ -156,10 +170,11 @@ public class ParticipationService {
         LocalDateTime nextTurnAt = turns.stream()
                 .filter(turn -> turn.getTurnNo() == season.getCurrentTurn() + 1)
                 .findFirst()
-                .map(turn -> turn.getTradeDate().atStartOfDay())
+                .map(turn -> MarketHours.opensAt(turn.getTradeDate()))
                 .orElse(null);
         return new TradingHomeDTO.Season(season.getTradingSeasonId(), season.getName(), season.getStatus(),
-                season.getCurrentTurn(), season.getTotalTurns(), season.getEndDate(), nextTurnAt, calendar);
+                season.getCurrentTurn(), season.getTotalTurns(), season.getEndDate(), nextTurnAt, calendar,
+                previousSeasonId);
     }
 
     private static String stateOf(int turnNo, TradingSeason season) {

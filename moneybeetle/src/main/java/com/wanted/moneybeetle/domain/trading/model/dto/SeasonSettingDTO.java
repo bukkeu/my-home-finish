@@ -2,14 +2,12 @@ package com.wanted.moneybeetle.domain.trading.model.dto;
 
 /* comment.
 *   담당 : PM (모의투자)
-*   시즌 설정 변경 요청 (API 116) : 이월 비율(%)·이월 상한(없으면 null)·참가 해금 레벨
+*   시즌 설정 변경 요청 (API 116) : 이월 비율(%)·이월 상한(없으면 null). 해금 레벨은 시즌 설정이 아니라 운영 설정(UNLOCK_LEVEL_TRADING) 하나로 정한다 (#242)
 *  */
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
@@ -30,9 +28,4 @@ public class SeasonSettingDTO {
 
     @PositiveOrZero
     private Long carryoverCap;
-
-    @NotNull
-    @Min(1)
-    @Max(20)
-    private Integer unlockLevel;
 }

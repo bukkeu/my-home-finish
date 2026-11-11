@@ -25,7 +25,7 @@ public class ApplicationDTO {
     // 발표 전에는 결과가 저장돼 있어도 보여 주지 않는다 (SP-75)
     public static ApplicationDTO from(HousingApplication application, HousingComplex complex) {
         String result = complex.isAnnounced() ? application.getResult() : null;
-        return new ApplicationDTO(application.getId(), complex.getName(), application.getReceiptNo(),
+        return new ApplicationDTO(application.getHousingApplicationId(), complex.getName(), application.getReceiptNo(),
                 application.getTotalScore(), complex.getAnnounceDate(), result);
     }
 }

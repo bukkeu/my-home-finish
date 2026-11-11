@@ -81,4 +81,11 @@ public class AdminTermController {
         termService.assign(date, request.economicTermIds());
         return ResponseEntity.noContent().build();
     }
+
+    // API 100-1. 날짜 지정 해제 (자동 선정으로 되돌리기, 지난 날짜는 변경 불가)
+    @DeleteMapping("/api/v1/admin/term-schedules/{date}")
+    public ResponseEntity<Void> clearSchedule(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        termService.clear(date);
+        return ResponseEntity.noContent().build();
+    }
 }

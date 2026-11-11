@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 *   - 요청 처리와 다른 스레드(mailExecutor)에서 보낸다. 메일 서버가 느리거나 막혀도 요청 응답 시간이 달라지지 않아,
 *     응답 시간으로 가입된 이메일인지 알아내는 일을 막는다.
 *   - 발송이 실패해도 예외를 밖으로 내지 않고 서버 로그에만 남긴다. 받는 사람·토큰은 로그에 남기지 않는다 (DP-02).
+*     실패 원인은 예외(스택 포함)로 남기되 메시지의 주소는 가린다 (MaskedException).
 *   - @Async 는 다른 빈이 부를 때만 동작하므로 PasswordResetService 와 별도 클래스로 둔다.
 *  */
 @Slf4j
@@ -44,8 +45,8 @@ public class PasswordResetMailer {
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            // 받는 사람·토큰이 로그에 남지 않도록 예외 종류만 남긴다
-            log.error("비밀번호 재설정 메일 발송에 실패했어요: {}", e.getClass().getSimpleName());
+            // 원인을 찾을 수 있게 예외를 남기되, 메시지의 받는 사람 주소는 가린 복사본을 남긴다 (토큰은 예외에 실리지 않는다)
+            log.error("비밀번호 재설정 메일 발송에 실패했어요", MaskedException.of(e));
         }
     }
 }

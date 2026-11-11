@@ -9,16 +9,20 @@ import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.ExpHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.RewardResultDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.growth.model.entity.ExpHistory;
 import com.wanted.moneybeetle.domain.growth.model.entity.RewardRule;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
-import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import com.wanted.moneybeetle.global.security.UnlockFeature;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,9 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 *   담당 : DBA ② (성장·캐시·레벨)
 *   다른 도메인이 부르는 보상 창구 (역할분담 문서 §7 연동 약속)
 *   - grant(memberId, ruleCode, sourceId)             : 경험치·캐시 지급   [호출: 신아림 학습 완료·퀴즈, 출석]
-*   - spendCash(memberId, sourceType, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]
+*   - grantRankingReward(memberId, rank, awardId)     : 시즌 랭킹 1~3위 캐시 지급 (SP-64) [호출: 이재성 랭킹 공개]
+*   - spendCash(memberId, CashSource, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입] (String 버전은 @Deprecated)
 *   - adjustByAdmin(adminId, memberId, give, amt, why): 관리자 수동 지급·회수 [호출: growth.CashAdjustService, 이슈 #39]
-*   - getBalance(memberId)                            : 캐시 잔액 조회
+*   - getBalance(memberId) / getBalanceSnapshot       : 회원 캐시 잔액·성장 정보 조회
 *   - findCashHistories / findExpHistories            : 내역 조회 (API 22, 23)
 *
 *   진행 상태 (이슈 #10)
@@ -55,16 +60,33 @@ public class RewardService {
     /** 보상 규칙 코드 -> 경험치 이력의 원인 종류. 여기에 없는 규칙은 경험치를 줄 수 없다 */
     private static final Map<String, String> EXP_SOURCE_BY_RULE = Map.of(
             RewardRule.COURSE_COMPLETE, ExpHistory.SOURCE_COURSE_COMPLETE,
-            RewardRule.QUIZ_PERFECT, ExpHistory.SOURCE_QUIZ_PERFECT);
+            RewardRule.QUIZ_PERFECT, ExpHistory.SOURCE_QUIZ_PERFECT,
+            RewardRule.ATTENDANCE_DAILY, ExpHistory.SOURCE_ATTENDANCE);
 
     /** 보상 규칙 코드 -> 캐시 이력의 원인 종류. 여기에 없는 규칙은 캐시를 줄 수 없다 */
-    private static final Map<String, String> CASH_SOURCE_BY_RULE = Map.of(
-            RewardRule.COURSE_COMPLETE, CashHistory.SOURCE_COURSE_COMPLETE,
-            RewardRule.ATTENDANCE_STREAK, CashHistory.SOURCE_ATTENDANCE);
+    private static final Map<String, CashSource> CASH_SOURCE_BY_RULE = Map.of(
+            RewardRule.COURSE_COMPLETE, CashSource.COURSE_COMPLETE,
+            RewardRule.ATTENDANCE_STREAK, CashSource.ATTENDANCE,
+            RewardRule.RANKING_RANK_1, CashSource.RANKING,
+            RewardRule.RANKING_RANK_2, CashSource.RANKING,
+            RewardRule.RANKING_RANK_3, CashSource.RANKING);
+
+    /**
+     * 이 규칙 코드가 이 캐시·경험치를 지급할 수 있는가. 0 인 쪽은 항상 지급할 수 있다 (줄 것이 없으므로).
+     * 지급(grantInternal)과 관리자 규칙 수정(RewardRuleService, #244)이 같은 기준을 쓴다.
+     * 예) ATTENDANCE_DAILY 는 경험치만, ATTENDANCE_STREAK·RANKING_RANK_1~3 은 캐시만 줄 수 있다
+     */
+    public static boolean canGrant(String ruleCode, long cash, long exp) {
+        return (exp <= 0 || EXP_SOURCE_BY_RULE.containsKey(ruleCode))
+                && (cash <= 0 || CASH_SOURCE_BY_RULE.containsKey(ruleCode));
+    }
+
+    /** 출석 경험치(ATTENDANCE_DAILY)가 하루에 받을 수 있는 최대 XP (SP-22). 규칙의 기본값을 바꿔도 이 값을 넘지 않는다 */
+    public static final int ATTENDANCE_DAILY_EXP_CAP = 50;
 
     /** 캐시를 쓸 수 있는 원인 종류 (SP-16) */
-    private static final List<String> USE_SOURCES = List.of(
-            CashHistory.SOURCE_SEASON_JOIN, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT);
+    private static final List<CashSource> USE_SOURCES = List.of(
+            CashSource.SEASON_JOIN, CashSource.SUBSCRIPTION_DEPOSIT);
 
     private final RewardRuleRepository rewardRuleRepository;
     private final CashHistoryRepository cashHistoryRepository;
@@ -72,6 +94,7 @@ public class RewardService {
     private final MemberService memberService;
     private final GrowthService growthService;
     private final NotificationService notificationService;
+    private final UnlockLevelProvider unlockLevelProvider;
 
     /**
      * 활동 보상(캐시·경험치)을 지급한다.
@@ -91,12 +114,43 @@ public class RewardService {
         }
         RewardRule rule = rewardRuleRepository.findByCodeAndActiveTrue(ruleCode)
                 .orElseThrow(() -> new BusinessException(GrowthErrorCode.REWARD_RULE_NOT_FOUND));
+        return grantInternal(memberId, rule, sourceId, 1);
+    }
 
+    /**
+     * 규칙의 경험치를 expMultiplier 배로 지급한다 (예: 연속 출석 일수 구간에 따라 10~50 XP, SP-22).
+     * 캐시는 규칙 값 그대로이고, 이중 지급 방지·레벨업·해금 알림은 {@link #grant} 와 똑같이 처리한다.
+     * 배수는 호출하는 쪽이 정하고(출석은 AttendanceService), 규칙 표에는 기본값만 둔다.
+     * 출석 경험치(ATTENDANCE_DAILY)는 배수를 곱한 값이 하루 상한({@link #ATTENDANCE_DAILY_EXP_CAP} XP)을 넘지 않게 자른다 (SP-22).
+     *
+     * 규칙은 여기서 한 번만 읽는다. 사용 중인 규칙이 없거나 경험치 기본값이 0 이면 아무것도 바꾸지 않고 빈 결과를 돌려준다
+     * (예외를 던지지 않으므로, 호출한 쪽의 트랜잭션 — 예: 출석 기록 — 이 되돌려지지 않는다).
+     * 규칙을 읽은 뒤에 일어나는 오류(레벨 정책표 설정 오류 등)는 grant 와 같이 예외로 던진다.
+     *
+     * @param expMultiplier 경험치 배수 (1 이상)
+     * @return 지급 결과. 지급할 규칙이 없으면(꺼짐·기본값 0) 비어 있다
+     * @throws IllegalArgumentException 배수가 1 보다 작을 때
+     */
+    @Transactional
+    public Optional<RewardResultDTO> grantWithExpMultiplier(Long memberId, String ruleCode, Long sourceId, int expMultiplier) {
+        if (expMultiplier < 1) {
+            throw new IllegalArgumentException("경험치 배수는 1 이상이어야 합니다: " + expMultiplier);
+        }
+        if (memberId == null || sourceId == null) {
+            throw new IllegalArgumentException("memberId 와 sourceId 가 필요합니다.");
+        }
+        return rewardRuleRepository.findByCodeAndActiveTrue(ruleCode)
+                .filter(rule -> rule.getExpAmount() > 0)
+                .map(rule -> grantInternal(memberId, rule, sourceId, expMultiplier));
+    }
+
+    /** 읽어 둔 규칙으로 지급한다 (규칙을 다시 읽지 않는다). 호출하는 쪽이 사용 중인 규칙을 넘긴다 */
+    private RewardResultDTO grantInternal(Long memberId, RewardRule rule, Long sourceId, int expMultiplier) {
         long cash = rule.getCashAmount();
-        int exp = rule.getExpAmount();
+        int exp = scaledExp(rule, expMultiplier);
         String expSource = EXP_SOURCE_BY_RULE.get(rule.getCode());
-        String cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
-        if ((exp > 0 && expSource == null) || (cash > 0 && cashSource == null)) {
+        CashSource cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
+        if (!canGrant(rule.getCode(), cash, exp)) {
             throw new BusinessException(GrowthErrorCode.REWARD_NOT_SUPPORTED);
         }
 
@@ -143,7 +197,10 @@ public class RewardService {
                 cashBalance = memberService.addReward(memberId, levelUpCash, 0).getCash();
                 saveLevelUpCashHistories(memberId, table, levelFrom, reached, cashBalance - levelUpCash);
                 levelTo = reached;
-                unlocks = UnlockRules.unlockedBetween(levelFrom, reached);
+                // 청약·모의투자는 각각 운영 설정의 해금 레벨에 닿을 때만 열린다 (여러 레벨을 한 번에 올라도 한 번, #266)
+                unlocks = UnlockRules.unlockedBetween(levelFrom, reached,
+                        unlockLevelProvider.getLevel(UnlockFeature.TRADING),
+                        unlockLevelProvider.getLevel(UnlockFeature.HOUSING));
                 sendUnlockNotifications(memberId, unlocks);
             }
             expHistoryRepository.save(ExpHistory.create(
@@ -159,12 +216,38 @@ public class RewardService {
     private void sendUnlockNotifications(Long memberId, List<String> unlocks) {
         for (String unlock : unlocks) {
             if (UnlockRules.TRADING.equals(unlock)) {
-                notificationService.send(memberId, Notification.TYPE_UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
+                notificationService.send(memberId, NotificationType.UNLOCK, "모의투자가 열렸어요", "/user/demo-trading");
             } else if (UnlockRules.HOUSING.equals(unlock)) {
-                notificationService.send(memberId, Notification.TYPE_UNLOCK, "모의 청약이 열렸어요",
+                notificationService.send(memberId, NotificationType.UNLOCK, "모의 청약이 열렸어요",
                         "/user/demo-housing-subscription");
             }
         }
+    }
+
+    /**
+     * 규칙의 경험치 기본값에 배수를 곱한다. 곱셈은 long 으로 해서 큰 기본값에서도 넘치지 않게 한 뒤,
+     * 출석 경험치(ATTENDANCE_DAILY)에만 하루 상한을 적용한다. 다른 규칙은 값을 자르지 않는다 (배수 1 이면 규칙 값 그대로).
+     */
+    private static int scaledExp(RewardRule rule, int expMultiplier) {
+        long scaled = (long) rule.getExpAmount() * expMultiplier;
+        if (RewardRule.ATTENDANCE_DAILY.equals(rule.getCode())) {
+            scaled = Math.min(scaled, ATTENDANCE_DAILY_EXP_CAP);
+        }
+        return (int) Math.min(scaled, Integer.MAX_VALUE);
+    }
+
+    /**
+     * 시즌 랭킹 상위 3위 보상 캐시를 지급한다 (SP-64, #10). 랭킹을 공개할 때 순위별로 부른다 [호출: 이재성 랭킹 공개].
+     * 순자산·수익률 랭킹 각각의 수상 기록(ranking_award)마다 한 번씩 부르고, 원인 ID 는 그 수상 기록의 ID 다.
+     * 한 회원이 두 랭킹에 모두 들면 수상 기록이 두 개라 두 번 받고, 같은 수상 기록으로 다시 불러도 한 번만 지급된다
+     * ({@link RewardResultDTO#isAlreadyGranted()}). 금액은 규칙(RANKING_RANK_1~3)에서 읽고, 규칙이 없거나 꺼져 있으면 REWARD_RULE_NOT_FOUND 다.
+     *
+     * @param rank            순위 (1~3). 그 밖의 값은 IllegalArgumentException
+     * @param rankingAwardId  수상 기록 ID (ranking_award.ranking_award_id)
+     */
+    @Transactional
+    public RewardResultDTO grantRankingReward(Long memberId, int rank, Long rankingAwardId) {
+        return grant(memberId, RewardRule.rankingRuleCode(rank), rankingAwardId);
     }
 
     /**
@@ -188,7 +271,7 @@ public class RewardService {
             if (levelCash > 0) {
                 balance += levelCash;
                 cashHistoryRepository.save(CashHistory.earn(
-                        memberId, CashHistory.SOURCE_LEVEL_UP, (long) level, null, levelCash, balance));
+                        memberId, CashSource.LEVEL_UP, (long) level, null, levelCash, balance));
             }
         }
     }
@@ -196,17 +279,18 @@ public class RewardService {
     /**
      * 캐시를 사용한다 (시즌 참가, 청약통장 납입). 잔액은 0 미만이 될 수 없다 (SP-15).
      *
-     * @param sourceType CashHistory.SOURCE_SEASON_JOIN, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT
-     * @param sourceId   시즌 ID, 납입 ID 등. 같은 (회원, 원인 종류, 원인 ID)로는 한 번만 쓸 수 있다
-     * @param amount     사용할 금액 (양수)
+     * @param source   CashSource.SEASON_JOIN, CashSource.SUBSCRIPTION_DEPOSIT 만 쓸 수 있다
+     * @param sourceId 시즌 ID, 납입 ID 등. 같은 (회원, 원인 종류, 원인 ID)로는 한 번만 쓸 수 있다
+     * @param amount   사용할 금액 (양수)
      * @return 사용 후 잔액
      * @throws BusinessException INVALID_AMOUNT(금액이 0 이하), NOT_ENOUGH_CASH(잔액 부족),
      *                           ALREADY_USED(같은 원인으로 이미 사용), MEMBER_NOT_FOUND(없는 회원)
      */
     @Transactional
-    public long spendCash(Long memberId, String sourceType, Long sourceId, long amount) {
-        if (memberId == null || sourceId == null || !USE_SOURCES.contains(sourceType)) {
-            throw new IllegalArgumentException("memberId, sourceId 와 사용 가능한 sourceType 이 필요합니다: " + sourceType);
+    public long spendCash(Long memberId, CashSource source, Long sourceId, long amount) {
+        // List.of(...).contains(null) 은 NullPointerException 이라 null 을 먼저 거른다 (모르는 문자열 버전도 source 가 null 로 넘어온다)
+        if (memberId == null || sourceId == null || source == null || !USE_SOURCES.contains(source)) {
+            throw new IllegalArgumentException("memberId, sourceId 와 사용 가능한 source 가 필요합니다: " + source);
         }
         if (amount <= 0) {
             throw new BusinessException(GrowthErrorCode.INVALID_AMOUNT);
@@ -214,7 +298,7 @@ public class RewardService {
 
         MemberBalanceDTO before = memberService.lockBalance(memberId);
         // grant 와 같은 이유로 잠금 조회로 확인한다 (바깥 트랜잭션의 스냅샷이 아니라 최신 커밋 이력을 본다)
-        if (cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, sourceType, sourceId).isPresent()) {
+        if (cashHistoryRepository.findWithLockByMemberIdAndSourceTypeAndSourceId(memberId, source, sourceId).isPresent()) {
             throw new BusinessException(GrowthErrorCode.ALREADY_USED);
         }
         if (before.getCash() < amount) {
@@ -222,8 +306,26 @@ public class RewardService {
         }
 
         MemberBalanceDTO after = memberService.deductCash(memberId, amount);
-        cashHistoryRepository.save(CashHistory.use(memberId, sourceType, sourceId, amount, after.getCash()));
+        cashHistoryRepository.save(CashHistory.use(memberId, source, sourceId, amount, after.getCash()));
         return after.getCash();
+    }
+
+    /**
+     * 캐시를 사용한다 (옛 문자열 버전). {@link #spendCash(Long, CashSource, Long, long)} 로 옮겨 가는 동안만 남겨 둔다.
+     * 문자열은 CashSource 이름과 같아야 하고, 모르는 문자열은 예전처럼 IllegalArgumentException 이다. 마지막 정리 이슈(#301)에서 지운다.
+     *
+     * @deprecated 원인 종류를 CashSource 로 넘기는 spendCash 를 쓴다
+     */
+    @Deprecated
+    @Transactional
+    public long spendCash(Long memberId, String sourceType, Long sourceId, long amount) {
+        CashSource source = null;
+        for (CashSource candidate : CashSource.values()) {
+            if (candidate.name().equals(sourceType)) {
+                source = candidate;
+            }
+        }
+        return spendCash(memberId, source, sourceId, amount);
     }
 
     /**
@@ -269,6 +371,11 @@ public class RewardService {
     /** 회원의 현재 캐시 잔액을 조회한다. 없는 회원이면 MEMBER_NOT_FOUND */
     public long getBalance(Long memberId) {
         return memberService.getBalance(memberId).getCash();
+    }
+
+    /** 회원의 캐시·경험치·레벨 현재 값을 조회한다 (성장 내역 API 응답용). */
+    public MemberBalanceDTO getBalanceSnapshot(Long memberId) {
+        return memberService.getBalance(memberId);
     }
 
     /**

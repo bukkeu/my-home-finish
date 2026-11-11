@@ -72,14 +72,16 @@ class AdminHousingServiceTest {
         HousingComplex complex = HousingComplex.create(r.getName(), r.getLocation(), r.getAreaType(),
                 r.getSalePrice(), r.getSupplyUnits(), r.getSupplyType(), r.getNoticeDate(),
                 r.getApplyStartDate(), r.getApplyEndDate(), r.getAnnounceDate(), ADMIN_ID);
-        ReflectionTestUtils.setField(complex, "id", id);
+        ReflectionTestUtils.setField(complex, "housingComplexId", id);
         return complex;
     }
 
     @Test
-    void 목록은_신청자_수와_오늘_기준_상태를_보여준다() {
+    void 목록은_신청자_수와_오늘_기준_상태와_산정_여부를_보여준다() {
+        HousingComplex computed = saved(2L);
+        computed.markComputed(LocalDateTime.of(2026, 11, 4, 9, 0));
         when(complexRepository.findByDeletedAtIsNullOrderByApplyStartDateDesc())
-                .thenReturn(List.of(saved(1L), saved(2L)));
+                .thenReturn(List.of(saved(1L), computed));
         when(applicationRepository.countGroupByHousingComplexIdIn(List.of(1L, 2L)))
                 .thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
 
@@ -87,13 +89,14 @@ class AdminHousingServiceTest {
 
         assertThat(result).extracting(AdminComplexDTO::getApplicants).containsExactly(3L, 0L);
         assertThat(result.get(0).getStatus()).isEqualTo(HousingComplex.STATUS_OPEN);   // 11/5 는 신청 기간
+        assertThat(result).extracting(AdminComplexDTO::isComputed).containsExactly(false, true);   // #63 발표 버튼 판단
     }
 
     @Test
     void 등록하면_관리자_번호와_함께_저장하고_ID를_돌려준다() {
         when(complexRepository.save(any())).thenAnswer(inv -> {
             HousingComplex c = inv.getArgument(0);
-            ReflectionTestUtils.setField(c, "id", 9L);
+            ReflectionTestUtils.setField(c, "housingComplexId", 9L);
             return c;
         });
 

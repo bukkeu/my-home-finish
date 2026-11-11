@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.housing.model.dto;
 
 import com.wanted.moneybeetle.domain.housing.model.entity.SubscriptionAccount;
+import com.wanted.moneybeetle.domain.housing.model.policy.DepositLimits;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -23,16 +24,16 @@ public class AccountDTO {
     private DepositPolicyDTO depositPolicy;
     private long cash;                    // 내 캐시 잔액 (RewardService.getBalance)
 
-    // 오늘 납입 여부는 오늘 날짜가, 캐시는 다른 도메인(growth)이 알려 준다
-    public static AccountDTO from(SubscriptionAccount account, LocalDate today, long cash) {
+    // 오늘 납입 여부는 오늘 날짜가, 캐시는 다른 도메인(growth)이, 납입 기준은 운영 설정(DepositLimitPolicy, #327)이 알려 준다
+    public static AccountDTO from(SubscriptionAccount account, LocalDate today, long cash, DepositLimits limits) {
         return new AccountDTO(
-                account.getId(),
+                account.getSubscriptionAccountId(),
                 account.getBalance(),
                 account.getRecognizedAmount(),
                 account.getPaidCount(),
                 account.getLastPaidDate(),
                 account.isPaidToday(today),
-                DepositPolicyDTO.current(),
+                DepositPolicyDTO.from(limits),
                 cash
         );
     }

@@ -3,6 +3,8 @@ package com.wanted.moneybeetle.domain.member.model.entity;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,9 +37,15 @@ public class Member {
     public static final String ROLE_INSTRUCTOR = "INSTRUCTOR";
     public static final String ROLE_ADMIN = "ADMIN";
 
-    /** 계정 상태 (SP-06) */
+    /**
+     * 계정 상태 (SP-06). 이제 {@link MemberStatus} enum 을 쓴다. 다른 도메인 코드가 깨지지 않도록 남겨 둔 옛 문자열 상수이고,
+     * 모두 옮긴 뒤 마지막 정리 이슈(#301)에서 지운다.
+     */
+    @Deprecated
     public static final String STATUS_ACTIVE = "ACTIVE";
+    @Deprecated
     public static final String STATUS_SUSPENDED = "SUSPENDED";
+    @Deprecated
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
 
     /** 탈퇴한 회원의 개인정보를 지우기까지 두는 기간(일) (DP-06) */
@@ -92,8 +100,9 @@ public class Member {
     @Column(nullable = false, length = 20)
     private String role;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private MemberStatus status;
 
     @Column(length = 200)
     private String suspendedReason;
@@ -133,7 +142,7 @@ public class Member {
         this.birthDate = birthDate;
         this.gender = gender;
         this.role = ROLE_MEMBER;
-        this.status = STATUS_ACTIVE;
+        this.status = MemberStatus.ACTIVE;
         this.level = 1;
         this.exp = 0;
         this.cash = 0;
@@ -154,6 +163,43 @@ public class Member {
         require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
                 "성별은 MALE 또는 FEMALE 이어야 합니다.");
         return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, birthDate, gender);
+    }
+
+    /**
+     * 간편 로그인(구글)으로 가입한다 (이슈 #9). 비밀번호는 없고(NULL) 제공자가 확인해 준 이메일을 쓰므로 본인인증을 마친 것으로 둔다.
+     * 레벨 1·경험치 0·캐시 0으로 시작하는 것은 일반 가입과 같다.
+     *
+     * @param today 가입 연령 계산 기준일 (KST 오늘)
+     */
+    public static Member signupSocial(String email, String nickname, LocalDate birthDate, String gender, LocalDate today) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        require(birthDate != null && SignupRules.isAtLeastMinAge(birthDate, today), "만 14세 이상만 가입할 수 있습니다.");
+        require(gender == null || GENDER_MALE.equals(gender) || GENDER_FEMALE.equals(gender),
+                "성별은 MALE 또는 FEMALE 이어야 합니다.");
+        Member member = new Member(SignupRules.normalizeEmail(email), null, nickname, birthDate, gender);
+        member.completeIdentityVerification();
+        return member;
+    }
+
+    /**
+     * 강사 가입 신청으로 회원을 만든다 (API 12, #30). 강사명을 닉네임으로 쓴다.
+     * 강사 신청 화면에는 생년월일·성별이 없어 비워 둔다 (member.birth_date 는 NULL 허용).
+     * 권한은 MEMBER 로 시작한다: 관리자가 승인하면(InstructorService.approve) INSTRUCTOR 로 바뀐다 (SP-07).
+     * 본인인증은 가입 흐름(MemberSignupService)이 확인하고, 마쳤으면 completeIdentityVerification 으로 남긴다.
+     *
+     * @param passwordHash 이미 BCrypt 로 만든 해시 (평문을 넘기지 않는다, DP-02)
+     */
+    public static Member signupInstructor(String email, String passwordHash, String nickname) {
+        require(email != null && !email.isBlank(), "이메일이 필요합니다.");
+        require(passwordHash != null && !passwordHash.isBlank(), "비밀번호 해시가 필요합니다.");
+        require(nickname != null && !nickname.isBlank(), "닉네임이 필요합니다.");
+        return new Member(SignupRules.normalizeEmail(email), passwordHash, nickname, null, null);
+    }
+
+    /** 가입 중 본인인증(이메일 코드)을 마쳤다고 기록한다 (결과값만 저장한다, DB설계 member.is_identity_verified) */
+    public void completeIdentityVerification() {
+        this.identityVerified = true;
     }
 
     /**
@@ -227,7 +273,7 @@ public class Member {
      * 정지된 회원은 그대로 보인다.
      */
     public String displayNickname() {
-        return STATUS_WITHDRAWN.equals(status) ? WITHDRAWN_NICKNAME : nickname;
+        return status == MemberStatus.WITHDRAWN ? WITHDRAWN_NICKNAME : nickname;
     }
 
 
@@ -272,8 +318,8 @@ public class Member {
      * 이메일·생년월일·성별·프로필 이미지는 30일 뒤 파기 배치가 지운다 (여기서는 지우지 않는다).
      */
     public void withdraw(LocalDateTime now) {
-        require(!STATUS_WITHDRAWN.equals(status), "이미 탈퇴한 회원입니다.");
-        this.status = STATUS_WITHDRAWN;
+        require(status != MemberStatus.WITHDRAWN, "이미 탈퇴한 회원입니다.");
+        this.status = MemberStatus.WITHDRAWN;
         this.withdrawnAt = now;
     }
 
@@ -283,7 +329,7 @@ public class Member {
      * 행은 학습·거래 기록 보존을 위해 남긴다. 탈퇴한 회원만 지울 수 있다.
      */
     public void purgePersonalInfo() {
-        require(STATUS_WITHDRAWN.equals(status), "탈퇴한 회원만 개인정보를 지울 수 있습니다.");
+        require(status == MemberStatus.WITHDRAWN, "탈퇴한 회원만 개인정보를 지울 수 있습니다.");
         this.email = null;
         this.passwordHash = null;
         this.birthDate = null;
@@ -312,9 +358,76 @@ public class Member {
         this.profileImageUrl = profileImageUrl;
     }
 
+    /**
+     * 관리자가 계정을 정지한다 (#37, API 102, SP-06). 정지된 계정은 로그인할 수 없고,
+     * 이미 로그인한 세션도 다음 요청에서 끊긴다(ActiveMemberFilter 가 isActive 를 본다). 사유는 서비스가 확인한다.
+     */
+    public void suspend(String reason) {
+        require(status != MemberStatus.WITHDRAWN, "탈퇴한 회원은 정지할 수 없습니다.");
+        require(reason != null && !reason.isBlank(), "정지 사유가 필요합니다.");
+        this.status = MemberStatus.SUSPENDED;
+        this.suspendedReason = reason;
+    }
+
+    /** 관리자가 정지를 푼다 (#37, API 102). 정지 사유도 지운다 */
+    public void activate() {
+        require(status != MemberStatus.WITHDRAWN, "탈퇴한 회원은 바꿀 수 없습니다.");
+        this.status = MemberStatus.ACTIVE;
+        this.suspendedReason = null;
+    }
+
+    /**
+     * 관리자가 계정 상태를 바꾼다 (#288, API 102). 어떤 상태로 바꿀 수 있는지는 엔티티가 판단한다.
+     * - 지금과 같은 상태이면 아무것도 바꾸지 않고 false 를 돌려준다
+     * - SUSPENDED 이면 suspend(reason) (탈퇴 회원이면 예외, 사유가 없으면 예외), ACTIVE 이면 activate() (탈퇴 회원이면 예외)
+     * - 그 밖의 상태(WITHDRAWN)는 이 메서드로 만들 수 없다. 탈퇴는 withdraw(now) 로만 한다 (IllegalArgumentException)
+     *
+     * @return 실제로 바뀌었으면 true
+     */
+    public boolean changeStatus(MemberStatus target, String reason) {
+        require(target != null, "바꿀 상태가 필요합니다.");
+        if (status == target) {
+            return false;
+        }
+        switch (target) {
+            case SUSPENDED -> suspend(reason);
+            case ACTIVE -> activate();
+            default -> throw new IllegalArgumentException("이 상태로는 바꿀 수 없습니다: " + target);
+        }
+        return true;
+    }
+
+    /**
+     * 계정 상태 이름("ACTIVE" 등). 화면·JSON·다른 도메인 코드가 문자열로 읽던 방식을 그대로 지키려고 name() 을 돌려준다.
+     * enum 자체가 필요하면 {@link #getMemberStatus()} 를 쓴다.
+     */
+    public String getStatus() {
+        return status == null ? null : status.name();
+    }
+
+    /** 계정 상태 (enum) */
+    public MemberStatus getMemberStatus() {
+        return status;
+    }
+
+    /**
+     * 관리자가 강사 권한을 주거나 회수한다 (#37, API 103·105, SP-07). MEMBER ↔ INSTRUCTOR 만 바꾼다.
+     * 실제 INSTRUCTOR 권한은 강사 정보(instructor_profile)가 승인(APPROVED)일 때만 생긴다 (MemberService.grantedRole).
+     */
+    public void changeRole(String newRole) {
+        require(!ROLE_ADMIN.equals(role), "관리자 권한은 바꿀 수 없습니다.");
+        require(ROLE_MEMBER.equals(newRole) || ROLE_INSTRUCTOR.equals(newRole), "MEMBER 또는 INSTRUCTOR 만 줄 수 있습니다.");
+        this.role = newRole;
+    }
+
+    /** 탈퇴한 회원인가 */
+    public boolean isWithdrawn() {
+        return status == MemberStatus.WITHDRAWN;
+    }
+
     /** 로그인할 수 있는 계정인가 (정지·탈퇴 계정은 로그인 불가, SP-06) */
     public boolean isActive() {
-        return STATUS_ACTIVE.equals(status);
+        return status == MemberStatus.ACTIVE;
     }
 
     /** 탈퇴·삭제 대상이 아닌 일반 회원인가 */

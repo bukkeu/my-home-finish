@@ -17,6 +17,6 @@ public class ApplyResultDTO {
     private int totalScore;
 
     public static ApplyResultDTO from(HousingApplication application) {
-        return new ApplyResultDTO(application.getId(), application.getReceiptNo(), application.getTotalScore());
+        return new ApplyResultDTO(application.getHousingApplicationId(), application.getReceiptNo(), application.getTotalScore());
     }
 }
