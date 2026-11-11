@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +35,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /* comment.
 *   담당 : DBA ① 신아림 (#296)
-*   카테고리 표시 이름 캐시: 이름 만들기, 두 번째부터는 DB 를 읽지 않음, 관리자 변경이 커밋되면 다시 읽음
+*   카테고리 표시 이름 캐시: 이름 만들기, 두 번째부터는 DB 를 읽지 않음, 관리자 변경이 커밋되면 다시 읽음,
+*   캐시가 없을 때 여러 요청이 동시에 와도 DB 읽기(= 연결 하나 더 쓰기)는 한 번만
 *   - 캐시 프록시와 트랜잭션(커밋·롤백 뒤 동작)이 실제로 돌아야 해서, CacheConfig·두 서비스·실제 트랜잭션 관리자(H2 메모리 DB)만 올린
 *     작은 스프링 컨텍스트로 확인한다. 저장소는 가짜라 findAll 이 몇 번 불렸는지로 "DB 를 읽었는지" 본다
 *  */
@@ -161,5 +164,29 @@ class CategoryPathServiceTest {
 
         assertThat(categoryPathService.findCategoryPaths()).containsEntry(1L, "집");      // 다음 조회는 새 값
         verify(categoryRepository, times(2)).findAll();
+    }
+
+    @Test
+    @DisplayName("캐시가 없을 때 두 요청이 동시에 와도 DB 는 한 번만 읽고, 기다린 요청은 먼저 읽은 값을 쓴다")
+    void concurrentMissesReadOnce() throws Exception {
+        CountDownLatch firstReading = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        AtomicInteger reads = new AtomicInteger();
+        when(categoryRepository.findAll()).thenAnswer(invocation -> {
+            reads.incrementAndGet();
+            firstReading.countDown();
+            assertThat(releaseFirst.await(5, TimeUnit.SECONDS)).isTrue();   // 첫 요청이 읽는 동안 두 번째 요청이 들어온다
+            return categories;
+        });
+
+        CompletableFuture<Map<Long, String>> first = CompletableFuture.supplyAsync(categoryPathService::findCategoryPaths);
+        assertThat(firstReading.await(5, TimeUnit.SECONDS)).isTrue();
+        CompletableFuture<Map<Long, String>> second = CompletableFuture.supplyAsync(categoryPathService::findCategoryPaths);
+        Thread.sleep(200);                                                 // 두 번째 요청이 잠금 앞에서 기다리게 둔다
+        releaseFirst.countDown();
+
+        assertThat(first.get(5, TimeUnit.SECONDS)).containsEntry(11L, "부동산 › 청약");
+        assertThat(second.get(5, TimeUnit.SECONDS)).containsEntry(11L, "부동산 › 청약");
+        assertThat(reads.get()).isEqualTo(1);
     }
 }
