@@ -45,9 +45,19 @@
   }
   /** 같은 사이트의 관리자 화면 주소만 돌아갈 곳으로 쓴다 (다른 사이트·사용자 화면으로 보내지 않는다) */
   function nextUrl() {
+    var fallback = '/admin/dashboard';
     var next = new URLSearchParams(window.location.search).get('next') || '';
-    if (next.indexOf('/admin/') === 0 && next.indexOf('//') !== 0 && next.indexOf('\\') < 0 && next !== '/admin/login') return next;
-    return '/admin/dashboard';
+    if (next.charAt(0) !== '/') return fallback;
+    try {
+      // 브라우저가 해석하는 대로 주소를 풀어서 본다 (/admin/../user, %2e%2e, 역슬래시 같은 우회를 막는다)
+      var url = new URL(next, window.location.origin);
+      var path = url.pathname;
+      var isLogin = path === '/admin/login' || path === '/admin/login/';
+      if (url.origin === window.location.origin && path.indexOf('/admin/') === 0 && !isLogin) {
+        return path + url.search + url.hash;   // 검사한 주소 그대로 쓰고, ? 와 # 도 살린다
+      }
+    } catch (e) { /* 주소를 해석하지 못하면 기본 화면으로 */ }
+    return fallback;
   }
 
   if (new URLSearchParams(window.location.search).has('expired')) alertBox('로그인 시간이 지났어요. 다시 로그인해 주세요.', 'info');

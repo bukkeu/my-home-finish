@@ -90,11 +90,11 @@ class AdminLoginTemplateRenderTest {
     }
 
     @Test
-    @DisplayName("스크립트는 관리자 로그인 API(83)에 폼 형식으로 보내고, 돌아갈 곳은 /admin/ 으로 시작하는 같은 사이트 주소만 쓴다")
+    @DisplayName("스크립트는 관리자 로그인 API(83)에 폼 형식으로 보내고, 돌아갈 곳은 주소를 풀어 본 뒤 같은 사이트의 /admin/ 아래 주소만 쓴다")
     void scriptUsesFormLoginAndSafeNext() throws Exception {
         String script = read("/static/js/admin-login.js");
 
         assertThat(script).contains("/api/v1/admin/auth/login", "application/x-www-form-urlencoded", "URLSearchParams", "_csrf",
-                "next.indexOf('/admin/') === 0", "/admin/dashboard", "LOGIN_LOCKED", "FORBIDDEN");
+                "new URL(next, window.location.origin)", "path.indexOf('/admin/') === 0", "/admin/dashboard", "LOGIN_LOCKED", "FORBIDDEN");
     }
 }
