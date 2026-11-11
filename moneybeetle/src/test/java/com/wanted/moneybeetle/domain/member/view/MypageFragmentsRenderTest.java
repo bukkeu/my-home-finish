@@ -165,8 +165,8 @@ class MypageFragmentsRenderTest {
         String settings = read("/static/js/mypage-settings.js");
         String growth = read("/static/js/mypage-growth.js");
 
-        // 안내 요청(1)·인증 성공(2)·인증 오류(3)가 각각 보낸 창과 지금 창을 비교한다
-        assertThat(settings.split("session !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(4);
+        // 안내 요청(1)·인증 성공(2)·인증 오류(3)·비밀번호 확인 거절(4)이 각각 보낸 창과 지금 창을 비교한다
+        assertThat(settings.split("ession !== dialogSession", -1).length - 1).isGreaterThanOrEqualTo(5);
         assertThat(growth).contains("mg-filter').forEach(function (button) { button.disabled = true; });");
         assertThat(read("/static/css/mypage-mg.css")).contains(".mg .mg-levels { overflow-x: auto; display: block; }");   // 좁은 화면에서 레벨 표가 페이지를 넘치지 않게
         assertThat(read("/templates/fragments/mypage/settings.html")).contains("다음 화면에서 인증번호 받기를 누르면");   // 인증번호는 탈퇴하기가 아니라 다음 화면의 버튼으로 보낸다

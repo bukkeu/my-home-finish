@@ -199,7 +199,9 @@
       busy(submit, function () {
         if (!codeMode) {
           // 비밀번호로 확인한다. 비워 두면 서버가 비밀번호 없는 간편 로그인 회원인지 알려 준다 (WITHDRAW_VERIFICATION_REQUIRED)
+          var passwordSession = dialogSession;   // 확인을 보낸 창. 거절 응답이 올 때 창이 닫혔거나 다시 열렸으면 새 창의 상태를 바꾸지 않는다
           return withdraw(byId('mg-wd-password').value).then(done, function (error) {
+            if (passwordSession !== dialogSession) return;
             if (error && error.code === 'WITHDRAW_VERIFICATION_REQUIRED') {
               codeMode = true;
               stepPassword.hidden = true;
