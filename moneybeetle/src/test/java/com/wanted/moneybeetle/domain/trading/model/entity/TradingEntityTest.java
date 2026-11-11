@@ -17,7 +17,6 @@ class TradingEntityTest {
         assertThat(season.isReady()).isTrue();
         assertThat(season.getCurrentTurn()).isZero();
         assertThat(season.getTotalTurns()).isEqualTo(12);
-        assertThat(season.getUnlockLevel()).isEqualTo(8);
     }
 
     @Test

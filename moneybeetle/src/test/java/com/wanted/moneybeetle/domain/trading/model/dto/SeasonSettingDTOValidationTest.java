@@ -34,18 +34,17 @@ class SeasonSettingDTOValidationTest {
 
     @Test
     void 소수_둘째_자리까지의_이월_비율은_통과한다() {
-        assertThat(invalidFields(new SeasonSettingDTO(new BigDecimal("33.33"), null, 8))).isEmpty();
+        assertThat(invalidFields(new SeasonSettingDTO(new BigDecimal("33.33"), null))).isEmpty();
     }
 
     @Test
     void 소수_셋째_자리가_있는_이월_비율은_거절한다() {
-        assertThat(invalidFields(new SeasonSettingDTO(new BigDecimal("33.335"), null, 8)))
+        assertThat(invalidFields(new SeasonSettingDTO(new BigDecimal("33.335"), null)))
                 .containsExactly("carryoverRate");
     }
 
     @Test
-    void 해금_레벨이_빠지면_거절한다() {
-        assertThat(invalidFields(new SeasonSettingDTO(new BigDecimal("100.00"), null, null)))
-                .containsExactly("unlockLevel");
+    void 이월_비율이_빠지면_거절한다() {
+        assertThat(invalidFields(new SeasonSettingDTO(null, null))).containsExactly("carryoverRate");
     }
 }
