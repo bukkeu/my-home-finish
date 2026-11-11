@@ -56,7 +56,8 @@ class AttendanceStreakResetTest {
         memberRepository = mock(MemberRepository.class);
         MemberService memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), mock(ForbiddenWordService.class),
-                clock, mock(InstructorProfileRepository.class));
+                clock, mock(InstructorProfileRepository.class),
+                mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class));
         attendanceRepository = mock(AttendanceRepository.class);
         rewardService = mock(RewardService.class);
         service = new AttendanceService(attendanceRepository, memberService, rewardService, clock);
@@ -126,7 +127,8 @@ class AttendanceStreakResetTest {
         Clock nextDay = Clock.fixed(Instant.parse("2026-11-09T15:30:00Z"), ZoneId.of("Asia/Seoul"));
         MemberService memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), mock(ForbiddenWordService.class),
-                nextDay, mock(InstructorProfileRepository.class));
+                nextDay, mock(InstructorProfileRepository.class),
+                mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class));
         RewardService nextDayRewards = mock(RewardService.class);
         AttendanceService nextDayService = new AttendanceService(attendanceRepository, memberService, nextDayRewards, nextDay);
 

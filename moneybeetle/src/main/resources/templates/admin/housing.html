@@ -1,5 +1,219 @@
-<!-- comment.
-    담당 : SCM 서수영 (#63, 모의 청약 운영 화면)
-    원본 디자인 : AdminHousingManagement.dc.html
-    경로 : /admin/housing-management
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : SCM 서수영 (#63, 모의 청약 운영 화면)
+  원본 디자인 : moneybeetle-page/AdminHousingManagement.dc.html (화면 구성·모양은 이 시안이 기준)
+  경로 : /admin/housing-management (AdminHousingViewController, 관리자만)
+  Model : today (서울 날짜 yyyy-MM-dd), unlockLevel (모의 청약 해금 레벨, 운영 설정 #223), layout (공통 레이아웃 값, 아직 없으면 null)
+  구성 : 왼쪽 모의 청약 관리 메뉴 + 보기 4개 - 대시보드 / 청약 공고 관리 / 신청 현황 / 당첨 결과 관리 (주소 끝 #notices, #apps, #results)
+         데이터는 static/js/admin-housing.js 가 운영 API(142~148)로 불러온다
+  시안과 다른 점 (확정 정책·API 기준)
+   - 청약 유형(공공·민간)·거주지역·세부 위치·전용면적은 기존 칸(supplyType·location·areaType)에서 나누고 합친다
+   - 신청 시작일 = 공고 게시일 (시안 문구 "게시 시점부터 바로 신청")
+   - 가상 경쟁자·예비 당첨·레벨·혼인·인정금액은 정책에 없어 실제 값(가점·납입회차·당첨 인원)으로 바꿨다
+   - 커트라인은 산정 결과의 마지막 당첨자 가점 (산정 전에는 지금 순위로 예상)
+   - 이미지 올리기·비공개 전환은 서버 기능이 없어 자리만 두고 "준비 중"으로 표시한다
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('모의 청약 운영')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/admin-housing.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <!--/* 모의 청약 관리 메뉴 (시안의 왼쪽 메뉴). 모바일에서는 공통 햄버거 버튼으로 열린다 (drawer.js 의 data-mb-drawer) */-->
+  <div class="mb-overlay" data-mb-overlay data-open="false" aria-hidden="true"></div>
+  <aside class="mb-admin-side ah-side" data-mb-drawer data-mb-pinned data-open="false" aria-label="모의 청약 관리 메뉴">
+    <a class="mb-admin-side__brand ah-side__brand" th:href="@{/admin/dashboard}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+    <div class="ah-me" th:with="nick=${layout != null ? layout.nickname : '관리자'}">
+      <div class="ah-me__row">
+        <span class="ah-me__avatar" th:text="${#strings.substring(nick, 0, 1)}">관</span>
+        <span class="ah-me__who"><b th:text="${nick}">관리자</b><span>관리자 · 모의 청약 운영</span></span>
+      </div>
+      <div class="ah-me__todo"><span>결과 산정 대기</span><b><span data-bind="todo">0</span>건</b></div>
+    </div>
+    <span class="ah-side__label">모의 청약 관리</span>
+    <nav class="ah-nav" aria-label="모의 청약 관리">
+      <button type="button" class="ah-nav__item is-active" data-view-go="dash" aria-current="page">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3z"></path><path d="M14 3h7v5h-7z"></path><path d="M14 12h7v9h-7z"></path><path d="M3 16h7v5H3z"></path></svg>
+        <span>대시보드</span>
+      </button>
+      <button type="button" class="ah-nav__item" data-view-go="notices">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg>
+        <span>청약 공고 관리</span>
+      </button>
+      <button type="button" class="ah-nav__item" data-view-go="apps">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>
+        <span>신청 현황</span>
+      </button>
+      <button type="button" class="ah-nav__item" data-view-go="results">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3"></path><path d="M7 5H4v2a3 3 0 0 0 3 3"></path></svg>
+        <span>당첨 결과 관리</span>
+        <span class="ah-nav__badge" data-bind-badge hidden>0</span>
+      </button>
+    </nav>
+    <div class="ah-side__fill"></div>
+    <a class="ah-side__back" th:href="@{/admin/dashboard}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      관리자 대시보드로
+    </a>
+  </aside>
+
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+    <main class="mb-main ah" id="ah" th:attr="data-today=${today}">
+      <section class="ah-head">
+        <span class="ah-kicker">ADMIN · 모의 청약</span>
+        <h1 data-page-title>모의 청약 대시보드</h1>
+        <p data-page-desc>모의 청약 공고와 신청 현황을 한눈에 확인해요</p>
+      </section>
+
+      <!--/* ===================== 대시보드 ===================== */-->
+      <div class="ah-view" data-view="dash">
+        <section class="ah-stats" data-list="stats"></section>
+        <div class="ah-dash-grid">
+          <section class="card ah-box">
+            <div class="ah-box__head"><span class="ah-box__title">관리자 작업 현황</span><b><span data-bind="workTotal">0</span>건</b></div>
+            <div class="ah-work" data-list="work"></div>
+          </section>
+          <section class="card ah-box">
+            <span class="ah-box__title">최근 청약 공고</span>
+            <div data-list="recent"><p class="ah-muted">불러오는 중이에요…</p></div>
+            <button type="button" class="ah-link" data-view-go="notices">청약 공고 관리로</button>
+          </section>
+        </div>
+      </div>
+
+      <!--/* ===================== 청약 공고 관리 (API 142~145) ===================== */-->
+      <div class="ah-view" data-view="notices" hidden>
+        <form class="card ah-box ah-form" id="ah-form" novalidate>
+          <span class="ah-box__title" data-form-title>새 공고 등록</span>
+          <label class="ah-field">아파트 단지명
+            <input name="name" maxlength="100" placeholder="예: 그린숲 행복주택">
+          </label>
+          <div class="ah-grid ah-grid--150">
+            <label class="ah-field">청약 유형
+              <select name="type"><option value="public">공공</option><option value="private">민간</option></select>
+            </label>
+            <label class="ah-field">거주지역
+              <select name="region"></select>
+            </label>
+            <label class="ah-field">세부 위치
+              <input name="district" maxlength="80" placeholder="예: 마포구 상암동">
+            </label>
+            <label class="ah-field">전용면적(㎡)
+              <input name="area" inputmode="decimal" placeholder="59">
+            </label>
+            <label class="ah-field">분양가(캐시)
+              <input name="salePrice" inputmode="numeric" placeholder="320,000,000">
+            </label>
+            <label class="ah-field">공급 세대 수
+              <input name="supplyUnits" inputmode="numeric" placeholder="120">
+            </label>
+          </div>
+          <div class="ah-grid ah-grid--140">
+            <label class="ah-field">공고 게시일<input type="date" name="noticeDate"></label>
+            <label class="ah-field">청약 신청 마감일<input type="date" name="applyEndDate"></label>
+            <label class="ah-field">당첨자 발표일<input type="date" name="announceDate"></label>
+          </div>
+          <div class="ah-upload" aria-disabled="true" title="이미지 저장 기능이 아직 없어요">
+            <span class="ah-upload__title">아파트 이미지 올리기</span><span class="ah-muted">준비 중이에요</span>
+          </div>
+          <div class="ah-info">공고를 게시하면 게시일부터 바로 신청을 받아요. 상태는 날짜에 맞춰 자동으로 정해지고(게시일이 미래면 모집 예정), 신청 조건(<span th:text="|Lv.${unlockLevel} 이상|">Lv.12 이상</span>, 운영 설정 기준)은 그대로 적용돼요.</div>
+          <div class="ah-warn" data-lock-note hidden></div>
+          <p class="ah-form-msg" data-form-msg role="alert"></p>
+          <div class="ah-actions">
+            <button type="submit" class="ah-pill ah-pill--lg ah-pill--primary" data-form-submit>공고 게시</button>
+            <button type="button" class="ah-pill ah-pill--lg" data-form-cancel hidden>수정 취소</button>
+          </div>
+        </form>
+
+        <section class="card ah-box">
+          <span class="ah-box__title">등록된 공고 <span data-bind="noticeCount">0</span>건</span>
+          <div class="ah-chips" data-list="statusChips"></div>
+          <div class="ah-filter">
+            <input type="search" data-filter="q" placeholder="단지명 검색" aria-label="단지명 검색">
+            <select data-filter="type" aria-label="청약 유형"><option value="">전체</option><option value="public">공공</option><option value="private">민간</option></select>
+          </div>
+          <div class="ah-rows" data-list="notices"><p class="ah-muted">불러오는 중이에요…</p></div>
+        </section>
+      </div>
+
+      <!--/* ===================== 신청 현황 (API 146) ===================== */-->
+      <div class="ah-view" data-view="apps" hidden>
+        <section class="ah-grid ah-grid--260">
+          <div class="card ah-stat">
+            <span class="ah-stat__label">회원 신청 건수</span>
+            <b class="ah-stat__value"><span data-bind="appCount">0</span>건</b>
+            <span class="ah-muted">실제 MoneyBeetle 회원이 제출한 신청 · <span data-bind="appScope">전체 공고</span></span>
+          </div>
+          <div class="card ah-stat ah-stat--soft">
+            <span class="ah-stat__label">평균 신청 가점 <span class="ah-tagline">신청 당시 기준</span></span>
+            <b class="ah-stat__value"><span data-bind="appAvg">-</span>점</b>
+            <span class="ah-muted">아래 목록에 보이는 신청의 평균이에요.<br>가점이 같으면 납입 회차가 많은 순서로 정해요.</span>
+          </div>
+        </section>
+        <div class="ah-grid ah-grid--160 ah-app-filter">
+          <input type="search" data-app-filter="q" placeholder="공고명 검색" aria-label="공고명 검색">
+          <select data-app-filter="complex" aria-label="공고"><option value="">전체 공고</option></select>
+          <select data-app-filter="type" aria-label="청약 유형"><option value="">전체 유형</option><option value="public">공공</option><option value="private">민간</option></select>
+          <select data-app-filter="state" aria-label="신청 상태">
+            <option value="">전체 상태</option><option>접수 완료</option><option>발표 대기</option>
+            <option>산정 완료(미발표)</option><option>당첨</option><option>낙첨</option>
+          </select>
+          <input type="date" data-app-filter="date" aria-label="신청일">
+          <button type="button" class="ah-pill ah-app-reset" data-app-reset hidden>필터 초기화</button>
+        </div>
+        <section class="card ah-table-card">
+          <div class="ah-table-scroll">
+            <div class="ah-table">
+              <div class="ah-tr ah-tr--head">
+                <span>접수번호</span><span>신청자</span><span>신청 단지</span><span>유형</span><span>납입 회차</span>
+                <span>가점</span><span>순위</span><span>신청일</span><span>신청 상태</span>
+              </div>
+              <div data-list="apps"><div class="ah-table-empty">불러오는 중이에요…</div></div>
+            </div>
+          </div>
+        </section>
+        <span class="ah-foot">행을 누르면 상세 정보를 볼 수 있어요.<br>신청 당시 가점·납입 회차는 신청 기록에 고정 저장돼요.<br>당첨자는 가점 → 납입 회차 → 추첨 순으로 공급 세대 수만큼 정해요.</span>
+      </div>
+
+      <!--/* ===================== 당첨 결과 관리 (API 147·148) ===================== */-->
+      <div class="ah-view" data-view="results" hidden>
+        <div class="ah-notice-box">커트라인은 산정 결과에서 <b>마지막 당첨자의 가점</b>이에요. 산정 전에는 지금 신청 순위로 예상한 값이에요. 경쟁률은 회원 신청 ÷ 공급 세대 수로 계산해요.</div>
+        <div class="ah-results" data-list="results"><div class="card ah-box ah-muted">불러오는 중이에요…</div></div>
+        <span class="ah-foot">처리 순서: 모집 마감 → 결과 산정 → 결과 검토 → 결과 발표.<br>당첨자는 가점 → 납입 회차 → 추첨 순으로 공급 세대 수만큼 정해요.<br>발표 전에는 회원 화면에 당첨 여부가 보이지 않고, 발표 후에는 결과를 바꿀 수 없어요.</span>
+      </div>
+    </main>
+
+    <!--/* 가상 실습 고지 (NFR-12 : 모든 투자·청약 화면. 공통 조각 주석대로 관리자 운영 화면에도 둔다) */-->
+    <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+  </div>
+</div>
+
+<!--/* 확인창 (삭제·산정·발표처럼 되돌릴 수 없는 작업 전에) */-->
+<dialog class="ah-dialog" id="ah-confirm" aria-labelledby="ah-confirm-title">
+  <form method="dialog" class="ah-dialog__box">
+    <h2 id="ah-confirm-title" data-confirm-title>확인</h2>
+    <p data-confirm-body></p>
+    <div class="ah-actions ah-actions--end">
+      <button type="submit" value="cancel" class="ah-pill ah-pill--lg">취소</button>
+      <button type="submit" value="ok" class="ah-pill ah-pill--lg ah-pill--primary" data-confirm-ok>확인</button>
+    </div>
+  </form>
+</dialog>
+
+<!--/* 신청 상세 (신청 현황에서 행을 누르면) */-->
+<dialog class="ah-dialog" id="ah-app-detail" aria-labelledby="ah-app-title">
+  <form method="dialog" class="ah-dialog__box">
+    <div class="ah-dialog__head">
+      <h2 id="ah-app-title">신청 상세</h2>
+      <button type="submit" value="close" class="ah-x" aria-label="닫기">×</button>
+    </div>
+    <dl class="ah-kv" data-app-detail></dl>
+  </form>
+</dialog>
+
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/admin-housing.js}"></script>
+</body>
+</html>

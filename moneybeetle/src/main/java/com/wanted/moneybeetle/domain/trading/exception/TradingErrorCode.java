@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 /* comment.
 *   담당 : PM (모의투자)
 *   모의투자 에러 코드 (API 명세서 4장). 필요한 코드는 각 이슈에서 추가한다
-*   - #23 홈·시즌 참가 : NO_RUNNING_SEASON, ALREADY_JOINED, JOIN_CLOSED
+*   - #23 홈·시즌 참가 : NO_RUNNING_SEASON, ALREADY_JOINED, JOIN_CLOSED, PREVIOUS_SEASON_NOT_SETTLED
 *   - #43 뉴스 관리 : PAST_TURN_NEWS_LOCKED
 *   - #41 분야·종목 관리 : SECTOR_DUPLICATED, STOCK_DUPLICATED, STOCK_LIMIT_EXCEEDED
 *   - #42 턴별 가격 : PAST_TURN_LOCKED, PRICE_NOT_POSITIVE, PRICE_OUT_OF_RANGE, CSV_INVALID
@@ -28,6 +28,7 @@ public enum TradingErrorCode implements ErrorCode {
     NO_RUNNING_SEASON(HttpStatus.NOT_FOUND, "다음 시즌을 준비 중이에요"),                                          // 404
     ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이번 시즌에 참가했어요"),                                             // 409
     JOIN_CLOSED(HttpStatus.CONFLICT, "이번 시즌 참가는 마감됐어요"),                                                // 409
+    PREVIOUS_SEASON_NOT_SETTLED(HttpStatus.CONFLICT, "이전 시즌 정산이 끝나면 참가할 수 있어요"),                       // 409 (SP-63)
     PAST_TURN_NEWS_LOCKED(HttpStatus.CONFLICT, "지난 턴 뉴스는 오타 수정만 할 수 있어요"),                              // 409 (SP-60, ADM-27)
     SECTOR_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 분야 이름이에요"),                                           // 409
     STOCK_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 종목 이름이에요"),                                            // 409

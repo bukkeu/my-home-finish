@@ -38,6 +38,8 @@ class MemberPurgeRepositoryTest {
     private MemberRepository memberRepository;
     @Autowired
     private PasswordResetTokenRepository tokenRepository;
+    @Autowired
+    private SocialAccountRepository socialAccountRepository;
 
     private Member member(String email, String nickname, LocalDateTime withdrawnAt) {
         Member member = Member.signup(email, "hash", nickname, LocalDate.of(1999, 4, 12), "FEMALE",
@@ -71,6 +73,24 @@ class MemberPurgeRepositoryTest {
 
         member.purgePersonalInfo();
         memberRepository.saveAndFlush(member);
+
+        assertThat(memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("개인정보는 지웠지만 간편 로그인 연결이 남은 회원은 다시 나오고, 연결을 지우면 나오지 않는다")
+    void purgedMemberWithRemainingSocialAccountIsStillTarget() {
+        Member member = member("old@gmail.com", "오래전", CUTOFF.minusDays(5));
+        socialAccountRepository.saveAndFlush(
+                com.wanted.moneybeetle.domain.member.model.entity.SocialAccount.create(member.getMemberId(), "GOOGLE", "g-1"));
+        member.purgePersonalInfo();
+        memberRepository.saveAndFlush(member);
+
+        assertThat(memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100))).extracting(Member::getMemberId)
+                .containsExactly(member.getMemberId());
+
+        socialAccountRepository.deleteByMemberIdIn(List.of(member.getMemberId()));
+        socialAccountRepository.flush();
 
         assertThat(memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100))).isEmpty();
     }

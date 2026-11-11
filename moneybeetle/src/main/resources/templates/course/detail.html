@@ -3,6 +3,7 @@
 <head>
   <th:block th:replace="~{fragments/layout/header :: headFragment('강의 상세')}"></th:block>
   <link rel="stylesheet" type="text/css" th:href="@{/css/course.css}">
+  <link rel="stylesheet" type="text/css" th:href="@{/css/inquiry.css}">
 </head>
 <body>
 <!--/* comment.
@@ -16,7 +17,7 @@
   - 이어보기: 마지막으로 본 영상을 마지막 위치부터 재생한다 (완료 조건)
   - 시청 완료는 서버가 정한다(본 시간 90% 이상, #20). 화면은 저장 뒤 강의 정보를 다시 받아 목차에 표시한다
   - 학습 순서: 시청 전 테스트(OX, API 39·40) → 영상 → 최종 퀴즈(API 41·42). 잠긴 단계는 목차에서 흐리게 표시(NFR-09, #53)
-  - 강의 문의 탭(#55)은 그 이슈에서 이 화면에 붙인다
+  - 콘텐츠 탭 '강의 문의'(#55): 이 강의의 문의 목록·작성·답변 (API 47~52, inquiry-board.js)
 */-->
 <div class="mb-shell">
   <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('lectures')}"></th:block>
@@ -34,6 +35,7 @@
 </div>
 <th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
 <script th:src="@{/js/course-common.js}"></script>
+<script th:src="@{/js/inquiry-board.js}"></script>
 <script th:src="@{/js/course-quiz.js}"></script>
 <script th:src="@{/js/course-detail.js}"></script>
 </body>
