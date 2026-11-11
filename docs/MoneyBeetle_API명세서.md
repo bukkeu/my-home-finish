@@ -1591,7 +1591,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `PATCH` |
 | 권한 | 작성자 |
 | 관련 | LRN-09 |
-| 설명 | 답글이 달리기 전에만 수정 가능. |
+| 설명 | 답글이 달리기 전에만 수정 가능. 관리자가 숨긴 글은 수정할 수 없다(`INQUIRY_HIDDEN`, #245). |
 
 **Request**
 
@@ -1603,7 +1603,7 @@ Header: Idempotency-Key: 7c1e...
 
 - 204 No Content
 
-**Error**: `INQUIRY_ALREADY_ANSWERED`, `FORBIDDEN_WORD`
+**Error**: `INQUIRY_HIDDEN`, `INQUIRY_ALREADY_ANSWERED`, `FORBIDDEN_WORD`
 
 #### 51. 문의 삭제
 
