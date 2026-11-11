@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -136,17 +137,16 @@ public class CourseService {
 
     /* ===== 영상 재생·이어보기·시청 기록 (#17) ===== */
 
-    /* API 32. 영상 재생 정보 + 이어보기 위치 (LRN-03, LRN-05) */
+    /* API 32. 영상 재생 정보 + 이어보기 위치 (LRN-03, LRN-05).
+     * 위치는 영상마다 저장한 값(lesson_watch.position_seconds, #71)을 쓴다 → 같은 강의의 다른 영상을 본 뒤에도
+     * 마이페이지 이어보기로 이 영상을 열면 보던 위치부터 재생된다 */
     public LessonPlayDTO getLessonPlay(Long memberId, Long courseId, Long lessonId) {
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
-        int positionSeconds = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
-                .map(progress -> progress.positionOf(lessonId))
-                .orElse(0);
-        int watchedSeconds = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
-                .map(LessonWatch::getWatchedSeconds)
-                .orElse(0);
+        Optional<LessonWatch> watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId);
+        int positionSeconds = watch.map(LessonWatch::getPositionSeconds).orElse(0);
+        int watchedSeconds = watch.map(LessonWatch::getWatchedSeconds).orElse(0);
 
         return LessonPlayDTO.from(lesson, positionSeconds, watchedSeconds);
     }
@@ -160,14 +160,17 @@ public class CourseService {
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
+        int positionSeconds = lesson.clampSeconds(request.getPositionSeconds());
+        // 강의의 마지막 영상(처음 열 영상)은 진행 기록에, 이어보기 위치는 영상별 시청 기록에 남긴다 (#71)
         LearningProgress progress = learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
                 .orElseGet(() -> learningProgressRepository.save(LearningProgress.start(memberId, courseId)));
-        progress.moveTo(lessonId, lesson.clampSeconds(request.getPositionSeconds()));
+        progress.moveTo(lessonId, positionSeconds);
 
         LocalDateTime now = LocalDateTime.now(clock);
         LessonWatch watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId)
                 .orElseGet(() -> lessonWatchRepository.save(LessonWatch.start(memberId, lessonId, now)));
         watch.record(lesson.clampSeconds(request.getWatchedSeconds()), lesson.getDurationSeconds(), now);
+        watch.moveTo(positionSeconds);
         // 수정은 save()를 다시 부르지 않는다. 트랜잭션이 끝날 때 변경 감지로 UPDATE된다
     }
 
