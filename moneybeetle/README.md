@@ -20,7 +20,7 @@ my-home-finish/
 
 ## 기술 스택
 
-Java 21 · Spring Boot 3.5 · Spring Data JPA · Spring Security(세션 로그인, 구글·카카오 간편 로그인) · Thymeleaf(서버 렌더링) · MySQL 8 · Gradle
+Java 21 · Spring Boot 3.5 · Spring Data JPA · Spring Security(세션 로그인, 구글 간편 로그인) · Thymeleaf(서버 렌더링) · MySQL 8 · Gradle
 
 ## 실행 방법
 

@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpSession;
 /* comment.
 *   담당 : DBA ② (회원·인증)
 *   비밀번호가 없는 간편 로그인 회원의 탈퇴 본인 확인 (이슈 #232). 가입한 이메일로 보낸 6자리 코드로 확인한다.
-*   제공자(구글·카카오)에게 다시 로그인하게 하는 방식은 서버가 "다시 로그인했는가"를 확인할 증거를 받을 수 없어 버렸다.
+*   제공자(구글)에게 다시 로그인하게 하는 방식은 서버가 "다시 로그인했는가"를 확인할 증거를 받을 수 없어 버렸다.
 *   member 가 auth 를 직접 알지 않도록 member 쪽에 둔 인터페이스이고, auth.WithdrawVerificationService 가 구현한다 (참조는 auth -> member 한 방향).
 *  */
 public interface WithdrawVerifier {

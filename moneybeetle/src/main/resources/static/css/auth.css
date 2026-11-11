@@ -68,8 +68,6 @@ select { -webkit-appearance: none; appearance: none; background-image: url("data
 .auth-social .auth-button { height: 54px; border-radius: 999px; font-size: 17px; }
 .auth-button--google { border: 1px solid var(--auth-line); background: transparent; color: var(--auth-ink); }
 .auth-button--google:hover { background: #fff; color: var(--auth-ink); }
-.auth-button--kakao { background: #F5E44D; color: #191919; }
-.auth-button--kakao:hover { background: #EED93A; color: #191919; }
 .auth-social svg { flex: none; }
 .auth-bottom { margin: 32px 0 0; color: var(--auth-muted); font-size: 16px; text-align: center; }
 
