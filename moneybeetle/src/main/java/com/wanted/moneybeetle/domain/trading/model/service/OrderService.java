@@ -24,7 +24,7 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
-import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +93,7 @@ public class OrderService {
 
         boolean buy = TradeOrder.TYPE_BUY.equals(request.orderType());
         Holding holding = holdingRepository
-                .findBySeasonParticipantIdAndStockId(participant.getSeasonParticipantId(), stock.getStockId())
+                .findForUpdateBySeasonParticipantIdAndStockId(participant.getSeasonParticipantId(), stock.getStockId())
                 .orElse(null);
         long amount = (long) request.quantity() * price;
         TradeOrder order;
@@ -182,7 +182,7 @@ public class OrderService {
         }
         LocalDateTime now = LocalDateTime.now(clock);
         // 상태를 휴장으로 바꾸지 않았어도 일요일은 휴장이다 (턴 점검과 같은 기준, SP-58)
-        if (season.isHoliday() || now.getDayOfWeek() == DayOfWeek.SUNDAY) {
+        if (season.isHoliday() || TradingSeason.isClosedDay(now.toLocalDate())) {
             throw new BusinessException(TradingErrorCode.MARKET_HOLIDAY);
         }
         if (season.getCurrentTurn() < 1) {

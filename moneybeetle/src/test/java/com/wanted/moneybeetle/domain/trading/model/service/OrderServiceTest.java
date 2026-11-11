@@ -35,7 +35,9 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.exception.ErrorCode;
+import com.wanted.moneybeetle.global.config.TimeConfig;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -138,10 +140,20 @@ class OrderServiceTest {
         return new OrderRequestDTO(STOCK_ID, type, quantity, turnNo, reasonId);
     }
 
+    private Clock clockAt(LocalDate date) {
+        return Clock.fixed(date.atTime(12, 0).atZone(TimeConfig.SEOUL).toInstant(), TimeConfig.SEOUL);
+    }
+
+    private OrderService serviceAt(LocalDate date) {
+        return new OrderService(seasonRepository, participantRepository, sectorRepository, stockRepository,
+                priceRepository, holdingRepository, orderRepository, reasonRepository, clockAt(date));
+    }
+
     private Holding givenHolding(int quantity, int avgPrice) {
         Holding holding = Holding.create(20L, STOCK_ID);
         holding.addBuy(quantity, avgPrice);
-        when(holdingRepository.findBySeasonParticipantIdAndStockId(20L, STOCK_ID)).thenReturn(Optional.of(holding));
+        when(holdingRepository.findForUpdateBySeasonParticipantIdAndStockId(20L, STOCK_ID))
+                .thenReturn(Optional.of(holding));
         return holding;
     }
 
@@ -179,7 +191,8 @@ class OrderServiceTest {
 
     @Test
     void 처음_사는_종목은_보유_기록을_새로_만든다() {
-        when(holdingRepository.findBySeasonParticipantIdAndStockId(20L, STOCK_ID)).thenReturn(Optional.empty());
+        when(holdingRepository.findForUpdateBySeasonParticipantIdAndStockId(20L, STOCK_ID))
+                .thenReturn(Optional.empty());
 
         OrderResultDTO result = service.placeOrder(MEMBER_ID, order("BUY", 3, 5, REASON_ID));
 
@@ -217,7 +230,8 @@ class OrderServiceTest {
         givenHolding(3, 90_000);
         assertRejected(order("SELL", 4, 5, REASON_ID), TradingErrorCode.NOT_ENOUGH_QUANTITY);
 
-        when(holdingRepository.findBySeasonParticipantIdAndStockId(20L, STOCK_ID)).thenReturn(Optional.empty());
+        when(holdingRepository.findForUpdateBySeasonParticipantIdAndStockId(20L, STOCK_ID))
+                .thenReturn(Optional.empty());
         assertRejected(order("SELL", 1, 5, REASON_ID), TradingErrorCode.NOT_ENOUGH_QUANTITY);
     }
 
@@ -248,6 +262,15 @@ class OrderServiceTest {
         season.changeStatus(TradingSeason.STATUS_HOLIDAY);
 
         assertRejected(order("BUY", 1, 5, REASON_ID), TradingErrorCode.MARKET_HOLIDAY);
+    }
+
+    @Test
+    void 일요일에는_시즌이_RUNNING_이어도_MARKET_HOLIDAY() {
+        assertThatThrownBy(() -> serviceAt(LocalDate.of(2026, 11, 8))
+                .placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.MARKET_HOLIDAY));
+        verify(participantRepository, never()).findForUpdateBySeasonAndMember(any(), any());
     }
 
     @Test
@@ -285,10 +308,12 @@ class OrderServiceTest {
     void 정상_주문은_시즌_번호_읽기_시즌_공유_잠금_참가자_잠금_순서로_처리한다() {
         service.placeOrder(MEMBER_ID, order("BUY", 1, 5, REASON_ID));
 
-        InOrder calls = inOrder(seasonRepository, participantRepository);
+        InOrder calls = inOrder(seasonRepository, participantRepository, priceRepository, holdingRepository);
         calls.verify(seasonRepository).findSeasonIdsByStatusIn(anyList(), any(Pageable.class));
         calls.verify(seasonRepository).findByIdForShare(SEASON_ID);
         calls.verify(participantRepository).findForUpdateBySeasonAndMember(SEASON_ID, MEMBER_ID);
+        calls.verify(priceRepository).findByTradingSeasonIdAndStockIdAndTurnNo(SEASON_ID, STOCK_ID, 5);
+        calls.verify(holdingRepository).findForUpdateBySeasonParticipantIdAndStockId(20L, STOCK_ID);
         verify(seasonRepository, never()).findFirstByStatusInOrderByStartDateDesc(anyList());
     }
 

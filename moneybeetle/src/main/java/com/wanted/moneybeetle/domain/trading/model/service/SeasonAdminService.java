@@ -97,7 +97,8 @@ public class SeasonAdminService {
     /** API 117 시즌 상태 변경 */
     @Transactional
     public void changeStatus(Long seasonId, SeasonStatusDTO request) {
-        TradingSeason season = getSeasonForUpdate(seasonId);
+        TradingSeason season = seasonRepository.findByIdForUpdate(seasonId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         // 이전 시즌 정산을 빠뜨린 채 새 시즌을 시작하면 안 된다 (#207). 준비 → 진행 중으로 바꿀 때 확인한다
         if (season.isReady() && TradingSeason.STATUS_RUNNING.equals(request.getStatus())) {
             boolean previousSettled = seasonRepository
@@ -105,7 +106,7 @@ public class SeasonAdminService {
                     .map(TradingSeason::isSettledAndEnded)
                     .orElse(true);
             if (!previousSettled) {
-                throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+                throw new BusinessException(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED);
             }
         }
         season.changeStatus(request.getStatus());

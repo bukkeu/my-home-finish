@@ -320,11 +320,15 @@ INSERT INTO level_policy (level, required_exp, title, levelup_cash) VALUES
 -- - ATTENDANCE_STREAK : 연속 5일째부터 매일 10,000캐시 (SP-12, 확정 #76, 이슈 #12)
 -- - COURSE_COMPLETE · QUIZ_PERFECT : 학습 완료 30,000캐시·150 XP, 퀴즈 만점 30 XP (SP-13·SP-22, 확정 #68)
 -- - ATTENDANCE_DAILY : 출석 경험치 기본값 10 XP. 연속 일수 5일마다 ×2·×3… 상한 ×5(50 XP)는 코드에서 계산 (SP-22, 확정 #68)
+-- - RANKING_RANK_1~3 : 시즌 랭킹(순자산·수익률 각각) 1위 50,000 / 2위 30,000 / 3위 10,000캐시 (SP-64, 확정 #76, 이슈 #10). 랭킹 공개 때 RewardService.grantRankingReward 로 지급
 INSERT INTO reward_rule (code, name, cash_amount, exp_amount, description, is_active) VALUES
 ('ATTENDANCE_STREAK', '연속 출석 보상', 10000, 0, '연속 5일째부터 매일 지급 (SP-12)', 1),
 ('COURSE_COMPLETE', '강의 학습 완료', 30000, 150, '같은 강의 최초 1회 (SP-13, SP-22)', 1),
 ('QUIZ_PERFECT', '퀴즈 만점 보너스', 0, 30, '같은 강의 최초 1회 (SP-22)', 1),
-('ATTENDANCE_DAILY', '출석 경험치', 0, 10, '출석마다. 연속 일수 5일마다 +10, 하루 상한 50 (SP-22)', 1);
+('ATTENDANCE_DAILY', '출석 경험치', 0, 10, '출석마다. 연속 일수 5일마다 +10, 하루 상한 50 (SP-22)', 1),
+('RANKING_RANK_1', '시즌 랭킹 1위 보상', 50000, 0, '순자산·수익률 랭킹 각각의 1위. 랭킹 공개 때 지급 (SP-64)', 1),
+('RANKING_RANK_2', '시즌 랭킹 2위 보상', 30000, 0, '순자산·수익률 랭킹 각각의 2위. 랭킹 공개 때 지급 (SP-64)', 1),
+('RANKING_RANK_3', '시즌 랭킹 3위 보상', 10000, 0, '순자산·수익률 랭킹 각각의 3위. 랭킹 공개 때 지급 (SP-64)', 1);
 
 -- 청약통장: 회원당 하나(member_id 유니크). 잔액·납입회차는 기본값 0
 INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8);

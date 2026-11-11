@@ -37,6 +37,8 @@ public class CashHistory {
     public static final String SOURCE_SEASON_JOIN = "SEASON_JOIN";
     public static final String SOURCE_SUBSCRIPTION_DEPOSIT = "SUBSCRIPTION_DEPOSIT";
     public static final String SOURCE_ADMIN = "ADMIN";
+    /** 시즌 랭킹 보상 (SP-64). 원인 ID = 수상 기록(ranking_award)의 ID 라서 같은 수상으로 두 번 받지 않는다 */
+    public static final String SOURCE_RANKING = "RANKING";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

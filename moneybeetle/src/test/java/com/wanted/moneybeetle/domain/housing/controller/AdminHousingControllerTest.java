@@ -88,13 +88,14 @@ class AdminHousingControllerTest {
         when(adminHousingService.findComplexes()).thenReturn(List.of(new AdminComplexDTO(1L, "비틀 파크",
                 "서울 강서구", "84㎡", 650_000_000L, 120, "일반공급", LocalDate.of(2026, 10, 28),
                 LocalDate.of(2026, 11, 3), LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 17),
-                "OPEN", 3L)));
+                "OPEN", 3L, false)));
 
         mockMvc.perform(get("/api/v1/admin/housing/complexes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].complexId").value(1))
                 .andExpect(jsonPath("$.data.items[0].applyStartDate").value("2026-11-03"))
-                .andExpect(jsonPath("$.data.items[0].applicants").value(3));
+                .andExpect(jsonPath("$.data.items[0].applicants").value(3))
+                .andExpect(jsonPath("$.data.items[0].computed").value(false));
     }
 
     @Test

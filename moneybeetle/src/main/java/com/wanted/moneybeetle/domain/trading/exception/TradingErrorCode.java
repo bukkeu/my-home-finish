@@ -3,7 +3,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 /* comment.
 *   담당 : PM (모의투자)
 *   모의투자 에러 코드 (API 명세서 4장). 필요한 코드는 각 이슈에서 추가한다
-*   - #23 홈·시즌 참가 : NO_RUNNING_SEASON, ALREADY_JOINED, JOIN_CLOSED
+*   - #23 홈·시즌 참가 : NO_RUNNING_SEASON, ALREADY_JOINED, JOIN_CLOSED, PREVIOUS_SEASON_NOT_SETTLED
 *   - #43 뉴스 관리 : PAST_TURN_NEWS_LOCKED
 *   - #41 분야·종목 관리 : SECTOR_DUPLICATED, STOCK_DUPLICATED, STOCK_LIMIT_EXCEEDED
 *   - #42 턴별 가격 : PAST_TURN_LOCKED, PRICE_NOT_POSITIVE, PRICE_OUT_OF_RANGE, CSV_INVALID
@@ -11,7 +11,7 @@ package com.wanted.moneybeetle.domain.trading.exception;
 *   - #24 시세·뉴스 조회 : NO_RUNNING_SEASON
 *   - #111 턴 진행 규칙 : MARKET_HOLIDAY, LAST_TURN_REACHED
 *   - #44 턴 진행 : NEXT_TURN_NOT_READY, TURN_CONFLICT
-*   - #207 시즌 순서 : PREVIOUS_SEASON_NOT_SETTLED, SEASON_PERIOD_OVERLAP
+*   - #207 시즌 순서 : PREVIOUS_SEASON_SETTLE_REQUIRED, SEASON_PERIOD_OVERLAP
 *   - #208 정규장 시간 : MARKET_CLOSED, MARKET_STILL_OPEN
 *   - #25 매수·매도 : NOT_JOINED, NOT_ENOUGH_CASH, NOT_ENOUGH_QUANTITY, REASON_REQUIRED, STALE_TURN_PRICE
 *   - #26 시즌 랭킹 : RANKING_NOT_PUBLISHED
@@ -29,6 +29,7 @@ public enum TradingErrorCode implements ErrorCode {
     NO_RUNNING_SEASON(HttpStatus.NOT_FOUND, "다음 시즌을 준비 중이에요"),                                          // 404
     ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이번 시즌에 참가했어요"),                                             // 409
     JOIN_CLOSED(HttpStatus.CONFLICT, "이번 시즌 참가는 마감됐어요"),                                                // 409
+    PREVIOUS_SEASON_NOT_SETTLED(HttpStatus.CONFLICT, "이전 시즌 정산이 끝나면 참가할 수 있어요"),                       // 409 (SP-63)
     PAST_TURN_NEWS_LOCKED(HttpStatus.CONFLICT, "지난 턴 뉴스는 오타 수정만 할 수 있어요"),                              // 409 (SP-60, ADM-27)
     SECTOR_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 분야 이름이에요"),                                           // 409
     STOCK_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 종목 이름이에요"),                                            // 409
@@ -50,7 +51,7 @@ public enum TradingErrorCode implements ErrorCode {
     REASON_REQUIRED(HttpStatus.BAD_REQUEST, "매매 이유를 골라 주세요"),                                             // 400
     STALE_TURN_PRICE(HttpStatus.CONFLICT, "가격이 바뀌었어요. 현재 가격을 확인해 주세요"),                             // 409
     MARKET_CLOSED(HttpStatus.CONFLICT, "지금은 장이 열리지 않았어요. 오전 8시에 다시 거래할 수 있어요"),                  // 409 (08:00~20:00 밖)
-    PREVIOUS_SEASON_NOT_SETTLED(HttpStatus.CONFLICT, "이전 시즌 정산을 먼저 마쳐 주세요"),                              // 409
+    PREVIOUS_SEASON_SETTLE_REQUIRED(HttpStatus.CONFLICT, "이전 시즌 정산을 먼저 마쳐 주세요"),                       // 409 (관리자: 새 시즌 시작·다음 턴 전)
     SEASON_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요"),               // 409
     MARKET_STILL_OPEN(HttpStatus.CONFLICT, "장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요"),  // 409
     RANKING_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "랭킹은 시즌이 끝나면 공개돼요");                                       // 403

@@ -5,6 +5,8 @@ import com.wanted.moneybeetle.domain.member.model.dao.InstructorProfileRepositor
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.InstructorSignupDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.InstructorSignupResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberAttendanceDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
@@ -15,6 +17,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.MemberUpdateResultDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SignupResultDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.SocialSignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
@@ -36,7 +39,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository;
+import com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository;
 import com.wanted.moneybeetle.domain.member.model.entity.MemberTermsAgreement;
+import com.wanted.moneybeetle.domain.member.model.entity.SocialAccount;
 import com.wanted.moneybeetle.domain.member.model.entity.Terms;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
 import java.time.Clock;
@@ -74,6 +79,7 @@ public class MemberService {
     private final ForbiddenWordService forbiddenWordService;
     private final Clock clock;
     private final InstructorProfileRepository instructorProfileRepository;
+    private final SocialAccountRepository socialAccountRepository;
 
     /** 회원의 현재 레벨·경험치·캐시 (growth.RewardService 용). 없는 회원이면 MEMBER_NOT_FOUND */
     public MemberBalanceDTO getBalance(Long memberId) {
@@ -194,6 +200,10 @@ public class MemberService {
     public int purgeWithdrawnMembers(LocalDateTime now, int batchSize) {
         LocalDateTime cutoff = now.minusDays(Member.PERSONAL_INFO_RETENTION_DAYS);
         List<Member> targets = memberRepository.findPurgeTargets(cutoff, PageRequest.of(0, batchSize));
+        if (!targets.isEmpty()) {
+            // 간편 로그인 연결(제공자 계정 ID)도 개인정보라 같은 트랜잭션에서 함께 지운다
+            socialAccountRepository.deleteByMemberIdIn(targets.stream().map(Member::getMemberId).toList());
+        }
         targets.forEach(Member::purgePersonalInfo);
         return targets.size();
     }
@@ -360,6 +370,15 @@ public class MemberService {
      */
     @Transactional
     public SignupResultDTO signup(SignupDTO request) {
+        return signup(request, false);
+    }
+
+    /**
+     * 회원가입 (API 4). 가입 전에 본인인증(이메일 코드)을 마쳤으면 identityVerified 를 true 로 넘겨 그 결과를 함께 저장한다.
+     * 인증을 마쳤는지 확인하는 일은 가입 흐름(MemberSignupService)이 하고, 여기서는 받은 결과만 저장한다.
+     */
+    @Transactional
+    public SignupResultDTO signup(SignupDTO request, boolean identityVerified) {
         if (request == null) {
             throw new IllegalArgumentException("회원가입 정보가 필요합니다.");
         }
@@ -384,10 +403,95 @@ public class MemberService {
                 request.getBirthDate(),
                 request.getGender(),
                 today);
+        if (identityVerified) {
+            member.completeIdentityVerification();
+        }
         Member savedMember = saveMember(member);
         saveAgreements(savedMember.getMemberId(), agreedTerms);
 
         return SignupResultDTO.from(savedMember);
+    }
+
+    /**
+     * 강사 가입 신청 (API 12, #30). 회원을 만들고 강사 정보를 승인 대기(PENDING)·신청 시각과 함께 저장한다 → 관리자 신청 목록(API 104).
+     * 순서: 이메일 → 강사명(닉네임 규칙·금칙어·중복) → 비밀번호 → 약관 → 저장(회원 → 약관 동의 기록 → 강사 정보).
+     * - 강사명을 닉네임으로 쓴다 (팀 결정). 이미 있는 닉네임이면 NICKNAME_DUPLICATED
+     * - 강사는 학습자 청약통장을 만들지 않는다 (그래서 MemberSignupService.signup 경로를 쓰지 않는다)
+     * - 본인인증을 마쳤는지 확인하는 일은 가입 흐름(MemberSignupService.signupInstructor)이 하고, 여기서는 결과만 저장한다
+     */
+    @Transactional
+    public InstructorSignupResultDTO signupInstructor(InstructorSignupDTO request, boolean identityVerified) {
+        if (request == null) {
+            throw new IllegalArgumentException("강사 가입 정보가 필요합니다.");
+        }
+
+        String email = SignupRules.normalizeEmail(request.getEmail());
+        validateEmail(request.getEmail(), email);
+
+        String nickname = request.getDisplayName();
+        validateNickname(nickname);
+        if (request.getField() != null) {
+            forbiddenWordService.check(request.getField());
+        }
+
+        validatePassword(request.getPassword(), request.getPasswordConfirm());
+
+        List<Terms> agreedTerms = findAgreedTerms(request.getAgreedTermsIds());
+
+        Member member = Member.signupInstructor(email, passwordEncoder.encode(request.getPassword()), nickname);
+        if (identityVerified) {
+            member.completeIdentityVerification();
+        }
+        Member savedMember = saveMember(member);
+        saveAgreements(savedMember.getMemberId(), agreedTerms);
+
+        InstructorProfile profile = instructorProfileRepository.save(InstructorProfile.apply(
+                savedMember.getMemberId(), nickname, request.getField(), LocalDateTime.now(clock)));
+        return InstructorSignupResultDTO.of(savedMember.getMemberId(), profile.getApprovalStatus());
+    }
+
+    /**
+     * 간편 로그인(구글·카카오)으로 처음 온 사람의 가입 (API 8-2, DP-13, 이슈 #9). 이메일은 제공자가 확인해 준 값(세션)이고 비밀번호는 없다.
+     * 순서: 이메일 → 닉네임(형식·금칙어·중복) → 생년월일·만 14세 → 약관 → 저장(회원 → 약관 동의 기록 → 간편 로그인 연결).
+     * 같은 제공자 계정이 동시에 가입하면 DB 고유 제약(uk_social_account_1)이 한쪽을 거르고 그쪽은 OAUTH_FAILED 가 된다.
+     *
+     * @param provider       GOOGLE / KAKAO
+     * @param providerUserId 제공자 쪽 사용자 ID
+     */
+    @Transactional
+    public SignupResultDTO signupSocial(SocialSignupDTO request, String email, String provider, String providerUserId) {
+        if (request == null) {
+            throw new IllegalArgumentException("가입 정보가 필요합니다.");
+        }
+        String normalizedEmail = SignupRules.normalizeEmail(email);
+        validateEmail(email, normalizedEmail);
+        validateNickname(request.getNickname());
+        LocalDate today = LocalDate.now(clock);
+        validateBirthDate(request.getBirthDate(), today);
+        List<Terms> agreedTerms = findAgreedTerms(request.getAgreedTermsIds());
+
+        Member savedMember = saveMember(Member.signupSocial(
+                normalizedEmail, request.getNickname(), request.getBirthDate(), request.getGender(), today));
+        saveAgreements(savedMember.getMemberId(), agreedTerms);
+        try {
+            socialAccountRepository.saveAndFlush(
+                    SocialAccount.create(savedMember.getMemberId(), provider, providerUserId));
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(MemberErrorCode.OAUTH_FAILED);
+        }
+        return SignupResultDTO.from(savedMember);
+    }
+
+    /** 제공자 계정(provider, providerUserId)에 연결된 회원. 연결이 없으면 비어 있다 (auth.SocialLoginService 용) */
+    public Optional<LoginMemberDTO> findLoginMemberBySocial(String provider, String providerUserId) {
+        return socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+                .flatMap(account -> memberRepository.findById(account.getMemberId()))
+                .map(member -> LoginMemberDTO.from(member, grantedRole(member)));
+    }
+
+    /** 회원 번호로 로그인 회원 정보를 읽는다 (간편 로그인 가입 직후 로그인 처리용). 없으면 비어 있다 */
+    public Optional<LoginMemberDTO> findLoginMemberById(Long memberId) {
+        return memberRepository.findById(memberId).map(member -> LoginMemberDTO.from(member, grantedRole(member)));
     }
 
     /** 이메일 형식(원본 그대로)과 중복(정규화한 값, 대소문자 구분 없음)을 확인한다 */

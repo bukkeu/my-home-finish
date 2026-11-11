@@ -191,13 +191,13 @@ class TurnAdminServiceTest {
     }
 
     @Test
-    void 이전_시즌_정산_전에는_점검보다_먼저_PREVIOUS_SEASON_NOT_SETTLED_로_거절한다() {
+    void 이전_시즌_정산_전에는_점검보다_먼저_PREVIOUS_SEASON_SETTLE_REQUIRED_로_거절한다() {
         when(tradingService.checkNextTurn(season))
                 .thenReturn(new NextTurnCheckDTO(false, 1, null, List.of("모아모빌리티"), 0, false, false, true));
 
         assertThatThrownBy(() -> service.advanceTurn(SEASON_ID, 0, ADMIN_ID))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED));
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED));
         assertThat(season.getCurrentTurn()).isZero();
         verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
     }

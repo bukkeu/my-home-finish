@@ -44,6 +44,7 @@ class MemberControllerTest {
         return MockMvcBuilders.standaloneSetup(
                         new MemberController(memberService,
                                 mock(com.wanted.moneybeetle.domain.member.model.service.AccountService.class),
+                                mock(com.wanted.moneybeetle.domain.member.model.service.WithdrawVerifier.class),
                                 mock(com.wanted.moneybeetle.domain.member.model.service.MemberProfileService.class),
                                 memberSignupService))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -108,7 +109,7 @@ class MemberControllerTest {
 
     @Test
     void 이미_가입된_이메일이면_가입_요청은_409와_오류_코드를_반환한다() throws Exception {
-        when(memberSignupService.signup(any(SignupDTO.class)))
+        when(memberSignupService.signup(any(SignupDTO.class), any()))
                 .thenThrow(new BusinessException(MemberErrorCode.EMAIL_DUPLICATED));
 
         mockMvc().perform(post("/api/v1/auth/signup")
@@ -143,7 +144,7 @@ class MemberControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
-        verify(memberSignupService, never()).signup(any(SignupDTO.class));   // 컨트롤러가 부르는 것은 가입 서비스(MemberSignupService)다
+        verify(memberSignupService, never()).signup(any(SignupDTO.class), any());   // 컨트롤러가 부르는 것은 가입 서비스(MemberSignupService)다
     }
 
     private static String validSignupJson() {
@@ -171,7 +172,7 @@ class MemberControllerTest {
                 LocalDate.of(2026, 11, 9)
         );
 
-        when(memberSignupService.signup(any(SignupDTO.class)))
+        when(memberSignupService.signup(any(SignupDTO.class), any()))
                 .thenReturn(SignupResultDTO.from(member));
 
         String request = """

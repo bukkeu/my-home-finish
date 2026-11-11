@@ -13,9 +13,12 @@ import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
+import com.wanted.moneybeetle.domain.auth.handler.OAuth2FailHandler;
+import com.wanted.moneybeetle.domain.auth.handler.OAuth2SuccessHandler;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +26,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -72,7 +76,10 @@ public class SecurityConfig {
                                          AuthSuccessHandler authSuccessHandler,
                                          AuthFailHandler authFailHandler,
                                          AuthLogoutSuccessHandler authLogoutSuccessHandler,
-                                         MemberService memberService) throws Exception {
+                                         MemberService memberService,
+                                         ObjectProvider<ClientRegistrationRepository> clientRegistrations,
+                                         OAuth2SuccessHandler oAuth2SuccessHandler,
+                                         OAuth2FailHandler oAuth2FailHandler) throws Exception {
 
         // 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶는 인증 제공자 LoginAuthenticationProvider 는
         // 빈으로 등록돼 있어 Spring Security 가 인증 관리자에 자동으로 넣는다. 여기서 http.authenticationProvider 로 한 번 더 넣으면
@@ -81,6 +88,10 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
+                    // 화면에 쓰는 정적 파일(CSS·JS·이미지): 로그인 전 화면(/login, /signup)도 그려야 하므로 누구나 (#230)
+                    auth.requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();
+                    // 간편 로그인(구글·카카오, #9): 인증 시작·제공자가 돌려보내는 주소, 처음 온 사람의 추가 정보 화면
+                    auth.requestMatchers("/oauth2/**", "/login/oauth2/**", "/signup/social").permitAll();
                     // 서버 상태 확인(#84) : health·info 만 누구나. 나머지 actuator 주소는 웹에 열지 않아(application.yaml) 로그인해도 404
                     auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
                     auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
@@ -112,6 +123,15 @@ public class SecurityConfig {
                     ex.authenticationEntryPoint(securityErrorHandler);   // 로그인 안 함
                     ex.accessDeniedHandler(securityErrorHandler);        // 권한 없음
                 });
+
+        // 간편 로그인(구글·카카오, #9): 키(환경변수)가 하나라도 있어 등록 정보가 만들어졌을 때만 켠다. 없으면 서버는 그대로 뜨고 이 로그인만 없다.
+        if (clientRegistrations.getIfAvailable() != null) {
+            http.oauth2Login(oauth -> {
+                oauth.loginPage("/login");
+                oauth.successHandler(oAuth2SuccessHandler);   // 가입한 사람은 로그인, 처음이면 추가 정보 화면으로
+                oauth.failureHandler(oAuth2FailHandler);      // 실패는 로그인 화면으로 (?oauthError=OAUTH_FAILED)
+            });
+        }
 
         return http.build();
     }

@@ -30,7 +30,7 @@
 | 데이터 형식 | `Content-Type: application/json; charset=UTF-8` (파일 업로드만 `multipart/form-data`) |
 | 인증 | 세션 쿠키(`JSESSIONID`). 30분 동안 요청이 없으면 만료 (DP-11) |
 | 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자 |
-| 해금 | 모의투자 API는 Lv.8, 모의 청약 API는 Lv.12 미만이면 `403 LEVEL_LOCKED` (SP-24) |
+| 해금 | 모의투자 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_TRADING`, 기본 Lv.8, 시즌과 무관), 모의 청약 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_HOUSING`, 기본 Lv.12) 미만이면 `403 LEVEL_LOCKED` (SP-24, #223) |
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
 | 금액 | 캐시는 정수. 비율(수익률·변동률)은 소수 둘째 자리까지의 숫자(%) |
@@ -118,10 +118,13 @@
 | 2 | `GET` | `/api/v1/auth/check-email` | 이메일 중복 확인 | 비회원 | USR-01, SP-01 |
 | 3 | `GET` | `/api/v1/auth/check-nickname` | 닉네임 중복·규칙 확인 | 비회원 | USR-01, SP-02, DP-21 |
 | 4 | `POST` | `/api/v1/auth/signup` | 회원가입 | 비회원 | USR-01~04, SP-01~05, SUB-04 |
-| 5 | `POST` | `/api/v1/auth/identity-verification` | 본인인증 | 비회원 | USR-05, EP-02 |
+| 5-1 | `POST` | `/api/v1/auth/identity-verification/request` | 본인인증 코드 요청 | 비회원 | USR-05, EP-02 |
+| 5 | `POST` | `/api/v1/auth/identity-verification` | 본인인증 (코드 확인) | 비회원 | USR-05, EP-02 |
 | 6 | `POST` | `/api/v1/auth/login` | 로그인 | 비회원 | USR-06, DP-10~11, GRW-01 |
 | 7 | `POST` | `/api/v1/auth/logout` | 로그아웃 | 회원 | USR-06 |
 | 8 | `GET` | `/api/v1/auth/oauth/{provider}` | 간편 로그인 시작 | 비회원 | USR-07, DP-13 |
+| 8-1 | `GET` | `/api/v1/auth/oauth-signup` | 간편 로그인 가입 정보 확인 | 비회원 | USR-07, DP-13 |
+| 8-2 | `POST` | `/api/v1/auth/oauth-signup` | 간편 로그인 가입 완료 | 비회원 | USR-07, DP-13 |
 | 9 | `POST` | `/api/v1/auth/find-email` | 아이디(이메일) 찾기 | 비회원 | USR-08 |
 | 10 | `POST` | `/api/v1/auth/password-reset/request` | 비밀번호 재설정 요청 | 비회원 | USR-09, DP-12 |
 | 11 | `POST` | `/api/v1/auth/password-reset/confirm` | 비밀번호 재설정 | 비회원 | USR-09, DP-12 |
@@ -131,6 +134,8 @@
 | 15 | `POST` | `/api/v1/members/me/profile-image` | 프로필 이미지 변경 | 회원 | USR-12, DP-32 |
 | 16 | `PATCH` | `/api/v1/members/me/password` | 비밀번호 변경 | 회원 | USR-13, SP-03 |
 | 17 | `DELETE` | `/api/v1/members/me` | 회원 탈퇴 | 회원 | USR-14, DP-06 |
+| 17-1 | `POST` | `/api/v1/members/me/withdraw-verification/request` | 탈퇴 본인 확인 코드 요청 (간편 로그인 회원) | 회원 | USR-14, DP-06 |
+| 17-2 | `POST` | `/api/v1/members/me/withdraw-verification` | 탈퇴 본인 확인 (받은 코드 확인, 간편 로그인 회원) | 회원 | USR-14, DP-06 |
 | 18 | `GET` | `/api/v1/members/{memberId}/profile` | 다른 회원 공개 프로필 | 회원 | DP-03, HOM-06 |
 
 ### 홈·성장
@@ -394,7 +399,7 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-01~04, SP-01~05, SUB-04 |
-| 설명 | 가입과 동시에 청약통장을 만든다. |
+| 설명 | 가입과 동시에 청약통장을 만든다. 같은 브라우저 세션에서 그 이메일의 본인인증(API 5)을 마친 뒤에만 가입할 수 있고, 인증 결과는 회원에 저장된다(`is_identity_verified`). 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. |
 
 **Request**
 
@@ -417,12 +422,34 @@
 { "memberId": 1, "nickname": "민지" }
 ```
 
-**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `PASSWORD_MISMATCH`, `PASSWORD_INVALID`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`, `IDENTITY_NOT_VERIFIED`
 
 - `EMAIL_DUPLICATED`·`NICKNAME_DUPLICATED`는 두 요청이 동시에 같은 값으로 가입해 중복 확인을 함께 통과해도 DB 고유 제약(`uk_member_email`, `uk_member_nickname`)에서 걸러져 같은 409로 응답한다.
 - 청약통장 개설은 서수영의 `HousingService.openAccount` 연동 뒤에 붙는다(이슈 #5 남은 작업).
 
-#### 5. 본인인증
+#### 5-1. 본인인증 코드 요청
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/identity-verification/request` |
+| Method | `POST` |
+| 권한 | 비회원 |
+| 관련 | USR-05, EP-02 |
+| 설명 | 가입하려는 이메일로 6자리 인증번호를 보낸다(5분 안에 입력). 메일은 요청과 다른 스레드에서 보내 응답이 바로 돌아가고, 메일 서버 실패는 1회 자동 재시도한 뒤 서버 로그에만 남긴다(EP-02). 같은 이메일로는 60초에 한 번만 보낼 수 있다(브라우저·세션이 달라도 같다). 접속 주소(IP) 하나는 1분에 10번까지만 요청할 수 있다(이메일을 바꿔 가며 여러 주소로 메일을 보내게 하는 것을 막는다. 요청의 접속 주소만 쓰고 `X-Forwarded-For` 는 믿지 않으며, 한도는 서버 메모리에 있어 서버를 다시 켜면 지워진다). 이미 가입된 이메일이면 보내지 않는다. 새로 요청하면 이전 번호는 쓸 수 없다. 진행 상태는 HTTP 세션에 담아 두며 DB 테이블은 쓰지 않는다. |
+
+**Request**
+
+```json
+{ "email": "minji@gmail.com" }
+```
+
+**Response**
+
+- 202 Accepted (본문 없음)
+
+**Error**: `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `IDENTITY_CODE_TOO_SOON`, `IDENTITY_REQUEST_LIMITED`, `IDENTITY_MAIL_UNAVAILABLE`
+
+#### 5. 본인인증 (코드 확인)
 
 | 항목 | 내용 |
 | --- | --- |
@@ -430,12 +457,12 @@
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-05, EP-02 |
-| 설명 | 가입 중 본인인증 결과를 확인한다. 외부 연동 또는 가상 화면(팀 확인 필요). 실패 시 1회 자동 재시도. |
+| 설명 | 이메일로 받은 6자리 번호가 맞으면 이 세션에서 그 이메일을 인증된 것으로 표시한다. 표시는 30분 동안 가입(API 4)에 쓸 수 있고 가입이 끝나면 지워진다. 번호를 5번 틀리면 그 번호는 버려지고 다시 받아야 한다(`IDENTITY_CODE_EXPIRED`). 5분이 지났거나 번호를 받은 적이 없거나 다른 이메일의 번호이면 `IDENTITY_CODE_EXPIRED`로 같게 답한다. |
 
 **Request**
 
 ```json
-{ "signupToken": "a81c...", "provider": "PASS", "verificationToken": "..." }
+{ "email": "minji@gmail.com", "code": "123456" }
 ```
 
 **Response**
@@ -444,7 +471,7 @@
 { "verified": true }
 ```
 
-**Error**: `OAUTH_FAILED`
+**Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`
 
 #### 6. 로그인
 
@@ -514,17 +541,60 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 비회원 |
 | 관련 | USR-07, DP-13 |
-| 설명 | 구글·카카오 인증 화면으로 보낸다. provider = google |
+| 설명 | 구글·카카오 인증 화면으로 보낸다(실제 OAuth, 2026-11-10 가상에서 변경). provider = `google` 또는 `kakao`. 환경변수에 그 제공자의 키가 없으면 `OAUTH_PROVIDER_UNAVAILABLE`(서버는 정상으로 뜨고 이 로그인만 꺼진다). 제공자 인증이 끝나면 제공자가 `/login/oauth2/code/{provider}`(Spring Security)로 돌려보내고, 서버가 이메일·이름만 받아 아래처럼 처리한 뒤 화면을 **이동(302)** 시킨다. 이 흐름은 브라우저가 주소를 따라가는 것이라 JSON 으로 답하지 않는다. ① 이미 연결된 회원 → 로그인(이메일 로그인과 같은 세션 로그인, 일반 회원이면 오늘 출석 기록)하고 역할별 첫 화면(`/user/home` 등)으로. ② 처음이고 이메일이 새것 → `/signup/social`(추가 정보 입력, API 8-1·8-2). ③ 막힌 경우 → `/login?oauthError={오류 코드}`. 오류 코드는 `EMAIL_DUPLICATED`(같은 이메일로 이미 가입. 이메일·비밀번호로 가입한 계정에 자동으로 연결하지 않으므로 이메일로 로그인하게 안내), `ACCOUNT_WITHDRAWN`, `ACCOUNT_SUSPENDED`, `OAUTH_FAILED`(동의 취소, 인증 오류, 제공자가 이메일을 주지 않았거나 확인되지 않은 이메일). 제공자가 **확인한 이메일만** 받는다(구글 `email_verified`, 카카오 `is_email_verified`). 인증 코드는 한 번만 쓸 수 있어 자동 재시도하지 않고 사용자가 처음부터 다시 시도한다. |
 
 **Request**
 
-- Path: provider=kakao
+- Path: provider=google | kakao
 
 **Response**
 
-- 302 Found → 제공자 로그인 화면
+- 302 Found → `/oauth2/authorization/{provider}` → 제공자 로그인 화면
 
-**Error**: `OAUTH_FAILED`
+**Error**: `OAUTH_PROVIDER_UNAVAILABLE`
+
+#### 8-1. 간편 로그인 가입 정보 확인
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/oauth-signup` |
+| Method | `GET` |
+| 권한 | 비회원 (간편 로그인으로 처음 온 세션) |
+| 관련 | USR-07, DP-13 |
+| 설명 | 간편 로그인으로 처음 온 사람의 제공자 정보를 돌려준다. 가입 화면(`/signup/social`)이 이메일·이름을 미리 채우는 용도이며, 제공자 쪽 사용자 ID 는 주지 않는다. 정보는 HTTP 세션에 담겨 있고(세션 만료 30분), 없으면 `OAUTH_SESSION_EXPIRED`. |
+
+**Response**
+
+```json
+{ "provider": "GOOGLE", "email": "minji@gmail.com", "nickname": "민지" }
+```
+
+**Error**: `OAUTH_SESSION_EXPIRED`
+
+#### 8-2. 간편 로그인 가입 완료
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/auth/oauth-signup` |
+| Method | `POST` |
+| 권한 | 비회원 (간편 로그인으로 처음 온 세션) |
+| 관련 | USR-07, DP-13, SUB-04 |
+| 설명 | 나머지 가입 정보를 받아 가입하고 **바로 로그인 상태**로 만든다. 이메일은 요청으로 받지 않고 세션에 담긴, 제공자가 확인한 값을 쓴다. 비밀번호는 없다(간편 로그인으로만 쓰는 계정, `password_hash` NULL). 본인인증(이메일 코드, API 5)은 거치지 않고 인증 완료(`is_identity_verified`)로 저장한다(DP-44). 닉네임·생년월일·약관 규칙은 API 4 와 같고, 회원·약관 동의·간편 로그인 연결(`social_account`)과 청약통장이 한 트랜잭션으로 저장된다. 가입이 거절되면(닉네임 중복 등) 세션 정보는 남아 고쳐서 다시 보낼 수 있다. |
+
+**Request**
+
+```json
+{ "nickname": "민지", "birthDate": "1999-04-12", "gender": "FEMALE", "agreedTermsIds": [1, 2, 3] }
+```
+
+**Response**
+
+```json
+201 Created
+{ "memberId": 1, "nickname": "민지" }
+```
+
+**Error**: `OAUTH_SESSION_EXPIRED`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `BIRTH_DATE_INVALID`, `AGE_UNDER_14`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `FORBIDDEN_WORD`, `OAUTH_FAILED`(같은 제공자 계정이 동시에 가입)
 
 #### 9. 아이디(이메일) 찾기
 
@@ -600,7 +670,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 비회원 |
 | 관련 | USR-10, ADM-06 |
-| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. |
+| 설명 | 강사 회원가입 페이지. 승인 대기(PENDING)로 저장되고 관리자가 승인하면 강사 권한이 생긴다. 학습자 가입(API 4)과 같게, 같은 브라우저 세션에서 그 이메일의 본인인증(API 5-1·5)을 마친 뒤에만 신청할 수 있고 인증하지 않았거나 인증한 이메일과 다르면 `IDENTITY_NOT_VERIFIED`. 구현은 `IdentityVerificationService.requireVerified`(저장 전)·`clear`(성공 뒤)를 부른다(#30, DP-44). **강사명(`displayName`)을 회원 닉네임으로도 쓴다**(#30 팀 결정): 닉네임 규칙(2~12자 한글·영문·숫자, 금칙어)을 그대로 적용하고 이미 있는 닉네임이면 `NICKNAME_DUPLICATED`. 전문 분야(`field`)는 필수, 100자 이하. 생년월일·성별은 받지 않는다(member.birth_date NULL). 회원 권한은 MEMBER 로 시작하고 관리자 승인(API 103·105) 때 INSTRUCTOR 가 된다. 강사는 학습자 청약통장을 만들지 않는다. 신청 시각(`instructor_profile.applied_at`)을 남겨 관리자 신청 목록(API 104)에 나온다. |
 
 **Request**
 
@@ -618,7 +688,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "memberId": 31, "approvalStatus": "PENDING" }
 ```
 
-**Error**: `EMAIL_DUPLICATED`, `PASSWORD_MISMATCH`
+**Error**: `INVALID_INPUT`(형식 오류·비밀번호 확인 불일치), `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`, `PASSWORD_INVALID`, `PASSWORD_MISMATCH`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `IDENTITY_NOT_VERIFIED`
 
 #### 13. 내 정보 (메뉴 프로필)
 
@@ -724,7 +794,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `DELETE` |
 | 권한 | 회원 |
 | 관련 | USR-14, DP-06 |
-| 설명 | 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
+| 설명 | 본인 확인 뒤 계정을 비활성화(WITHDRAWN)하고 현재 로그인 세션을 끝낸다. 비밀번호가 있는 회원은 현재 비밀번호(`password`)로 확인한다. **비밀번호가 없는 간편 로그인 회원은 `password` 없이 요청하며**, 먼저 API 17-1·17-2 로 가입 이메일로 받은 코드를 확인한 세션이어야 한다(확인 뒤 5분 안, 한 번만 사용). 확인이 없으면 `WITHDRAW_VERIFICATION_REQUIRED`. 같은 계정으로 다른 기기에 열어 둔 세션도 로그인한 요청마다 계정 상태를 확인해서, 다음 요청에서 `UNAUTHORIZED`(401)로 끝낸다(정지된 계정도 같다). 개인정보는 30일 뒤 파기. 관리자 계정은 `FORBIDDEN`. |
 
 **Request**
 
@@ -732,11 +802,55 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 { "password": "beetle1234" }
 ```
 
+- 간편 로그인 회원은 본문을 비우거나 `{}` 로 보낸다.
+
 **Response**
 
 - 204 No Content
 
-**Error**: `PASSWORD_WRONG`, `FORBIDDEN`
+**Error**: `PASSWORD_WRONG`, `WITHDRAW_VERIFICATION_REQUIRED`, `FORBIDDEN`
+
+#### 17-1. 탈퇴 본인 확인 코드 요청 (간편 로그인 회원)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification/request` |
+| Method | `POST` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #232 |
+| 설명 | 비밀번호가 없는 간편 로그인(구글·카카오) 회원이 탈퇴(API 17) 전에 본인임을 확인하려고, **가입한 이메일**로 6자리 인증번호를 보낸다. 받는 이메일은 서버가 로그인한 회원의 가입 이메일로 정하므로 요청으로 받지 않는다. 제공자에게 다시 로그인하게 하는 방식은 서버가 "다시 로그인했는가"를 확인할 증거를 받을 수 없어서(제공자 요청의 `prompt` 값은 브라우저가 보내는 값이라 지울 수 있다) 쓰지 않는다. 코드 규칙은 가입 중 본인인증(API 5·5-1)과 같다: 5분 안에 쓰고, 5번 틀리면 폐기하고, 같은 회원은 60초에 한 번만 받을 수 있다(세션을 새로 만들어도 같다). 새 코드를 받으면 이전 코드는 쓸 수 없다. 비밀번호가 있는 회원은 이 방식을 쓰지 않으므로 `FORBIDDEN`(현재 비밀번호로 탈퇴한다). 진행 상태는 세션에만 두고 DB 테이블은 만들지 않는다. |
+
+**Request**: 본문 없음
+
+**Response**
+
+- 202 Accepted (메일은 비동기로 보낸다)
+
+**Error**: `FORBIDDEN`(비밀번호가 있는 회원), `IDENTITY_CODE_TOO_SOON`(60초 안에 다시 요청), `IDENTITY_MAIL_UNAVAILABLE`, `UNAUTHORIZED`
+
+#### 17-2. 탈퇴 본인 확인 (받은 코드 확인)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification` |
+| Method | `POST` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #232 |
+| 설명 | 받은 6자리 코드가 맞으면 이 세션에서 그 회원의 탈퇴 본인 확인을 마친 것으로 기록한다. 확인은 **5분 동안 탈퇴 요청(API 17) 한 번**에 쓸 수 있고, 다른 회원이거나 시간이 지났으면 쓸 수 없다. 다른 이메일의 코드, 5분이 지난 코드, 이미 5번 틀린 코드는 구분하지 않고 `IDENTITY_CODE_EXPIRED` 로 알린다. |
+
+**Request**
+
+```json
+{ "code": "123456" }
+```
+
+- `code`: 숫자 6자리(아니면 400).
+
+**Response**
+
+- 204 No Content
+
+**Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`(코드를 받은 적이 없거나 만료·5회 실패), `FORBIDDEN`(비밀번호가 있는 회원), `UNAUTHORIZED`
 
 #### 18. 다른 회원 공개 프로필
 
@@ -861,7 +975,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
     { "cashHistoryId": 88, "historyType": "EARN", "title": "강의 완료 · 금리와 채권 가격", "amount": 3000, "balanceAfter": 12400, "createdAt": "2026-11-02T14:10:00" },
     { "cashHistoryId": 87, "historyType": "USE", "title": "청약통장 납입", "amount": -1000, "balanceAfter": 9400, "createdAt": "2026-11-02T09:00:00" }
   ],
-  "page": 0, "size": 20, "totalElements": 42
+  "page": 0, "size": 20, "totalElements": 42, "totalPages": 3
 }
 ```
 
@@ -885,7 +999,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 {
   "level": 8, "exp": 1120,
   "items": [ { "expHistoryId": 12, "sourceType": "COURSE_COMPLETE", "title": "금리와 채권 가격", "amount": 100, "levelAfter": 8, "createdAt": "2026-11-02T14:10:00" } ],
-  "page": 0, "size": 20, "totalElements": 12
+  "page": 0, "size": 20, "totalElements": 12, "totalPages": 1
 }
 ```
 
@@ -1023,7 +1137,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, SP-31 |
-| 설명 | 허가 + 공개 강의만. 소주제별 조회. |
+| 설명 | 허가 + 공개 강의만. 상위 카테고리 ID를 주면 그 아래 소주제 강의까지 모두. 강의 화면(#52)이 `categoryId`(소주제)로 묶고, 내 학습 상태(`status`)·끝까지 본 영상 수(`watchedLessonCount`)로 진행률을 그린다. 강사 이름은 강사 정보의 표시 이름. |
 
 **Request**
 
@@ -1034,9 +1148,10 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "items": [
-    { "courseId": 2, "title": "ETF로 시작하는 분산 투자", "instructorName": "박서연", "thumbnailUrl": null, "lessonCount": 3, "status": "IN_PROGRESS", "isScrapped": false }
+    { "courseId": 2, "categoryId": 15, "title": "ETF로 시작하는 분산 투자", "instructorName": "박서연", "thumbnailUrl": null,
+      "lessonCount": 3, "watchedLessonCount": 1, "status": "IN_PROGRESS", "infoBaseDate": null, "isScrapped": false }
   ],
-  "page": 0, "size": 20, "totalElements": 4
+  "page": 0, "size": 20, "totalElements": 4, "totalPages": 1
 }
 ```
 
@@ -1048,7 +1163,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-02, LRN-04, SP-41 |
-| 설명 | 강의 소개, 영상 목록(최대 3개)과 요약글, 진행 상태, 스크랩 여부. |
+| 설명 | 강의 소개, 영상 목록(최대 3개)과 요약글, 내 진행 상태(`progressStatus`·`lastLessonId`, 안 들었으면 null), 영상별 시청 완료(`isCompleted`, 서버가 정한 완료 #20), 스크랩 여부. 이어보기 위치는 영상 재생 정보(API 32)의 `positionSeconds`. 퀴즈 정보는 퀴즈 API(39·41)에서 받는다(#52에서 응답 모양을 구현에 맞춤). |
 
 **Request**
 
@@ -1059,15 +1174,14 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```json
 {
   "courseId": 7, "title": "청약통장 기초와 가점 계산", "description": "...",
-  "category": { "categoryId": 21, "name": "청약", "parentName": "부동산" },
-  "instructor": { "memberId": 31, "displayName": "박서연" },
+  "categoryId": 21, "categoryName": "청약",
+  "instructorId": 31, "instructorName": "박서연",
   "infoBaseDate": "2026-10-01", "infoSource": "청약홈",
   "lessons": [
     { "lessonId": 20, "sortOrder": 1, "title": "청약통장이 뭐예요?", "durationSeconds": 480, "summary": "...", "isCompleted": true },
     { "lessonId": 21, "sortOrder": 2, "title": "가점은 어떻게 계산할까", "durationSeconds": 840, "summary": "...", "isCompleted": false }
   ],
-  "progress": { "status": "IN_PROGRESS", "lastLessonId": 21, "lastPositionSeconds": 312, "completedAt": null },
-  "quiz": { "testQuizCount": 5, "quizCount": 10, "passScore": 70, "isQuizOpen": false },
+  "progressStatus": "IN_PROGRESS", "lastLessonId": 21,
   "isScrapped": true
 }
 ```
@@ -1082,7 +1196,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-03, LRN-05 |
-| 설명 | 재생 주소와 이어보기 위치. |
+| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
 
 **Request**
 
@@ -1091,7 +1205,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 **Response**
 
 ```json
-{ "lessonId": 21, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "positionSeconds": 312 }
+{ "lessonId": 21, "title": "가점은 어떻게 계산할까", "videoUrl": "https://...", "durationSeconds": 840, "positionSeconds": 312, "watchedSeconds": 300 }
 ```
 
 **Error**: `COURSE_NOT_PUBLIC`, `LESSON_NOT_FOUND`
@@ -1570,7 +1684,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `POST` |
 | 권한 | 회원 Lv.8 |
 | 관련 | INV-03~04, SP-51~52, DP-40 |
-| 설명 | 시즌당 1회, 첫 턴 종료 전까지(진행 중이고 현재 턴이 1일 때, 시작 전 시즌도 마감으로 본다). 투자 가능 금액 = 모은 캐시(참가할 때의 캐시 잔액) + 이월금(이 회원의 가장 최근 다른 시즌 `carryover_out`)으로 확정(이후 불변). **참가해도 회원 캐시는 빼지 않는다** (PM 결정, #23). 로그인 정보가 없으면 401 `UNAUTHORIZED` |
+| 설명 | 시즌당 1회, 첫 턴 종료 전까지(진행 중이고 현재 턴이 1일 때, 시작 전 시즌도 마감으로 본다). 투자 가능 금액 = 모은 캐시(참가할 때의 캐시 잔액) + 이월금(이 회원의 이전 시즌 `carryover_out`)으로 확정(이후 불변). 이전 시즌은 시작일이 현재 시즌보다 이르거나, 시작일이 같고 시즌 ID가 더 작은 시즌 중 이 회원이 참가한 시즌이다. 그중 시작일이 가장 늦은 시즌을 선택하고, 시작일도 같으면 시즌 ID가 가장 큰 시즌을 선택한다. 해당 이전 시즌이 아직 정산되지 않았으면 참가할 수 없다(409 `PREVIOUS_SEASON_NOT_SETTLED`, SP-63). **참가해도 회원 캐시는 빼지 않는다** (PM 결정, #23). 로그인 정보가 없으면 401 `UNAUTHORIZED` |
 
 **Request**
 
@@ -1583,7 +1697,7 @@ Header: Idempotency-Key: 7c1e...
 { "participantId": 120, "savedCash": 3200000, "carryoverIn": 1620000, "investAmount": 4820000 }
 ```
 
-**Error**: `LEVEL_LOCKED`, `ALREADY_JOINED`, `JOIN_CLOSED`, `NOT_FOUND`(없는 시즌), `UNAUTHORIZED`
+**Error**: `LEVEL_LOCKED`, `ALREADY_JOINED`, `JOIN_CLOSED`, `PREVIOUS_SEASON_NOT_SETTLED`, `NOT_FOUND`(없는 시즌), `UNAUTHORIZED`
 
 #### 55. 분야 목록
 
@@ -2342,7 +2456,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-08 |
-| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `todayOrders`·`nextTurnReady`·`missing` 은 모의투자(trading) 조회 메서드가 공개되기 전까지 null 이다. |
+| 설명 | 검수 대기 강의 수, 답변 대기 문의, 진행 중 시즌·턴, 참가자 수, 오늘 주문 수, 다음 턴 점검 결과. 진행 중인 시즌(진행·휴장·정산 중)이 없으면 `season` 은 null 이다. `members.total` 은 탈퇴한 회원을 포함한 학습자 수이고 강사·관리자는 세지 않는다. `season` 의 `todayOrders`(서울 기준 오늘 주문 수)·`nextTurnReady`(다음 턴의 가격·뉴스가 모두 준비돼 넘길 수 있는지, API 119 와 같은 기준)·`missing`(`prices` 는 다음 턴에 가격이 비어 있는 종목 수, `news` 는 다음 턴 뉴스가 하나도 없으면 1 아니면 0)은 진행·휴장 중인 시즌일 때 값이 나오고, 정산 중(SETTLING)인 시즌이면 null 이다. |
 
 **Request**
 
@@ -2925,7 +3039,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | NFR-13 |
-| 설명 | 값 변경, admin_log 기록. |
+| 설명 | 값 변경, admin_log 기록. `UNLOCK_LEVEL_TRADING`·`UNLOCK_LEVEL_HOUSING`을 바꾸면 모의투자·모의 청약 레벨 검사(와 모의 청약 화면 잠금)에 바로 반영된다(값이 없거나 1 미만이면 기본 Lv.8·Lv.12, #223). 모의투자 해금은 시즌과 상관없이 이 값 하나로 정한다. |
 
 **Request**
 
@@ -3049,9 +3163,9 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-- 준비(READY) → 진행 중(RUNNING)으로 바꿀 때 **이전 시즌**(시작일이 더 이른 가장 최근 시즌)이 있으면, 이전 시즌이 정산을 마치고 종료(ENDED, `settled_at` 있음)된 상태여야 한다. 아니면 `PREVIOUS_SEASON_NOT_SETTLED` (#207)
+- 준비(READY) → 진행 중(RUNNING)으로 바꿀 때 **이전 시즌**(시작일이 더 이른 가장 최근 시즌)이 있으면, 이전 시즌이 정산을 마치고 종료(ENDED, `settled_at` 있음)된 상태여야 한다. 아니면 `PREVIOUS_SEASON_SETTLE_REQUIRED` (#207)
 
-**Error**: `INVALID_STATUS_TRANSITION`, `PREVIOUS_SEASON_NOT_SETTLED`(409)
+**Error**: `INVALID_STATUS_TRANSITION`, `PREVIOUS_SEASON_SETTLE_REQUIRED`(409)
 
 #### 118. 턴 달력·진행 기록
 
@@ -3140,7 +3254,7 @@ email=admin@moneybeetle.kr&password=...
 - 휴장일(시즌 상태 `HOLIDAY` 또는 서울 기준 일요일)에는 점검 실패보다 먼저 `MARKET_HOLIDAY`로 거절한다
 - 뉴스 등록·수정·삭제와 분야·종목 변경도 같은 시즌 행 잠금을 잡고 처리해, 점검 직후 끼어들어 뉴스·가격이 빠진 채 턴이 넘어가지 않게 한다
 
-**Error**: `PREVIOUS_SEASON_NOT_SETTLED`(409, 이전 시즌 정산 전 — 점검보다 먼저 확인), `MARKET_STILL_OPEN`(409, 장이 열려 있는 동안 — 08:00~20:00), `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
+**Error**: `PREVIOUS_SEASON_SETTLE_REQUIRED`(409, 이전 시즌 정산 전 — 점검보다 먼저 확인), `MARKET_STILL_OPEN`(409, 장이 열려 있는 동안 — 08:00~20:00), `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 
 #### 121. 분야 목록
 
@@ -3626,7 +3740,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `GET` |
 | 권한 | 관리자 |
 | 관련 | ADM-36 |
-| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수. 신청 시작일 최신순. |
+| 설명 | 삭제되지 않은 단지와 일정, 오늘 기준 상태, 신청자 수, 산정 여부. 신청 시작일 최신순. |
 
 **Request**
 
@@ -3635,11 +3749,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3 } ] }
+{ "items": [ { "complexId": 1, "name": "그린숲 행복주택", "location": "가상시 덕양구", "areaType": "59㎡", "salePrice": 320000000, "supplyUnits": 120, "supplyType": "일반공급", "noticeDate": "2026-10-28", "applyStartDate": "2026-11-03", "applyEndDate": "2026-11-10", "announceDate": "2026-11-17", "status": "OPEN", "applicants": 3, "computed": false } ] }
 ```
 
 - `status`: `UPCOMING`(접수 전) · `OPEN`(접수 중) · `CLOSED`(마감, 발표 전) · `ANNOUNCED`(발표)
 - `applicants`가 1 이상이면 일정·공급 세대 수 수정(144)과 삭제(145)가 막힌다
+- `computed`: 당첨자 산정(147)을 했는지(`computed_at` 있음). 신청자가 0명이어도 산정하면 `true`. `true`면 일정·공급 세대 수 수정(144)이 막히고, 발표일부터 결과 발표(148)를 할 수 있다 (#63)
 
 #### 143. 공고 등록
 
@@ -3811,7 +3926,16 @@ email=admin@moneybeetle.kr&password=...
 | 회원 | `PASSWORD_MISMATCH` | 400 | 비밀번호가 서로 달라요 |
 | 회원 | `REQUIRED_TERMS_NOT_AGREED` | 400 | 필수 약관에 동의해 주세요 |
 | 회원 | `AGE_UNDER_14` | 400 | 만 14세 이상부터 가입할 수 있어요 |
+| 회원 | `IDENTITY_NOT_VERIFIED` | 400 | 본인인증을 먼저 해 주세요 |
+| 회원 | `IDENTITY_CODE_INVALID` | 400 | 인증번호가 맞지 않아요. 다시 확인해 주세요 |
+| 회원 | `IDENTITY_CODE_EXPIRED` | 400 | 인증번호가 만료되었거나 너무 많이 틀렸어요. 인증번호를 다시 받아 주세요 |
+| 회원 | `IDENTITY_CODE_TOO_SOON` | 429 | 인증번호는 1분에 한 번만 받을 수 있어요. 잠시 뒤에 다시 시도해 주세요 |
+| 회원 | `IDENTITY_REQUEST_LIMITED` | 429 | 요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요 |
+| 회원 | `IDENTITY_MAIL_UNAVAILABLE` | 503 | 지금은 인증 메일을 보낼 수 없어요. 잠시 뒤에 다시 시도해 주세요 |
 | 회원 | `OAUTH_FAILED` | 502 | 간편 로그인에 실패했어요. 다시 시도하거나 이메일로 로그인해 주세요 |
+| 회원 | `OAUTH_PROVIDER_UNAVAILABLE` | 503 | 지금은 이 간편 로그인을 쓸 수 없어요. 이메일로 로그인해 주세요 |
+| 회원 | `OAUTH_SESSION_EXPIRED` | 400 | 간편 로그인 정보가 만료됐어요. 처음부터 다시 시도해 주세요 |
+| 회원 | `WITHDRAW_VERIFICATION_REQUIRED` | 400 | 가입한 이메일로 받은 인증번호를 확인해 주세요 |
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
@@ -3820,6 +3944,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |
+| 모의투자 | `PREVIOUS_SEASON_NOT_SETTLED` | 409 | 이전 시즌 정산이 끝나면 참가할 수 있어요 |
 | 모의투자 | `NOT_JOINED` | 403 | 이번 시즌에 참가하지 않았어요. 먼저 참가해 주세요 |
 | 모의투자 | `NOT_ENOUGH_CASH` | 400 | 현금이 부족해요 |
 | 모의투자 | `NOT_ENOUGH_QUANTITY` | 400 | 보유한 수량보다 많이 팔 수 없어요 |
@@ -3856,7 +3981,7 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
-| 강사·관리자 | `PREVIOUS_SEASON_NOT_SETTLED` | 409 | 이전 시즌 정산을 먼저 마쳐 주세요 |
+| 강사·관리자 | `PREVIOUS_SEASON_SETTLE_REQUIRED` | 409 | 이전 시즌 정산을 먼저 마쳐 주세요 |
 | 강사·관리자 | `MARKET_STILL_OPEN` | 409 | 장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요 |
 | 강사·관리자 | `SEASON_PERIOD_OVERLAP` | 409 | 기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |

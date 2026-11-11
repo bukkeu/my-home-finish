@@ -100,7 +100,7 @@ class AuthLoginFlowTest {
                 new MemberService(memberRepository, mock(TermsRepository.class),
                         mock(com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository.class),
                         encoder, mock(com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService.class),
-                        clock, instructorProfileRepository), clock);
+                        clock, instructorProfileRepository, mock(com.wanted.moneybeetle.domain.member.model.dao.SocialAccountRepository.class)), clock);
         txManager = mock(org.springframework.transaction.PlatformTransactionManager.class);
         when(txManager.getTransaction(any())).thenReturn(mock(org.springframework.transaction.TransactionStatus.class));
         LoginAuthenticationProvider provider = new LoginAuthenticationProvider(authService, encoder, txManager);

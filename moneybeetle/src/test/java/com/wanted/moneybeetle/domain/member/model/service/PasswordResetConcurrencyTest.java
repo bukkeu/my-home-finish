@@ -70,6 +70,11 @@ class PasswordResetConcurrencyTest {
         }
 
         @Bean
+        WithdrawVerifier withdrawVerifier() {
+            return org.mockito.Mockito.mock(WithdrawVerifier.class);   // 이 테스트는 탈퇴를 쓰지 않는다 (AccountService 가 요구하는 빈만 채운다)
+        }
+
+        @Bean
         Clock clock() {
             return Clock.fixed(Instant.parse("2026-11-09T03:00:00Z"), ZoneId.of("Asia/Seoul"));   // 고정 시계: 토큰 만료 판단이 실행 시각·환경에 흔들리지 않게
         }
