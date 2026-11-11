@@ -64,7 +64,7 @@ class HousingApplicationServiceTest {
         when(accountRepository.findByMemberId(MEMBER_ID)).thenReturn(Optional.of(account(48)));
         when(applicationRepository.saveAndFlush(any(HousingApplication.class))).thenAnswer(call -> {
             HousingApplication saved = call.getArgument(0);
-            ReflectionTestUtils.setField(saved, "id", 40L);
+            ReflectionTestUtils.setField(saved, "housingApplicationId", 40L);
             return saved;
         });
     }
@@ -83,7 +83,7 @@ class HousingApplicationServiceTest {
 
     private HousingComplex complex(String status) {
         HousingComplex complex = BeanUtils.instantiateClass(HousingComplex.class);
-        ReflectionTestUtils.setField(complex, "id", 1L);
+        ReflectionTestUtils.setField(complex, "housingComplexId", 1L);
         ReflectionTestUtils.setField(complex, "name", "그린숲 행복주택");
         ReflectionTestUtils.setField(complex, "status", status);
         ReflectionTestUtils.setField(complex, "applyStartDate", LocalDate.of(2026, 11, 3));
@@ -95,7 +95,7 @@ class HousingApplicationServiceTest {
     private HousingApplication application(Long memberId, String result) {
         HousingApplication app = HousingApplication.create(memberId, 1L, "MB-261105-0042", 3, 1, 48,
                 8, 10, 6, LocalDateTime.of(2026, 11, 5, 10, 0));
-        ReflectionTestUtils.setField(app, "id", 40L);
+        ReflectionTestUtils.setField(app, "housingApplicationId", 40L);
         ReflectionTestUtils.setField(app, "result", result);
         return app;
     }

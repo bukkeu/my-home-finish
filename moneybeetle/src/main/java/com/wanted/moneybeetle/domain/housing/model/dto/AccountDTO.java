@@ -26,7 +26,7 @@ public class AccountDTO {
     // 오늘 납입 여부는 오늘 날짜가, 캐시는 다른 도메인(growth)이 알려 준다
     public static AccountDTO from(SubscriptionAccount account, LocalDate today, long cash) {
         return new AccountDTO(
-                account.getId(),
+                account.getSubscriptionAccountId(),
                 account.getBalance(),
                 account.getRecognizedAmount(),
                 account.getPaidCount(),

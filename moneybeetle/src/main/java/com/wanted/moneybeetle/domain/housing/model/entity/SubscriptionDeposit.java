@@ -24,7 +24,7 @@ public class SubscriptionDeposit extends CreatedTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "subscription_deposit_id")
-    private Long id;
+    private Long subscriptionDepositId;
 
     @Column(name = "subscription_account_id", nullable = false)
     private Long subscriptionAccountId;

@@ -65,7 +65,7 @@ class HousingServiceTest {
     // 신청 11/3 ~ 11/10, 발표 11/17, 120세대 단지 (엔티티 생성 메서드는 #47 에서 만들므로 테스트에서는 값을 직접 넣는다)
     private HousingComplex complex(long id, String status) {
         HousingComplex complex = BeanUtils.instantiateClass(HousingComplex.class);
-        ReflectionTestUtils.setField(complex, "id", id);
+        ReflectionTestUtils.setField(complex, "housingComplexId", id);
         ReflectionTestUtils.setField(complex, "name", "단지" + id);
         ReflectionTestUtils.setField(complex, "status", status);
         ReflectionTestUtils.setField(complex, "supplyUnits", 120);
@@ -78,7 +78,7 @@ class HousingServiceTest {
 
     private HousingApplication application(long id, long complexId) {
         HousingApplication application = BeanUtils.instantiateClass(HousingApplication.class);
-        ReflectionTestUtils.setField(application, "id", id);
+        ReflectionTestUtils.setField(application, "housingApplicationId", id);
         ReflectionTestUtils.setField(application, "memberId", MEMBER_ID);
         ReflectionTestUtils.setField(application, "housingComplexId", complexId);
         ReflectionTestUtils.setField(application, "receiptNo", "MB-261105-0042");
@@ -114,7 +114,7 @@ class HousingServiceTest {
 
     @Test
     void 없거나_삭제된_단지는_NOT_FOUND() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+        when(complexRepository.findByHousingComplexIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> serviceOn(LocalDate.of(2026, 11, 5)).getComplex(99L, MEMBER_ID))
                 .isInstanceOf(BusinessException.class)
@@ -124,7 +124,7 @@ class HousingServiceTest {
 
     @Test
     void 접수_마감_전에는_경쟁률이_null이고_신청자_수도_세지_않는다() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex(1, "OPEN")));
+        when(complexRepository.findByHousingComplexIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex(1, "OPEN")));
         when(applicationRepository.findByMemberIdAndHousingComplexId(MEMBER_ID, 1L)).thenReturn(Optional.empty());
 
         ComplexDetailDTO detail = serviceOn(LocalDate.of(2026, 11, 10)).getComplex(1L, MEMBER_ID);   // 마감일 당일
@@ -137,7 +137,7 @@ class HousingServiceTest {
 
     @Test
     void 접수_마감_뒤에는_경쟁률을_소수_둘째_자리까지_보여준다() {
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex(1, "OPEN")));
+        when(complexRepository.findByHousingComplexIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex(1, "OPEN")));
         when(applicationRepository.countByHousingComplexId(1L)).thenReturn(250L);   // 250명 / 120세대
         when(applicationRepository.findByMemberIdAndHousingComplexId(MEMBER_ID, 1L))
                 .thenReturn(Optional.of(application(40, 1)));

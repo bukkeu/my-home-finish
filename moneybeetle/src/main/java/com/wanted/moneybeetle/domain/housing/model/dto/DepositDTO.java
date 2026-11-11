@@ -22,7 +22,7 @@ public class DepositDTO {
 
     public static DepositDTO from(SubscriptionDeposit deposit) {
         return new DepositDTO(
-                deposit.getId(),
+                deposit.getSubscriptionDepositId(),
                 deposit.getPaidDate(),
                 deposit.getAmount(),
                 deposit.getRecognizedAmount(),

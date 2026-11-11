@@ -25,7 +25,7 @@ public interface HousingComplexRepository extends JpaRepository<HousingComplex, 
     List<HousingComplex> findByNoticeDateLessThanEqualAndAnnounceDateGreaterThanEqualAndDeletedAtIsNullOrderByApplyStartDate(
             LocalDate monthEnd, LocalDate monthStart);
 
-    Optional<HousingComplex> findByIdAndDeletedAtIsNull(Long id);
+    Optional<HousingComplex> findByHousingComplexIdAndDeletedAtIsNull(Long housingComplexId);
 
     // #47 관리자 단지 목록 (API 142) : 삭제 안 된 단지, 신청 시작일 최신순
     List<HousingComplex> findByDeletedAtIsNullOrderByApplyStartDateDesc();
@@ -34,6 +34,6 @@ public interface HousingComplexRepository extends JpaRepository<HousingComplex, 
     //  신청(#29)·관리자 수정·삭제(#47)·산정·발표(#48)가 모두 이 메서드로 단지를 먼저 잠근다.
     //  같은 단지에 대한 작업이 한 번에 하나씩만 진행돼 "신청자 없음 확인 → 변경" 사이에 신청이 끼어들지 못한다 (SP-76)
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT c FROM HousingComplex c WHERE c.id = :id AND c.deletedAt IS NULL")
+    @Query("SELECT c FROM HousingComplex c WHERE c.housingComplexId = :id AND c.deletedAt IS NULL")
     Optional<HousingComplex> findForUpdate(@Param("id") Long id);
 }

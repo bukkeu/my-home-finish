@@ -25,7 +25,7 @@ public class ApplicantDTO {
     private Integer resultRank;
 
     public static ApplicantDTO from(HousingApplication application, String nickname) {
-        return new ApplicantDTO(application.getId(), nickname, application.getReceiptNo(),
+        return new ApplicantDTO(application.getHousingApplicationId(), nickname, application.getReceiptNo(),
                 application.getTotalScore(), application.getPaidCountSnapshot(), application.getAppliedAt(),
                 application.getResult(), application.getResultRank());
     }

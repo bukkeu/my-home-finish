@@ -57,7 +57,7 @@ public class HousingService {
                         monthEnd, monthStart);
 
         // ③ 그중 내가 신청한 단지 번호 (DB 에 한 번만 물어본다)
-        List<Long> complexIds = complexes.stream().map(HousingComplex::getId).toList();
+        List<Long> complexIds = complexes.stream().map(HousingComplex::getHousingComplexId).toList();
         Set<Long> appliedIds = applicationRepository.findByMemberIdAndHousingComplexIdIn(memberId, complexIds)
                 .stream()
                 .map(HousingApplication::getHousingComplexId)
@@ -66,14 +66,14 @@ public class HousingService {
         // ④ 단지마다 DTO 로
         LocalDate today = LocalDate.now(clock);
         return complexes.stream()
-                .map(complex -> ComplexDTO.from(complex, today, appliedIds.contains(complex.getId())))
+                .map(complex -> ComplexDTO.from(complex, today, appliedIds.contains(complex.getHousingComplexId())))
                 .toList();
     }
 
     // API 64 공고 상세 : 경쟁률은 접수 마감 뒤에만, 내 신청 내역
     public ComplexDetailDTO getComplex(Long complexId, Long memberId) {
         // ① 단지 찾기 (없거나 삭제됐으면 404)
-        HousingComplex complex = complexRepository.findByIdAndDeletedAtIsNull(complexId)
+        HousingComplex complex = complexRepository.findByHousingComplexIdAndDeletedAtIsNull(complexId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
 
         LocalDate today = LocalDate.now(clock);
@@ -125,10 +125,10 @@ public class HousingService {
 
         // ③ 내역 저장 (먼저 저장해야 내역 번호를 캐시 사용 기록의 원인 번호로 쓸 수 있다). 회차는 ② 로 늘어난 값
         SubscriptionDeposit deposit = depositRepository.save(SubscriptionDeposit.create(
-                account.getId(), today, (int) amount, (int) recognized, account.getPaidCount()));
+                account.getSubscriptionAccountId(), today, (int) amount, (int) recognized, account.getPaidCount()));
 
         // ④ 캐시 차감 (부족하면 NOT_ENOUGH_CASH 예외 → ②·③ 도 함께 취소)
-        long cash = rewardService.spendCash(memberId, CashSource.SUBSCRIPTION_DEPOSIT, deposit.getId(), amount);
+        long cash = rewardService.spendCash(memberId, CashSource.SUBSCRIPTION_DEPOSIT, deposit.getSubscriptionDepositId(), amount);
 
         return DepositResultDTO.from(deposit, account, cash);
     }
@@ -137,7 +137,7 @@ public class HousingService {
     public PageResponse<DepositDTO> findDeposits(Long memberId, Pageable pageable) {
         SubscriptionAccount account = getAccountOf(memberId);
         Page<DepositDTO> page = depositRepository
-                .findBySubscriptionAccountId(account.getId(), pageable)
+                .findBySubscriptionAccountId(account.getSubscriptionAccountId(), pageable)
                 .map(DepositDTO::from);
         return PageResponse.from(page);
     }

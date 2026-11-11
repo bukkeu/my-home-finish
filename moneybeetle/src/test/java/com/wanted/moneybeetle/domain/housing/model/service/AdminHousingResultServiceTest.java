@@ -73,9 +73,9 @@ class AdminHousingResultServiceTest {
         complex = HousingComplex.create("비틀 파크", "서울 강서구", "84㎡", 650_000_000L, 2, "일반공급",
                 LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 3),
                 LocalDate.of(2026, 11, 10), ANNOUNCE_DAY, 1L);
-        ReflectionTestUtils.setField(complex, "id", 1L);
+        ReflectionTestUtils.setField(complex, "housingComplexId", 1L);
         when(complexRepository.findForUpdate(1L)).thenReturn(Optional.of(complex));
-        when(complexRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
+        when(complexRepository.findByHousingComplexIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(complex));
     }
 
     private AdminHousingService serviceOn(LocalDate today) {
@@ -87,7 +87,7 @@ class AdminHousingResultServiceTest {
     private HousingApplication app(long id, long memberId, int totalScore, int paidCount) {
         HousingApplication app = HousingApplication.create(memberId, 1L, "MB-261105-000" + id, 0, 0, paidCount,
                 totalScore, 0, 0, LocalDateTime.of(2026, 11, 5, 9, (int) id));
-        ReflectionTestUtils.setField(app, "id", id);
+        ReflectionTestUtils.setField(app, "housingApplicationId", id);
         return app;
     }
 

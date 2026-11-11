@@ -25,7 +25,7 @@ public class ComplexDTO {
 
     public static ComplexDTO from(HousingComplex complex, LocalDate today, boolean applied) {
         return new ComplexDTO(
-                complex.getId(),
+                complex.getHousingComplexId(),
                 complex.getName(),
                 complex.getNoticeDate(),
                 complex.getApplyStartDate(),
