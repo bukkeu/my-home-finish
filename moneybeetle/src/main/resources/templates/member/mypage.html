@@ -1,5 +1,96 @@
-<!-- comment.
-    담당 : PM 이재성 (#54, 마이페이지 틀)
-    원본 디자인 : UserMyPage.dc.html
-    경로 : /user/my-page (탭 틀만. 탭 내용은 fragments/mypage 의 각 담당 파일)
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : SCM 서수영 (#54, 마이페이지 틀 — 이재성에게서 넘겨받음 2026-11-11)
+  원본 디자인 : moneybeetle-page/UserMyPage.dc.html
+  경로 : /user/my-page (MyPageViewController)
+  구성 : 프로필 카드(내 정보 API) + 탭 7개. 틀은 탭 전환만 맡고, 탭 내용은 각 담당의 조각이 자기 API 로 불러온다 (#54 합의)
+    | 탭 버튼        | 탭 이름(?tab=·#) | 조각                                         | 담당       |
+    | 계정 설정      | settings         | fragments/mypage/settings :: settingsTabFragment | 김예린 #69 |
+    | 캐시 내역      | growth           | fragments/mypage/growth :: growthTabFragment     | 김예린 #69 |
+    | 나의 청약통장  | housing          | fragments/mypage/housing :: housingTabFragment   | 서수영 #70 |
+    | 퀴즈 오답노트  | wrong            | fragments/mypage/learning :: wrongTabFragment    | 신아림 #71 |
+    | 강의 스크랩    | scrap            | fragments/mypage/learning :: scrapTabFragment    | 신아림 #71 |
+    | 학습 기록      | learning         | fragments/mypage/learning :: historyTabFragment  | 신아림 #71 |
+    | Q&A·문의 모음  | qna              | fragments/mypage/learning :: qnaTabFragment      | 신아림 #71 |
+  - 아직 없는 조각은 "준비 중" 자리(fragments/mypage/pending)로 대신 그린다 → 각자 조각을 만들면 이 파일을 고치지 않아도 바로 보인다
+    (th:insert 는 수업 08_Spring-Web-MVC/chap07-thymeleaf 그대로. 조각이 없을 때 대신 쓰는 "?:" 는 수업에 없는 제안 — 임시, 팀 확인 2026-11-11)
+  - 탭을 열 때마다 document 에 'mypage:tab' 이벤트(detail: { tab: 'scrap' })를 보낸다. 조각 JS 는 이때 데이터를 불러온다
+  - 탭 안 class·id 는 겹치지 않게 접두어 : 김예린 mg-, 서수영 mh-, 신아림 ml-. 틀은 mp-
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('마이페이지')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/mypage.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('mypage')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+    <main class="mb-main mp" id="mp">
+      <h1 class="mp-title">마이페이지</h1>
+
+      <!--/* 프로필 카드 (GET /api/v1/members/me, 수상 내역은 GET /api/v1/members/{id}/profile) */-->
+      <section class="card mp-profile" aria-label="내 프로필">
+        <!--/* 프로필 사진 : 누르면 사진을 골라 바로 바꾼다 (API 15 POST /api/v1/members/me/profile-image, 2MB 이하 jpg·png) */-->
+        <div class="mp-avatar-wrap">
+          <label class="mp-avatar" title="사진 변경">
+            <input type="file" accept="image/png,image/jpeg" data-p="photoInput" aria-label="프로필 사진 변경">
+            <span class="mp-avatar__initial" data-p="initial">-</span>
+            <img data-p="image" alt="프로필 사진" hidden>
+            <span class="mp-avatar__hover">사진 변경</span>
+          </label>
+        </div>
+        <div class="mp-who">
+          <span class="mp-name" data-p="nickname">불러오는 중이에요…</span>
+          <span class="mp-email" data-p="email"></span>
+          <div class="mp-tags">
+            <span class="tag tag-accent" data-p="level">Lv.-</span>
+            <span class="tag mp-house" data-p="title"></span>
+            <!--/* 시안 "90 / 150 XP" : 공통 레이아웃 값(LayoutInterceptor, #249)의 지금 레벨 경험치 / 레벨 구간. 헤더와 같은 값 */-->
+            <span class="tag tag-neutral" data-p="exp"
+                  th:attr="data-exp-in=${layout != null ? layout.expInLevel : null}, data-exp-per=${layout != null ? layout.expPerLevel : null}">- / - XP</span>
+            <span class="tag tag-neutral mp-cash">
+              <img th:src="@{/images/cash-coin2.png}" alt="캐시"><span data-p="cash">-</span>
+            </span>
+            <span class="tag tag-neutral" data-p="streak">-</span>
+          </div>
+        </div>
+        <div class="mp-awards" data-p="awards" hidden>
+          <span class="card-kicker">수상내역</span>
+          <div class="mp-award-list" data-p="awardList"></div>
+        </div>
+      </section>
+
+      <nav class="mp-tabs" role="tablist" aria-label="마이페이지 메뉴">
+        <button type="button" role="tab" id="mp-tab-settings" aria-controls="mp-panel-settings" class="btn btn-primary" data-tab="settings" aria-selected="true">계정 설정</button>
+        <button type="button" role="tab" id="mp-tab-growth" aria-controls="mp-panel-growth" class="btn btn-secondary" data-tab="growth" aria-selected="false">캐시 내역</button>
+        <button type="button" role="tab" id="mp-tab-housing" aria-controls="mp-panel-housing" class="btn btn-secondary" data-tab="housing" aria-selected="false">나의 청약통장</button>
+        <button type="button" role="tab" id="mp-tab-wrong" aria-controls="mp-panel-wrong" class="btn btn-secondary" data-tab="wrong" aria-selected="false">퀴즈 오답노트</button>
+        <button type="button" role="tab" id="mp-tab-scrap" aria-controls="mp-panel-scrap" class="btn btn-secondary" data-tab="scrap" aria-selected="false">강의 스크랩</button>
+        <button type="button" role="tab" id="mp-tab-learning" aria-controls="mp-panel-learning" class="btn btn-secondary" data-tab="learning" aria-selected="false">학습 기록</button>
+        <button type="button" role="tab" id="mp-tab-qna" aria-controls="mp-panel-qna" class="btn btn-secondary" data-tab="qna" aria-selected="false">Q&amp;A·문의 모음</button>
+      </nav>
+
+      <!--/* 탭 영역 : 조각이 없으면 "준비 중" 자리로 대신 그린다 */-->
+      <section class="mp-panel" role="tabpanel" id="mp-panel-settings" aria-labelledby="mp-tab-settings" data-panel="settings"
+               th:insert="~{fragments/mypage/settings :: settingsTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('계정 설정')}"></section>
+      <section class="mp-panel" role="tabpanel" id="mp-panel-growth" aria-labelledby="mp-tab-growth" data-panel="growth" hidden
+               th:insert="~{fragments/mypage/growth :: growthTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('캐시 내역')}"></section>
+      <section class="mp-panel" role="tabpanel" id="mp-panel-housing" aria-labelledby="mp-tab-housing" data-panel="housing" hidden
+               th:insert="~{fragments/mypage/housing :: housingTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('나의 청약통장')}"></section>
+      <section class="mp-panel" role="tabpanel" id="mp-panel-wrong" aria-labelledby="mp-tab-wrong" data-panel="wrong" hidden
+               th:insert="~{fragments/mypage/learning :: wrongTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('퀴즈 오답노트')}"></section>
+      <section class="mp-panel" role="tabpanel" id="mp-panel-scrap" aria-labelledby="mp-tab-scrap" data-panel="scrap" hidden
+               th:insert="~{fragments/mypage/learning :: scrapTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('강의 스크랩')}"></section>
+      <section class="mp-panel" role="tabpanel" id="mp-panel-learning" aria-labelledby="mp-tab-learning" data-panel="learning" hidden
+               th:insert="~{fragments/mypage/learning :: historyTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('학습 기록')}"></section>
+      <section class="mp-panel" role="tabpanel" id="mp-panel-qna" aria-labelledby="mp-tab-qna" data-panel="qna" hidden
+               th:insert="~{fragments/mypage/learning :: qnaTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('Q&A·문의 모음')}"></section>
+    </main>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/mypage.js}"></script>
+</body>
+</html>

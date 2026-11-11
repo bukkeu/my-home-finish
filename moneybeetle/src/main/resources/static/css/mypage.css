@@ -1,0 +1,57 @@
+/* comment.
+*  담당 : SCM 서수영 (#54, 마이페이지 틀)
+*  원본 디자인 : moneybeetle-page/UserMyPage.dc.html (프로필 카드·수상내역 메달·탭 버튼의 크기·색·간격은 시안 값을 그대로 옮겼다)
+*  공통 토큰(var(--color-*))과 .btn · .tag · .card 는 common.css 것을 쓰고, 틀에만 쓰는 것은 mp- 로 시작한다
+*  탭 내용(조각)의 스타일은 각 담당이 자기 접두어로 만든다 : 김예린 mg-, 서수영 mh-, 신아림 ml-
+*  */
+
+.mp { display: flex; flex-direction: column; gap: 32px; box-sizing: border-box; }   /* 여백은 공통 .mb-main (시안 main 과 같은 값) */
+.mp [hidden] { display: none !important; }
+.mp-title { margin: 0; font-size: 36px; }
+.mp .card-kicker { color: var(--color-accent-700); font-weight: 600; font-size: 10px; }
+
+/* ---------- 프로필 카드 ---------- */
+.mp-profile { padding: 24px; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 20px; }
+.mp-avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
+.mp-avatar { position: relative; width: 72px; height: 72px; border-radius: 50%; overflow: hidden; cursor: pointer; display: block; }
+.mp-avatar input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.mp-avatar__initial {
+  width: 100%; height: 100%; background: var(--color-accent-200); color: var(--color-accent-800, var(--color-accent-700));
+  display: grid; place-items: center; font-weight: 700; font-size: 24px;
+}
+.mp-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mp-avatar__hover {
+  position: absolute; inset: 0; background: rgba(38, 59, 26, .55); color: #fff;
+  display: grid; place-items: center; font-size: 12px; font-weight: 600; opacity: 0;
+}
+.mp-avatar:hover .mp-avatar__hover, .mp-avatar:focus-within .mp-avatar__hover { opacity: 1; }
+.mp-avatar:focus-within { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.mp-who { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; }
+.mp-name { font-weight: 700; font-size: 20px; }
+.mp-email { font-size: 14px; color: var(--color-neutral-700); }
+.mp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+/* 시안의 카드 안 태그 : 11px, 3px 10px, 테두리 없음, 회색 태그(tag-neutral) 바탕 #F5F5F8 (공통 .tag 는 그대로 두고 이 카드에서만) */
+.mp-tags .tag { font-size: 11px; padding: 3px 10px; border: 0; }
+.mp-tags .tag-neutral { background: #F5F5F8; }
+.mp-house { color: #263B1A; font-weight: 700; }
+.mp-cash { display: inline-flex; align-items: center; gap: 4px; }
+.mp-cash img { width: 13px; height: 13px; flex: none; }
+
+/* 수상내역 메달 (시즌 랭킹 1~3위, 메달 그림 위에 시즌 번호) */
+.mp-awards { display: flex; flex-direction: column; gap: 6px; }
+.mp-award-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mp-medal {
+  position: relative; display: inline-block; flex: none; width: 40px; height: 40px;
+  background-image: url('../images/medals.png'); background-size: 300% 100%; background-repeat: no-repeat;
+}
+.mp-medal span {
+  position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: 42%; height: 42%; border-radius: 50%;
+  font-weight: 800; line-height: 1; display: grid; place-items: center; font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 탭 ---------- */
+.mp-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.mp-tabs .btn { padding: 9px 18px; }
+.mp-panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.mp-pending { padding: 32px; display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; color: var(--color-neutral-700); font-size: 14px; }
+.mp-pending b { color: var(--color-text); font-size: 16px; }

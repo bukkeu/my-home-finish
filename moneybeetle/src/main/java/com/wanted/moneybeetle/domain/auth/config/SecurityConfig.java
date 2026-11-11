@@ -86,7 +86,7 @@ public class SecurityConfig {
         // 같은 제공자가 위·아래 두 인증 관리자에 모두 들어가 로그인 한 번에 실패가 두 번 기록된다 (LoginHttpTest 가 이를 확인한다)
 
         http.authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login",
+                    auth.requestMatchers("/", "/login", "/signup", "/password-reset", "/instructor/login", "/instructor/signup",
                             "/admin/login","/error", "/error/**", "/uploads/**", "/api/v1/auth/**", "/api/v1/agreements", "/api/v1/admin/auth/login").permitAll();      // ④ 누구나
                     // 화면에 쓰는 정적 파일(CSS·JS·이미지): 로그인 전 화면(/login, /signup)도 그려야 하므로 누구나 (#230)
                     auth.requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();

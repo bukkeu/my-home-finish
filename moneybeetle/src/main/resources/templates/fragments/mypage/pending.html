@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>마이페이지 준비 중 탭 조각</title>
+</head>
+<body>
+<!--/* comment.
+  담당 : SCM 서수영 (#54, 마이페이지 틀)
+  내용 : 아직 담당 조각이 없는 탭에 대신 보여 주는 자리. 각 담당이 자기 조각을 만들면 틀이 그 조각을 그린다 (member/mypage.html)
+  사용 : th:insert="~{fragments/mypage/settings :: settingsTabFragment} ?: ~{fragments/mypage/pending :: pendingTabFragment('계정 설정')}"
+*/-->
+<div th:fragment="pendingTabFragment(label)" class="card mp-pending">
+  <b th:text="${label}">탭</b>
+  <span>이 탭은 준비 중이에요.</span>
+</div>
+</body>
+</html>
