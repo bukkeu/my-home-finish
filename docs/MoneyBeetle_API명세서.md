@@ -718,6 +718,8 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 }
 ```
 
+- `unlocks` 의 해금 여부와 `housingLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값으로 판단한다(#238).
+
 #### 14. 설정 수정
 
 | 항목 | 내용 |
@@ -917,7 +919,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 - `training.housingSummary` 는 모의 청약이 열려 있을 때(`training.housing.unlocked`)만 값이 있고, 이번 달에 걸친 단지 중 접수 중(`OPEN`)인 공고 수(`openComplexes`)와 내 청약통장 납입 횟수(`paidCount`, 통장이 없으면 `null`)다. 해금되지 않았거나 공고를 읽지 못하면 `null`이다.
 - 요약(`tradingSeason`·`housingSummary`)을 만들지 못해도 오류가 아니다. 홈 전체가 실패하지 않고 그 요약만 `null`이다. 참가자 수는 학습자용으로 열린 값이 없어 아직 주지 않는다.
 - `learning` 은 본 영상 수와 학습 완료한 강의 수다.
-- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다.
+- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다. `requiredLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값이라 레벨 검사(`LEVEL_LOCKED`)와 같은 기준이다(#238).
 
 #### 20. 오늘의 경제 용어
 

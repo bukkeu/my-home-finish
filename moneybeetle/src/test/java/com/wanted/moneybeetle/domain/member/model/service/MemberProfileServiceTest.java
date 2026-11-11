@@ -21,10 +21,13 @@ import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.file.FileStorageService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +46,7 @@ class MemberProfileServiceTest {
     private CourseService courseService;
     private FileStorageService fileStorageService;
     private AttendanceService attendanceService;
+    private SystemSettingService systemSettingService;
     private MemberProfileService service;
 
     @BeforeEach
@@ -52,7 +56,9 @@ class MemberProfileServiceTest {
         courseService = mock(CourseService.class);
         fileStorageService = mock(FileStorageService.class);
         attendanceService = mock(AttendanceService.class);
-        service = new MemberProfileService(memberService, growthService, courseService, attendanceService, fileStorageService);
+        systemSettingService = mock(SystemSettingService.class);   // 설정이 없으면 기본 해금 레벨 8·12
+        service = new MemberProfileService(memberService, growthService, courseService, attendanceService, fileStorageService,
+                new UnlockLevelProvider(systemSettingService));
 
         LevelTable table = levelTable();   // when() 안에서 다른 Mock 을 만들지 않도록 먼저 만든다
         when(growthService.loadLevelTable()).thenReturn(table);
@@ -110,6 +116,33 @@ class MemberProfileServiceTest {
         assertThat(info.expToNextLevel()).isZero();
         assertThat(info.attendance().daysToReward()).isZero();
         assertThat(info.unlocks().housing()).isTrue();
+    }
+
+    @Test
+    @DisplayName("#238 관리자가 해금 레벨을 바꾸면 내 정보도 그 값으로 해금 여부·필요 레벨을 안내한다 (청약 8·15, 모의투자 6·10)")
+    void unlocksFollowOperationSettings() {
+        when(attendanceService.getStatus(1L)).thenReturn(new AttendanceStatusDTO(3, 2, 10_000, true));
+
+        // 청약 8, 모의투자 6 : Lv.8 회원은 둘 다 열림, 청약 필요 레벨 8
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_HOUSING")).thenReturn(OptionalInt.of(8));
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(6));
+        when(memberService.getProfile(1L)).thenReturn(profile(8, 1120, 3));
+        MyInfoDTO lowered = service.getMyInfo(1L);
+        assertThat(lowered.unlocks().housing()).isTrue();
+        assertThat(lowered.unlocks().housingLevel()).isEqualTo(8);
+        assertThat(lowered.unlocks().trading()).isTrue();
+
+        // 청약 15, 모의투자 10 : Lv.12 회원은 청약 잠김(필요 15), Lv.9 회원은 모의투자도 잠김
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_HOUSING")).thenReturn(OptionalInt.of(15));
+        when(systemSettingService.findIntValue("UNLOCK_LEVEL_TRADING")).thenReturn(OptionalInt.of(10));
+        when(memberService.getProfile(1L)).thenReturn(profile(12, 1800, 3));
+        MyInfoDTO lv12 = service.getMyInfo(1L);
+        assertThat(lv12.unlocks().housing()).isFalse();
+        assertThat(lv12.unlocks().housingLevel()).isEqualTo(15);
+        assertThat(lv12.unlocks().trading()).isTrue();
+
+        when(memberService.getProfile(1L)).thenReturn(profile(9, 1300, 3));
+        assertThat(service.getMyInfo(1L).unlocks().trading()).isFalse();
     }
 
     @Test
