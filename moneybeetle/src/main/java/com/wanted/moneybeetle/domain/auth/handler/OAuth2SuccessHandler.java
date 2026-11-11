@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.auth.handler;
 
 import com.wanted.moneybeetle.domain.auth.model.dto.SocialProfile;
+import com.wanted.moneybeetle.domain.auth.model.service.MaskedException;
 import com.wanted.moneybeetle.domain.auth.model.service.SocialLoginService;
 import com.wanted.moneybeetle.domain.auth.model.service.SocialProfileExtractor;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
@@ -63,8 +64,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         } catch (BusinessException e) {
             redirectError(request, response, e.getErrorCode().getCode());
         } catch (RuntimeException e) {
-            // 어떤 값이 문제였는지(이메일·토큰)는 남기지 않고 예외 종류만 남긴다
-            log.warn("간편 로그인 처리에 실패했어요: {}", e.getClass().getSimpleName());
+            // 원인을 찾을 수 있게 예외(스택 포함)를 남기되, 메시지에 섞일 수 있는 이메일 주소는 가린 복사본을 남긴다 (토큰은 남기지 않는다)
+            log.warn("간편 로그인 처리에 실패했어요", MaskedException.of(e));
             redirectError(request, response, MemberErrorCode.OAUTH_FAILED.getCode());
         }
     }
@@ -82,7 +83,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         try {
             attendanceService.checkToday(member.getMemberId());
         } catch (RuntimeException e) {
-            log.warn("간편 로그인 출석 기록에 실패했어요: memberId={}, {}", member.getMemberId(), e.getClass().getSimpleName());
+            log.warn("간편 로그인 출석 기록에 실패했어요: memberId={}", member.getMemberId(), MaskedException.of(e));
         }
     }
 }
