@@ -55,10 +55,13 @@ class AdminTradingPageRenderTest {
         assertThat(html).contains("id=\"at-next-btn\"", "되돌릴 수 없어요");
         assertThat(html).contains("/js/admin-trading.js", "/css/admin-trading.css", "/js/common.js");
         assertThat(html).contains("가상 실습이며 실제 금융 거래가 아니에요");   // 모의투자 화면 공통 안내 (NFR-12)
-        assertThat(html).contains("mb-admin-side", "data-mb-pinned");   // 관리자 고정 사이드바
+        assertThat(html).contains("mb-admin-side", "data-mb-pinned", "role=\"tablist\"");   // 관리자 고정 사이드바
         // 왼쪽 운영 메뉴에 보기 7개가 모두 있다
         for (String tab : new String[] {"season", "turn", "stocks", "prices", "news", "people", "ranking"}) {
             assertThat(html).contains("data-at-tab=\"" + tab + "\"");
+            // 메뉴는 같은 화면의 보기 전환이므로 ARIA 탭으로 보기와 이어진다
+            assertThat(html).contains("id=\"at-tab-" + tab + "\"", "aria-controls=\"at-panel-" + tab + "\"",
+                    "aria-labelledby=\"at-tab-" + tab + "\"");
         }
     }
 

@@ -158,7 +158,8 @@
     tabButtons.forEach(function (b) {
       var on = b.getAttribute('data-at-tab') === tab;
       b.classList.toggle('is-active', on);
-      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;   // 탭 목록은 한 칸으로 들어가 방향키로 움직인다
     });
     root.querySelectorAll('[data-at-panel]').forEach(function (p) { p.hidden = p.getAttribute('data-at-panel') !== tab; });
     try { history.replaceState(null, '', '#' + tab); } catch (e) { /* 주소 표시만 못 바꾼다 */ }
@@ -176,6 +177,19 @@
       var overlay = document.querySelector('[data-mb-overlay]');
       if (side && side.getAttribute('data-open') === 'true' && overlay) overlay.click();
     });
+  });
+
+  // 방향키(↑↓←→)·Home·End 로 다른 메뉴로 옮기면 바로 그 보기를 연다 (tablist 규약)
+  $('at-nav').addEventListener('keydown', function (e) {
+    var step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
+    var list = Array.prototype.slice.call(tabButtons);
+    var at = list.indexOf(document.activeElement);
+    if (at < 0) return;
+    var to = e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : step[e.key] ? (at + step[e.key] + list.length) % list.length : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    list[to].focus();
+    openTab(list[to].getAttribute('data-at-tab'));
   });
 
   /* =====================================================================
@@ -620,7 +634,7 @@
     var ed = state.edits[editKey(row.stockId, t)];
     return (ed ? 'dirty ' : row.prices[t - 1] == null ? 'empty ' : '') + (isWarn(row, t) ? 'warn' : '');
   }
-  function rowOf(stockId) { return state.prices.rows.filter(function (r) { return String(r.stockId) === String(stockId); })[0]; }
+  function rowOf(stockId) { return !state.prices ? undefined : state.prices.rows.filter(function (r) { return String(r.stockId) === String(stockId); })[0]; }
 
   priceRows.addEventListener('input', function (e) {
     var input = e.target;
@@ -654,7 +668,7 @@
       if (mode === state.mode) return;
       if (Object.keys(state.edits).length) return MB.toast('저장하거나 되돌린 뒤에 입력 방식을 바꿔 주세요', 'error');
       state.mode = mode;
-      root.querySelectorAll('[data-at-mode]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      root.querySelectorAll('[data-at-mode]').forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
       $('at-rate-help').hidden = mode !== 'rate';
       if (state.prices) renderPrices();
     });
@@ -970,7 +984,7 @@
   root.querySelectorAll('[data-at-rank]').forEach(function (b) {
     b.addEventListener('click', function () {
       state.rankType = b.getAttribute('data-at-rank');
-      root.querySelectorAll('[data-at-rank]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      root.querySelectorAll('[data-at-rank]').forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
       loadRankPreview();
     });
   });
@@ -991,6 +1005,8 @@
       if (!ok) return;
       return busy(btn, api(seasonPath('/rankings/publish'), { method: 'POST' })).then(function () {
         MB.toast('랭킹을 공개했어요');
+        // 시즌은 서버에서 종료로 바뀐다 -> 머리 알약·상태 버튼·정산 탭을 새 상태로 다시 그린다 (정산 버튼과 같다)
+        return loadSeasons(currentSeasonId()).then(loadRanking);
       }, toastError);
     });
   });

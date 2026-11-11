@@ -25,32 +25,32 @@
       <div class="at-side__check"><span>다음 턴 점검</span><b id="at-side-check">확인 중</b></div>
     </div>
     <span class="at-side__label">모의 투자 관리</span>
-    <nav class="at-nav" aria-label="모의투자 운영" id="at-nav">
-      <button type="button" class="at-nav__item is-active" title="시즌 관리" data-at-tab="season" aria-current="page">
+    <nav class="at-nav" aria-label="모의투자 운영" id="at-nav" role="tablist" aria-orientation="vertical">
+      <button type="button" class="at-nav__item is-active" title="시즌 관리" data-at-tab="season" role="tab" id="at-tab-season" aria-controls="at-panel-season" aria-selected="true" tabindex="0">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18"></path><path d="M8 2v4"></path><path d="M16 2v4"></path></svg>
         <span>시즌 관리</span>
       </button>
-      <button type="button" class="at-nav__item" title="턴 진행" data-at-tab="turn">
+      <button type="button" class="at-nav__item" title="턴 진행" data-at-tab="turn" role="tab" id="at-tab-turn" aria-controls="at-panel-turn" aria-selected="false" tabindex="-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path><path d="M4 18V6"></path></svg>
         <span>턴 진행</span><i class="at-dot" id="at-turn-dot" hidden></i>
       </button>
-      <button type="button" class="at-nav__item" title="분야·종목" data-at-tab="stocks">
+      <button type="button" class="at-nav__item" title="분야·종목" data-at-tab="stocks" role="tab" id="at-tab-stocks" aria-controls="at-panel-stocks" aria-selected="false" tabindex="-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-6"></path></svg>
         <span>분야·종목</span>
       </button>
-      <button type="button" class="at-nav__item" title="턴별 가격" data-at-tab="prices">
+      <button type="button" class="at-nav__item" title="턴별 가격" data-at-tab="prices" role="tab" id="at-tab-prices" aria-controls="at-panel-prices" aria-selected="false" tabindex="-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
         <span>턴별 가격</span>
       </button>
-      <button type="button" class="at-nav__item" title="뉴스 관리" data-at-tab="news">
+      <button type="button" class="at-nav__item" title="뉴스 관리" data-at-tab="news" role="tab" id="at-tab-news" aria-controls="at-panel-news" aria-selected="false" tabindex="-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"></path><path d="M8 8h7"></path><path d="M8 12h7"></path></svg>
         <span>뉴스 관리</span>
       </button>
-      <button type="button" class="at-nav__item" title="참가자 관리" data-at-tab="people">
+      <button type="button" class="at-nav__item" title="참가자 관리" data-at-tab="people" role="tab" id="at-tab-people" aria-controls="at-panel-people" aria-selected="false" tabindex="-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7"></path><path d="M18 14a6.5 6.5 0 0 1 3.5 6"></path></svg>
         <span>참가자 관리</span>
       </button>
-      <button type="button" class="at-nav__item" title="정산·랭킹" data-at-tab="ranking">
+      <button type="button" class="at-nav__item" title="정산·랭킹" data-at-tab="ranking" role="tab" id="at-tab-ranking" aria-controls="at-panel-ranking" aria-selected="false" tabindex="-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v5a5 5 0 0 1-10 0z"></path></svg>
         <span>정산·랭킹</span>
       </button>
@@ -85,7 +85,7 @@
       </header>
 
       <!-- ===== 시즌 관리 (ADM-09~12, API 114~117) ===== -->
-      <section class="at-panel" id="at-panel-season" role="tabpanel" data-at-panel="season">
+      <section class="at-panel" id="at-panel-season" role="tabpanel" aria-labelledby="at-tab-season" data-at-panel="season">
         <section class="at-card">
           <div class="at-card__head"><div><h2>시즌 상태</h2><p>준비 → 진행 중 ⇄ 휴장 → 정산 → 종료 순서로만 바뀌어요. 거꾸로 돌아갈 수 없어요</p></div></div>
           <div class="at-steps" id="at-status-steps"></div>
@@ -136,7 +136,7 @@
       </section>
 
       <!-- ===== 턴 진행 (ADM-13~15, API 118~120) ===== -->
-      <section class="at-panel" id="at-panel-turn" role="tabpanel" data-at-panel="turn" hidden>
+      <section class="at-panel" id="at-panel-turn" role="tabpanel" aria-labelledby="at-tab-turn" data-at-panel="turn" hidden>
         <section class="at-card">
           <div class="at-card__head"><div><h2 id="at-next-title">다음 턴 진행</h2><p>누르기 전에 다음 턴의 30개 종목 가격과 뉴스가 모두 있는지 자동으로 점검해요</p></div>
             <button type="button" class="at-btn ghost sm" id="at-check-reload">다시 점검</button></div>
@@ -166,7 +166,7 @@
       </section>
 
       <!-- ===== 분야·종목·기업정보 (ADM-16~18, API 121~126) ===== -->
-      <section class="at-panel" id="at-panel-stocks" role="tabpanel" data-at-panel="stocks" hidden>
+      <section class="at-panel" id="at-panel-stocks" role="tabpanel" aria-labelledby="at-tab-stocks" data-at-panel="stocks" hidden>
         <section class="at-card">
           <div class="at-card__head"><div><h2>분야</h2><p>15개 분야를 등록·수정해요. 분야마다 사용 중인 종목은 2개예요</p></div></div>
           <div class="at-sectors" id="at-sector-list"><div class="at-empty">불러오는 중…</div></div>
@@ -211,14 +211,14 @@
       </section>
 
       <!-- ===== 턴별 가격 (ADM-19~24, API 127~130) ===== -->
-      <section class="at-panel" id="at-panel-prices" role="tabpanel" data-at-panel="prices" hidden>
+      <section class="at-panel" id="at-panel-prices" role="tabpanel" aria-labelledby="at-tab-prices" data-at-panel="prices" hidden>
         <section class="at-card">
           <div class="at-card__head">
             <div><h2>가격표</h2><p id="at-price-desc">지난 턴과 현재 턴은 잠겨 있어요</p></div>
             <div class="at-row">
               <div class="at-seg" role="group" aria-label="입력 방식">
-                <button type="button" data-at-mode="price" class="on">가격 입력</button>
-                <button type="button" data-at-mode="rate">변동률 입력</button>
+                <button type="button" data-at-mode="price" class="on" aria-pressed="true">가격 입력</button>
+                <button type="button" data-at-mode="rate" aria-pressed="false">변동률 입력</button>
               </div>
               <button type="button" class="at-btn ghost sm" id="at-csv-export">CSV 내려받기</button>
               <label class="at-btn ghost sm file">CSV 올리기<input type="file" id="at-csv-import" accept=".csv,text/csv"></label>
@@ -241,7 +241,7 @@
       </section>
 
       <!-- ===== 뉴스 관리 (ADM-25~27, API 131~134) ===== -->
-      <section class="at-panel" id="at-panel-news" role="tabpanel" data-at-panel="news" hidden>
+      <section class="at-panel" id="at-panel-news" role="tabpanel" aria-labelledby="at-tab-news" data-at-panel="news" hidden>
         <div class="at-grid2 wide-left">
           <section class="at-card">
             <div class="at-card__head"><div><h2>턴별 뉴스</h2><p>턴당 2~3개를 내요</p></div>
@@ -271,7 +271,7 @@
       </section>
 
       <!-- ===== 참가자 (ADM-28, API 135~136) ===== -->
-      <section class="at-panel" id="at-panel-people" role="tabpanel" data-at-panel="people" hidden>
+      <section class="at-panel" id="at-panel-people" role="tabpanel" aria-labelledby="at-tab-people" data-at-panel="people" hidden>
         <div class="at-grid2 wide-left">
           <section class="at-card">
             <div class="at-card__head"><div><h2>참가자</h2><p>순자산이 높은 순서예요</p></div></div>
@@ -290,7 +290,7 @@
       </section>
 
       <!-- ===== 정산·랭킹·통계 (ADM-31~33, 35, API 137~139, 141) : 최소 구성 ===== -->
-      <section class="at-panel" id="at-panel-ranking" role="tabpanel" data-at-panel="ranking" hidden>
+      <section class="at-panel" id="at-panel-ranking" role="tabpanel" aria-labelledby="at-tab-ranking" data-at-panel="ranking" hidden>
         <section class="at-card">
           <div class="at-card__head"><div><h2>정산·공개</h2><p>시즌 상태가 ‘정산’이 되면 정산 실행 → 결과 확인 → 랭킹 공개 순서로 진행해요. 되돌릴 수 없어요</p></div></div>
           <div class="at-row">
@@ -303,8 +303,8 @@
           <section class="at-card">
             <div class="at-card__head"><div><h2>랭킹 미리보기</h2><p>관리자만 볼 수 있어요 · 동점은 같은 순위예요</p></div>
               <div class="at-seg" role="group" aria-label="랭킹 기준">
-                <button type="button" data-at-rank="ASSET" class="on">순자산</button>
-                <button type="button" data-at-rank="RETURN">수익률</button>
+                <button type="button" data-at-rank="ASSET" class="on" aria-pressed="true">순자산</button>
+                <button type="button" data-at-rank="RETURN" aria-pressed="false">수익률</button>
               </div></div>
             <div class="at-table-wrap">
               <table class="at-table">
