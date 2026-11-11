@@ -63,7 +63,7 @@ class AdminMemberRepositoryStatusTest {
         withdrawn.withdraw(LocalDateTime.of(2026, 10, 1, 9, 0));
         memberRepository.saveAndFlush(withdrawn);
 
-        Page<Member> all = adminMemberRepository.search(null, (String) null, null, PageRequest.of(0, 10));
+        Page<Member> all = adminMemberRepository.search(null, null, null, PageRequest.of(0, 10));
         Page<Member> onlySuspended = adminMemberRepository.search(null, "SUSPENDED", null, PageRequest.of(0, 10));
         Page<Member> onlyActive = adminMemberRepository.search(null, "ACTIVE", null, PageRequest.of(0, 10));
 

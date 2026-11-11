@@ -35,13 +35,13 @@ public interface AdminMemberRepository extends Repository<Member, Long> {
               and (:keyword is null or m.nickname like concat('%', :keyword, '%') escape '!'
                    or m.email like concat('%', :keyword, '%') escape '!')
             """)
-    Page<Member> search(@Param("role") String role, @Param("status") MemberStatus status,
+    Page<Member> searchByStatus(@Param("role") String role, @Param("status") MemberStatus status,
                         @Param("keyword") String keyword, Pageable pageable);
 
     /* 상태를 문자열("ACTIVE" 등)로 받는 기존 호출을 위한 연결 메서드 (#288). Member.status 가 enum 이 되어 JPQL 파라미터도 enum 이어야 해서,
-     * 문자열을 MemberStatus 로 바꿔 위 메서드를 부른다. 기존 호출부(AdminMemberService)는 그대로 쓴다. null 이면 상태 필터가 없다 */
+     * 문자열을 MemberStatus 로 바꿔 위 메서드(searchByStatus)를 부른다. 이름을 나눈 것은 상태에 null 을 직접 넘기는 기존 호출이 두 오버로드 사이에서 모호해지지 않게 하려는 것이다. 기존 호출부(AdminMemberService)는 그대로 쓴다. null 이면 상태 필터가 없다 */
     default Page<Member> search(String role, String status, String keyword, Pageable pageable) {
-        return search(role, status == null ? null : MemberStatus.from(status), keyword, pageable);
+        return searchByStatus(role, status == null ? null : MemberStatus.from(status), keyword, pageable);
     }
 
     /* API 104 강사 가입 신청 목록: 실제로 신청한(applied_at 있는) 강사만, 승인 상태별(기본 PENDING), 탈퇴 회원 제외, 신청 순.
