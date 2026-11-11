@@ -493,6 +493,7 @@
 
   function loadStock(stockId) {
     var req = S.stockReq = (S.stockReq || 0) + 1;   // 늦게 온 이전 종목 응답이 화면을 덮지 않게 마지막 요청만 반영한다
+    S.selectedStockId = stockId;                     // 응답 전에도 '지금 고른 종목'을 기억한다 (새로고침이 이전 종목을 다시 받지 않게)
     loadStockNews(stockId);
     return api('/stocks/' + encodeURIComponent(stockId)).then(function (d) {
       if (req !== S.stockReq) return;
@@ -786,8 +787,11 @@
     blockBox.className = 'order-block';
     show(blockBox, !!block);
     var over = !block && qty > max;
-    if (over) { errBox.textContent = buy ? MSG.NOT_ENOUGH_CASH : MSG.NOT_ENOUGH_QUANTITY; show(errBox, true); }
-    else if (errBox.dataset.from !== 'server') show(errBox, false);
+    // 서버가 준 안내(처리 여부 확인 등)가 떠 있으면 수량 오류가 덮어쓰지 않는다
+    if (errBox.dataset.from !== 'server') {
+      if (over) { errBox.textContent = buy ? MSG.NOT_ENOUGH_CASH : MSG.NOT_ENOUGH_QUANTITY; show(errBox, true); }
+      else show(errBox, false);
+    }
     document.querySelectorAll('[data-trd-reason]').forEach(function (c) {
       var on = String(c.dataset.trdReason) === String(S.reasonId);
       c.classList.toggle('selected', on);
@@ -910,10 +914,10 @@
       loadTrades();
       loadTurnNews();
       loadMarket();
-      if (keepDetail && S.stock && !$('trd-detail').hidden) {
+      if (keepDetail && S.selectedStockId && !$('trd-detail').hidden) {
         var errBox = $('trd-o-error');
         var keepText = skipOrderReset ? errBox.textContent : null;
-        return loadStock(S.stock.stockId).then(function () { if (keepText) orderError(keepText); return true; });
+        return loadStock(S.selectedStockId).then(function () { if (keepText) orderError(keepText); return true; });
       }
       return true;
     }).catch(function (err) {
