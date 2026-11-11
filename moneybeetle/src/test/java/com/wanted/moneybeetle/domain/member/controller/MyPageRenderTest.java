@@ -44,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MyPageRenderTest {
 
     private static final List<String> TABS = List.of("settings", "growth", "housing", "wrong", "scrap", "learning", "qna");
+    private static final List<String> LEARNING_TABS = List.of("wrong", "scrap", "learning", "qna");   // #71 조각이 있는 탭
 
     @Autowired
     private MemberService memberService;
@@ -100,8 +101,21 @@ class MyPageRenderTest {
     void 아직_없는_탭_조각은_준비_중_자리로_대신_그린다() throws Exception {
         String html = render();
 
-        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth·learning)와 파일 자체가 없는 경우(housing) 모두
-        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size());
+        // 조각 파일이 있지만 조각 이름이 아직 없는 경우(settings·growth)와 파일 자체가 없는 경우(housing) 모두.
+        // 학습 탭 4개(wrong·scrap·learning·qna)는 #71 에서 조각을 만들어 "준비 중" 자리가 아니다
+        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - LEARNING_TABS.size());
+    }
+
+    @Test
+    void 학습_탭_4개는_신아림_조각을_그린다() throws Exception {
+        String html = render();
+
+        // #71 fragments/mypage/learning.html : 탭마다 data-ml 영역, 스크립트·스타일은 한 번만
+        for (String tab : LEARNING_TABS) {
+            assertThat(html).contains("data-ml=\"" + tab + "\"");
+        }
+        assertThat(html.split("/js/mypage-learning.js", -1).length - 1).isEqualTo(1);
+        assertThat(html).contains("/css/mypage-learning.css");
     }
 
     @Test
