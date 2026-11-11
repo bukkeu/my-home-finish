@@ -1,5 +1,46 @@
 <!-- comment.
     담당 : PM 이재성 (#56, 통합 검색 화면)
     원본 디자인 : UserSearch.dc.html
-    경로 : /user/search
+    경로 : /user/search?q=검색어 (SearchPageController)
+    내용 : 화면 틀만 서버에서 그린다. 검색 결과는 static/js/search.js 가 API 28 (GET /api/v1/search?keyword=) 로 채운다.
+           공통 헤더의 검색창(name="q")이 이 주소로 보내므로 같은 이름(q)을 쓴다.
 -->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('통합 검색')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/search.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('home')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+
+    <main class="mb-main srch" id="srch-app">
+      <form class="srch-form" id="srch-form" th:action="@{/user/search}" method="get" role="search">
+        <label class="srch-input">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" id="srch-q" name="q" aria-label="검색어" placeholder="강의·종목을 검색해 보세요" autocomplete="off" maxlength="50">
+        </label>
+        <button type="submit" class="btn btn-primary srch-submit">검색</button>
+      </form>
+
+      <div class="srch-head" id="srch-head" hidden>
+        <h1 id="srch-title"></h1>
+        <span class="srch-count" id="srch-count"></span>
+      </div>
+      <div class="srch-chips" id="srch-chips" role="group" aria-label="검색 결과 종류" hidden></div>
+      <div class="srch-body" id="srch-result" aria-live="polite">
+        <noscript>검색 결과를 보려면 JavaScript를 켜 주세요.</noscript>
+      </div>
+    </main>
+
+    <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/search.js}"></script>
+</body>
+</html>
