@@ -145,6 +145,9 @@
     var q = input.value.trim();
     requestNo++;                      // 진행 중이던 요청의 응답은 버린다
     if (!q) { close(); return; }
+    // 이전 검색어의 추천 목록·선택을 바로 지운다. 남겨 두면 고친 뒤 200ms 안에 Enter 를 눌렀을 때 예전 추천어로 이동한다.
+    // 목록을 닫지 않고 '찾는 중' 으로 바꿔서 한글을 칠 때마다 목록이 깜빡이지 않게 한다
+    notice('찾는 중이에요…');
     timer = setTimeout(function () { request(q); }, SUGGEST_DELAY);
   });
 
