@@ -11,6 +11,9 @@
 --     (예: 더미 강의에 영상이 남아 강의 삭제가 막히면, 그 전에 지운 스크랩·문의도 되돌아간다). 끝까지 성공하면 COMMIT
 --   - 맨 아래 "지우기" 구역만 실행하면 더미를 모두 지운다 (이 구역도 START TRANSACTION … COMMIT 으로 감싼다)
 --   실행 : mysql -u <계정> -p money_beetle < moneybeetle/src/main/resources/sql/dummy-10k.sql
+--          - mysql 클라이언트를 **--force 없이** 쓴다 (기본값). 오류가 나면 거기서 멈추고 COMMIT 까지 가지 않으며, 연결이 끊기면서 모두 되돌아간다
+--          - Workbench·IntelliJ 같은 도구로 실행한다면 "오류가 나면 멈춤" 설정을 켜고, 오류가 나면 COMMIT 대신 ROLLBACK 을 실행한다
+--          - 항상 **새 연결**에서 실행한다. START TRANSACTION 은 그 연결에 커밋하지 않은 작업이 있으면 먼저 커밋해 버린다
 --
 --   넣는 내용
 --   - forbidden_word 10,000 : 더미금칙어00001 ~ 더미금칙어10000
@@ -72,6 +75,7 @@ UNION ALL SELECT 'course', COUNT(*) FROM course WHERE title LIKE '[더미] 금�
 COMMIT;
 
 -- ---------- 지우기 (측정이 끝나면 아래 줄만 실행. 맨 위 "지난번 더미 지우기" 와 같다) ----------
+-- 새 연결에서, 오류가 나면 멈추는 방식으로 실행한다. 오류가 나면 COMMIT 대신 ROLLBACK; 을 실행한다
 -- START TRANSACTION;
 -- DELETE FROM scrap WHERE course_id IN (SELECT course_id FROM course WHERE title LIKE '[더미] 금리 강의 %');
 -- DELETE FROM inquiry_reply WHERE inquiry_id IN (SELECT inquiry_id FROM inquiry WHERE course_id IN (SELECT course_id FROM course WHERE title LIKE '[더미] 금리 강의 %'));
