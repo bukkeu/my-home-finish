@@ -21,6 +21,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.SocialSignupDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.TermsDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.policy.SignupRules;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import org.springframework.data.domain.PageRequest;
@@ -189,7 +190,7 @@ public class MemberService {
      */
     public MemberCountDTO countMembers() {
         return new MemberCountDTO(memberRepository.countByRole(Member.ROLE_MEMBER),
-                memberRepository.countByRoleAndStatus(Member.ROLE_MEMBER, Member.STATUS_WITHDRAWN));
+                memberRepository.countByRoleAndStatus(Member.ROLE_MEMBER, MemberStatus.WITHDRAWN));
     }
 
     /**

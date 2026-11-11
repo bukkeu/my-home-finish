@@ -151,6 +151,15 @@ class MemberAccountControllerTest {
     }
 
     @Test
+    @DisplayName("탈퇴 본인 확인 취소(API 17-3)는 로그인한 회원의 번호로 서비스를 부르고 204 를 돌려준다 (세션이 없어도 새로 만들지 않는다)")
+    void cancelWithdrawVerification() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/members/me/withdraw-verification"))
+                .andExpect(status().isNoContent());
+
+        verify(withdrawVerifier).cancel(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.isNull());
+    }
+
+    @Test
     @DisplayName("탈퇴 본인 확인(API 17-2)은 6자리 코드를 서비스에 넘기고 204 를 돌려준다")
     void verifyWithdrawCode() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/members/me/withdraw-verification")

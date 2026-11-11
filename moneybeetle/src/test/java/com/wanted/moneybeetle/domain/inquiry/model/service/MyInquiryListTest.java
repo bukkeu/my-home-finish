@@ -16,6 +16,7 @@ import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import java.time.Clock;
 import java.time.Instant;
@@ -53,7 +54,7 @@ class MyInquiryListTest {
         inquiryService = new InquiryService(inquiryRepository, mock(InquiryReplyRepository.class), courseService,
                 mock(ForbiddenWordService.class), mock(NotificationService.class),
                 Clock.fixed(Instant.parse("2026-11-11T01:00:00Z"), ZoneId.of("Asia/Seoul")),
-                mock(MemberService.class), mock(AdminLogService.class));
+                mock(MemberService.class), mock(AdminLogService.class), mock(SystemSettingService.class));
     }
 
     private Inquiry inquiry(Long id, Long courseId, String title, boolean hidden) {

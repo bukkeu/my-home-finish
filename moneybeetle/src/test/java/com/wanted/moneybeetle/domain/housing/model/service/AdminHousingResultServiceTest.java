@@ -221,7 +221,7 @@ class AdminHousingResultServiceTest {
         complex.markComputed(LocalDateTime.of(2026, 11, 11, 9, 0));
 
         assertRejected(() -> serviceOn(LocalDate.of(2026, 11, 16)).announce(ADMIN_ID, 1L), HousingErrorCode.BEFORE_ANNOUNCE_DATE);
-        verify(notificationService, never()).send(any(), any(), any(), any());
+        verify(notificationService, never()).send(any(), any(String.class), any(), any());   // 종류가 String 인 옛 send 를 가리킨다 (NotificationType 버전이 생겨 any() 만으로는 모호하다, #289)
     }
 
     @Test
@@ -230,6 +230,6 @@ class AdminHousingResultServiceTest {
         complex.announce(LocalDateTime.of(2026, 11, 17, 9, 0));
 
         assertRejected(() -> serviceOn(ANNOUNCE_DAY).announce(ADMIN_ID, 1L), HousingErrorCode.ALREADY_ANNOUNCED);
-        verify(notificationService, times(0)).send(any(), any(), any(), any());
+        verify(notificationService, times(0)).send(any(), any(String.class), any(), any());   // 종류가 String 인 옛 send 를 가리킨다 (NotificationType 버전이 생겨 any() 만으로는 모호하다, #289)
     }
 }

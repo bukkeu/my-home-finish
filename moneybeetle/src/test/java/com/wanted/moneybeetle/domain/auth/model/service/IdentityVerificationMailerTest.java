@@ -7,6 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import ch.qos.logback.classic.Level;
+import com.wanted.moneybeetle.support.LogCapture;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -72,5 +74,40 @@ class IdentityVerificationMailerTest {
 
         assertThat(send.getAnnotation(Async.class)).isNotNull();
         assertThat(send.getAnnotation(Async.class).value()).isEqualTo("mailExecutor");
+    }
+
+    @Test
+    @DisplayName("발송이 실패하면 원인을 error 로그로 남기되(스택 포함), 받는 사람 주소와 인증번호 은 로그 어디에도 없다 (#299)")
+    void failureLogsMaskedCause() {
+        doThrow(new MailSendException("Invalid Addresses: <minji@gmail.com> smtp down", new IllegalStateException("550 <minji@gmail.com> unknown")))
+                .when(mailSender).send(any(SimpleMailMessage.class));
+
+        try (LogCapture logs = LogCapture.of(IdentityVerificationMailer.class)) {
+            mailer.send("minji@gmail.com", "482913");
+
+            assertThat(logs.events()).isNotEmpty().allSatisfy(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getFormattedMessage()).doesNotContain("minji", "gmail", "482913");
+                assertThat(event.getThrowableProxy()).isNotNull();
+                assertThat(event.getThrowableProxy().getStackTraceElementProxyArray()).isNotEmpty();
+                assertThat(event.getThrowableProxy().getMessage()).startsWith("org.springframework.mail.MailSendException: ")
+                        .contains("<***>").doesNotContain("minji", "gmail", "482913");
+                assertThat(event.getThrowableProxy().getCause().getMessage()).startsWith("java.lang.IllegalStateException: ")
+                        .doesNotContain("minji", "gmail");
+            });
+        }
+    }
+
+    @Test
+    @DisplayName("재시도까지 두 번 실패하면 시도 번호가 든 error 로그가 두 번 남는다 (#299)")
+    void logsEveryAttempt() {
+        doThrow(new MailSendException("smtp down")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        try (LogCapture logs = LogCapture.of(IdentityVerificationMailer.class)) {
+            mailer.send("minji@gmail.com", "123456");
+
+            assertThat(logs.events()).extracting(event -> event.getFormattedMessage())
+                    .containsExactly("본인인증 메일 발송에 실패했어요 (1/2)", "본인인증 메일 발송에 실패했어요 (2/2)");
+        }
     }
 }

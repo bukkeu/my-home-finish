@@ -136,6 +136,7 @@
 | 17 | `DELETE` | `/api/v1/members/me` | 회원 탈퇴 | 회원 | USR-14, DP-06 |
 | 17-1 | `POST` | `/api/v1/members/me/withdraw-verification/request` | 탈퇴 본인 확인 코드 요청 (간편 로그인 회원) | 회원 | USR-14, DP-06 |
 | 17-2 | `POST` | `/api/v1/members/me/withdraw-verification` | 탈퇴 본인 확인 (받은 코드 확인, 간편 로그인 회원) | 회원 | USR-14, DP-06 |
+| 17-3 | `DELETE` | `/api/v1/members/me/withdraw-verification` | 탈퇴 본인 확인 취소 (세션에 남은 확인 지우기, 간편 로그인 회원) | 회원 | USR-14, DP-06 |
 | 18 | `GET` | `/api/v1/members/{memberId}/profile` | 다른 회원 공개 프로필 | 회원 | DP-03, HOM-06 |
 
 ### 홈·성장
@@ -855,6 +856,20 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 - 204 No Content
 
 **Error**: `IDENTITY_CODE_INVALID`, `IDENTITY_CODE_EXPIRED`(코드를 받은 적이 없거나 만료·5회 실패), `FORBIDDEN`(비밀번호가 있는 회원), `UNAUTHORIZED`
+
+#### 17-3. 탈퇴 본인 확인 취소
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/withdraw-verification` |
+| Method | `DELETE` |
+| 권한 | 회원 |
+| 관련 | USR-14, DP-06, 이슈 #279 |
+| 설명 | 이 세션에 남은 탈퇴 본인 확인(받은 코드와 확인 완료 표시)을 모두 지운다. 탈퇴 창을 닫을 때 부른다. 인증번호를 확인한 뒤 취소하면 비운 탈퇴 요청(API 17)이 다시 인증을 요구하며 거절된다. 지울 것이 없거나 세션이 없어도 오류 없이 204(같은 요청을 다시 보내도 결과가 같다). 코드 확인(API 17-2)과 같은 세션 잠금 안에서 지우므로, 늦게 도착한 코드 확인이 취소를 되돌리지 못한다(상태가 없으면 `IDENTITY_CODE_EXPIRED`). |
+
+**Response**
+
+- 204 No Content
 
 #### 18. 다른 회원 공개 프로필
 

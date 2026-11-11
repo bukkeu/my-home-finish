@@ -1,5 +1,272 @@
 <!-- comment.
     담당 : PM 이재성 (#57, 모의투자 화면)
-    원본 디자인 : UserDemoTrading.dc.html
+    원본 디자인 : UserDemoTrading.dc.html (new1/App.jsx, new1/index.css) - 마크업·클래스 이름·CSS 를 디자인 그대로 옮겼다
     경로 : /user/demo-trading
+    내용 : 화면 틀만 서버에서 그린다. 시즌·시세·뉴스·주문·랭킹은 static/js/trading.js 가 API 53~62 를 fetch 로 불러 채운다.
+           모의투자 홈(#trd-home) / 전체 종목(#trd-all) / 종목 상세(#trd-detail) 세 화면을 JS 가 바꿔 가며 보여 준다.
+           main 의 home-page / detail-page 클래스도 디자인처럼 화면에 맞춰 JS 가 바꾼다.
 -->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('모의투자')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/trading.css}">
+</head>
+<body>
+<div class="mb-shell">
+  <th:block th:replace="~{fragments/layout/sidebar :: sidebarFragment('trading')}"></th:block>
+  <div class="mb-content">
+    <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
+
+    <main class="mb-main trd page home-page" id="trd-app" data-state="loading">
+      <!-- 잠금 안내 (NFR-09): API 가 403 LEVEL_LOCKED 를 주면 본문을 흐리게 하고 이 안내를 띄운다 -->
+      <div class="trd-lock" id="trd-lock" hidden>
+        <div class="trd-lock__box" role="alert">
+          <img th:src="@{/images/lock.png}" alt="잠김">
+          <strong>모의투자는 Lv.8부터 이용할 수 있어요</strong>
+          <p id="trd-lock-desc">강의를 완료하고 경험치를 모아 보세요.</p>
+          <a class="primary-button" th:href="@{/user/home}">홈으로 가기</a>
+        </div>
+      </div>
+
+      <div class="trd-body" id="trd-body">
+        <!-- 시즌 없음·불러오기 실패처럼 화면 전체를 대신하는 안내 -->
+        <div class="trd-state card" id="trd-state" hidden>
+          <h1 id="trd-state-title">다음 시즌을 준비 중이에요</h1>
+          <p id="trd-state-desc"></p>
+          <a class="primary-button" th:href="@{/user/home}">홈으로 가기</a>
+        </div>
+        <div class="trd-notice-bar" id="trd-season-notice" hidden></div>
+
+        <!-- ===== 모의투자 홈 (INV-14) ===== -->
+        <div class="home-grid" id="trd-home" aria-label="모의투자 홈">
+          <div class="home-top">
+            <section class="hero" id="trd-season">
+              <div class="hero-top">
+                <div>
+                  <span class="eyebrow season" id="trd-eyebrow">VIRTUAL MARKET</span>
+                  <h1 id="trd-season-title">시즌 정보를 불러오는 중이에요</h1>
+                  <p><strong id="trd-turn">- / -</strong><span></span> <em id="trd-next-turn"></em></p>
+                </div>
+                <div class="season-chip"><span>시즌 종료</span><strong id="trd-dday">-</strong></div>
+              </div>
+              <div class="season-wrap">
+                <div class="season-line" id="trd-calendar" aria-label="시즌 진행률"></div>
+                <div class="progress-legend">
+                  <span><i class="dot mint"></i>진행 완료</span>
+                  <span><i class="dot outline"></i>현재 턴</span>
+                  <span><i class="dot gray"></i>일요일 휴장</span>
+                  <span><i class="dot gold"></i>정산·랭킹 공개</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- 참가했으면 남은 현금, 참가 전이면 참가 버튼 (INV-03) -->
+            <section class="balance-card" id="trd-balance">
+              <div id="trd-joined" hidden>
+                <span class="label">내 투자 가능 금액</span>
+                <div class="money"><small>남은 현금</small> <span id="trd-cash">0</span><small>캐시</small></div>
+                <p>시즌 시작 자금 <strong id="trd-invest">0 캐시</strong><span id="trd-invest-parts"></span></p>
+                <p class="rule-note">시즌 참가 완료 · 시즌당 1회 · 금액은 시즌 중 바뀌지 않아요<br>이월금은 시즌이 끝나면 시즌 설정에 따라 다음 시즌으로 저장돼요 · 수수료·세금 없음</p>
+              </div>
+              <div id="trd-join" hidden>
+                <span class="label">시즌 참가</span>
+                <div class="money trd-join-title" id="trd-join-title">이번 시즌에 참가할까요?</div>
+                <p>14일 · 12턴 동안 같은 가상 시장에서 모두가 함께 투자해요.</p>
+                <ul class="trd-rules">
+                  <li>투자 가능 금액은 모은 캐시와 이월금을 더한 금액이에요</li>
+                  <li>시즌당 1회만 참가할 수 있고, 참가하면 금액은 시즌 중 바뀌지 않아요</li>
+                  <li>첫 턴이 끝나기 전까지만 참가할 수 있어요</li>
+                  <li>수수료와 세금은 없어요</li>
+                </ul>
+                <p class="trd-error" id="trd-join-error" role="alert" hidden></p>
+              </div>
+              <button type="button" class="primary-button" id="trd-start-btn" data-trd-go="all" hidden>투자 시작하기 <span>→</span></button>
+              <button type="button" class="primary-button" id="trd-join-btn" hidden>시즌 참가하기 <span>→</span></button>
+            </section>
+          </div>
+
+          <section class="card portfolio-card" id="trd-portfolio">
+            <div class="portfolio-summary">
+              <div><span class="label">내 주식</span><h2>순자산</h2></div>
+              <div class="asset"><strong><span id="trd-net">-</span><small>캐시</small></strong><span id="trd-rate"></span></div>
+            </div>
+            <div class="holdings" id="trd-holdings"></div>
+          </section>
+
+          <section class="card trade-card" id="trd-trades">
+            <div class="card-head">
+              <div><span class="eyebrow">TRADE LOG</span><h2>내 거래 내역</h2></div>
+              <span class="live-dot" id="trd-trade-count" hidden></span>
+            </div>
+            <div class="trade-scroll" id="trd-trade-list"></div>
+          </section>
+
+          <section class="news-section" id="trd-news">
+            <div class="news-grid card" id="trd-news-box"></div>
+          </section>
+
+          <section class="card side-card market-card" id="trd-market">
+            <div class="card-head"><h2>오늘의 가상 시세</h2><span class="live-dot" id="trd-market-turn"></span></div>
+            <div class="stock-search">
+              <label class="search-input">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <input type="search" id="trd-search" placeholder="종목명이나 분야로 검색 (예: 반도체)" autocomplete="off" aria-label="종목 검색">
+              </label>
+            </div>
+            <div class="segmented mini market-toggle" role="tablist">
+              <button type="button" class="selected" data-trd-market="popular" role="tab">인기</button>
+              <button type="button" data-trd-market="sector" role="tab">분야별</button>
+            </div>
+            <div class="stock-list" id="trd-market-list"></div>
+            <button type="button" class="text-link" id="trd-all-link" data-trd-go="all">전체 종목 보기 <span>›</span></button>
+          </section>
+
+          <section class="card side-card rank-card" id="trd-ranking">
+            <div class="card-head">
+              <div><span class="eyebrow" id="trd-rank-season">RANKING</span><h2 id="trd-rank-title">시즌 랭킹</h2></div>
+              <div class="segmented mini" role="tablist">
+                <button type="button" class="selected" data-trd-rank="ASSET" role="tab">순자산</button>
+                <button type="button" data-trd-rank="RETURN" role="tab">수익률</button>
+              </div>
+            </div>
+            <div class="rank-list" id="trd-rank-list"></div>
+            <div class="my-rank" id="trd-my-rank" hidden></div>
+            <p class="rank-note" id="trd-rank-note"></p>
+          </section>
+        </div>
+
+        <!-- ===== 전체 종목 (INV-06) ===== -->
+        <div id="trd-all" hidden aria-label="전체 종목">
+          <div class="detail-toolbar">
+            <button type="button" class="back-button" data-trd-go="home">← 모의투자 홈</button>
+            <div class="stock-search compact-search">
+              <label class="search-input">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <input type="search" class="trd-compact-search" placeholder="종목명이나 분야로 검색 (예: 반도체)" autocomplete="off" aria-label="종목 검색">
+              </label>
+            </div>
+          </div>
+          <section class="card all-stocks">
+            <div class="card-head">
+              <div><span class="eyebrow">ALL STOCKS</span><h2 id="trd-all-title">전체 종목</h2></div>
+              <span class="live-dot" id="trd-all-meta"></span>
+            </div>
+            <div class="sector-chips" id="trd-sector-chips"></div>
+            <div class="sector-groups" id="trd-all-list"></div>
+          </section>
+        </div>
+
+        <!-- ===== 종목 상세 (INV-07) ===== -->
+        <div id="trd-detail" hidden aria-label="종목 상세">
+          <div class="detail-toolbar">
+            <button type="button" class="back-button" data-trd-go="home">← 모의투자 홈</button>
+            <div class="stock-search compact-search">
+              <label class="search-input">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <input type="search" class="trd-compact-search" placeholder="종목명이나 분야로 검색 (예: 반도체)" autocomplete="off" aria-label="종목 검색">
+              </label>
+            </div>
+          </div>
+          <section class="stock-header">
+            <div class="stock-identity">
+              <span class="company-logo" id="trd-d-initial">?</span>
+              <div>
+                <span class="breadcrumb" id="trd-d-sector"></span>
+                <h1 id="trd-d-name">종목</h1>
+                <div class="stock-tags" id="trd-d-tags"></div>
+              </div>
+            </div>
+            <div class="quote">
+              <span>이번 턴 가격</span>
+              <strong><span id="trd-d-price">-</span><small>캐시</small></strong>
+              <b id="trd-d-change"></b>
+              <small>지난 턴 대비</small>
+            </div>
+          </section>
+          <div class="stock-tabs" role="tablist">
+            <button type="button" class="active" data-trd-tab="chart" role="tab">차트 및 거래</button>
+            <button type="button" data-trd-tab="info" role="tab">종목정보</button>
+          </div>
+
+          <div class="detail-grid" data-trd-pane="chart">
+            <section class="card chart-card">
+              <div class="chart-head">
+                <div><span class="eyebrow">TURN PRICE</span><h2>턴별 가격 흐름</h2></div>
+                <div class="chart-summary"><span>시즌 수익률</span><strong id="trd-d-season-rate"></strong></div>
+              </div>
+              <div class="chart" id="trd-chart"></div>
+              <div class="price-table" id="trd-price-table"></div>
+            </section>
+
+            <!-- 매수·매도 (INV-09~13): 매매 이유 필수, 그 턴의 고정 가격으로 체결 -->
+            <aside class="order-column">
+              <form class="card order-card" id="trd-order" novalidate>
+                <div class="order-tabs">
+                  <button type="button" class="buy active" data-trd-side="BUY">매수</button>
+                  <button type="button" class="sell" data-trd-side="SELL">매도</button>
+                </div>
+                <div class="order-content">
+                  <div class="holding-summary" id="trd-d-holding"></div>
+                  <div class="fixed-price">
+                    <div><label>이번 턴 가격</label><span title="이번 턴에는 이 가격으로만 거래돼요">수정 불가</span></div>
+                    <strong id="trd-o-price">-</strong>
+                  </div>
+                  <p class="fixed-note">같은 턴 안에서는 모든 거래가 이 가격으로 체결돼요 · 수수료와 세금은 없어요</p>
+                  <p class="order-block" id="trd-o-block" hidden></p>
+                  <div class="quantity-head"><label for="trd-qty">수량</label><span id="trd-o-max"></span></div>
+                  <div class="quantity-input">
+                    <button type="button" data-trd-step="-1" aria-label="수량 줄이기">−</button>
+                    <span><input type="number" id="trd-qty" min="1" step="1" value="1" inputmode="numeric"> 주</span>
+                    <button type="button" data-trd-step="1" aria-label="수량 늘리기">＋</button>
+                  </div>
+                  <div class="quick-buttons">
+                    <button type="button" data-trd-pct="0.1">10%</button><button type="button" data-trd-pct="0.25">25%</button>
+                    <button type="button" data-trd-pct="0.5">50%</button><button type="button" data-trd-pct="1">최대</button>
+                  </div>
+                  <div class="total"><span id="trd-o-total-label">총 주문 금액</span><strong id="trd-o-total">0</strong></div>
+                  <div class="available"><span id="trd-o-avail-label">주문 가능 금액</span><strong id="trd-o-avail">-</strong></div>
+                  <div class="reason-title"><label>매매 이유를 골라주세요</label><span>필수</span></div>
+                  <div class="reason-chips" id="trd-reasons" role="radiogroup" aria-label="매매 이유"></div>
+                  <p class="trd-error" id="trd-o-error" role="alert" hidden></p>
+                  <button type="submit" class="order-submit buy" id="trd-o-submit" disabled>매매 이유를 골라주세요</button>
+                </div>
+              </form>
+            </aside>
+          </div>
+
+          <div class="info-layout card" data-trd-pane="info" hidden>
+            <aside class="info-menu">
+              <span class="menu-label">기업 알아보기</span>
+              <button type="button" class="active" data-trd-info="company"><span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h.01M15 10h.01"></path></svg></span>주요 정보<i>›</i></button>
+              <button type="button" data-trd-info="news"><span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13v14H6a2 2 0 0 1-2-2V5z"></path><path d="M17 9h3v8a2 2 0 0 1-2 2h-1"></path><path d="M8 9h5M8 13h5"></path></svg></span>뉴스<i>›</i></button>
+              <div class="learn-tip">
+                <span>LEARNING TIP</span>
+                <strong>기업을 알면<br>투자가 쉬워져요</strong>
+                <p>숫자만 보지 말고 어떤 일을 하는 회사인지 살펴보세요.</p>
+              </div>
+            </aside>
+            <div class="info-body">
+              <div class="company-info" id="trd-company" data-trd-info-pane="company"></div>
+              <div class="company-news" data-trd-info-pane="news" hidden>
+                <div class="news-list-head">
+                  <div><span class="eyebrow">COMPANY NEWS</span><h2>턴별 뉴스</h2></div>
+                  <p>뉴스가 공개된 다음 턴의 주가 변화를 함께 확인해 보세요.<br>1턴부터 현재 턴까지의 뉴스를 볼 수 있어요.</p>
+                </div>
+                <div class="news-now" id="trd-d-news-now"></div>
+                <div class="timeline timeline-scroll" id="trd-d-news"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
+  </div>
+</div>
+<th:block th:replace="~{fragments/layout/header :: scriptsFragment}"></th:block>
+<script th:src="@{/js/trading.js}"></script>
+</body>
+</html>

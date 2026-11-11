@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.growth.model.dao;
 
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.Optional;
@@ -16,7 +17,7 @@ import org.springframework.data.jpa.repository.Lock;
 public interface CashHistoryRepository extends JpaRepository<CashHistory, Long> {
 
     /** 같은 원인으로 이미 기록했는가 (이중 지급 방지: DB UNIQUE 와 함께 쓴다). 잠금 없는 일반 조회다 */
-    boolean existsByMemberIdAndSourceTypeAndSourceId(Long memberId, String sourceType, Long sourceId);
+    boolean existsByMemberIdAndSourceTypeAndSourceId(Long memberId, CashSource sourceType, Long sourceId);
 
     /**
      * 같은 원인의 기록을 잠금 조회(SELECT ... FOR UPDATE)로 찾는다. RewardService 의 이중 지급·이중 차감 확인용이다.
@@ -25,7 +26,7 @@ public interface CashHistoryRepository extends JpaRepository<CashHistory, Long> 
      * 잠금 조회는 항상 최신 커밋 값을 읽는다. (member_id, source_type, source_id)는 UNIQUE 라서 결과는 0 또는 1건이다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<CashHistory> findWithLockByMemberIdAndSourceTypeAndSourceId(Long memberId, String sourceType, Long sourceId);
+    Optional<CashHistory> findWithLockByMemberIdAndSourceTypeAndSourceId(Long memberId, CashSource sourceType, Long sourceId);
 
     /** 캐시 내역 최신순 (API 22) */
     Page<CashHistory> findByMemberIdOrderByCreatedAtDescCashHistoryIdDesc(Long memberId, Pageable pageable);

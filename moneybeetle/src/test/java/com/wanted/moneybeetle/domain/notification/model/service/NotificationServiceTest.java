@@ -13,6 +13,7 @@ import com.wanted.moneybeetle.domain.notification.model.dao.NotificationReposito
 import com.wanted.moneybeetle.domain.notification.model.dto.NotificationDTO;
 import com.wanted.moneybeetle.domain.notification.model.dto.NotificationListDTO;
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.util.List;
@@ -53,6 +54,69 @@ class NotificationServiceTest {
         assertThat(saved.getTitle()).isEqualTo("문의에 답변이 등록됐어요");
         assertThat(saved.getLinkUrl()).isEqualTo("/user/inquiry/3");
         assertThat(saved.isRead()).isFalse();
+    }
+
+    @Test
+    @DisplayName("send(NotificationType): 모든 종류가 enum 이름 그대로 저장되고, 옛 문자열 버전과 같은 알림을 만든다")
+    void sendWithEnumSavesSameAsString() {
+        for (NotificationType type : NotificationType.values()) {
+            NotificationRepository fresh = mock(NotificationRepository.class);
+            NotificationService freshService = new NotificationService(fresh);
+
+            freshService.send(7L, type, "제목", "/user/home");
+            freshService.send(7L, type.name(), "제목", "/user/home");
+
+            ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+            verify(fresh, org.mockito.Mockito.times(2)).save(captor.capture());
+            Notification byEnum = captor.getAllValues().get(0);
+            Notification byString = captor.getAllValues().get(1);
+            assertThat(byEnum.getType()).as(type.name()).isEqualTo(type.name());
+            assertThat(byEnum.getMemberId()).isEqualTo(byString.getMemberId());
+            assertThat(byEnum.getType()).isEqualTo(byString.getType());
+            assertThat(byEnum.getTitle()).isEqualTo(byString.getTitle());
+            assertThat(byEnum.getLinkUrl()).isEqualTo(byString.getLinkUrl());
+            assertThat(byEnum.isRead()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("NotificationType: DB 에 저장돼 있는 종류 5개와 이름이 같고, 옛 문자열 상수도 같은 값이다")
+    void typeNamesMatchStoredValues() {
+        assertThat(NotificationType.values()).extracting(Enum::name)
+                .containsExactlyInAnyOrder("UNLOCK", "INQUIRY_REPLY", "HOUSING_RESULT", "RANKING", "COURSE_REJECTED");
+        assertThat(Notification.TYPE_UNLOCK).isEqualTo(NotificationType.UNLOCK.name());
+        assertThat(Notification.TYPE_INQUIRY_REPLY).isEqualTo(NotificationType.INQUIRY_REPLY.name());
+        assertThat(Notification.TYPE_HOUSING_RESULT).isEqualTo(NotificationType.HOUSING_RESULT.name());
+        assertThat(Notification.TYPE_RANKING).isEqualTo(NotificationType.RANKING.name());
+        assertThat(Notification.TYPE_COURSE_REJECTED).isEqualTo(NotificationType.COURSE_REJECTED.name());
+    }
+
+    @Test
+    @DisplayName("send(NotificationType): 종류가 없거나 값이 규칙에 맞지 않으면 저장하지 않고 IllegalArgumentException")
+    void sendWithEnumRejectsInvalidValues() {
+        assertThatThrownBy(() -> service.send(7L, (NotificationType) null, "제목", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(null, NotificationType.UNLOCK, "제목", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, " ", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "https://evil.example"))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TITLE_MAX_LENGTH: 다른 도메인이 엔티티 없이 쓰는 제목 한도(100자). 딱 그 길이는 저장되고 1자 넘으면 거절된다")
+    void titleMaxLengthIsPublic() {
+        assertThat(NotificationService.TITLE_MAX_LENGTH).isEqualTo(100).isEqualTo(Notification.TITLE_MAX_LENGTH);
+        assertThat(NotificationService.LINK_MAX_LENGTH).isEqualTo(Notification.LINK_MAX_LENGTH);
+
+        service.send(7L, NotificationType.HOUSING_RESULT, "가".repeat(NotificationService.TITLE_MAX_LENGTH), null);
+        verify(repository).save(any(Notification.class));
+
+        assertThatThrownBy(() -> service.send(7L, NotificationType.HOUSING_RESULT,
+                "가".repeat(NotificationService.TITLE_MAX_LENGTH + 1), null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

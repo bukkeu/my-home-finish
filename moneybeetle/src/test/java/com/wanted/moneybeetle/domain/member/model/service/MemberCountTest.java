@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberTermsAgreementRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
 import java.time.Clock;
 import java.time.Instant;
@@ -24,7 +25,7 @@ class MemberCountTest {
     void countsLearnersAndWithdrawn() {
         MemberRepository memberRepository = mock(MemberRepository.class);
         when(memberRepository.countByRole(Member.ROLE_MEMBER)).thenReturn(5L);
-        when(memberRepository.countByRoleAndStatus(Member.ROLE_MEMBER, Member.STATUS_WITHDRAWN)).thenReturn(1L);
+        when(memberRepository.countByRoleAndStatus(Member.ROLE_MEMBER, MemberStatus.WITHDRAWN)).thenReturn(1L);
         MemberService memberService = new MemberService(memberRepository, mock(TermsRepository.class),
                 mock(MemberTermsAgreementRepository.class), mock(PasswordEncoder.class), mock(ForbiddenWordService.class),
                 Clock.fixed(Instant.parse("2026-11-09T00:00:00Z"), ZoneId.of("Asia/Seoul")),

@@ -15,6 +15,7 @@ import com.wanted.moneybeetle.domain.growth.model.dao.ExpHistoryRepository;
 import com.wanted.moneybeetle.domain.growth.model.dao.RewardRuleRepository;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.entity.CashHistory;
+import com.wanted.moneybeetle.domain.growth.model.entity.CashSource;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import java.util.List;
@@ -48,7 +49,7 @@ class RewardServiceHistoryTest {
     @Test
     @DisplayName("type 이 없으면 전체 내역을 조회한다")
     void allHistories() {
-        CashHistory earn = CashHistory.earn(1L, CashHistory.SOURCE_ATTENDANCE, 1L, 1L, 1000, 1000);
+        CashHistory earn = CashHistory.earn(1L, CashSource.ATTENDANCE, 1L, 1L, 1000, 1000);
         when(cashHistoryRepository.findByMemberIdOrderByCreatedAtDescCashHistoryIdDesc(1L, pageable))
                 .thenReturn(new PageImpl<>(List.of(earn), pageable, 1));
 

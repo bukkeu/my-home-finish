@@ -20,6 +20,7 @@ import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.time.Clock;
@@ -59,7 +60,7 @@ class InquiryAccessTest {
         inquiryService = new InquiryService(inquiryRepository, inquiryReplyRepository, courseService,
                 mock(ForbiddenWordService.class), mock(NotificationService.class),
                 Clock.fixed(Instant.parse("2026-11-11T01:00:00Z"), ZoneId.of("Asia/Seoul")),
-                memberService, mock(AdminLogService.class));
+                memberService, mock(AdminLogService.class), mock(SystemSettingService.class));
 
         inquiry = Inquiry.create(WRITER, COURSE_ID, null, "부양가족에 부모님도 포함되나요?", "같이 안 살면요?");
         ReflectionTestUtils.setField(inquiry, "inquiryId", INQUIRY_ID);

@@ -15,6 +15,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.AvailabilityDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.SocialSignupDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberSignupService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
@@ -94,7 +95,7 @@ class SocialLoginServiceTest {
     private static LoginMemberDTO loginMember(String status) {
         Member member = Member.signupSocial("minji@gmail.com", "민지", LocalDate.of(1999, 4, 12), "FEMALE", LocalDate.of(2026, 11, 10));
         ReflectionTestUtils.setField(member, "memberId", 7L);
-        ReflectionTestUtils.setField(member, "status", status);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.valueOf(status));
         return LoginMemberDTO.from(member, Member.ROLE_MEMBER);
     }
 

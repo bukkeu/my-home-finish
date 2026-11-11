@@ -13,10 +13,12 @@ import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryUpdateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.MyInquiryItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.InquiryReply;
+import com.wanted.moneybeetle.domain.inquiry.model.entity.InquiryStatus;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
-import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.domain.operation.model.service.ForbiddenWordService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.common.PageResponse;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -51,8 +53,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class InquiryService {
 
-    private static final int DAILY_LIMIT = 10;                          // DP-30. TODO: system_setting 서비스가 생기면 그 값으로
-    private static final String NOTIFICATION_TYPE = Notification.TYPE_INQUIRY_REPLY;
+    private static final String DAILY_LIMIT_KEY = "INQUIRY_DAILY_LIMIT"; // system_setting 키 (DP-30, 관리자가 바꿀 수 있다)
+    private static final int DEFAULT_DAILY_LIMIT = 10;                  // 설정이 없거나 1 미만일 때
+    private static final NotificationType NOTIFICATION_TYPE = NotificationType.INQUIRY_REPLY;
     private static final String NOTIFICATION_TITLE = "문의에 답변이 등록됐어요";
     private static final String HIDDEN_TEXT = "관리자에 의해 숨김 처리된 글이에요";  // DP-22
     private static final String ROLE_MEMBER = "MEMBER";
@@ -72,11 +75,12 @@ public class InquiryService {
     private final Clock clock;                                          // Asia/Seoul 공통 시계 (global TimeConfig)
     private final MemberService memberService;                          // 하루 한도용 회원 행 잠금, 작성자 닉네임 조회
     private final AdminLogService adminLogService;                      // 숨김·해제 작업 기록 (화면설계 감사 로그)
+    private final SystemSettingService systemSettingService;            // 하루 작성 한도 (system_setting INQUIRY_DAILY_LIMIT)
 
     /* API 47 문의 목록 (관리자가 아니면 숨긴 글은 목록에서 빠진다, #38) */
     public PageResponse<InquiryListItemDTO> findInquiries(Long memberId, boolean admin,
                                                           Long courseId, String status, Pageable pageable) {
-        String statusFilter = isKnownStatus(status) ? status : null;
+        String statusFilter = InquiryStatus.filterOf(status);
         List<Long> myCourseIds = courseService.findCourseIdsByInstructor(memberId);
         if (myCourseIds.isEmpty()) {
             myCourseIds = List.of(NO_COURSE);
@@ -117,7 +121,7 @@ public class InquiryService {
         // 같은 회원의 작성 요청을 한 줄로 세운다: 회원 행을 잠근 뒤 세고 저장 (트랜잭션 끝까지 잠금 유지)
         memberService.lockBalance(memberId);
         LocalDateTime startOfToday = LocalDate.now(clock).atStartOfDay();
-        if (inquiryRepository.countByMemberIdAndCreatedAtGreaterThanEqual(memberId, startOfToday) >= DAILY_LIMIT) {
+        if (inquiryRepository.countByMemberIdAndCreatedAtGreaterThanEqual(memberId, startOfToday) >= dailyLimit()) {
             throw new BusinessException(InquiryErrorCode.INQUIRY_DAILY_LIMIT);
         }
 
@@ -210,7 +214,7 @@ public class InquiryService {
     public PageResponse<AdminInquiryListItemDTO> findInquiriesForAdmin(Long courseId, String status,
                                                                        Boolean hidden, Boolean deleted,
                                                                        Pageable pageable) {
-        String statusFilter = isKnownStatus(status) ? status : null;
+        String statusFilter = InquiryStatus.filterOf(status);
         Page<Inquiry> page = inquiryRepository.searchForAdmin(courseId, statusFilter, hidden, deleted, pageable);
         Map<Long, String> nicknames = findNicknames(page.getContent().stream().map(Inquiry::getMemberId).toList());
 
@@ -272,8 +276,10 @@ public class InquiryService {
         return hidden && !admin ? HIDDEN_TEXT : text;
     }
 
-    private boolean isKnownStatus(String status) {
-        return Inquiry.STATUS_WAITING.equals(status) || Inquiry.STATUS_ANSWERED.equals(status);
+    /* 하루 작성 한도 (DP-30): 관리자가 바꿀 수 있는 설정 값. 없거나 1 미만이면 10 (0 이하로 잘못 넣어 아무도 못 쓰는 일 방지) */
+    private int dailyLimit() {
+        int limit = systemSettingService.findIntValue(DAILY_LIMIT_KEY).orElse(DEFAULT_DAILY_LIMIT);
+        return limit >= 1 ? limit : DEFAULT_DAILY_LIMIT;
     }
 
     /* 작성자 닉네임 (member 도메인 Service로만 조회, 탈퇴 회원은 "탈퇴한 사용자") */

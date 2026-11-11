@@ -15,8 +15,8 @@ class GrowthHistoryEntityTest {
     @Test
     @DisplayName("적립은 양수로, 사용은 음수로 기록된다")
     void earnIsPositiveAndUseIsNegative() {
-        CashHistory earn = CashHistory.earn(1L, CashHistory.SOURCE_COURSE_COMPLETE, 15L, 2L, 3000, 12400);
-        CashHistory use = CashHistory.use(1L, CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT, 7L, 1000, 11400);
+        CashHistory earn = CashHistory.earn(1L, CashSource.COURSE_COMPLETE, 15L, 2L, 3000, 12400);
+        CashHistory use = CashHistory.use(1L, CashSource.SUBSCRIPTION_DEPOSIT, 7L, 1000, 11400);
 
         assertThat(earn.getAmount()).isEqualTo(3000);
         assertThat(earn.getHistoryType()).isEqualTo(CashHistory.EARN);
@@ -29,16 +29,16 @@ class GrowthHistoryEntityTest {
     @Test
     @DisplayName("잔액은 0 미만이 될 수 없다 (SP-15)")
     void balanceCannotBeNegative() {
-        assertThatThrownBy(() -> CashHistory.use(1L, CashHistory.SOURCE_SEASON_JOIN, 1L, 500, -1))
+        assertThatThrownBy(() -> CashHistory.use(1L, CashSource.SEASON_JOIN, 1L, 500, -1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("0원 이하 금액은 기록할 수 없다")
     void amountMustBePositive() {
-        assertThatThrownBy(() -> CashHistory.earn(1L, CashHistory.SOURCE_ATTENDANCE, 1L, 1L, 0, 100))
+        assertThatThrownBy(() -> CashHistory.earn(1L, CashSource.ATTENDANCE, 1L, 1L, 0, 100))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> CashHistory.use(1L, CashHistory.SOURCE_SEASON_JOIN, 1L, -5, 100))
+        assertThatThrownBy(() -> CashHistory.use(1L, CashSource.SEASON_JOIN, 1L, -5, 100))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -52,7 +52,7 @@ class GrowthHistoryEntityTest {
 
         CashHistory take = CashHistory.adminTake(1L, 99L, 1000, 500, "오지급 회수");
         assertThat(take.getAmount()).isEqualTo(-1000);
-        assertThat(take.getSourceType()).isEqualTo(CashHistory.SOURCE_ADMIN);
+        assertThat(take.getSourceType()).isEqualTo(CashSource.ADMIN);
         assertThat(take.getSourceId()).isNull();
     }
 
