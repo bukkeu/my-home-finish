@@ -68,7 +68,13 @@ class AdminTradingPageRenderTest {
     @Test
     @DisplayName("관리자가 아니면 403")
     void memberIsForbidden() throws Exception {
-        mockMvc.perform(get("/admin/trading-management").with(as("MEMBER"))).andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin/trading-management").with(as("INSTRUCTOR"))).andExpect(status().isForbidden());
+        for (String role : new String[] {"MEMBER", "INSTRUCTOR"}) {
+            String body = mockMvc.perform(get("/admin/trading-management").with(as(role)))
+                    .andExpect(status().isForbidden())
+                    .andReturn().getResponse().getContentAsString();
+
+            // 403 이어도 운영 화면의 내용이 새어 나가지 않는다
+            assertThat(body).doesNotContain("id=\"at-panel-season\"");
+        }
     }
 }
