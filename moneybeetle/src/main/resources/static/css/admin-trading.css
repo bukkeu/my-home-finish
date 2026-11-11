@@ -212,6 +212,13 @@
 .at-mini > div { padding: 14px; border-radius: 12px; background: var(--color-bg); display: flex; flex-direction: column; gap: 4px; }
 .at-mini span { font-size: 12px; color: var(--at-muted); font-weight: 600; }
 .at-mini strong { font-size: 22px; font-weight: 900; }
+/* 매매 이유 비율 막대 (시안 .adm-bars) */
+.at-bars { display: flex; flex-direction: column; gap: 8px; }
+.at-bars > div { display: grid; grid-template-columns: minmax(0, 110px) 1fr 44px; align-items: center; gap: 8px; font-size: 13px; }
+.at-bars span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-bars i { height: 8px; border-radius: 999px; background: var(--at-border); overflow: hidden; }
+.at-bars i b { display: block; height: 100%; background: var(--at-dark); border-radius: 999px; }
+.at-bars small { text-align: right; color: var(--at-muted); }
 
 /* ---------- 확인창 ---------- */
 .at-backdrop { position: fixed; inset: 0; z-index: 80; background: rgba(38, 59, 26, .38); display: grid; place-items: center; padding: 16px; }

@@ -929,7 +929,8 @@
       fill(box, [
         el('h4', { class: 'at-sub', text: '보유 종목' }),
         el('div', { class: 'at-list' }, holdings.length ? holdings.map(function (h) {
-          return el('div', { class: 'at-li' }, [el('span', { text: (h.stockName || '-') + ' · ' + fmt(h.quantity) + '주' }), el('small', { text: h.evaluationAmount != null ? fmt(h.evaluationAmount) + ' 캐시' : '' })]);
+          // API 136 holdings[].evalAmount = 수량 x 현재 턴 가격
+          return el('div', { class: 'at-li' }, [el('span', { text: (h.stockName || '-') + ' · ' + fmt(h.quantity) + '주' }), el('small', { text: h.evalAmount != null ? fmt(h.evalAmount) + ' 캐시' : '' })]);
         }) : [el('div', { class: 'at-empty', text: '보유 종목이 없어요' })]),
         el('h4', { class: 'at-sub', text: '거래 내역 · 매매 이유' }),
         el('div', { class: 'at-list' }, orders.length ? orders.map(function (o) {
@@ -963,17 +964,24 @@
     emptyBox(stats, '불러오는 중…');
     api(seasonPath('/statistics')).then(function (d) {
       if (stale('stats', t)) return;
+      // API 141 (SeasonStatisticsDTO): avgReturnRate(%) · topBought(종목 이름 목록, 매수 건수 많은 순 최대 3개)
+      //   · reasonRatio({ 이유: 비율% }, 많은 순) · panicSellRate(%)
       d = d || {};
-      var tops = d.topStocks || [], reasons = d.reasonRatios || [];
+      var tops = Array.isArray(d.topBought) ? d.topBought : [];
+      var reasons = d.reasonRatio && typeof d.reasonRatio === 'object'
+        ? Object.keys(d.reasonRatio).map(function (k) { return { reason: k, ratio: Number(d.reasonRatio[k]) || 0 }; }) : [];
       fill(stats, [
         el('div', { class: 'at-mini' }, [
-          el('div', {}, [el('span', { text: '평균 수익률' }), el('strong', { class: tone(d.averageReturnRate), text: pct(d.averageReturnRate) })]),
-          el('div', {}, [el('span', { text: '급락 턴에 판 사람' }), el('strong', { text: d.crashTurnSellRate != null ? Number(d.crashTurnSellRate).toFixed(1) + '%' : '-' })])
+          el('div', {}, [el('span', { text: '평균 수익률' }), el('strong', { class: tone(d.avgReturnRate), text: pct(d.avgReturnRate) })]),
+          el('div', {}, [el('span', { text: '급락 턴에 판 사람' }), el('strong', { text: d.panicSellRate != null ? Number(d.panicSellRate).toFixed(1) + '%' : '-' })])
         ]),
         el('h4', { class: 'at-sub', text: '많이 산 종목' }),
-        el('div', { class: 'at-list' }, tops.length ? tops.map(function (t, i) { return el('div', { class: 'at-li' }, [el('span', { text: (i + 1) + '. ' + t.stockName }), el('small', { text: fmt(t.quantity) + '주' })]); }) : [el('div', { class: 'at-empty', text: '아직 거래가 없어요' })]),
+        el('div', { class: 'at-list' }, tops.length ? tops.map(function (name, i) { return el('div', { class: 'at-li' }, [el('span', { text: (i + 1) + '. ' + name }), el('small', { text: '매수 건수 ' + (i + 1) + '위' })]); }) : [el('div', { class: 'at-empty', text: '아직 거래가 없어요' })]),
         el('h4', { class: 'at-sub', text: '매매 이유 비율' }),
-        el('div', { class: 'at-list' }, reasons.map(function (r) { return el('div', { class: 'at-li' }, [el('span', { text: r.reason }), el('small', { text: Number(r.ratio || 0).toFixed(1) + '%' })]); }))
+        reasons.length ? el('div', { class: 'at-bars' }, reasons.map(function (r) {
+          var w = Math.max(0, Math.min(100, r.ratio));
+          return el('div', {}, [el('span', { text: r.reason }), el('i', {}, [el('b', { style: 'width:' + w + '%' })]), el('small', { text: r.ratio.toFixed(1) + '%' })]);
+        })) : el('div', { class: 'at-empty', text: '아직 거래가 없어요' })
       ]);
     }, function (err) { if (!stale('stats', t)) emptyBox(stats, errText(err), true); });
   }
