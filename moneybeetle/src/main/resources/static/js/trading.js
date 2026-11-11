@@ -844,9 +844,6 @@
     if (errBox.dataset.code === 'NOT_ENOUGH_QUANTITY' || errBox.dataset.code === 'NOT_ENOUGH_CASH') delete errBox.dataset.from;
   }
 
-  /** 주문이 처리됐는지 모르는 오류 코드: 같은 주문을 다시 내면 같은 키를 써서 서버가 처음 결과를 돌려주게 한다 (course-quiz.js·housing.js 와 같다) */
-  var UNKNOWN_RESULT = ['NETWORK_ERROR', 'ERROR', 'DUPLICATE_REQUEST'];
-
   /** 주문 요청 본문. 결과를 모르는 주문을 다시 낼 때 같은 내용인지 비교하므로 키 순서를 바꾸지 않는다 */
   function orderBody(d, side, qty) {
     return { stockId: d.stockId, orderType: side, quantity: qty, turnNo: d.turnNo, reasonId: Number(S.reasonId) };
@@ -898,18 +895,21 @@
       // 새로고침(홈·종목)이 끝날 때까지 S.busy 로 제출 버튼을 잠근다 (같은 주문의 중복 체결 방지)
       return refreshAll(true);
     }, function (err) {
-      // 응답을 못 받았거나(네트워크·형식 없는 오류) 처음 주문이 아직 처리 중(DUPLICATE_REQUEST)이면 결과를 모른다
-      // -> 키를 남겨 둔다. 그 밖의 오류는 처리되지 않은 것(서버도 4xx 는 기록을 지워 같은 키로 다시 보낼 수 있다)
-      if (UNKNOWN_RESULT.indexOf(err.code) < 0) S.pendingOrder = null;
+      // 결과를 모르는 오류만 키를 남겨 둔다 (같은 주문을 다시 내면 서버가 처음 결과를 돌려준다, DP-37)
+      //  - NETWORK_ERROR : 응답을 받지 못했다
+      //  - ERROR + 상태 없음 : 응답 본문을 읽다가 끊겼다
+      //  - DUPLICATE_REQUEST : 처음 주문이 아직 처리 중이다
+      // 본문 없는 5xx(code 'ERROR' + status 5xx, 프록시 같은 앞단 오류)는 같은 키로 다시 보내도 같은 오류만 돌아올 수 있어 키를 버리고 '처리 여부 확인' 으로 다룬다
+      var noReply = err.code === 'NETWORK_ERROR' || (err.code === 'ERROR' && !err.status);
+      var keepKey = noReply || err.code === 'DUPLICATE_REQUEST';
+      if (!keepKey) S.pendingOrder = null;
       if (fatal(err)) return;
-      // MSG 에 없는 코드(예: 500 INTERNAL_ERROR)는 서버가 주문을 저장했는지 알 수 없다 -> 내역을 다시 불러오고 확인을 안내한다
       // HTTP 4xx 는 서버가 이유를 알려 준 거절이다(예: 409 MARKET_CLOSED 장 운영 시간 밖). 서버 문구를 그대로 보여 주고 수량·이유는 지우지 않는다.
-      // 5xx 처럼 서버가 주문을 저장했는지 알 수 없는 오류만 '처리 여부 확인' 으로 다룬다
+      // 5xx 처럼 서버가 주문을 저장했는지 알 수 없는 오류(MSG 에 없는 코드)는 내역을 다시 불러오고 확인을 안내한다
       var rejected = err.status >= 400 && err.status < 500;
-      var unknown = UNKNOWN_RESULT.indexOf(err.code) < 0 && !MSG[err.code] && !rejected;
-      // 응답을 못 받으면(NETWORK_ERROR·ERROR) 서버가 주문을 저장했을 수 있다. 수량·이유·키는 그대로 두므로
+      var unknown = !keepKey && !MSG[err.code] && !rejected;
+      // 응답을 못 받으면 서버가 주문을 저장했을 수 있다. 수량·이유·키는 그대로 두므로
       // 같은 주문을 다시 누르면 서버가 처음 결과를 돌려줘 중복 체결되지 않는다
-      var noReply = err.code === 'NETWORK_ERROR' || err.code === 'ERROR';
       orderError(noReply ? '응답을 받지 못해 주문이 처리됐는지 알 수 없어요. 내 거래 내역을 확인해 주세요. 같은 주문을 다시 누르면 중복 없이 처리돼요'
         : unknown ? '주문이 처리됐는지 확인하지 못했어요. 내 거래 내역을 확인한 뒤 다시 시도해 주세요' : errText(err), err.code);
       // 거래 내역·보유는 새로 불러오되 종목 화면은 다시 그리지 않는다 (다시 그리면 고른 수량·이유가 초기화돼 같은 주문을 다시 내기 어렵다).
