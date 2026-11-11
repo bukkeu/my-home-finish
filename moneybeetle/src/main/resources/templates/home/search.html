@@ -32,7 +32,9 @@
         <span class="srch-count" id="srch-count"></span>
       </div>
       <div class="srch-chips" id="srch-chips" role="group" aria-label="검색 결과 종류" hidden></div>
-      <div class="srch-body" id="srch-result" aria-live="polite"></div>
+      <div class="srch-body" id="srch-result" aria-live="polite">
+        <noscript>검색 결과를 보려면 JavaScript를 켜 주세요.</noscript>
+      </div>
     </main>
 
     <div th:replace="~{fragments/layout/notice :: noticeFragment}"></div>
