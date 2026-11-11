@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wanted.moneybeetle.MoneyBeetleApplication;
 import com.wanted.moneybeetle.domain.member.model.dto.InstructorApplicationDTO;
+import com.wanted.moneybeetle.domain.member.model.entity.InstructorProfile;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import java.time.LocalDate;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -42,6 +44,8 @@ class AdminMemberRepositoryStatusTest {
     private MemberRepository memberRepository;
     @Autowired
     private AdminMemberRepository adminMemberRepository;
+    @Autowired
+    private TestEntityManager entityManager;
 
     private Member save(String email, String nickname) {
         return memberRepository.saveAndFlush(Member.signup(email, "hash", nickname, LocalDate.of(1999, 4, 12), "FEMALE",
@@ -69,10 +73,21 @@ class AdminMemberRepositoryStatusTest {
     }
 
     @Test
-    @DisplayName("강사 가입 신청 목록: 'WITHDRAWN' 문자열 리터럴 비교가 enum 칼럼에서도 동작한다 (신청이 없으면 빈 목록)")
-    void applicationsQueryWithStringLiteralRuns() {
-        Page<InstructorApplicationDTO> page = adminMemberRepository.findApplications("PENDING", PageRequest.of(0, 10));
+    @DisplayName("강사 가입 신청 목록: 'WITHDRAWN' 문자열 리터럴 비교가 enum 칼럼에서도 동작해 탈퇴 회원의 신청은 목록·개수에서 빠진다")
+    void applicationsQueryExcludesWithdrawnMember() {
+        Member active = save("active@gmail.com", "정상");
+        Member withdrawn = save("gone@gmail.com", "탈퇴");
+        LocalDateTime appliedAt = LocalDateTime.of(2026, 10, 1, 9, 0);
+        withdrawn.withdraw(appliedAt.plusDays(1));
+        memberRepository.saveAndFlush(withdrawn);
 
-        assertThat(page.getTotalElements()).isZero();
+        entityManager.persistAndFlush(InstructorProfile.apply(active.getMemberId(), "정상 강사", "청약", appliedAt));
+        entityManager.persistAndFlush(InstructorProfile.apply(withdrawn.getMemberId(), "탈퇴 강사", "청약", appliedAt));
+        entityManager.clear();
+
+        Page<InstructorApplicationDTO> page = adminMemberRepository.findApplications(InstructorProfile.PENDING, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(InstructorApplicationDTO::memberId).containsExactly(active.getMemberId());
+        assertThat(page.getTotalElements()).isEqualTo(1);
     }
 }
