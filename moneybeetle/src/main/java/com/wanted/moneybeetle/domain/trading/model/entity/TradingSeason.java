@@ -238,6 +238,11 @@ public class TradingSeason {
         return this.settledAt != null;
     }
 
+    /** 정산을 마치고 끝난 시즌인가 (다음 시즌을 시작하기 전에 이전 시즌이 이 상태여야 한다, #207) */
+    public boolean isSettledAndEnded() {
+        return isEnded() && isSettled();
+    }
+
     public boolean isRankingPublished() {
         return this.rankingPublishedAt != null;
     }
