@@ -213,8 +213,11 @@
       msg.textContent = '';
       MB.api('/api/v1/instructor/courses/' + c.courseId + '/review-request', { method: 'POST' }).then(function () {
         MB.toast('검수를 요청했어요. 관리자가 확인하면 알려 드려요.');
-        return loadCourses().then(drawCourses);
-      }).catch(function (err) {
+        // 요청은 이미 됐으므로 목록 새로고침이 실패해도 요청 실패로 보이지 않게 하고 버튼도 다시 켜지 않는다
+        loadCourses().then(drawCourses).catch(function () {
+          MB.toast('목록을 새로 불러오지 못했어요. 새로고침해 주세요.', 'error');
+        });
+      }, function (err) {
         msg.textContent = errorText(err, '검수를 요청하지 못했어요.');
         btn.disabled = false;
       });

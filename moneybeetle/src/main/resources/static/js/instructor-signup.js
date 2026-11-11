@@ -253,7 +253,6 @@
       var step = STEP_OF_CODE[err && err.code];
       if (step === undefined && err && Array.isArray(err.fields) && err.fields.length) step = STEP_OF_FIELD[err.fields[0].field];
       if (err && err.code === 'IDENTITY_NOT_VERIFIED') { st.verified = false; st.codeSent = false; }   // 세션이 바뀌었으면 다시 인증
-      st.busy = false;
       if (step !== undefined) st.step = step;
       st.error = errorText(err, '가입 신청을 하지 못했어요. 다시 시도해 주세요.');
     }).then(function () { st.busy = false; draw(); });
