@@ -25,7 +25,7 @@ class TradingSeasonTest {
     }
 
     @Test
-    void 기본_설정은_이월_100퍼센트_상한_없음_해금_Lv8() {
+    void 기본_설정은_이월_100퍼센트_상한_없음() {
         TradingSeason season = season();
 
         assertThat(season.getCarryoverRate()).isEqualByComparingTo("100.00");
