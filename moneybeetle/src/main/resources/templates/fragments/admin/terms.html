@@ -1,0 +1,46 @@
+<!--/* comment.
+    담당 : DBA ② 김예린 (#61, 홈 콘텐츠 탭 - 경제 용어·오늘의 용어, API 95~100)
+    내용 : 왼쪽 날짜별 오늘의 용어(월 이동, 날짜 선택) / 오른쪽 선택한 날짜의 5개 지정, 용어 등록·수정·삭제
+    경로 : /admin/dashboard?view=terms
+    데이터 : static/js/admin-terms.js (요소 id 는 adm-… 로 그 파일과 맞춘다)
+*/-->
+<section class="adm-grid">
+  <div class="adm-box">
+    <h2>날짜별 오늘의 경제 용어</h2>
+    <p class="adm-note">지정하지 않은 날은 등록 순서대로 5개를 자동 선정해요.<br>지난 날짜는 바꿀 수 없어요</p>
+    <div class="adm-month">
+      <button type="button" class="btn btn-ghost btn-icon" id="adm-month-prev" aria-label="이전 달">‹</button>
+      <strong id="adm-month-label" aria-live="polite"></strong>
+      <button type="button" class="btn btn-ghost btn-icon" id="adm-month-next" aria-label="다음 달">›</button>
+    </div>
+    <div class="adm-col adm-scroll" id="adm-days" style="gap: 8px"></div>
+  </div>
+
+  <div class="adm-col">
+    <div class="adm-box adm-box--accent" id="adm-editor" hidden>
+      <h2 id="adm-editor-title"></h2>
+      <span class="adm-note" id="adm-editor-count"></span>
+      <div class="adm-col" id="adm-slots" style="gap: 6px"></div>
+      <select class="adm-select" id="adm-add-term" aria-label="용어 추가"></select>
+      <span class="adm-error" id="adm-editor-error" role="alert"></span>
+      <div class="adm-actions">
+        <button type="button" class="btn btn-primary" id="adm-save-day">지정 저장</button>
+      </div>
+    </div>
+
+    <div class="adm-box">
+      <h2 id="adm-term-count">용어</h2>
+      <div class="adm-form">
+        <input class="adm-input" id="adm-term-word" type="text" maxlength="50" placeholder="용어" aria-label="용어">
+        <input class="adm-input" id="adm-term-desc" type="text" maxlength="200" placeholder="뜻" aria-label="뜻">
+        <button type="button" class="btn btn-primary" id="adm-term-save">등록</button>
+      </div>
+      <div class="adm-actions" style="justify-content: space-between; align-items: center">
+        <label class="adm-check" id="adm-term-active-wrap" hidden><input type="checkbox" id="adm-term-active"> 사용 중 (끄면 새 지정에 쓰이지 않아요)</label>
+        <button type="button" class="btn btn-ghost adm-btn-sm" id="adm-term-cancel" hidden>수정 취소</button>
+      </div>
+      <span class="adm-error" id="adm-term-error" role="alert"></span>
+      <div class="adm-rows" id="adm-terms"><p class="adm-empty">불러오고 있어요…</p></div>
+    </div>
+  </div>
+</section>
