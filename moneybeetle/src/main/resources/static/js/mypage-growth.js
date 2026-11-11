@@ -18,7 +18,7 @@
   var MAX_PAGES = 10;
   var UNLOCK_NAMES = { TRADING: '모의 투자', HOUSING: '모의 청약' };
 
-  var cash = { items: [], page: 0, totalPages: 1, filter: 'all' };
+  var cash = { items: [], page: 0, totalPages: 1, filter: 'all', loading: false };   // loading: 쪽을 받아 오는 중이면 true (같은 쪽을 두 번 요청하지 않으려고)
 
   function byId(id) { return document.getElementById(id); }
   function el(tag, cls, text) {
@@ -65,7 +65,8 @@
       row.appendChild(el('span', 'mg-row__amount', (earn ? '+' : '−') + won(Math.abs(item.amount))));
       list.appendChild(row);
     });
-    byId('mg-cash-more').hidden = cash.page + 1 >= cash.totalPages;
+    // 받아 오는 중에는 더 보기를 숨겨, 처음 조회가 이어지는 동안 같은 쪽을 또 요청하지 못하게 한다
+    byId('mg-cash-more').hidden = cash.loading || cash.page + 1 >= cash.totalPages;
   }
 
   function sumThisMonth() {
@@ -91,6 +92,7 @@
   /** 이번 달 합계를 구하려고 이번 달 내역이 끝날 때(더 오래된 내역이 나올 때)까지 쪽을 넘겨 읽는다 */
   function loadCash() {
     var start = monthStart();
+    cash.loading = true;
     function next(page) {
       return fetchCashPage(page).then(function () {
         var last = cash.items[cash.items.length - 1];
@@ -98,7 +100,16 @@
         if (!reachedOlder && page + 1 < cash.totalPages && page + 1 < MAX_PAGES) return next(page + 1);
       });
     }
-    return next(0).then(function () { sumThisMonth(); renderCash(); });
+    return next(0).then(function () {
+      cash.loading = false;
+      sumThisMonth();
+      renderCash();
+    }, function (error) {
+      cash.loading = false;
+      // 일부 쪽을 이미 받았으면 더 보기로 이어서 받을 수 있게 기존 쪽 상태에 맞춰 보인다
+      byId('mg-cash-more').hidden = cash.page + 1 >= cash.totalPages;
+      throw error;
+    });
   }
 
   function setupCash() {
@@ -110,13 +121,19 @@
       });
     });
     byId('mg-cash-more').addEventListener('click', function () {
+      if (cash.loading) return;   // 이미 쪽을 받아 오는 중이면 같은 요청을 또 보내지 않는다
       var button = byId('mg-cash-more');
+      cash.loading = true;
       button.disabled = true;
       fetchCashPage(cash.page + 1).then(function () {
+        cash.loading = false;
         // 처음 조회가 실패해 막아 둔 필터도, 더 보기로 내역을 받아 오면 다시 쓸 수 있게 푼다
         root.querySelectorAll('.mg-filter').forEach(function (filter) { filter.disabled = false; });
         renderCash();
-      }, function (error) { setStatus(message(error)); }).then(function () { button.disabled = false; });
+      }, function (error) {
+        cash.loading = false;
+        setStatus(message(error));
+      }).then(function () { button.disabled = false; });
     });
   }
 
