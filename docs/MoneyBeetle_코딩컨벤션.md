@@ -58,6 +58,7 @@
 | Policy | `대상+규칙Policy` | `MenuNamePolicy`, `MenuDeletionPolicy` | 학습 |
 | 메서드 | camelCase, 동사로 시작 | `findMenuByMenuCode`, `stopSelling` | 학습 |
 | 변수·필드 | camelCase | `menuPrice`, `refCategoryCode` | 학습 |
+| Entity PK 필드 | `<엔티티 이름>Id` (camelCase). 컬럼 `<테이블>_id`와 짝을 맞추고, `id` 하나만 쓰지 않는다 | `courseId` ↔ `course_id`, `subscriptionAccountId` ↔ `subscription_account_id` | 팀 결정 (#303). `id` 를 쓰던 housing 엔티티 4개는 #318 에서 맞춘다 |
 | 상수·enum 값 | UPPER_SNAKE_CASE | `MENU_NOT_FOUND`, `ACTIVE` | 학습·DB 문서 |
 
 **메서드 이름 접두어**
@@ -384,6 +385,7 @@ public class MyInfoDTO {
 | 중괄호 | 같은 줄에서 열고(`{`), 한 줄짜리 `if`도 중괄호를 쓴다 | 제안 |
 | import | 와일드카드(`.*`) 금지, 안 쓰는 import는 지운다 | 제안 |
 | 주석 | 클래스 상단: 담당·역할·정책 번호. 메서드: **왜** 이렇게 하는지가 불분명할 때만. 코드를 그대로 설명하는 주석은 쓰지 않는다 | 골격·제안 |
+| TODO | 새 TODO는 **`TODO(#이슈번호): 내용`** 으로 쓴다 (예: `// TODO(#291): 운영 값은 system_setting 에서 읽는다`). 이슈 번호 없는 TODO는 남기지 않는다. 기다리던 일이 끝나면 그 이슈를 닫는 PR에서 TODO도 지운다. 이슈 번호가 있어야 기다리던 기능이 만들어졌을 때 기다리던 쪽을 찾을 수 있다 (점검 때 TODO 13개 중 10개가 이미 끝난 일이었다) | 팀 결정 (#303) |
 | 파일 인코딩 | UTF-8 | 제안 |
 | Lombok | `@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@RequiredArgsConstructor`(생성자 주입)만 허용. `@Data`·`@Setter`는 Entity에 쓰지 않는다 | 제안 |
 | 의존성 주입 | **생성자 주입** (`private final` 필드 + `@RequiredArgsConstructor`). `@Autowired` 필드 주입 금지. 생성자가 하나면 `@Autowired`는 생략한다. Lombok 없이 직접 생성자를 써도 된다 | 학습(생성자 주입, 07 chap02)·제안(Lombok) |
