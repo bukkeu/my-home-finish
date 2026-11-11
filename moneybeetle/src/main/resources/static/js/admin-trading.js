@@ -1000,6 +1000,29 @@
     });
   });
 
+  /**
+   * 정산·랭킹 공개를 서버가 거절했을 때 (SettlementService 규칙)
+   *  - NOT_SETTLED : 공개를 눌렀지만 아직 정산 전
+   *  - INVALID_STATUS_TRANSITION : 정산 상태가 아니거나(다른 관리자가 바꿈·이미 공개해 종료) 정산을 이미 마침
+   * 시즌 목록(API 114)에는 정산 여부가 없으므로 시즌을 다시 받아 원인을 구분해 안내하고, 버튼을 새 상태로 다시 그린다.
+   * 그 밖의 오류는 서버 문구를 그대로 보여 준다
+   */
+  function settleRejected(kind, id, err) {
+    if (!err || (err.code !== 'INVALID_STATUS_TRANSITION' && err.code !== 'NOT_SETTLED')) { toastError(err); return; }
+    return loadSeasons(currentSeasonId()).then(function () {
+      var now = state.seasons.filter(function (x) { return String(x.seasonId) === String(id); })[0];
+      if (err.code === 'NOT_SETTLED') {
+        delete state.settledIds[id];
+        MB.toast('아직 정산하지 않은 시즌이에요. 정산을 먼저 실행해 주세요', 'error');
+      } else if (kind === 'settle' && now && now.status === 'SETTLING') {
+        state.settledIds[id] = true;   // 정산 상태인데 정산이 거절됨 = 이미 정산을 마쳤다
+        MB.toast('이미 정산을 마친 시즌이에요. 결과를 확인한 뒤 랭킹을 공개해 주세요', 'error');
+      } else {
+        MB.toast('시즌 상태가 바뀌었어요 (지금 ' + (now ? statusLabel(now.status) : '확인할 수 없음') + '). 화면을 새 상태로 바꿨어요', 'error');
+      }
+    }).then(loadRanking);
+  }
+
   $('at-settle-btn').addEventListener('click', function (e) {
     var btn = e.currentTarget, s = state.season;
     confirmModal({ title: '정산을 실행할까요?', body: '최종 순자산·수익률·순위·이월금을 한 번에 확정해요. 실행한 뒤에는 되돌릴 수 없어요.', ok: '정산 실행' }).then(function (ok) {
@@ -1009,18 +1032,19 @@
         state.settledIds[id] = true;
         MB.toast((d && d.participants != null ? fmt(d.participants) + '명의 ' : '') + '정산을 마쳤어요');
         return loadSeasons(currentSeasonId()).then(loadRanking);
-      }, toastError);
+      }, function (err) { return settleRejected('settle', id, err); });
     });
   });
   $('at-publish-btn').addEventListener('click', function (e) {
     var btn = e.currentTarget, s = state.season;
     confirmModal({ title: '랭킹을 공개할까요?', body: '모든 사용자에게 ' + s.name + ' 순자산·수익률 랭킹이 공개돼요. 되돌릴 수 없어요.', ok: '랭킹 공개' }).then(function (ok) {
       if (!ok) return;
+      var id = s.seasonId;
       return busyOnce(btn, api(seasonPath('/rankings/publish'), { method: 'POST' })).then(function () {
         MB.toast('랭킹을 공개했어요');
         // 시즌은 서버에서 종료로 바뀐다 -> 머리 알약·상태 버튼·정산 탭을 새 상태로 다시 그린다 (정산 버튼과 같다)
         return loadSeasons(currentSeasonId()).then(loadRanking);
-      }, toastError);
+      }, function (err) { return settleRejected('publish', id, err); });
     });
   });
 
