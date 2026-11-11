@@ -1,5 +1,49 @@
-<!-- comment.
-    담당 : DBA ② 김예린 (#61, 관리자 로그인 화면)
-    원본 디자인 : AdminLogin.dc.html
-    경로 : /admin/login
--->
+<!DOCTYPE html>
+<!--/* comment.
+  담당 : DBA ② 김예린 (#61, 관리자 로그인 화면)
+  원본 디자인 : moneybeetle-page/AdminLogin.dc.html
+  경로 : /admin/login (누구나. 주소를 직접 입력해서 들어온다 - 사용자 화면에 이 링크가 없다)
+  동작 : static/js/admin-login.js 가 API 83(POST /api/v1/admin/auth/login, 폼 형식·CSRF)으로 로그인하고, 성공하면 /admin/dashboard(또는 ?next= 로 온 관리자 화면)로 이동한다.
+  스타일 : 사용자 로그인과 같은 auth.css 에 관리자 화면에만 필요한 알림 상자(admin-login.css)를 더했다.
+  프로토타입과 다른 점 : 목업 계정·브라우저에 저장하던 실패 횟수·10분 잠금 카운트다운은 서버 규칙(5회 연속 실패 시 1분, 이후 5회마다 5분)과 서버 메시지로 바꿨다.
+*/-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('관리자 로그인')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/auth.css}">
+  <link rel="stylesheet" th:href="@{/css/admin-login.css}">
+</head>
+<body class="auth-page" data-admin-login>
+<main class="auth-main">
+  <div class="auth-top">
+    <a class="auth-brand" th:href="@{/}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+    <a class="auth-close" th:href="@{/}" aria-label="닫기"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+  </div>
+  <div class="auth-body">
+    <h1 id="admin-login-title">관리자 로그인</h1>
+    <p class="al-lead">발급받은 관리자 계정으로 로그인해 주세요.</p>
+    <form id="admin-login-form" class="auth-form" method="post" th:action="@{/api/v1/admin/auth/login}" aria-labelledby="admin-login-title" novalidate>
+      <div role="alert" aria-live="assertive">
+        <div class="al-alert" id="admin-login-alert" hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>
+          <span id="admin-login-alert-text"></span>
+        </div>
+      </div>
+      <label for="admin-email">관리자 이메일</label>
+      <input id="admin-email" name="email" type="email" autocomplete="username" required maxlength="100" placeholder="admin@moneybeetle.local" aria-describedby="admin-email-error">
+      <span class="al-error" id="admin-email-error" hidden></span>
+      <label for="admin-pw">비밀번호</label>
+      <div class="auth-password">
+        <input id="admin-pw" name="password" type="password" autocomplete="current-password" required placeholder="비밀번호" aria-describedby="admin-pw-error">
+        <button type="button" data-password-toggle="admin-pw" aria-label="비밀번호 표시">보기</button>
+      </div>
+      <span class="al-error" id="admin-pw-error" hidden></span>
+      <p class="al-help">비밀번호를 잊었다면 시스템 담당자에게 문의해 주세요.</p>
+      <button class="auth-button auth-button--primary" id="admin-login-submit" type="submit">로그인</button>
+    </form>
+  </div>
+</main>
+<div class="auth-footer"><b>안내</b><span>관리자 화면의 모든 작업은 기록됩니다</span></div>
+<script th:src="@{/js/admin-login.js}" defer></script>
+</body>
+</html>
