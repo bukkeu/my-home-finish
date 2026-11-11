@@ -193,7 +193,7 @@ public class QuizService {
         return notes.map(note -> {
             QuizQuestion question = questions.get(note.getQuizQuestionId());
             List<QuizChoice> choices = choicesByQuestion.getOrDefault(question.getQuizQuestionId(), List.of());
-            return WrongNoteDTO.of(note, question, courses.get(question.getCourseId()),
+            return WrongNoteDTO.of(note, question, courses.get(question.getCourseId()), choices,
                     findChoiceContent(choices, note.getLastChoiceId()),
                     findChoiceContent(choices, findCorrectChoiceId(choices)));
         });

@@ -128,6 +128,18 @@ class TermControllerTest {
     }
 
     @Test
+    @DisplayName("오늘의 용어 지정 해제: 204, 지난 날짜는 400 PAST_DATE_LOCKED (API 100-1)")
+    void clearsSchedule() throws Exception {
+        mockMvc.perform(delete("/api/v1/admin/term-schedules/2026-11-10")).andExpect(status().isNoContent());
+        verify(termService).clear(LocalDate.of(2026, 11, 10));
+
+        doThrow(new BusinessException(TermErrorCode.PAST_DATE_LOCKED)).when(termService).clear(LocalDate.of(2026, 11, 1));
+        mockMvc.perform(delete("/api/v1/admin/term-schedules/2026-11-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("PAST_DATE_LOCKED"));
+    }
+
+    @Test
     @DisplayName("오늘의 용어 지정: 204, 지난 날짜는 400 PAST_DATE_LOCKED (API 100)")
     void assignsSchedule() throws Exception {
         mockMvc.perform(put("/api/v1/admin/term-schedules/2026-11-10").contentType(MediaType.APPLICATION_JSON)

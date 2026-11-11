@@ -1,7 +1,5 @@
 package com.wanted.moneybeetle.domain.home.controller;
 
-import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
-import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -28,7 +26,9 @@ import com.wanted.moneybeetle.domain.trading.model.dao.StockRepository;
 import com.wanted.moneybeetle.domain.trading.model.entity.Sector;
 import com.wanted.moneybeetle.domain.trading.model.entity.Stock;
 import com.wanted.moneybeetle.domain.trading.model.service.StockSearchService;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.exception.GlobalExceptionHandler;
+import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import com.wanted.moneybeetle.support.MockSecurityServices;
 import com.wanted.moneybeetle.support.SecurityTestApp;
 import java.util.List;
@@ -51,7 +51,7 @@ import org.springframework.web.context.WebApplicationContext;
 *   - 로그인은 AuthDetails 를 세션에 넣은 것으로 대신한다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, HomeController.class, HomeService.class,
-        GrowthService.class, UnlockLevelProvider.class, StockSearchService.class, GlobalExceptionHandler.class})
+        GrowthService.class, StockSearchService.class, UnlockLevelProvider.class, GlobalExceptionHandler.class})
 @MockSecurityServices
 class HomeSearchLevelFlowTest {
 
@@ -59,19 +59,24 @@ class HomeSearchLevelFlowTest {
 
     @MockitoBean
     private LevelPolicyRepository levelPolicyRepository;
-    /** 해금 레벨 운영 설정(#266)은 이 테스트가 보지 않는다. 설정이 없는 것으로 두면 기본 해금 레벨을 쓴다 */
-    @MockitoBean
-    private SystemSettingService systemSettingService;
     @MockitoBean
     private CourseService courseService;
     @MockitoBean
     private TermService termService;
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.trading.model.service.ParticipationService participationService;   // 홈 요약용 (이 테스트는 검색만 본다)
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.housing.model.service.HousingService housingService;
+    @MockitoBean
+    private java.time.Clock clock;   // HomeService 가 홈 요약의 날짜 계산에 쓴다 (이 테스트는 검색만 본다)
     @MockitoBean
     private StockRepository stockRepository;
     @MockitoBean
     private SectorRepository sectorRepository;
     @MockitoBean
     private PlatformTransactionManager transactionManager;
+    @MockitoBean
+    private SystemSettingService systemSettingService;   // 해금 레벨 운영 설정 (#238). 비워 두면 기본 모의투자 Lv.8
     @Autowired
     private MemberService memberService;     // @MockSecurityServices 의 가짜 : 계정 상태·레벨(getBalance)을 정해 둔다
 

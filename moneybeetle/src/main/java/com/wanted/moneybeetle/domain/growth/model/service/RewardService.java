@@ -70,6 +70,16 @@ public class RewardService {
             RewardRule.RANKING_RANK_2, CashHistory.SOURCE_RANKING,
             RewardRule.RANKING_RANK_3, CashHistory.SOURCE_RANKING);
 
+    /**
+     * 이 규칙 코드가 이 캐시·경험치를 지급할 수 있는가. 0 인 쪽은 항상 지급할 수 있다 (줄 것이 없으므로).
+     * 지급(grantInternal)과 관리자 규칙 수정(RewardRuleService, #244)이 같은 기준을 쓴다.
+     * 예) ATTENDANCE_DAILY 는 경험치만, ATTENDANCE_STREAK·RANKING_RANK_1~3 은 캐시만 줄 수 있다
+     */
+    public static boolean canGrant(String ruleCode, long cash, long exp) {
+        return (exp <= 0 || EXP_SOURCE_BY_RULE.containsKey(ruleCode))
+                && (cash <= 0 || CASH_SOURCE_BY_RULE.containsKey(ruleCode));
+    }
+
     /** 출석 경험치(ATTENDANCE_DAILY)가 하루에 받을 수 있는 최대 XP (SP-22). 규칙의 기본값을 바꿔도 이 값을 넘지 않는다 */
     public static final int ATTENDANCE_DAILY_EXP_CAP = 50;
 
@@ -139,7 +149,7 @@ public class RewardService {
         int exp = scaledExp(rule, expMultiplier);
         String expSource = EXP_SOURCE_BY_RULE.get(rule.getCode());
         String cashSource = CASH_SOURCE_BY_RULE.get(rule.getCode());
-        if ((exp > 0 && expSource == null) || (cash > 0 && cashSource == null)) {
+        if (!canGrant(rule.getCode(), cash, exp)) {
             throw new BusinessException(GrowthErrorCode.REWARD_NOT_SUPPORTED);
         }
 

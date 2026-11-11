@@ -18,7 +18,10 @@ import com.wanted.moneybeetle.domain.growth.exception.GrowthErrorCode;
 import com.wanted.moneybeetle.domain.growth.model.dto.AttendanceStatusDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.CashHistoryDTO;
 import com.wanted.moneybeetle.domain.growth.model.dto.ExpHistoryDTO;
+import com.wanted.moneybeetle.domain.growth.model.dto.LevelDTO;
+import com.wanted.moneybeetle.domain.growth.model.entity.LevelPolicy;
 import com.wanted.moneybeetle.domain.growth.model.service.AttendanceService;
+import com.wanted.moneybeetle.domain.growth.model.service.GrowthService;
 import com.wanted.moneybeetle.domain.growth.model.service.RewardService;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MemberBalanceDTO;
@@ -51,6 +54,7 @@ class GrowthControllerTest {
 
     private final AttendanceService attendanceService = mock(AttendanceService.class);
     private final RewardService rewardService = mock(RewardService.class);
+    private final GrowthService growthService = mock(GrowthService.class);
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -62,7 +66,7 @@ class GrowthControllerTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new GrowthController(attendanceService, rewardService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new GrowthController(attendanceService, rewardService, growthService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(Jackson2ObjectMapperBuilder.json().build()))
@@ -220,5 +224,25 @@ class GrowthControllerTest {
         Pageable clamped = capturedExpPageable();
         assertThat(clamped.getPageSize()).isEqualTo(1);
         assertThat(clamped.getPageNumber()).isZero();
+    }
+
+    @Test
+    @DisplayName("레벨·칭호 표 (API 24): { levels: [...] } 로 돌려주고, 해금 기능이 없는 레벨은 unlocks 를 생략한다")
+    void levels() throws Exception {
+        when(growthService.findLevels()).thenReturn(List.of(
+                LevelDTO.of(LevelPolicy.create(1, 0, "고시원", 0), List.of()),
+                LevelDTO.of(LevelPolicy.create(8, 1250, "투룸", 80_000), List.of("TRADING"))));
+
+        mockMvc.perform(get("/api/v1/levels"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.levels.length()").value(2))
+                .andExpect(jsonPath("$.data.levels[0].level").value(1))
+                .andExpect(jsonPath("$.data.levels[0].requiredExp").value(0))
+                .andExpect(jsonPath("$.data.levels[0].title").value("고시원"))
+                .andExpect(jsonPath("$.data.levels[0].unlocks").doesNotExist())
+                .andExpect(jsonPath("$.data.levels[1].requiredExp").value(1250))
+                .andExpect(jsonPath("$.data.levels[1].levelupCash").value(80000))
+                .andExpect(jsonPath("$.data.levels[1].unlocks[0]").value("TRADING"));
     }
 }

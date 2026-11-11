@@ -8,6 +8,7 @@
 *     · 최종 퀴즈 잠금은 서버도 막는다(QUIZ_LOCKED). 퀴즈 화면은 course-quiz.js (window.MBLecQuiz)
 *   - 콘텐츠 탭: 영상 요약글 / 강의 문의(#55, inquiry-board.js 의 window.MBInquiry 를 이 강의로 연다)
 *   - 영상 재생: 처음 열면 마지막으로 본 영상(없으면 아직 안 본 첫 영상)을 고르고, 서버가 준 이어보기 위치부터 재생한다
+*     주소에 &lessonId= 가 있으면(마이페이지 학습 기록의 이어보기, #71) 그 영상을 먼저 연다
 *   - 시청 위치 저장(API 33): 재생 중 15초마다, 일시정지·끝·화면을 떠날 때. 완료 여부는 서버가 본 시간으로 정한다(#20)
 *     → 끝까지 본 뒤에는 강의 정보를 다시 받아 목차·진도율을 서버 기준으로 갱신한다
 *  */
@@ -20,7 +21,9 @@
   var SAVE_EVERY_MS = 15000;
   var OX_KEY = 'mb-ox-done';   // 시청 전 테스트를 마친 강의 ID 목록 (브라우저 저장소)
   var MAX_STEP = 2;           // timeupdate 사이 이만큼(초)보다 크게 뛰면 건너뛰기로 본다 (2배속까지는 재생으로 인정)
-  var courseId = Number(new URLSearchParams(location.search).get('courseId'));
+  var params = new URLSearchParams(location.search);
+  var courseId = Number(params.get('courseId'));
+  var askedLessonId = Number(params.get('lessonId')) || null;   // 이어보기로 들어오면 이 영상부터 (#71)
   var body = root.querySelector('[data-lec-body]');
   var back = root.querySelector('[data-lec-back]');
 
@@ -66,10 +69,11 @@
     return null;
   }
 
-  /* 처음 열 영상: 마지막으로 본 영상 → 아직 안 본 첫 영상 → 첫 영상 */
+  /* 처음 열 영상: 주소로 고른 영상 → 마지막으로 본 영상 → 아직 안 본 첫 영상 → 첫 영상 */
   function pickStartLesson(course) {
     var lessons = course.lessons || [];
-    return lessons.find(function (l) { return l.lessonId === course.lastLessonId; })
+    return (askedLessonId && lessons.find(function (l) { return l.lessonId === askedLessonId; }))
+        || lessons.find(function (l) { return l.lessonId === course.lastLessonId; })
         || lessons.find(function (l) { return !l.isCompleted; })
         || lessons[0] || null;
   }

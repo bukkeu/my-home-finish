@@ -368,6 +368,7 @@ CREATE TABLE IF NOT EXISTS `lesson_watch` (
                                               `member_id` bigint NOT NULL COMMENT '회원',
                                               `lesson_id` bigint NOT NULL COMMENT '영상',
                                               `watched_seconds` int NOT NULL DEFAULT '0' COMMENT '본 시간(초)',
+                                              `position_seconds` int NOT NULL DEFAULT '0' COMMENT '이 영상의 마지막 재생 위치(초, 이어보기 #71)',
                                               `is_completed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '끝까지 시청 여부',
     `last_watched_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '마지막 시청 일시',
     PRIMARY KEY (`lesson_watch_id`),

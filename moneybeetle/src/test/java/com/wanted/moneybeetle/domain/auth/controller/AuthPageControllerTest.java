@@ -80,7 +80,7 @@ class AuthPageControllerTest {
     }
 
     @Test
-    @DisplayName("주소가 템플릿 이름에 연결된다: /login, /signup, /signup/social, /password-reset")
+    @DisplayName("주소가 템플릿 이름에 연결된다: /login, /signup, /signup/social, /password-reset, /admin/login")
     void routesResolveToTemplates() throws Exception {
         mockMvc.perform(get("/login")).andExpect(status().isOk()).andExpect(view().name("auth/login"))
                 .andExpect(model().attributeExists("googleOAuthEnabled"));
@@ -89,5 +89,6 @@ class AuthPageControllerTest {
                 .andExpect(model().attributeExists("googleOAuthEnabled"));
         mockMvc.perform(get("/signup/social")).andExpect(view().name("member/social-signup"));
         mockMvc.perform(get("/password-reset")).andExpect(view().name("auth/password-reset"));
+        mockMvc.perform(get("/admin/login")).andExpect(status().isOk()).andExpect(view().name("auth/admin-login"));
     }
 }
