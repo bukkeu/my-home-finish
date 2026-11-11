@@ -1,5 +1,128 @@
-<!-- comment.
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>마이페이지 설정 탭 조각</title>
+</head>
+<body>
+<!--/* comment.
     담당 : DBA ② 김예린 (#69, 설정 탭)
-    내용 : 마이페이지 - 설정, 비밀번호 변경, 탈퇴
-    경로 : /user/my-page
--->
+    내용 : 마이페이지 - 개인정보 설정, 비밀번호 변경, 탈퇴 (프로필 사진 변경은 틀 #54 의 프로필 카드가 맡는다)
+    경로 : /user/my-page#settings
+    원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 "계정 설정" 탭
+
+    사용 (마이페이지 틀 member/mypage.html):
+        틀 member/mypage.html 이 th:insert 로 부른다 (fragments/mypage/settings :: settingsTabFragment, 주소 끝 #settings)
+    - 이 조각 안의 <link>(mypage-mg.css)와 <script>(mypage-settings.js)가 스타일·동작을 맡는다. 틀은 탭 전환만 하면 된다.
+    - class·id 는 모두 mg- 로 시작한다 (성장 탭과 같은 접두어).
+    데이터·동작:
+        GET    /api/v1/members/me                                   API 13 : 이메일·닉네임·생년월일·성별
+        PATCH  /api/v1/members/me                                   API 14 : 닉네임·생년월일·성별 수정
+        PATCH  /api/v1/members/me/password                          API 16 : 비밀번호 변경
+        DELETE /api/v1/members/me                                   API 17 : 탈퇴. 비밀번호가 있으면 password 로, 없으면(간편 로그인) 이메일 코드로 확인
+        POST   /api/v1/members/me/withdraw-verification/request     API 17-1 : 탈퇴 확인 코드 메일 요청
+        POST   /api/v1/members/me/withdraw-verification             API 17-2 : 받은 코드 확인
+    프로토타입과 다른 점 : 생년월일을 고칠 수 있다 (요구사항 USR-12, API 14). 간편 로그인 회원의 탈퇴 확인이 이메일 코드(#232)다.
+*/-->
+<th:block th:fragment="settingsTabFragment">
+  <link rel="stylesheet" th:href="@{/css/mypage-mg.css}">
+  <div class="mg mg-settings" id="mg-settings">
+    <p class="mg-status" id="mg-settings-status" role="status" aria-live="polite">불러오고 있어요…</p>
+
+    <div class="mg-settings-grid">
+      <!--/* ===== 개인정보 ===== */-->
+      <div class="card blueprint">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-title">개인정보 설정</div>
+
+        <form id="mg-profile-form" class="mg" novalidate>
+          <div class="mg-field">
+            <label for="mg-email">아이디 (이메일)</label>
+            <input class="mg-input" id="mg-email" type="email" disabled>
+            <span class="mg-help">아이디는 개인정보 보호를 위해 변경할 수 없어요.</span>
+          </div>
+          <div class="mg-field">
+            <label for="mg-nickname">닉네임</label>
+            <input class="mg-input" id="mg-nickname" maxlength="12" autocomplete="nickname" placeholder="2~12자, 한글·영문·숫자">
+          </div>
+          <div class="mg-field">
+            <label for="mg-birth">생년월일</label>
+            <input class="mg-input" id="mg-birth" type="date" autocomplete="bday">
+            <span class="mg-help">만 14세 이상이어야 해요.</span>
+          </div>
+          <div class="mg-field">
+            <label for="mg-gender">성별</label>
+            <select class="mg-input" id="mg-gender">
+              <option value="">선택 안 함</option>
+              <option value="FEMALE">여성</option>
+              <option value="MALE">남성</option>
+            </select>
+          </div>
+          <p class="mg-msg" id="mg-profile-msg" role="alert" aria-live="polite"></p>
+          <div class="mg-actions"><button class="btn btn-primary" id="mg-profile-save" type="submit">저장</button></div>
+        </form>
+      </div>
+
+      <!--/* ===== 비밀번호 변경 ===== */-->
+      <div class="card blueprint">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-title">비밀번호 변경</div>
+        <form id="mg-pw-form" class="mg" novalidate>
+          <div class="mg-field">
+            <label for="mg-pw-current">현재 비밀번호</label>
+            <div class="mg-pw"><input class="mg-input" id="mg-pw-current" type="password" autocomplete="current-password"><button type="button" data-mg-toggle="mg-pw-current" aria-label="비밀번호 표시">보기</button></div>
+          </div>
+          <div class="mg-field">
+            <label for="mg-pw-new">새 비밀번호</label>
+            <div class="mg-pw"><input class="mg-input" id="mg-pw-new" type="password" autocomplete="new-password" maxlength="20" placeholder="8~20자, 영문과 숫자 포함"><button type="button" data-mg-toggle="mg-pw-new" aria-label="비밀번호 표시">보기</button></div>
+          </div>
+          <div class="mg-field">
+            <label for="mg-pw-confirm">새 비밀번호 확인</label>
+            <div class="mg-pw"><input class="mg-input" id="mg-pw-confirm" type="password" autocomplete="new-password" maxlength="20"><button type="button" data-mg-toggle="mg-pw-confirm" aria-label="비밀번호 표시">보기</button></div>
+          </div>
+          <span class="mg-help">구글 간편 로그인으로 가입한 계정은 비밀번호가 없어서 바꿀 수 없어요.</span>
+          <p class="mg-msg" id="mg-pw-msg" role="alert" aria-live="polite"></p>
+          <div class="mg-actions"><button class="btn btn-primary" id="mg-pw-save" type="submit">비밀번호 변경</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="mg-leave"><button type="button" class="btn btn-ghost mg-danger" id="mg-leave">탈퇴하기</button></div>
+
+    <!--/* ===== 탈퇴 확인 팝업 ===== */-->
+    <div class="mg-dialog-backdrop" id="mg-wd" hidden>
+      <div class="mg-dialog mg-wd" role="dialog" aria-modal="true" aria-labelledby="mg-wd-title">
+        <div class="mg-wd__title" id="mg-wd-title">정말 탈퇴하시겠어요?</div>
+        <div class="mg-wd__body">보유 캐시, 레벨, 스크랩, 오답노트, 랭킹 기록이 모두 삭제되며 복구할 수 없어요. 개인정보는 30일 뒤에 지워져요.</div>
+
+        <!--/* 1단계: 비밀번호가 있는 회원은 비밀번호로 확인 */-->
+        <div class="mg-field" id="mg-wd-step-password">
+          <label for="mg-wd-password">현재 비밀번호</label>
+          <div class="mg-pw"><input class="mg-input" id="mg-wd-password" type="password" autocomplete="current-password"><button type="button" data-mg-toggle="mg-wd-password" aria-label="비밀번호 표시">보기</button></div>
+          <span class="mg-help">간편 로그인(비밀번호 없음) 회원은 이 창을 열면 바로 인증번호 단계가 나와요. 인증번호 받기를 누르면 가입한 이메일로 인증번호를 보내요.</span>
+        </div>
+
+        <!--/* 2단계: 비밀번호가 없는 간편 로그인 회원은 이메일로 받은 인증번호로 확인 */-->
+        <div id="mg-wd-step-code" hidden>
+          <div class="mg-field">
+            <label for="mg-wd-code">인증번호 6자리</label>
+            <div class="mg-actions mg-actions--nowrap">
+              <input class="mg-input" id="mg-wd-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="가입한 이메일로 받은 번호">
+              <button type="button" class="btn btn-secondary mg-btn-fixed" id="mg-wd-send">인증번호 받기</button>
+            </div>
+            <span class="mg-help">인증번호는 5분 동안 유효해요. 다시 받기는 60초 뒤에 할 수 있어요.</span>
+          </div>
+        </div>
+
+        <p class="mg-msg" id="mg-wd-msg" role="alert" aria-live="polite"></p>
+        <div class="mg-wd__actions">
+          <button type="button" class="btn btn-secondary" id="mg-wd-cancel">취소</button>
+          <button type="button" class="btn btn-primary" id="mg-wd-submit">탈퇴하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script th:src="@{/js/mypage-settings.js}" defer></script>
+</th:block>
+</body>
+</html>
