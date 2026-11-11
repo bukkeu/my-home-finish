@@ -1,5 +1,48 @@
-<!-- comment.
-    담당 : DBA ① 신아림 (#71, 학습 기록·Q&A 탭)
-    내용 : 마이페이지 - 스크랩, 오답노트, 학습 완료
-    경로 : /user/my-page
--->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>마이페이지 학습 탭 조각</title>
+</head>
+<body>
+<!--/* comment.
+  담당 : DBA ① 신아림 (#71, 마이페이지 학습 기록·스크랩·오답노트·Q&A 탭)
+  원본 디자인 : moneybeetle-page/UserMyPage.dc.html 의 wrong·scrap·history·qna 보기
+  경로 : /user/my-page (틀은 member/mypage.html, #54). 틀이 탭마다 아래 조각을 하나씩 끼워 넣는다
+    | 조각                | 탭(?tab=) | 내용                                   | API        |
+    | wrongTabFragment    | wrong     | 퀴즈 오답노트 · 다시 풀기 · 삭제        | 44, 45, 46 |
+    | scrapTabFragment    | scrap     | 강의 스크랩 · 해제 · 강의 보기          | 38, 37     |
+    | historyTabFragment  | learning  | 최근 시청(이어보기) · 학습 완료 강의    | 34, 35     |
+    | qnaTabFragment      | qna       | 내가 쓴 Q&A·문의 · 해당 강의 보러 가기  | 149, 49    |
+  - 화면 내용은 static/js/mypage-learning.js 가 틀의 'mypage:tab' 이벤트를 받아 처음 열 때 불러온다
+  - 스타일·스크립트는 첫 조각(wrongTabFragment)에서 한 번만 넣는다 (조각마다 넣으면 스크립트가 여러 번 돈다)
+  - class 는 ml- 접두어 (틀은 mp-, 김예린 mg-, 서수영 mh-)
+*/-->
+
+<div th:fragment="wrongTabFragment" class="ml" id="tab-wrong" data-ml="wrong">
+  <link rel="stylesheet" type="text/css" th:href="@{/css/mypage-learning.css}">
+  <script defer th:src="@{/js/mypage-learning.js}"></script>
+  <div class="ml-body" data-ml-body>
+    <div class="card ml-state">오답노트를 불러오는 중이에요…</div>
+  </div>
+</div>
+
+<div th:fragment="scrapTabFragment" class="ml" id="tab-scrap" data-ml="scrap">
+  <div class="ml-body" data-ml-body>
+    <div class="card ml-state">스크랩한 강의를 불러오는 중이에요…</div>
+  </div>
+</div>
+
+<div th:fragment="historyTabFragment" class="ml" id="tab-history" data-ml="learning">
+  <div class="ml-body" data-ml-body>
+    <div class="card ml-state">학습 기록을 불러오는 중이에요…</div>
+  </div>
+</div>
+
+<div th:fragment="qnaTabFragment" class="ml" id="tab-qna" data-ml="qna">
+  <div class="ml-body" data-ml-body>
+    <div class="card ml-state">내가 쓴 문의를 불러오는 중이에요…</div>
+  </div>
+</div>
+</body>
+</html>

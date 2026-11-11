@@ -39,12 +39,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 *   - 화면 스크립트·스타일이 들어간다
 *   - 프로필 카드 경험치는 공통 레이아웃 값(LayoutInterceptor, #249)의 지금 레벨 경험치·레벨 구간을 쓴다
 *   - 나의 청약통장 탭(#70)은 자기 조각(fragments/mypage/housing)으로 그려진다
+*   - 학습 탭 4개(#71: wrong·scrap·learning·qna)는 신아림 조각(fragments/mypage/learning)으로 그려진다
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, MyPageViewController.class, HomeWebConfig.class, LayoutInterceptor.class})
 @MockSecurityServices
 class MyPageRenderTest {
 
     private static final List<String> TABS = List.of("settings", "growth", "housing", "wrong", "scrap", "learning", "qna");
+    private static final List<String> LEARNING_TABS = List.of("wrong", "scrap", "learning", "qna");   // #71 조각이 있는 탭
 
     @Autowired
     private MemberService memberService;
@@ -101,9 +103,21 @@ class MyPageRenderTest {
     void 아직_없는_탭_조각은_준비_중_자리로_대신_그린다() throws Exception {
         String html = render();
 
-        // 설정(#69)·캐시 내역(#69)·나의 청약통장(#70) 탭은 조각이 들어와 실제 화면이 그려지고, 나머지는 조각 이름이 없어서(learning)·파일이 없어서 자리만 그린다
+        // 설정(#69)·캐시 내역(#69)·나의 청약통장(#70)·학습 탭 4개(#71)가 모두 자기 조각으로 그려져서 "준비 중" 자리는 남지 않는다
         assertThat(html).contains("id=\"mg-settings\"").contains("id=\"mg-growth\"");
-        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 3);
+        assertThat(html.split("이 탭은 준비 중이에요.", -1).length - 1).isEqualTo(TABS.size() - 3 - LEARNING_TABS.size());
+    }
+
+    @Test
+    void 학습_탭_4개는_신아림_조각을_그린다() throws Exception {
+        String html = render();
+
+        // #71 fragments/mypage/learning.html : 탭마다 data-ml 영역, 스크립트·스타일은 한 번만
+        for (String tab : LEARNING_TABS) {
+            assertThat(html).contains("data-ml=\"" + tab + "\"");
+        }
+        assertThat(html.split("/js/mypage-learning.js", -1).length - 1).isEqualTo(1);
+        assertThat(html).contains("/css/mypage-learning.css");
     }
 
     @Test

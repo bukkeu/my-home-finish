@@ -26,4 +26,9 @@ public interface TermScheduleRepository extends JpaRepository<TermSchedule, Long
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from TermSchedule s where s.showDate = :showDate")
     int deleteByShowDate(@Param("showDate") LocalDate showDate);
+
+    /** 그 날짜에서 관리자가 직접 지정한 일정만 지운다. 이미 저장된 자동 선정은 처음 정한 대로 유지한다 (지정 해제, API 100-1) */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from TermSchedule s where s.showDate = :showDate and s.auto = false")
+    int deleteManualByShowDate(@Param("showDate") LocalDate showDate);
 }

@@ -252,3 +252,19 @@ html.mb-muted .mb-bell::before {
 @media (prefers-reduced-motion: reduce) {
   .mb-drawer, .mb-overlay, .mbn-panel, .mbn-ov, .mb-toast, .mb-admin-side { transition: none !important; }
 }
+
+/* ---------- 공통 팝업 (.mb-dialog) · 오늘의 경제단어 (#51) ---------- */
+.mb-dialog-backdrop { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 16px; background: rgba(38, 59, 26, .45); }
+.mb-dialog-backdrop[hidden] { display: none; }
+.mb-dialog { display: flex; flex-direction: column; max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 20px; background: var(--color-bg); box-shadow: 0 12px 32px rgba(38, 59, 26, .25); }
+.mb-words { width: min(520px, 100%); gap: 16px; padding: 28px; }
+.mb-words__head { display: flex; align-items: center; gap: 8px; }
+.mb-words__title { padding: 10px 20px; border-radius: 999px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; box-shadow: 0 6px 16px rgba(127, 200, 79, .35); }
+.mb-words__space { flex: 1; }
+.mb-words__list { display: flex; flex-direction: column; }
+.mb-words__row { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--color-divider); }
+.mb-words__term { font-family: var(--font-heading); font-size: 17px; font-weight: 700; }
+.mb-words__desc { color: #4a5444; font-size: 14px; line-height: 1.5; text-wrap: pretty; }
+.mb-words__empty { margin: 0; padding: 16px 0; color: var(--color-neutral-700); font-size: 14px; }
+.mb-words__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.mb-words__actions .btn-ghost { color: var(--color-neutral-700); }

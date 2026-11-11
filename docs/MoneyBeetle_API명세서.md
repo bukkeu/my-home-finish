@@ -191,6 +191,7 @@
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
 | 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
 
 ### 모의투자
 
@@ -259,6 +260,7 @@
 | 98 | `DELETE` | `/api/v1/admin/economic-terms/{termId}` | 경제 용어 삭제 | 관리자 | ADM-05 |
 | 99 | `GET` | `/api/v1/admin/term-schedules` | 날짜별 용어 일정 | 관리자 | ADM-05 |
 | 100 | `PUT` | `/api/v1/admin/term-schedules/{date}` | 오늘의 용어 지정 | 관리자 | ADM-05, SP-46~47 |
+| 100-1 | `DELETE` | `/api/v1/admin/term-schedules/{date}` | 오늘의 용어 지정 해제 (자동 선정으로) | 관리자 | ADM-05, SP-46 |
 | 101 | `GET` | `/api/v1/admin/members` | 사용자·강사 목록 | 관리자 | ADM-06 |
 | 102 | `PATCH` | `/api/v1/admin/members/{memberId}/status` | 계정 정지·해제 | 관리자 | ADM-06, SP-06, DP-43 |
 | 103 | `PATCH` | `/api/v1/admin/members/{memberId}/role` | 강사 권한 부여·회수 | 관리자 | ADM-06, SP-07 |
@@ -718,6 +720,8 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 }
 ```
 
+- `unlocks` 의 해금 여부와 `housingLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값으로 판단한다(#238).
+
 #### 14. 설정 수정
 
 | 항목 | 내용 |
@@ -917,7 +921,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 - `training.housingSummary` 는 모의 청약이 열려 있을 때(`training.housing.unlocked`)만 값이 있고, 이번 달에 걸친 단지 중 접수 중(`OPEN`)인 공고 수(`openComplexes`)와 내 청약통장 납입 횟수(`paidCount`, 통장이 없으면 `null`)다. 해금되지 않았거나 공고를 읽지 못하면 `null`이다.
 - 요약(`tradingSeason`·`housingSummary`)을 만들지 못해도 오류가 아니다. 홈 전체가 실패하지 않고 그 요약만 `null`이다. 참가자 수는 학습자용으로 열린 값이 없어 아직 주지 않는다.
 - `learning` 은 본 영상 수와 학습 완료한 강의 수다.
-- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다.
+- `training.*.unlocked` 는 내 레벨이 `requiredLevel` 이상일 때 `true`다. `requiredLevel` 은 운영 설정(API 112, `UNLOCK_LEVEL_TRADING` 기본 8 · `UNLOCK_LEVEL_HOUSING` 기본 12) 값이라 레벨 검사(`LEVEL_LOCKED`)와 같은 기준이다(#238).
 
 #### 20. 오늘의 경제 용어
 
@@ -1203,7 +1207,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-03, LRN-05 |
-| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
+| 설명 | 재생 주소와 이어보기 위치(`positionSeconds`, 영상마다 따로 저장된 이 영상의 마지막 위치, 본 적 없으면 0, #71), 서버가 인정한 이 영상의 본 시간(`watchedSeconds`, 안 봤으면 0). 화면은 `watchedSeconds`에 실제로 재생한 구간만 더해 API 33으로 보낸다(건너뛰기는 더하지 않음, #52). |
 
 **Request**
 
@@ -1225,7 +1229,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `PUT` |
 | 권한 | 회원 |
 | 관련 | LRN-05~06, SP-38 |
-| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). |
+| 설명 | 재생 중 주기적으로(예: 15초) 저장. **영상 완료는 서버가 정한다**(#20): 본 시간(`watchedSeconds`)은 지난 저장 뒤 실제로 흐른 시간 × 2배(최대 2배속)까지만 인정하고(첫 저장 전 재생분 여유 15초는 영상당 한 번만), 인정된 본 시간이 영상 길이의 90% 이상이면 완료. 길이가 0인 영상은 완료로 치지 않는다. `completed`는 호환을 위해 받지만 완료 판단에 쓰지 않는다(화면 값만으로 퀴즈가 열리지 않게). `positionSeconds`는 이 영상의 이어보기 위치(lesson_watch)로, 강의의 마지막 영상과 위치(learning_progress)로도 함께 남긴다(#71). |
 
 **Request**
 
@@ -1465,7 +1469,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | QST-06, SP-36 |
-| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. |
+| 설명 | 카테고리·강의별로 모아 본다. categoryId(하위 소주제 포함)·courseId는 선택. 허가·공개·삭제 안 된 강의의 오답만 보여 준다(DH-01). 최근 순. choices는 다시 풀기(API 45)용 보기(보기 순서, 정답 표시 없음, #71). |
 
 **Request**
 
@@ -1476,7 +1480,8 @@ Header: Idempotency-Key: 7c1e...
 ```json
 {
   "items": [ { "wrongNoteId": 9, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "categoryName": "부동산 › 청약",
-    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...", "createdAt": "2026-11-02T14:00:00" }   ],
+    "questionId": 205, "content": "...", "myChoice": "40,000원", "correctChoice": "33,840원", "explanation": "...",
+    "choices": [ { "choiceId": 31, "content": "33,840원" }, { "choiceId": 32, "content": "40,000원" } ], "createdAt": "2026-11-02T14:00:00" }   ],
   "page": 0, "size": 20, "totalElements": 1, "totalPages": 1
 }
 ```
@@ -1652,6 +1657,32 @@ Header: Idempotency-Key: 7c1e...
 ```
 
 **Error**: `FORBIDDEN`, `FORBIDDEN_WORD`
+
+#### 149. 내가 쓴 문의 모음
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/members/me/inquiries` |
+| Method | `GET` |
+| 권한 | 회원 |
+| 관련 | LRN-09 |
+| 설명 | 마이페이지 Q&A·문의 모음(#71). 내가 쓴 사이트 문의와 강의 문의를 함께, 최신순(같으면 문의 ID 역순). 삭제한 글은 빠진다. 관리자가 숨긴 글은 목록에 남기되 제목을 안내 문구로 가린다(DP-22, isHidden true). courseTitle은 수강생에게 보이는 강의(허가 + 공개 + 삭제 안 됨)일 때만 채우고, 아니면 null(화면은 이때 "해당 강의 보러 가기"를 숨긴다). 내용·답글은 문의 상세(API 49). 목록 응답 형식(1-3). |
+
+**Request**
+
+- Query: page=0&size=20 (size 최대 50)
+
+**Response**
+
+```json
+{
+  "items": [
+    { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "category": null, "title": "인정금액이 잔액보다 적게 나와요", "status": "ANSWERED", "isHidden": false, "createdAt": "2026-11-03T10:00:00" },
+    { "inquiryId": 1, "courseId": null, "courseTitle": null, "category": "ACCOUNT", "title": "관리자에 의해 숨김 처리된 글이에요", "status": "WAITING", "isHidden": true, "createdAt": "2026-11-01T09:00:00" }
+  ],
+  "page": 0, "size": 20, "totalElements": 2, "totalPages": 1
+}
+```
 
 ### 모의투자
 
@@ -2806,6 +2837,22 @@ email=admin@moneybeetle.kr&password=...
 - 204 No Content
 
 **Error**: `PAST_DATE_LOCKED`, `TERMS_NOT_ENOUGH`
+
+#### 100-1. 오늘의 용어 지정 해제
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/admin/term-schedules/{date}` |
+| Method | `DELETE` |
+| 권한 | 관리자 |
+| 관련 | ADM-05, SP-46 |
+| 설명 | 그 날짜에서 직접 지정한 용어만 지워 자동 선정으로 되돌린다(이슈 #271). 이미 저장된 자동 선정은 지우지 않아, 같은 날 다른 용어가 보이지 않는다. 지정이 지워진 날은 처음 볼 때 자동 선정되고, 월별 일정(API 99)에는 `isAuto: true` 로 나온다. 지난 날짜는 변경 불가. 지정이 없는 날도 오류 없이 204. |
+
+**Response**
+
+- 204 No Content
+
+**Error**: `PAST_DATE_LOCKED`
 
 #### 101. 사용자·강사 목록
 
