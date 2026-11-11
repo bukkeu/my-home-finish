@@ -386,11 +386,19 @@
     row.append(avatar(s.name, s.stockId), name, price);
     return row;
   }
+  /** 종목 목록 요청. 화면·공유 상태는 건드리지 않고 { stocks, turnNo } 만 돌려준다: 늦게 온 이전 응답이 화면을 덮지 않도록 호출한 쪽이 최신 요청인지 확인한 뒤 반영한다 */
   function fetchStocks(query) {
     return api('/stocks' + (query ? '?' + query : '')).then(function (d) {
-      if (d.turnNo != null) $('trd-market-turn').textContent = d.turnNo + '턴 기준';
-      return d.stocks || [];
+      return { stocks: d.stocks || [], turnNo: d.turnNo };
     });
+  }
+  function applyTurn(turnNo) {
+    if (turnNo != null) $('trd-market-turn').textContent = turnNo + '턴 기준';
+  }
+  /** 영역 오류 처리: 최신 요청이면 그 영역에 문구를 두고, 늦은 요청이면 화면 전체 오류(잠금·시즌 없음)만 처리한다 */
+  function sectionErrorIf(isCurrent, node) {
+    var show = sectionError(node);
+    return function (err) { if (isCurrent()) show(err); else fatal(err); };
   }
   function fetchSectors() {
     if (S.sectors) return Promise.resolve(S.sectors);
@@ -400,16 +408,23 @@
   function loadMarket() {
     var list = $('trd-market-list');
     var q = $('trd-search').value.trim();
+    // 검색어·탭을 바꾸면 이전 요청의 늦은 응답은 목록·턴 표시를 바꾸지 못한다
+    var req = S.marketReq = (S.marketReq || 0) + 1;
+    var current = function () { return req === S.marketReq; };
     loading(list);
     if (q) {
-      fetchStocks('keyword=' + encodeURIComponent(q)).then(function (stocks) {
+      fetchStocks('keyword=' + encodeURIComponent(q)).then(function (r) {
+        if (!current()) return;
+        applyTurn(r.turnNo);
+        var stocks = r.stocks;
         if (!stocks.length) { note(list, '검색 결과가 없어요. 종목명을 다시 확인해 주세요'); return; }
         list.replaceChildren.apply(list, stocks.slice(0, 8).map(stockRow));
-      }).catch(sectionError(list));
+      }).catch(sectionErrorIf(current, list));
       return;
     }
     if (S.marketTab === 'sector') {
       fetchSectors().then(function (sectors) {
+        if (!current()) return;
         if (!sectors.length) { note(list, '등록된 분야가 없어요'); return; }
         list.replaceChildren.apply(list, sectors.map(function (sec) {
           var row = el('button', 'stock-row');
@@ -423,13 +438,16 @@
           row.append(avatar(sec.name, sec.sectorId), name, cnt);
           return row;
         }));
-      }).catch(sectionError(list));
+      }).catch(sectionErrorIf(current, list));
       return;
     }
-    fetchStocks('sort=popular').then(function (stocks) {
+    fetchStocks('sort=popular').then(function (r) {
+      if (!current()) return;
+      applyTurn(r.turnNo);
+      var stocks = r.stocks;
       if (!stocks.length) { note(list, '아직 등록된 종목이 없어요'); return; }
       list.replaceChildren.apply(list, stocks.slice(0, 8).map(stockRow));
-    }).catch(sectionError(list));
+    }).catch(sectionErrorIf(current, list));
   }
 
   /* ---------- 전체 종목 (INV-06) ---------- */
@@ -442,8 +460,12 @@
     go('all');
     var list = $('trd-all-list');
     var chips = $('trd-sector-chips');
+    // 분야·검색어를 바꾸면 이전 요청의 늦은 응답은 목록·분야 버튼·공유 상태(S.stocks)를 바꾸지 못한다
+    var req = S.allReq = (S.allReq || 0) + 1;
+    var current = function () { return req === S.allReq; };
     loading(list);
     fetchSectors().then(function (sectors) {
+      if (!current()) return;
       var all = el('button', sectorId || keyword ? '' : 'selected', '전체');
       all.type = 'button'; all.dataset.trdSector = '';
       chips.replaceChildren(all);
@@ -453,9 +475,12 @@
         chips.appendChild(c);
       });
       updateAllMeta(sectorId);
-    }).catch(function (err) { fatal(err); chips.replaceChildren(); });
+    }).catch(function (err) { fatal(err); if (current()) chips.replaceChildren(); });
     var query = sectorId ? 'sectorId=' + encodeURIComponent(sectorId) : keyword ? 'keyword=' + encodeURIComponent(keyword) : '';
-    fetchStocks(query).then(function (stocks) {
+    fetchStocks(query).then(function (r) {
+      if (!current()) return;
+      applyTurn(r.turnNo);
+      var stocks = r.stocks;
       if (!sectorId && !keyword) S.stocks = stocks;
       $('trd-all-title').textContent = sectorId ? (stocks[0] ? stocks[0].sectorName : '분야') + ' 종목'
         : keyword ? '‘' + keyword + '’ 검색 결과 ' + stocks.length + '개' : '전체 ' + stocks.length + '개 종목';
@@ -476,7 +501,7 @@
         groups[key].forEach(function (s) { g.appendChild(stockRow(s)); });
         return g;
       }));
-    }).catch(sectionError(list));
+    }).catch(sectionErrorIf(current, list));
   }
 
   /* ---------- 종목 상세 (API 57, 58) ---------- */
@@ -1039,8 +1064,9 @@
       loadMarket();
       loadRanking();
       // 뉴스 → 종목 연결에 전체 종목 이름이 필요해서 먼저 받아 둔다
-      fetchStocks('').then(function (stocks) {
-        S.stocks = stocks;
+      fetchStocks('').then(function (r) {
+        var stocks = S.stocks = r.stocks;
+        applyTurn(r.turnNo);
         $('trd-all-link').replaceChildren(document.createTextNode('전체 ' + stocks.length + '개 종목 보기 '), el('span', null, '›'));
       }).catch(function () {}).then(loadTurnNews);
     }).catch(function (err) {
