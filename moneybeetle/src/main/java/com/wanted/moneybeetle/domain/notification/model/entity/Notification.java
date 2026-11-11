@@ -24,13 +24,26 @@ import org.hibernate.annotations.CreationTimestamp;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification {
 
-    /** 종류 (type). 쓰는 쪽이 늘면 상수를 더한다. DB 는 VARCHAR(30)이라 다른 값도 저장은 된다 */
-    public static final String TYPE_UNLOCK = "UNLOCK";
-    public static final String TYPE_INQUIRY_REPLY = "INQUIRY_REPLY";
-    public static final String TYPE_HOUSING_RESULT = "HOUSING_RESULT";
-    public static final String TYPE_RANKING = "RANKING";
-    /** 강의 반려 (강사에게 반려 사유를 알린다, #35) */
-    public static final String TYPE_COURSE_REJECTED = "COURSE_REJECTED";
+    /**
+     * 종류 (type) 문자열 상수. {@link NotificationType} 으로 옮겼다. 다른 도메인 코드가 아직 쓰고 있어서 남겨 두고,
+     * 모두 옮긴 뒤 정리 이슈(#301)에서 지운다. 새 코드는 NotificationType 을 쓴다.
+     * 컬럼(type)은 VARCHAR(30) String 그대로다 - 이미 저장된 값이 enum 에 없어도 목록 조회가 깨지지 않게 하려는 것이다.
+     */
+    /** @deprecated {@link NotificationType#UNLOCK} 을 쓴다 */
+    @Deprecated
+    public static final String TYPE_UNLOCK = NotificationType.UNLOCK.name();
+    /** @deprecated {@link NotificationType#INQUIRY_REPLY} 를 쓴다 */
+    @Deprecated
+    public static final String TYPE_INQUIRY_REPLY = NotificationType.INQUIRY_REPLY.name();
+    /** @deprecated {@link NotificationType#HOUSING_RESULT} 를 쓴다 */
+    @Deprecated
+    public static final String TYPE_HOUSING_RESULT = NotificationType.HOUSING_RESULT.name();
+    /** @deprecated {@link NotificationType#RANKING} 을 쓴다 */
+    @Deprecated
+    public static final String TYPE_RANKING = NotificationType.RANKING.name();
+    /** @deprecated {@link NotificationType#COURSE_REJECTED} 를 쓴다 */
+    @Deprecated
+    public static final String TYPE_COURSE_REJECTED = NotificationType.COURSE_REJECTED.name();
 
     public static final int TYPE_MAX_LENGTH = 30;
     public static final int TITLE_MAX_LENGTH = 100;
@@ -69,6 +82,14 @@ public class Notification {
         this.type = type;
         this.title = title;
         this.linkUrl = linkUrl;
+    }
+
+    /** 새 알림 (종류를 {@link NotificationType} 으로 받는다). 나머지 규칙은 {@link #create(Long, String, String, String)} 와 같다 */
+    public static Notification create(Long memberId, NotificationType type, String title, String linkUrl) {
+        if (type == null) {
+            throw new IllegalArgumentException("type 은 비어 있을 수 없습니다.");
+        }
+        return create(memberId, type.name(), title, linkUrl);
     }
 
     /**
