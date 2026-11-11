@@ -117,7 +117,7 @@ class HomeTemplatesRenderTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
         assertThat(html).contains("id=\"hm\"", "data-mb-home", "data-level=\"4\"", "data-tier=\"원룸\"", "민지", "님, Money Beetle에", "님, 오늘도 한 걸음",
-                "/css/home.css", "/js/home.js", "/js/words.js", "data-mb-words", "id=\"hm-training\"");
+                "/css/home.css", "/js/home.js", "/js/words.js", "data-mb-words", "id=\"hm-training\"", "data-slot=\"kicker\"", "data-slot=\"meta\"");
     }
 
     @Test

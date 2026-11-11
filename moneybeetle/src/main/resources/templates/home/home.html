@@ -5,10 +5,10 @@
   경로 : /user/home
   Model : layout (LayoutDTO, 공통 ControllerAdvice) - 닉네임·레벨·칭호. 없으면(null) 기본값으로 그려진다.
   데이터 : static/js/home.js 가 API 로 불러온다
-      GET /api/v1/home (API 19)                          오늘의 용어·이어서 볼 강의·학습 수·트레이닝 해금
+      GET /api/v1/home (API 19)                          오늘의 용어·이어서 볼 강의(영상 길이·몇 강째)·학습 수·트레이닝 해금과 요약(시즌·공고 수·납입 횟수)
       GET /api/v1/members/me/watch-histories (API 34)    학습 기록 (이력이 있을 때)
       GET /api/v1/categories (API 29)                    강의 카테고리 칩
-      GET /api/v1/courses (API 30)                       처음 방문일 때 "지금 시작하기 좋은 강의"
+      GET /api/v1/courses (API 30), GET /api/v1/courses/{id} (API 31)   처음 방문일 때 "지금 시작하기 좋은 강의" (상세에서 총 시간·소주제)
   이력이 없으면(본 영상 0개, 이어서 볼 강의 없음) 환영 화면(vr1)을, 있으면 이어서 듣기·학습 기록(vr2)을 보인다.
   "오늘의 경제단어" 팝업은 헤더 버튼(data-mb-words)이 열고, 이 화면에서는 오늘 하루 숨기지 않았으면 처음에 자동으로 열린다 (static/js/words.js).
 */-->
@@ -107,10 +107,10 @@
         <div class="hm-train">
           <div class="card blueprint hm-card" data-train="trading" data-name="모의 투자">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <span class="card-kicker">모의 투자</span>
-            <div class="card-title">모은 캐시 + 이월금으로 시작</div>
-            <p class="card-body">시즌마다 12턴을 진행해요. 시즌이 끝나면 순자산·수익률 랭킹이 공개돼요.</p>
-            <span class="card-meta">첫 턴이 끝나기 전까지 참가할 수 있어요</span>
+            <span class="card-kicker" data-slot="kicker">모의 투자</span>
+            <div class="card-title" data-slot="title">모은 캐시 + 이월금으로 시작</div>
+            <p class="card-body" data-slot="body">시즌마다 12턴을 진행해요. 시즌이 끝나면 순자산·수익률 랭킹이 공개돼요.</p>
+            <span class="card-meta" data-slot="meta">첫 턴이 끝나기 전까지 참가할 수 있어요</span>
             <a class="btn btn-primary hm-card__go" th:href="@{/user/demo-trading}" data-go hidden>모의투자 하러 가기 →</a>
             <button type="button" class="hm-card__lock" data-lock hidden>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
@@ -120,10 +120,10 @@
           </div>
           <div class="card blueprint hm-card" data-train="housing" data-name="모의 청약">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <span class="card-kicker">모의 청약</span>
-            <div class="card-title">청약통장을 모으고 분양에 도전</div>
-            <p class="card-body">접수 중인 공고를 보고 청약통장에 납입하면서 가점을 계산해 신청해요.</p>
-            <span class="card-meta">가점 계산기 · 내 신청 내역 · 당첨자 발표</span>
+            <span class="card-kicker" data-slot="kicker">모의 청약</span>
+            <div class="card-title" data-slot="title">청약통장을 모으고 분양에 도전</div>
+            <p class="card-body" data-slot="body">접수 중인 공고를 보고 청약통장에 납입하면서 가점을 계산해 신청해요.</p>
+            <span class="card-meta" data-slot="meta">가점 계산기 · 내 신청 내역 · 당첨자 발표</span>
             <a class="btn btn-primary hm-card__go" th:href="@{/user/demo-housing-subscription}" data-go hidden>모의 청약 하러 가기 →</a>
             <button type="button" class="hm-card__lock" data-lock hidden>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>

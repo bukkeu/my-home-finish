@@ -93,6 +93,8 @@
 .hm-continue__tag { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 999px; background: #9fe870; color: #263B1A; font-size: 12px; font-weight: 800; }
 .hm-continue__play { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #263B1A; }
 .hm-continue__time { position: absolute; right: 12px; bottom: 14px; font-size: 12px; font-weight: 700; }
+.hm-continue__bar { position: absolute; left: 0; right: 0; bottom: 0; display: block; height: 5px; background: rgba(255, 255, 255, .25); }
+.hm-continue__bar > i { display: block; width: var(--pct, 0%); height: 100%; background: #9fe870; }
 .hm-continue .card-title { font-size: 20px; }
 .hm-continue .card-body { flex: none; }
 .hm-continue__empty { display: flex; flex-direction: column; justify-content: center; gap: 12px; flex: 1; }

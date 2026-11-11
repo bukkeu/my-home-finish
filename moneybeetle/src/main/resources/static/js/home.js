@@ -84,6 +84,16 @@
     loadStarters();
   }
 
+  /** 시안처럼 "14분"(영상 총 시간)과 소주제를 보여 주려고 강의 상세(API 31)에서 값을 받아 온다. 못 받으면 영상 개수·강사 이름을 그대로 둔다 */
+  function enrichStarter(courseId, countNode, pathNode) {
+    api('/api/v1/courses/' + encodeURIComponent(courseId)).then(function (detail) {
+      var lessons = (detail && detail.lessons) || [];
+      var seconds = lessons.reduce(function (sum, lesson) { return sum + (lesson.durationSeconds || 0); }, 0);
+      if (seconds > 0) countNode.textContent = Math.max(1, Math.round(seconds / 60)) + '분';
+      if (detail && detail.categoryName) pathNode.textContent = detail.categoryName;
+    }, function () { /* 상세를 못 받아도 카드는 그대로 보인다 */ });
+  }
+
   function loadStarters() {
     var box = byId('hm-starters');
     api('/api/v1/courses?page=0&size=3').then(function (data) {
@@ -109,13 +119,16 @@
           icon.appendChild(circle);
           thumb.appendChild(icon);
         }
-        thumb.appendChild(el('span', 'hm-course__count', '영상 ' + (course.lessonCount || 0) + '개'));
+        var count = el('span', 'hm-course__count', '영상 ' + (course.lessonCount || 0) + '개');
+        thumb.appendChild(count);
         var body = el('span', 'hm-course__body');
         body.appendChild(el('strong', null, course.title));
-        body.appendChild(el('span', null, course.instructorName || ''));
+        var path = el('span', null, course.instructorName || '');
+        body.appendChild(path);
         card.appendChild(thumb);
         card.appendChild(body);
         box.appendChild(card);
+        enrichStarter(course.courseId, count, path);
       });
     }, function () {
       box.textContent = '';
@@ -136,14 +149,37 @@
     }
     var video = link('hm-continue__video', courseUrl(course.courseId));
     video.setAttribute('aria-label', course.title + ' 이어보기');
-    video.appendChild(el('span', 'hm-continue__tag', '이어보기'));
+    video.appendChild(el('span', 'hm-continue__tag', course.lessonNumber ? course.lessonNumber + '강 이어보기' : '이어보기'));
     var play = el('span', 'hm-continue__play');
     play.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
     video.appendChild(play);
-    if (course.positionSeconds != null) video.appendChild(el('span', 'hm-continue__time', mmss(course.positionSeconds) + '부터'));
+    // 영상 길이를 알면 "08:24 / 14:30"과 진행률 막대, 모르면 "08:24부터"만 보여 준다
+    var pos = course.positionSeconds;
+    var dur = course.durationSeconds;
+    var hasLength = pos != null && dur != null && dur > 0;
+    if (pos != null) video.appendChild(el('span', 'hm-continue__time', hasLength ? mmss(pos) + ' / ' + mmss(dur) : mmss(pos) + '부터'));
+    var percent = hasLength ? Math.max(0, Math.min(100, Math.round(pos * 100 / dur))) : null;
+    if (hasLength) {
+      var bar = el('span', 'hm-continue__bar');
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-label', '이 영상 시청 진행률');
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', '100');
+      bar.setAttribute('aria-valuenow', String(percent));
+      bar.style.setProperty('--pct', percent + '%');
+      bar.appendChild(el('i'));
+      video.appendChild(bar);
+    }
     card.appendChild(video);
     card.appendChild(el('div', 'card-title', course.title));
-    card.appendChild(el('p', 'card-body', course.lessonTitle ? '마지막으로 본 영상 · ' + course.lessonTitle : '아직 본 영상이 없어요'));
+    var where = course.categoryName && course.lessonNumber && course.lessonCount
+      ? course.categoryName + ' · ' + course.lessonCount + '강 중 ' + course.lessonNumber + '강'
+      : (course.lessonTitle ? '마지막으로 본 영상 · ' + course.lessonTitle : '아직 본 영상이 없어요');
+    card.appendChild(el('p', 'card-body', where));
+    if (hasLength) {
+      var remainMinutes = Math.max(0, Math.ceil((dur - pos) / 60));
+      card.appendChild(el('span', 'card-meta', percent + '% 시청 · 남은 시간 ' + remainMinutes + '분'));
+    }
   }
 
   function loadHistory() {
@@ -195,6 +231,36 @@
   }
 
   // ------------------------------------------------------------------ 트레이닝 (공통)
+  function slot(card, name) { return card.querySelector('[data-slot="' + name + '"]'); }
+
+  /** 모의투자 카드: 시즌 이름·턴·D-day. 요약이 없으면(잠김·시즌 없음) 카드의 고정 설명을 그대로 둔다 */
+  function fillTrading(card, season) {
+    if (!season) return;
+    slot(card, 'kicker').textContent = '모의 투자 · ' + season.name;
+    slot(card, 'body').textContent = season.totalTurns + '턴 진행. 시즌이 끝나면 순자산·수익률 랭킹이 공개돼요.';
+    var meta;
+    if (season.status === 'RUNNING' || season.status === 'HOLIDAY') {
+      meta = (season.daysLeft > 0 ? 'D-' + season.daysLeft : 'D-day') + ' · 현재 ' + season.currentTurn + '/' + season.totalTurns + '턴';
+      if (season.currentTurn <= 1) meta += ' · 첫 턴 종료 전까지 참가 가능';
+    } else if (season.status === 'SETTLING') {
+      meta = '시즌이 끝나 정산 중이에요';
+    } else if (season.status === 'ENDED') {
+      meta = '시즌이 끝났어요. 다음 시즌을 준비 중이에요';
+    } else {
+      meta = '시즌을 준비 중이에요';
+    }
+    slot(card, 'meta').textContent = meta;
+  }
+
+  /** 모의 청약 카드: 접수 중인 공고 수·내 납입 횟수 */
+  function fillHousing(card, summary) {
+    if (!summary) return;
+    slot(card, 'title').textContent = summary.openComplexes > 0 ? '접수 중인 공고 ' + summary.openComplexes + '건' : '지금 접수 중인 공고가 없어요';
+    if (summary.paidCount != null) {
+      slot(card, 'body').textContent = '청약통장 납입 ' + summary.paidCount + '회차 · 하루 1회, 1회 20,000~500,000 캐시를 납입할 수 있어요.';
+    }
+  }
+
   function setupTraining(training) {
     var dialog = byId('hm-lock-dialog');
     var opener = null;
@@ -216,6 +282,8 @@
       var lock = card.querySelector('[data-lock]');
       if (info.unlocked) {
         go.hidden = false;
+        if (card.dataset.train === 'trading') fillTrading(card, training.tradingSeason);
+        else fillHousing(card, training.housingSummary);
         return;
       }
       var required = info.requiredLevel;
