@@ -62,6 +62,12 @@ class HomeSearchLevelFlowTest {
     @MockitoBean
     private TermService termService;
     @MockitoBean
+    private com.wanted.moneybeetle.domain.trading.model.service.ParticipationService participationService;   // 홈 요약용 (이 테스트는 검색만 본다)
+    @MockitoBean
+    private com.wanted.moneybeetle.domain.housing.model.service.HousingService housingService;
+    @MockitoBean
+    private java.time.Clock clock;   // HomeService 가 홈 요약의 날짜 계산에 쓴다 (이 테스트는 검색만 본다)
+    @MockitoBean
     private StockRepository stockRepository;
     @MockitoBean
     private SectorRepository sectorRepository;
