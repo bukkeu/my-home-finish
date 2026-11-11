@@ -5,26 +5,15 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.wanted.moneybeetle.domain.auth.config.SecurityConfig;
-import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthFailHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
-import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
-import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import com.wanted.moneybeetle.support.MockSecurityServices;
+import com.wanted.moneybeetle.support.SecurityTestApp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -32,27 +21,12 @@ import org.springframework.web.context.WebApplicationContext;
 
 /* comment.
 *   담당 : PM (모의투자)
-*   관리자 모의투자 운영 화면(#62)이 그려지는지 확인한다. DB 없이 Security + Thymeleaf 만 띄운다
-*   (LayoutFragmentRenderTest·SecurityConfigTest 와 같은 방식: SecurityConfig 가 쓰는 로그인 처리 클래스도 같이 올린다).
+*   관리자 모의투자 운영 화면(#62)이 그려지는지 확인한다. DB 없이 실제 SecurityConfig + Thymeleaf 만 띄운다.
+*   SecurityConfig 가 필요로 하는 빈은 공통 SecurityTestApp 과 @MockSecurityServices 에 모아 두었다 (#161)
 *  */
-@SpringBootTest(classes = {AdminTradingPageRenderTest.TestApp.class, SecurityConfig.class,
-        SecurityErrorHandler.class, AuthSuccessHandler.class, AuthFailHandler.class, AuthLogoutSuccessHandler.class,
-        AdminAuthSuccessHandler.class, AdminTradingPageController.class})
+@SpringBootTest(classes = {SecurityTestApp.class, AdminTradingPageController.class})
+@MockSecurityServices
 class AdminTradingPageRenderTest {
-
-    @Configuration
-    @EnableAutoConfiguration(exclude = {
-            DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
-            HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
-    static class TestApp {
-    }
-
-    /** 로그인 성공 처리(AuthSuccessHandler)가 출석을 기록할 때 쓴다. 이 테스트는 화면만 보므로 가짜로 둔다 */
-    @MockitoBean
-    private com.wanted.moneybeetle.domain.growth.model.service.AttendanceService attendanceService;
-    /** 로그인해 둔 세션의 계정 상태 확인(ActiveMemberFilter)이 쓴다. 이 테스트의 가짜 사용자는 AuthDetails 가 아니라 호출되지 않는다 */
-    @MockitoBean
-    private com.wanted.moneybeetle.domain.member.model.service.MemberService memberService;
 
     @Autowired
     private WebApplicationContext context;
