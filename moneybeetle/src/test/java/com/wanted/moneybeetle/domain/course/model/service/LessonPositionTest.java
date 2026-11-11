@@ -100,6 +100,25 @@ class LessonPositionTest {
     }
 
     @Test
+    @DisplayName("시청 기록이 없던 예전 데이터는 강의의 마지막 영상일 때만 진행 기록의 위치부터")
+    void legacyProgressFallback() {
+        progress = LearningProgress.start(MEMBER, COURSE);
+        progress.moveTo(LESSON_A, 12);   // 영상별 위치를 쓰기 전처럼 진행 기록만 있다
+
+        assertThat(courseService.getLessonPlay(MEMBER, COURSE, LESSON_A).getPositionSeconds()).isEqualTo(12);
+        assertThat(courseService.getLessonPlay(MEMBER, COURSE, LESSON_B).getPositionSeconds()).isZero();
+    }
+
+    @Test
+    @DisplayName("시청 기록이 있으면 0초(처음으로 되감음)도 그대로 쓴다")
+    void zeroPositionIsKept() {
+        save(LESSON_A, 120);
+        save(LESSON_A, 0);
+
+        assertThat(courseService.getLessonPlay(MEMBER, COURSE, LESSON_A).getPositionSeconds()).isZero();
+    }
+
+    @Test
     @DisplayName("영상 길이를 넘는 위치는 길이로 맞추고, 본 적 없는 영상은 처음부터")
     void clampAndDefault() {
         save(LESSON_A, 9_999);

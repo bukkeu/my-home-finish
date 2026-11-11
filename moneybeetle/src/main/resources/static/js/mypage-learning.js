@@ -76,19 +76,22 @@
     return h('span', { class: 'ml-badge ml-badge--' + kind, text: text });
   }
 
-  /* 쪽 단위 목록: 처음 한 쪽을 받고 "더 보기"로 다음 쪽을 이어 붙인다 */
-  function pager(url) {
-    var p = { items: [], page: -1, totalPages: 0, total: 0 };
+  /* 쪽 단위 목록: 처음 한 쪽을 받고 "더 보기"로 다음 쪽을 이어 붙인다.
+   * 화면에서 항목을 지우면 서버 목록도 한 칸씩 당겨지므로, 다음에 받을 쪽은 지금 화면에 있는 개수로 정하고
+   * 그래서 다시 받게 되는 항목은 keyOf(고유 ID)로 걸러 낸다 (지운 뒤 "더 보기"에서 항목이 빠지거나 겹치지 않게) */
+  function pager(url, keyOf) {
+    var p = { items: [], total: 0 };
     p.next = function () {
-      return MB.api(url + (url.indexOf('?') < 0 ? '?' : '&') + 'page=' + (p.page + 1) + '&size=' + PAGE_SIZE).then(function (res) {
+      var page = Math.floor(p.items.length / PAGE_SIZE);
+      return MB.api(url + (url.indexOf('?') < 0 ? '?' : '&') + 'page=' + page + '&size=' + PAGE_SIZE).then(function (res) {
         var data = res || {};
-        p.items = p.items.concat(data.items || []);
-        p.page = typeof data.page === 'number' ? data.page : p.page + 1;
-        p.totalPages = data.totalPages || 0;
+        var seen = {};
+        p.items.forEach(function (it) { seen[keyOf(it)] = true; });
+        p.items = p.items.concat((data.items || []).filter(function (it) { return !seen[keyOf(it)]; }));
         p.total = typeof data.totalElements === 'number' ? data.totalElements : p.items.length;
       });
     };
-    p.hasMore = function () { return p.page + 1 < p.totalPages; };
+    p.hasMore = function () { return p.items.length < p.total; };
     return p;
   }
 
@@ -120,7 +123,7 @@
 
   function loadWrong() {
     var box = boxes.wrong;
-    wrong.p = pager('/api/v1/members/me/wrong-notes');
+    wrong.p = pager('/api/v1/members/me/wrong-notes', function (it) { return it.wrongNoteId; });
     fill(box, stateBox('오답노트를 불러오는 중이에요…'));
     wrong.p.next().then(drawWrong, function (err) {
       fill(box, stateBox(errorText(err, '오답노트를 불러오지 못했어요.'), loadWrong));
@@ -256,7 +259,7 @@
   var scrap = { p: null, busy: {} };
 
   function loadScrap() {
-    scrap.p = pager('/api/v1/members/me/scraps');
+    scrap.p = pager('/api/v1/members/me/scraps', function (it) { return it.courseId; });
     fill(boxes.scrap, stateBox('스크랩한 강의를 불러오는 중이에요…'));
     scrap.p.next().then(drawScrap, function (err) {
       fill(boxes.scrap, stateBox(errorText(err, '스크랩한 강의를 불러오지 못했어요.'), loadScrap));
@@ -309,8 +312,8 @@
   var hist = { watch: null, done: null };
 
   function loadHistory() {
-    hist.watch = pager('/api/v1/members/me/watch-histories');
-    hist.done = pager('/api/v1/members/me/completed-courses');
+    hist.watch = pager('/api/v1/members/me/watch-histories', function (it) { return it.lessonId; });
+    hist.done = pager('/api/v1/members/me/completed-courses', function (it) { return it.courseId; });
     fill(boxes.learning, stateBox('학습 기록을 불러오는 중이에요…'));
     Promise.all([hist.watch.next(), hist.done.next()]).then(drawHistory, function (err) {
       fill(boxes.learning, stateBox(errorText(err, '학습 기록을 불러오지 못했어요.'), loadHistory));
@@ -363,7 +366,7 @@
   var STATUS = { WAITING: ['답변 대기', 'doing'], ANSWERED: ['답변 완료', 'done'] };
 
   function loadQna() {
-    qna.p = pager('/api/v1/members/me/inquiries');
+    qna.p = pager('/api/v1/members/me/inquiries', function (it) { return it.inquiryId; });
     fill(boxes.qna, stateBox('내가 쓴 문의를 불러오는 중이에요…'));
     qna.p.next().then(drawQna, function (err) {
       fill(boxes.qna, stateBox(errorText(err, '내가 쓴 문의를 불러오지 못했어요.'), loadQna));

@@ -48,7 +48,8 @@ public class LearningProgress extends BaseTimeEntity {
         return new LearningProgress(memberId, courseId);
     }
 
-    /* 마지막으로 본 영상과 위치를 바꾼다 (SP-38). 영상별 이어보기 위치는 lesson_watch 에 따로 둔다 (#71) */
+    /* 마지막으로 본 영상과 위치를 바꾼다 (SP-38). 영상별 이어보기 위치는 lesson_watch 에 따로 둔다 (#71).
+     *  lastPositionSeconds 는 시청 기록이 없던 예전 데이터의 이어보기 위치로도 쓴다 (CourseService.getLessonPlay) */
     public void moveTo(Long lessonId, int positionSeconds) {
         this.lastLessonId = lessonId;
         this.lastPositionSeconds = positionSeconds;

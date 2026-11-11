@@ -139,13 +139,19 @@ public class CourseService {
 
     /* API 32. 영상 재생 정보 + 이어보기 위치 (LRN-03, LRN-05).
      * 위치는 영상마다 저장한 값(lesson_watch.position_seconds, #71)을 쓴다 → 같은 강의의 다른 영상을 본 뒤에도
-     * 마이페이지 이어보기로 이 영상을 열면 보던 위치부터 재생된다 */
+     * 마이페이지 이어보기로 이 영상을 열면 보던 위치부터 재생된다.
+     * 시청 기록이 아직 없으면(영상별 위치를 쓰기 전 데이터) 강의의 마지막 영상일 때만 진행 기록의 위치를 쓴다.
+     * 시청 기록이 있으면 0초도 그대로 쓴다 (처음으로 되감은 것도 유효한 위치) */
     public LessonPlayDTO getLessonPlay(Long memberId, Long courseId, Long lessonId) {
         getVisibleCourse(courseId);
         Lesson lesson = getLessonOfCourse(courseId, lessonId);
 
         Optional<LessonWatch> watch = lessonWatchRepository.findByMemberIdAndLessonId(memberId, lessonId);
-        int positionSeconds = watch.map(LessonWatch::getPositionSeconds).orElse(0);
+        int positionSeconds = watch.map(LessonWatch::getPositionSeconds)
+                .orElseGet(() -> learningProgressRepository.findByMemberIdAndCourseId(memberId, courseId)
+                        .filter(progress -> lessonId.equals(progress.getLastLessonId()))
+                        .map(LearningProgress::getLastPositionSeconds)
+                        .orElse(0));
         int watchedSeconds = watch.map(LessonWatch::getWatchedSeconds).orElse(0);
 
         return LessonPlayDTO.from(lesson, positionSeconds, watchedSeconds);
@@ -326,7 +332,7 @@ public class CourseService {
         }
         return courseRepository.findAllById(courseIds).stream()
                 .filter(Course::isVisibleToLearner)
-                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle));
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle, (first, second) -> first));
     }
 
     /* 퀴즈(quiz 도메인, API 41·42): 이 강의의 영상을 모두 끝까지 봤는지 (QST-02 "영상을 모두 본 뒤 퀴즈").
