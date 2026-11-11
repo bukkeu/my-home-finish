@@ -30,7 +30,6 @@
     return a;
   }
   function courseUrl(courseId) { return '/user/lecture-detail?courseId=' + encodeURIComponent(courseId); }
-  function catParam(name) { return String(name || '').indexOf('부동산') >= 0 ? 'estate' : 'money'; }
   function mmss(seconds) {
     var s = Math.max(0, Number(seconds) || 0);
     return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
@@ -184,7 +183,7 @@
         cat.appendChild(el('h6', null, group.name));
         var chips = el('div', 'hm-cat__chips');
         (group.children || []).forEach(function (child) {
-          chips.appendChild(link('btn btn-secondary', '/user/lectures?cat=' + catParam(group.name), child.name));
+          chips.appendChild(link('btn btn-secondary', '/user/lectures?categoryId=' + encodeURIComponent(group.categoryId), child.name));
         });
         cat.appendChild(chips);
         box.appendChild(cat);
