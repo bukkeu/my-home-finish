@@ -38,7 +38,12 @@ public class ApiResponse<T> {
 
     // 입력값 오류 시 (#142) : 입력칸별 안내를 fields 에 담는다 (API 명세서 1-2, EP-01)
     public static <T> ApiResponse<T> fail(ErrorCode errorCode, List<FieldMessage> fields) {
-        ErrorDetail detail = new ErrorDetail(errorCode.getCode(), errorCode.getMessage(), fields);
+        return fail(errorCode, errorCode.getMessage(), fields);
+    }
+
+    // 문구만 따로 줄 때 (#327) : 운영 설정 값을 넣은 업무 예외 문구. 코드는 errorCode 그대로
+    public static <T> ApiResponse<T> fail(ErrorCode errorCode, String message, List<FieldMessage> fields) {
+        ErrorDetail detail = new ErrorDetail(errorCode.getCode(), message, fields);
         return new ApiResponse<>(false, null, detail);
     }
 

@@ -45,7 +45,10 @@ INSERT INTO system_setting (setting_key, setting_value, description) VALUES
 ('UNLOCK_LEVEL_HOUSING', '12', '모의 청약 해금 레벨 (SP-24)'),
 ('INQUIRY_DAILY_LIMIT', '10', '문의글 하루 작성 한도 (DP-30)'),
 ('LOGIN_MAX_FAIL', '5', '로그인 잠금 실패 횟수 (DP-10)'),
-('LOGIN_LOCK_MINUTES', '10', '로그인 잠금 시간(분) (DP-10)');
+('LOGIN_LOCK_MINUTES', '10', '로그인 잠금 시간(분) (DP-10)'),
+('DEPOSIT_MIN_AMOUNT', '20000', '청약통장 1회 최소 납입액 (SP-70, #327)'),
+('DEPOSIT_MAX_AMOUNT', '500000', '청약통장 1회 최대 납입액 (SP-70, #327)'),
+('DEPOSIT_DAILY_RECOGNIZED_LIMIT', '250000', '청약통장 하루 인정금액 한도 (SP-70, #327)');
 
 -- 금칙어 (광고·외부 연락처 유도 예시. 실제 목록은 팀이 채운다)
 INSERT INTO forbidden_word (word) VALUES ('오픈채팅'), ('텔레그램'), ('카톡문의'), ('무료리딩방');

@@ -2025,7 +2025,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | SUB-04, SP-70 |
-| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부(`paidToday`, 오늘 = Asia/Seoul), 납입 기준(1회 20,000~500,000, 하루 인정 250,000. SP-70 확정 #76), 내 캐시. **레벨 조건 없음**(가입과 동시에 통장 개설, #28). |
+| 설명 | 잔액, 누적 인정금액, 납입회차, 오늘 납입 여부(`paidToday`, 오늘 = Asia/Seoul), 납입 기준(`depositPolicy` : 1회 20,000~500,000, 하루 인정 250,000. SP-70 확정 #76. 값은 운영 설정 `DEPOSIT_*` 에서 읽는다, #327), 내 캐시. **레벨 조건 없음**(가입과 동시에 통장 개설, #28). |
 
 **Request**
 
@@ -2048,7 +2048,7 @@ Header: Idempotency-Key: 9b2f...
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | SUB-05, SP-70, DP-35, DP-40 |
-| 설명 | 하루 1회, 1회 20,000~500,000캐시. 납입액은 모두 잔액에 더하고, 인정금액은 min(납입액, 250,000)만 더한다. 캐시 차감 + 통장 잔액·인정금액·회차 증가 + 납입 내역 저장을 한 트랜잭션으로. |
+| 설명 | 하루 1회, 1회 20,000~500,000캐시. 납입액은 모두 잔액에 더하고, 인정금액은 min(납입액, 250,000)만 더한다. 세 금액은 운영 설정(`DEPOSIT_MIN_AMOUNT`·`DEPOSIT_MAX_AMOUNT`·`DEPOSIT_DAILY_RECOGNIZED_LIMIT`, API 112)에서 읽고, `DEPOSIT_BELOW_MIN`·`DEPOSIT_ABOVE_MAX` 의 `message` 도 그 값을 넣어 돌려준다(#327). 캐시 차감 + 통장 잔액·인정금액·회차 증가 + 납입 내역 저장을 한 트랜잭션으로. |
 
 **Request**
 
@@ -3117,7 +3117,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | NFR-13 |
-| 설명 | 값 변경, admin_log 기록. `UNLOCK_LEVEL_TRADING`·`UNLOCK_LEVEL_HOUSING`을 바꾸면 모의투자·모의 청약 레벨 검사(와 모의 청약 화면 잠금)에 바로 반영된다(값이 없거나 1 미만이면 기본 Lv.8·Lv.12, #223). 모의투자 해금은 시즌과 상관없이 이 값 하나로 정한다. |
+| 설명 | 값 변경, admin_log 기록. `UNLOCK_LEVEL_TRADING`·`UNLOCK_LEVEL_HOUSING`을 바꾸면 모의투자·모의 청약 레벨 검사(와 모의 청약 화면 잠금)에 바로 반영된다(값이 없거나 1 미만이면 기본 Lv.8·Lv.12, #223). 모의투자 해금은 시즌과 상관없이 이 값 하나로 정한다. `DEPOSIT_MIN_AMOUNT`·`DEPOSIT_MAX_AMOUNT`·`DEPOSIT_DAILY_RECOGNIZED_LIMIT` 를 바꾸면 청약통장 납입 검사·화면 안내(API 65 `depositPolicy`)·오류 문구에 바로 반영된다(#327). |
 
 **Request**
 
