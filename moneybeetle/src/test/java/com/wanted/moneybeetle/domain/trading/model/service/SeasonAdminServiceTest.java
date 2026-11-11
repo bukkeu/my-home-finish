@@ -231,7 +231,7 @@ class SeasonAdminServiceTest {
 
         assertThatThrownBy(() -> service.changeStatus(8L, new SeasonStatusDTO("RUNNING")))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_NOT_SETTLED);
+                .isEqualTo(TradingErrorCode.PREVIOUS_SEASON_SETTLE_REQUIRED);
         assertThat(next.isReady()).isTrue();
     }
 

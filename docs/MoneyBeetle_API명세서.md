@@ -1591,7 +1591,7 @@ Header: Idempotency-Key: 7c1e...
 | Method | `PATCH` |
 | 권한 | 작성자 |
 | 관련 | LRN-09 |
-| 설명 | 답글이 달리기 전에만 수정 가능. |
+| 설명 | 답글이 달리기 전에만 수정 가능. 관리자가 숨긴 글은 수정할 수 없다(`INQUIRY_HIDDEN`, #245). |
 
 **Request**
 
@@ -1603,7 +1603,7 @@ Header: Idempotency-Key: 7c1e...
 
 - 204 No Content
 
-**Error**: `INQUIRY_ALREADY_ANSWERED`, `FORBIDDEN_WORD`
+**Error**: `INQUIRY_HIDDEN`, `INQUIRY_ALREADY_ANSWERED`, `FORBIDDEN_WORD`
 
 #### 51. 문의 삭제
 
@@ -1666,7 +1666,7 @@ Header: Idempotency-Key: 7c1e...
 
 ```json
 {
-  "season": { "seasonId": 7, "name": "시즌 7", "status": "RUNNING", "currentTurn": 5, "totalTurns": 12, "endDate": "2026-11-14", "nextTurnAt": "2026-11-06T00:00:00",
+  "season": { "seasonId": 7, "name": "시즌 7", "status": "RUNNING", "currentTurn": 5, "totalTurns": 12, "endDate": "2026-11-14", "nextTurnAt": "2026-11-06T08:00:00",
     "calendar": [ { "date": "2026-11-02", "turnNo": 1, "state": "DONE" }, { "date": "2026-11-08", "turnNo": null, "state": "HOLIDAY" } ] },
   "participation": { "participantId": 120, "investAmount": 4820000, "cash": 2939000, "netAsset": 5134000, "returnRate": 6.5 },
   "holdings": [ { "stockId": 1, "stockName": "한빛반도체", "quantity": 12, "avgPrice": 79000, "evaluation": 1014000, "returnRate": 7.0 } ],
@@ -1838,10 +1838,11 @@ Header: Idempotency-Key: 9b2f...
 
 - `orderType`은 `BUY`·`SELL`, `quantity`는 1 이상의 정수. 수수료·세금은 없다 (SP-56)
 - 체결가는 현재 턴의 그 종목 가격이다 (SP-53). `holding`은 체결 뒤 그 종목의 보유다 (다 팔면 `quantity` 0, `avgPrice` 0)
-- 검사 순서: 매매 이유 → 시즌 상태(정산·종료 `SEASON_CLOSED`, 휴장 `MARKET_HOLIDAY`) → 턴(`STALE_TURN_PRICE`) → 참가 여부 → 종목 → 현금·수량
+- 검사 순서: 매매 이유 → 시즌 상태(정산·종료 `SEASON_CLOSED`, 휴장 `MARKET_HOLIDAY`) → 장 시간(`MARKET_CLOSED`) → 턴(`STALE_TURN_PRICE`) → 참가 여부 → 종목 → 현금·수량
+- 정규장은 **08:00 ~ 20:00(한국 시간)**이다. 08:00:00은 열림, 20:00:00은 닫힘(07:59:59 닫힘 / 19:59:59 열림). 장 시간 밖에는 매수·매도 모두 받지 않는다 (#208)
 - 같은 참가자의 주문은 참가자 행을 잠그고 처리하고, 현금·보유 수량·거래 내역은 한 트랜잭션이다. 어디서 실패해도 모두 되돌려진다 (DP-40)
 
-**Error**: `REASON_REQUIRED`(400, 이유가 없거나 없는/사용 안 하는 선택지), `NOT_ENOUGH_CASH`(400), `NOT_ENOUGH_QUANTITY`(400), `INVALID_INPUT`(400, 종목·종류·수량·턴이 올바르지 않음), `NOT_JOINED`(403), `STALE_TURN_PRICE`(409, `turnNo`가 현재 턴과 다름), `MARKET_HOLIDAY`(409), `SEASON_CLOSED`(409), `DUPLICATE_REQUEST`(409, 같은 Idempotency-Key), `NO_RUNNING_SEASON`(404, 보이는 시즌이 없거나 첫 턴이 시작되기 전), `NOT_FOUND`(404, 없거나 사용 안 하는 종목·분야, 그 턴 가격이 없음)
+**Error**: `MARKET_CLOSED`(409, 정규장 08:00~20:00 밖), `REASON_REQUIRED`(400, 이유가 없거나 없는/사용 안 하는 선택지), `NOT_ENOUGH_CASH`(400), `NOT_ENOUGH_QUANTITY`(400), `INVALID_INPUT`(400, 종목·종류·수량·턴이 올바르지 않음), `NOT_JOINED`(403), `STALE_TURN_PRICE`(409, `turnNo`가 현재 턴과 다름), `MARKET_HOLIDAY`(409), `SEASON_CLOSED`(409), `DUPLICATE_REQUEST`(409, 같은 Idempotency-Key), `NO_RUNNING_SEASON`(404, 보이는 시즌이 없거나 첫 턴이 시작되기 전), `NOT_FOUND`(404, 없거나 사용 안 하는 종목·분야, 그 턴 가격이 없음)
 
 #### 61. 내 거래 내역
 
@@ -3162,9 +3163,9 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-- 준비(READY) → 진행 중(RUNNING)으로 바꿀 때 **이전 시즌**(시작일이 더 이른 가장 최근 시즌)이 있으면, 이전 시즌이 정산을 마치고 종료(ENDED, `settled_at` 있음)된 상태여야 한다. 아니면 `PREVIOUS_SEASON_NOT_SETTLED` (#207)
+- 준비(READY) → 진행 중(RUNNING)으로 바꿀 때 **이전 시즌**(시작일이 더 이른 가장 최근 시즌)이 있으면, 이전 시즌이 정산을 마치고 종료(ENDED, `settled_at` 있음)된 상태여야 한다. 아니면 `PREVIOUS_SEASON_SETTLE_REQUIRED` (#207)
 
-**Error**: `INVALID_STATUS_TRANSITION`, `PREVIOUS_SEASON_NOT_SETTLED`(409)
+**Error**: `INVALID_STATUS_TRANSITION`, `PREVIOUS_SEASON_SETTLE_REQUIRED`(409)
 
 #### 118. 턴 달력·진행 기록
 
@@ -3211,11 +3212,12 @@ email=admin@moneybeetle.kr&password=...
 **Response**
 
 ```json
-{ "ready": false, "nextTurn": 6, "nextTradeDate": "2026-11-07", "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false, "previousSeasonSettled": true }
+{ "ready": false, "nextTurn": 6, "nextTradeDate": "2026-11-07", "missingPrices": ["모아모빌리티", "별숲엔터"], "newsCount": 2, "isHoliday": false, "previousSeasonSettled": true, "afterMarketClose": true }
 ```
 
 - `ready`는 아래가 모두 참일 때만 `true`: 시즌이 진행 중(RUNNING)이다 · 다음 턴이 있다 · 사용 중 분야의 사용 중 종목이 있고 그 가격이 모두 있다 · 다음 턴 뉴스가 1개 이상 있다. 휴장(HOLIDAY)이면 `isHoliday: true`, `ready: false`
 - `nextTradeDate`: 다음 턴의 예정 거래일(턴 달력의 `tradeDate`와 같다). 마지막 턴이면 `null`. 서버는 예정일 전에도 턴을 넘기게 두고(SP-59 관리자 버튼), **예정일이 오늘보다 뒤이면 화면이 "N턴 예정일은 M/D예요. 지금 넘길까요?" 확인을 받는다** (SP-50 하루 1턴 실수 방지)
+- `afterMarketClose`: 턴을 넘길 수 있는 시각인가. 거래 중인 턴(1턴 이후)은 **그 턴의 거래일 장 마감(20:00) 뒤**(20:00 ~ 다음 날 08:00)에만 넘긴다. 같은 밤에 이미 넘긴 턴은 거래일이 아직 오지 않았으므로 다시 넘길 수 없다(거래일을 건너뛰지 않는다). 첫 턴을 시작하는 0턴 → 1턴은 시각을 따지지 않는다. `false`이면 `ready`도 `false` (#208)
 - `previousSeasonSettled`: 이전 시즌이 없거나 정산을 마치고 끝났는가. `false`이면 `ready`도 `false`다 — 화면은 버튼을 비활성화하고 "이전 시즌 정산을 먼저 마쳐 주세요"를 안내한다 (#207)
 - `missingPrices`: 다음 턴 가격이 비어 있는 종목 이름 (사용 안 함 분야·종목은 세지 않는다)
 - 휴장일 : 시즌 상태가 `HOLIDAY`이거나, 상태와 상관없이 **서울 기준 오늘이 일요일**이면 `isHoliday: true`, `ready: false`다 (SP-50, 휴장일에는 턴이 잠긴다)
@@ -3252,7 +3254,7 @@ email=admin@moneybeetle.kr&password=...
 - 휴장일(시즌 상태 `HOLIDAY` 또는 서울 기준 일요일)에는 점검 실패보다 먼저 `MARKET_HOLIDAY`로 거절한다
 - 뉴스 등록·수정·삭제와 분야·종목 변경도 같은 시즌 행 잠금을 잡고 처리해, 점검 직후 끼어들어 뉴스·가격이 빠진 채 턴이 넘어가지 않게 한다
 
-**Error**: `PREVIOUS_SEASON_NOT_SETTLED`(409, 이전 시즌 정산 전 — 점검보다 먼저 확인), `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
+**Error**: `PREVIOUS_SEASON_SETTLE_REQUIRED`(409, 이전 시즌 정산 전 — 점검보다 먼저 확인), `MARKET_STILL_OPEN`(409, 장이 열려 있는 동안 — 08:00~20:00), `TURN_CONFLICT`(409), `MARKET_HOLIDAY`(409, 휴장 중), `LAST_TURN_REACHED`(409, 12턴 이후), `INVALID_STATUS_TRANSITION`(409, 진행 중이 아닐 때), `NEXT_TURN_NOT_READY`(409, 점검 실패), `NOT_FOUND`(404), `INVALID_INPUT`(400, `expectedCurrentTurn` 없음)
 
 #### 121. 분야 목록
 
@@ -3973,6 +3975,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의투자 | `REASON_REQUIRED` | 400 | 매매 이유를 골라 주세요 |
 | 모의투자 | `STALE_TURN_PRICE` | 409 | 가격이 바뀌었어요. 현재 가격을 확인해 주세요 |
 | 모의투자 | `MARKET_HOLIDAY` | 409 | 오늘은 휴장일이에요. 다음 거래일에 다시 거래할 수 있어요 |
+| 모의투자 | `MARKET_CLOSED` | 409 | 지금은 장이 열리지 않았어요. 오전 8시에 다시 거래할 수 있어요 |
 | 모의투자 | `LAST_TURN_REACHED` | 409 | 마지막 턴이라 더 넘길 수 없어요. 정산을 진행해 주세요 |
 | 모의투자 | `SEASON_CLOSED` | 409 | 시즌이 끝났어요. 결과를 기다려 주세요 |
 | 모의투자 | `RANKING_NOT_PUBLISHED` | 403 | 랭킹은 시즌이 끝나면 공개돼요 |
@@ -4002,7 +4005,8 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
-| 강사·관리자 | `PREVIOUS_SEASON_NOT_SETTLED` | 409 | 이전 시즌 정산을 먼저 마쳐 주세요 |
+| 강사·관리자 | `PREVIOUS_SEASON_SETTLE_REQUIRED` | 409 | 이전 시즌 정산을 먼저 마쳐 주세요 |
+| 강사·관리자 | `MARKET_STILL_OPEN` | 409 | 장이 열려 있는 동안에는 턴을 넘길 수 없어요. 오후 8시 장 마감 뒤에 넘겨 주세요 |
 | 강사·관리자 | `SEASON_PERIOD_OVERLAP` | 409 | 기간이 겹치는 시즌이 있어요. 시작일을 다시 정해 주세요 |
 | 강사·관리자 | `PAST_TURN_LOCKED` | 409 | 지난 턴의 가격은 수정할 수 없어요 |
 | 강사·관리자 | `PAST_TURN_NEWS_LOCKED` | 409 | 지난 턴 뉴스는 오타 수정만 할 수 있어요 |
