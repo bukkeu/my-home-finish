@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 *   본인인증 코드 메일 발송 (USR-05, 이슈 #9)
 *   - PasswordResetMailer 와 같은 방식: mailExecutor 스레드에서 보내 응답 시간이 메일 서버 상태에 좌우되지 않게 한다.
 *   - 외부 연동(메일 서버) 실패는 1회만 자동으로 다시 시도한다 (EP-02). 그래도 실패하면 예외를 내지 않고 로그에만 남긴다.
-*     받는 사람·코드는 로그에 남기지 않는다 (DP-02). 사용자는 60초 뒤 코드를 다시 요청할 수 있다.
+*     받는 사람·코드는 로그에 남기지 않는다 (DP-02). 실패 원인은 예외(스택 포함)로 남기되 메시지의 주소는 가린다 (MaskedException).
+*     사용자는 60초 뒤 코드를 다시 요청할 수 있다.
 *  */
 @Slf4j
 @Component
@@ -42,8 +43,8 @@ public class IdentityVerificationMailer {
                 mailSender.send(message);
                 return;
             } catch (MailException e) {
-                // 받는 사람·코드가 로그에 남지 않도록 예외 종류만 남긴다
-                log.error("본인인증 메일 발송에 실패했어요 ({}/{}): {}", attempt, MAX_ATTEMPTS, e.getClass().getSimpleName());
+                // 원인을 찾을 수 있게 예외를 남기되, 메시지의 받는 사람 주소는 가린 복사본을 남긴다 (코드는 예외에 실리지 않는다)
+                log.error("본인인증 메일 발송에 실패했어요 ({}/{})", attempt, MAX_ATTEMPTS, MaskedException.of(e));
             }
         }
     }

@@ -15,6 +15,8 @@ import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dto.LoginMemberDTO;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import ch.qos.logback.classic.Level;
+import com.wanted.moneybeetle.support.LogCapture;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
@@ -167,6 +169,25 @@ class OAuth2SuccessHandlerTest {
 
         assertThat(response.getRedirectedUrl()).isEqualTo("/login?oauthError=OAUTH_FAILED");
         assertThat(savedContext()).isNull();
+    }
+
+    @Test
+    @DisplayName("예상 밖 오류는 원인을 warn 로그로 남기되(스택 포함), 오류 메시지에 든 이메일 주소는 가린다 (#299)")
+    void unexpectedErrorLogsMaskedCause() throws IOException {
+        when(socialLoginService.login(any(SocialProfile.class), any()))
+                .thenThrow(new IllegalStateException("Duplicate entry 'minji@gmail.com' for key 'uk_member_email'"));
+
+        try (LogCapture logs = LogCapture.of(OAuth2SuccessHandler.class)) {
+            handler.onAuthenticationSuccess(request, response, googleToken());
+
+            assertThat(logs.events()).hasSize(1);
+            var event = logs.events().get(0);
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).isEqualTo("간편 로그인 처리에 실패했어요");
+            assertThat(event.getThrowableProxy().getMessage()).startsWith("java.lang.IllegalStateException: ")
+                    .contains("'***'").doesNotContain("minji", "gmail");
+            assertThat(event.getThrowableProxy().getStackTraceElementProxyArray()).isNotEmpty();
+        }
     }
 
     @Test
