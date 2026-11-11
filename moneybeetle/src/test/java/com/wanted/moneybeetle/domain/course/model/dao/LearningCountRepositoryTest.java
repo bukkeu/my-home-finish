@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import com.wanted.moneybeetle.MoneyBeetleApplication;
 import com.wanted.moneybeetle.domain.course.model.entity.Course;
+import com.wanted.moneybeetle.domain.course.model.entity.CourseStatus;
 import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
@@ -107,7 +108,7 @@ class LearningCountRepositoryTest {
 
     private Course course(String title, boolean isPublic, boolean isDeleted) {
         Course course = Course.create(2L, 21L, title, "소개", null, null);
-        ReflectionTestUtils.setField(course, "status", Course.STATUS_APPROVED);
+        ReflectionTestUtils.setField(course, "status", CourseStatus.APPROVED);
         ReflectionTestUtils.setField(course, "isPublic", isPublic);
         if (isDeleted) {
             ReflectionTestUtils.setField(course, "deletedAt", NOW);
@@ -142,10 +143,10 @@ class LearningCountRepositoryTest {
         watch(ME, lesson(deleted, 1), 50);
         watch(OTHER, lesson(visible, 3), 60);
 
-        long count = watchRepository.countVisibleByMemberId(ME, Course.STATUS_APPROVED);
+        long count = watchRepository.countVisibleByMemberId(ME, CourseStatus.APPROVED);
 
         assertThat(count).isEqualTo(3);
-        assertThat(count).isEqualTo(watchRepository.findVisibleByMemberId(ME, Course.STATUS_APPROVED, PageRequest.of(0, 1))
+        assertThat(count).isEqualTo(watchRepository.findVisibleByMemberId(ME, CourseStatus.APPROVED, PageRequest.of(0, 1))
                 .getTotalElements());
     }
 
@@ -159,11 +160,11 @@ class LearningCountRepositoryTest {
         progress(OTHER, other, true);
 
         long count = progressRepository.countVisibleByMemberIdAndStatus(
-                ME, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED);
+                ME, LearningProgress.STATUS_COMPLETED, CourseStatus.APPROVED);
 
         assertThat(count).isEqualTo(1);
         assertThat(count).isEqualTo(progressRepository.findVisibleByMemberIdAndStatus(
-                ME, LearningProgress.STATUS_COMPLETED, Course.STATUS_APPROVED, PageRequest.of(0, 1)).getTotalElements());
+                ME, LearningProgress.STATUS_COMPLETED, CourseStatus.APPROVED, PageRequest.of(0, 1)).getTotalElements());
     }
 
     @Test
@@ -180,10 +181,10 @@ class LearningCountRepositoryTest {
         watch(OTHER, second, 0);   // 다른 회원의 더 최근 기록은 상관없다
 
         List<LessonWatch> found = watchRepository.findLatestVisibleByMemberIdAndCourseId(
-                ME, visible.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1));
+                ME, visible.getCourseId(), CourseStatus.APPROVED, PageRequest.of(0, 1));
 
         assertThat(found).extracting(LessonWatch::getLessonWatchId).containsExactly(latest.getLessonWatchId());
-        LessonWatch firstOfCourseInHistory = watchRepository.findVisibleByMemberId(ME, Course.STATUS_APPROVED, PageRequest.of(0, 2_000))
+        LessonWatch firstOfCourseInHistory = watchRepository.findVisibleByMemberId(ME, CourseStatus.APPROVED, PageRequest.of(0, 2_000))
                 .getContent().stream()
                 .filter(w -> w.getLessonId().equals(first.getLessonId()) || w.getLessonId().equals(second.getLessonId()))
                 .findFirst().orElseThrow();
@@ -203,7 +204,7 @@ class LearningCountRepositoryTest {
         LessonWatch later = watch(ME, lesson(visible, 2), 10);   // 같은 시각, 나중에 저장
 
         List<LessonWatch> found = watchRepository.findLatestVisibleByMemberIdAndCourseId(
-                ME, visible.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1));
+                ME, visible.getCourseId(), CourseStatus.APPROVED, PageRequest.of(0, 1));
 
         assertThat(found).extracting(LessonWatch::getLessonWatchId).containsExactly(later.getLessonWatchId());
     }
@@ -214,9 +215,9 @@ class LearningCountRepositoryTest {
         watch(ME, lesson(hidden, 1), 10);
 
         assertThat(watchRepository.findLatestVisibleByMemberIdAndCourseId(
-                ME, hidden.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1))).isEmpty();
+                ME, hidden.getCourseId(), CourseStatus.APPROVED, PageRequest.of(0, 1))).isEmpty();
         assertThat(watchRepository.findLatestVisibleByMemberIdAndCourseId(
-                ME, visible.getCourseId(), Course.STATUS_APPROVED, PageRequest.of(0, 1))).isEmpty();
+                ME, visible.getCourseId(), CourseStatus.APPROVED, PageRequest.of(0, 1))).isEmpty();
         assertThat(courseService.findLastWatched(ME, hidden.getCourseId())).isEmpty();
     }
 }
