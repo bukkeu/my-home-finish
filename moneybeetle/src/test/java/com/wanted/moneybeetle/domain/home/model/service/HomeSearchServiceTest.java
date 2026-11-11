@@ -36,7 +36,8 @@ class HomeSearchServiceTest {
         courseService = mock(CourseService.class);
         stockSearchService = mock(StockSearchService.class);
         growthService = mock(GrowthService.class);
-        service = new HomeService(null, courseService, growthService, stockSearchService);
+        service = new HomeService(null, courseService, growthService, stockSearchService, null, null,
+                java.time.Clock.fixed(java.time.Instant.parse("2026-11-10T00:00:00Z"), java.time.ZoneId.of("Asia/Seoul")));
         when(courseService.search("청약")).thenReturn(List.of(CourseLabelDTO.of(7L, "청약통장 기초", "부동산 › 청약")));
         when(stockSearchService.searchStocks("청약")).thenReturn(List.of(StockSearchDTO.of(1L, "청약종목", "부동산")));
     }
