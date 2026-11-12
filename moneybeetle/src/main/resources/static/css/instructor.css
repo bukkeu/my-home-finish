@@ -22,6 +22,22 @@
 .ins-auth__sub a { font-weight: 700; }
 .ins-auth__note { margin: 4px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--color-bg); font-size: 13px; line-height: 1.7; color: var(--color-neutral-700); }
 
+/* 강사 로그인 (#363) : 카드 안 크기·간격을 모두 1.25배로 키워 비율은 그대로 두고, 바깥 여백은 줄인다. 가입 화면(같은 카드)은 바꾸지 않는다 */
+.ins-auth--login { padding: 16px; }
+.ins-auth__card--login { max-width: 525px; padding: 40px 35px; gap: 15px; border-radius: 30px; }
+.ins-auth__card--login h1 { font-size: 32px; }
+.ins-auth__card--login .ins-auth__logo img { height: 40px; }
+.ins-auth__card--login .ins-kicker { font-size: 16px; }
+.ins-auth__card--login .ins-auth__sub { font-size: 17px; }
+.ins-auth__card--login .ins-auth__note { margin-top: 5px; padding: 15px 18px; border-radius: 15px; font-size: 16px; }
+.ins-auth__card--login .ins-form { gap: 18px; margin-top: 10px; }
+.ins-auth__card--login .ins-field { gap: 8px; font-size: 16px; }
+.ins-auth__card--login .ins-input { height: 60px; border-radius: 15px; padding: 0 18px; font-size: 19px; }
+.ins-auth__card--login .ins-pw .ins-input { padding-right: 90px; }
+.ins-auth__card--login .ins-pw__toggle { right: 10px; height: 42px; padding: 0 12px; border-radius: 10px; font-size: 16px; }
+.ins-auth__card--login .ins-error { font-size: 16px; }
+.ins-auth__card--login .ins-submit { height: 62px; font-size: 20px; }
+
 .ins-form, .ins-stack { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .ins-stack { margin-top: 0; }
 .ins-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; }
@@ -130,6 +146,8 @@
 @media (max-width: 767px) {
   .ins-auth { padding: 16px; align-items: start; }
   .ins-auth__card { padding: 24px 18px; border-radius: 18px; }
+  .ins-auth--login { padding: 12px; }
+  .ins-auth__card--login { padding: 30px 22px; border-radius: 22px; }
   .ins-head h1 { font-size: 24px; }
   .ins-head .btn { width: 100%; }
   .ins-row__actions { width: 100%; justify-content: stretch; }
