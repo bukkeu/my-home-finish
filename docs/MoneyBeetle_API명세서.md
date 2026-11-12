@@ -29,7 +29,7 @@
 | Base URL | `/api/v1` (로컬 `http://localhost:8080/api/v1`) |
 | 데이터 형식 | `Content-Type: application/json; charset=UTF-8` (파일 업로드만 `multipart/form-data`) |
 | 인증 | 세션 쿠키(`JSESSIONID`). 30분 동안 요청이 없으면 만료 (DP-11) |
-| 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자 |
+| 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자. 화면 주소도 같은 방식으로 `/user/**`는 학습자(MEMBER)만 들어가고, 강사·관리자로 열면 학습자 로그인 화면(`/login?next=원래 주소`)으로 보낸다 (#415) |
 | 해금 | 모의투자 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_TRADING`, 기본 Lv.8, 시즌과 무관), 모의 청약 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_HOUSING`, 기본 Lv.12) 미만이면 `403 LEVEL_LOCKED` (SP-24, #223) |
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
