@@ -57,6 +57,7 @@
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
 | `GOOGLE_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
 | `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`app.remember-me-key`, `SecurityConfig`, #367). **기본값이 없어** 비어 있으면 서버가 뜨지 않는다 | ✅ | 로컬 전용 임의 문자열 | USR-06 |
+| `APP_DEMO_NOW` | 시연용 현재 시각 (`app.demo-now`, `TimeConfig`, #405). `2026-11-16T19:50` 처럼 서울 시각을 주면 서버가 뜬 순간을 그 시각으로 보고 실제 시간만큼 흐른다. 출석·청약 날짜·모의투자 장 시간·턴 진행 등 공통 시계를 쓰는 모든 규칙이 따른다. 형식이 틀리면 서버가 뜨지 않는다 | | 비워 둠 (실제 시각) | 시연용 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
 | `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
@@ -66,6 +67,7 @@
   - 포트나 주소가 다르면 `{주소}/login/oauth2/code/google` 로 등록합니다. 받은 값은 `.env` 에만 넣고 코드·깃에는 올리지 않습니다.
   - 제공자가 이메일을 주지 않거나 확인되지 않은 이메일이면 그 로그인은 막힙니다(`OAUTH_FAILED`).
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
+- `APP_DEMO_NOW`는 평소에는 비워 둡니다. 낮에 발표하면서 모의투자 주문(장 시간 08:00~20:00)과 다음 턴 진행(장 마감 뒤)을 함께 보여 주려면 예를 들어 `APP_DEMO_NOW=2026-11-16T19:50`으로 띄웁니다: 10분 동안 주문을 받고 20:00이 지나면 턴을 넘길 수 있습니다. 서버를 다시 띄우면 그 시각부터 다시 시작합니다 (#405).
 - `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다. `.env`에 없으면 서버가 뜨지 않습니다(#367). 키를 바꾸면 이미 받은 로그인 상태 유지 쿠키는 모두 쓸 수 없게 됩니다. 테스트는 `src/test/resources/security-test.properties`의 테스트 전용 값을 씁니다.
 
 ### 2-3 배포용 값 (쓰지 않음)
@@ -134,6 +136,9 @@ GOOGLE_CLIENT_SECRET=
 
 # 로그인 상태 유지 키 (로컬 전용 임의 문자열)
 REMEMBER_ME_KEY=change-me-local-only
+
+# 시연용 현재 시각 (#405). 평소에는 비워 둔다. 예: 2026-11-16T19:50 → 서버가 뜬 순간을 그 시각으로 보고 흐른다
+APP_DEMO_NOW=
 
 # 파일 저장
 FILE_STORAGE_TYPE=local
