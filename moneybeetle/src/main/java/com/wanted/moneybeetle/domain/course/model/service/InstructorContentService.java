@@ -88,14 +88,17 @@ public class InstructorContentService {
      * 2,000자 초과 400(SUMMARY_TOO_LONG), 금칙어 400. 빈 글은 요약글을 지운다. 기존과 같은 글이면 바꾸지 않고 재검수도 하지 않는다. 강의 행을 잠가 검사와 저장 사이에 상태가 바뀌지 않게 한다 */
     @Transactional
     public SummaryUpdatedDTO updateSummary(Long instructorId, Long lessonId, SummaryUpdateDTO request) {
-        Lesson lesson = lessonRepository.findById(lessonId)
+        Long courseId = lessonRepository.findCourseIdById(lessonId)
                 .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));
-        Course course = courseRepository.findByIdForUpdate(lesson.getCourseId())
+        Course course = courseRepository.findByIdForUpdate(courseId)
                 .filter(found -> !found.isDeleted())
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         if (!course.isOwnedBy(instructorId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
+        // 강의 잠금을 얻은 뒤에 영상을 잠가 읽는다: 잠금을 기다리는 동안 다른 요청이 요약글을 바꿨어도 최신 값으로 "같은 글인지" 비교한다
+        Lesson lesson = lessonRepository.findByIdForUpdate(lessonId)
+                .orElseThrow(() -> new BusinessException(CourseErrorCode.LESSON_NOT_FOUND));
 
         String summary = request.summary() == null || request.summary().isBlank() ? null : request.summary().strip();
         if (summary != null && summary.length() > SUMMARY_MAX_LENGTH) {

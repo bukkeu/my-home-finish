@@ -98,6 +98,17 @@ class InstructorContentRepositoryTest {
     }
 
     @Test
+    @DisplayName("요약글 수정용 조회: 영상 행 없이 소속 강의 번호만 꺼내고, 잠금 읽기로 영상을 읽는다 (없으면 빈 값)")
+    void findsCourseIdAndLocksLesson() {
+        Lesson saved = lesson(7, 1, "요약", 3);
+
+        assertThat(lessonRepository.findCourseIdById(saved.getLessonId())).contains(7L);
+        assertThat(lessonRepository.findByIdForUpdate(saved.getLessonId())).map(Lesson::getSummary).contains("요약");
+        assertThat(lessonRepository.findCourseIdById(999_999L)).isEmpty();
+        assertThat(lessonRepository.findByIdForUpdate(999_999L)).isEmpty();
+    }
+
+    @Test
     @DisplayName("퀴즈 목록: 강의마다 TEST·MAIN 문항 수와 가장 늦게 바뀐 시각, 보관한 _OLD 문항과 요청하지 않은 강의는 빠진다")
     void countsQuestionsPerCourse() {
         question(1, "TEST", 1, 2);

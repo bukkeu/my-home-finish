@@ -150,9 +150,25 @@ class InstructorContentServiceTest {
 
     private Lesson givenLesson(Course course, long lessonId) {
         Lesson lesson = lesson(lessonId, course.getCourseId(), "예전 요약", LocalDateTime.of(2026, 11, 1, 9, 0));
-        when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
+        when(lessonRepository.findCourseIdById(lessonId)).thenReturn(Optional.of(course.getCourseId()));
+        when(lessonRepository.findByIdForUpdate(lessonId)).thenReturn(Optional.of(lesson));
         when(courseRepository.findByIdForUpdate(course.getCourseId())).thenReturn(Optional.of(course));
         return lesson;
+    }
+
+    @Test
+    @DisplayName("요약글 수정: 강의를 먼저 잠그고 그 뒤에 영상을 잠가 읽는다 (잠금을 기다리는 동안 낡은 영상 값으로 비교하지 않게)")
+    void locksCourseBeforeReadingLesson() {
+        Course course = course(1, ME, "청약 기초", CourseStatus.DRAFT, false);
+        givenLesson(course, 11);
+
+        service.updateSummary(ME, 11L, new SummaryUpdateDTO("새 요약"));
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(lessonRepository, courseRepository);
+        order.verify(lessonRepository).findCourseIdById(11L);
+        order.verify(courseRepository).findByIdForUpdate(1L);
+        order.verify(lessonRepository).findByIdForUpdate(11L);
+        org.mockito.Mockito.verify(lessonRepository, org.mockito.Mockito.never()).findById(any());
     }
 
     @Test
@@ -276,7 +292,7 @@ class InstructorContentServiceTest {
     @Test
     @DisplayName("요약글 수정: 없는 영상은 LESSON_NOT_FOUND, 삭제된 강의의 영상은 NOT_FOUND")
     void missingLessonOrDeletedCourse() {
-        when(lessonRepository.findById(99L)).thenReturn(Optional.empty());
+        when(lessonRepository.findCourseIdById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.updateSummary(ME, 99L, new SummaryUpdateDTO("x")))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(CourseErrorCode.LESSON_NOT_FOUND));
 
