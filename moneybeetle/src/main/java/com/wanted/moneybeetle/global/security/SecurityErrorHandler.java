@@ -76,10 +76,12 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
         return request.getRequestURI().substring(request.getContextPath().length());
     }
 
-    /* 로그인 뒤 돌아갈 주소 : 경로 + 쿼리 (예: /user/my-page?tab=wrong) */
+    /* 로그인 뒤 돌아갈 주소 : 경로 + 쿼리 (예: /user/my-page?tab=wrong).
+     * 로그인 화면이 이 값으로 바로 이동하므로 컨텍스트 경로를 포함한 주소를 쓴다 (저장된 요청으로 돌아가는 경우와 같게, #418 CodeRabbit) */
     private String pathWithQuery(HttpServletRequest request) {
         String query = request.getQueryString();
-        return query == null ? path(request) : path(request) + "?" + query;
+        String returnPath = request.getRequestURI();
+        return query == null ? returnPath : returnPath + "?" + query;
     }
 
     private void writeJson(HttpServletResponse response, ErrorCode errorCode) throws IOException {

@@ -108,6 +108,14 @@ class LearnerPageAccessTest {
     }
 
     @Test
+    @DisplayName("컨텍스트 경로(/app)로 배포해도 로그인 화면과 돌아갈 주소 모두 앱 안의 주소다")
+    void keepsContextPath() throws Exception {
+        mockMvc.perform(get("/app/user/my-page").contextPath("/app").with(user(login("INSTRUCTOR"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/app/login?next=%2Fapp%2Fuser%2Fmy-page"));
+    }
+
+    @Test
     @DisplayName("로그인 안 함은 지금처럼 로그인 화면으로 간다")
     void anonymousGoesToLogin() throws Exception {
         mockMvc.perform(get("/user/my-page"))
