@@ -531,6 +531,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `category_id` | BIGINT | N | FK → category.category_id | - | 소주제 |
 | `title` | VARCHAR(100) | N | - | - | 강의 제목 |
 | `description` | TEXT | Y | - | - | 강의 소개 |
+| `level` | VARCHAR(20) | N | - | BEGINNER | 난이도: BEGINNER 입문 / ELEMENTARY 초급 / INTERMEDIATE 중급 / ADVANCED 고급 (#369) |
 | `thumbnail_url` | VARCHAR(500) | Y | - | - | 썸네일 |
 | `status` | VARCHAR(20) | N | - | DRAFT | DRAFT 작성 중 / REVIEW 검수 중 / APPROVED 허가 / REJECTED 반려 |
 | `is_public` | BOOLEAN | N | - | FALSE | 공개 여부 (허가 후에도 비공개 가능) |

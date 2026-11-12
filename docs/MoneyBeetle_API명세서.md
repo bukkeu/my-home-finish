@@ -232,6 +232,7 @@
 | 74 | `GET` | `/api/v1/instructor/courses/{courseId}` | 강의 편집 정보 | 강사 (본인 강의) | TCH-01~05 |
 | 75 | `PUT` | `/api/v1/instructor/courses/{courseId}` | 강의 수정 | 강사 (본인 강의) | TCH-06, SP-31 |
 | 76 | `DELETE` | `/api/v1/instructor/courses/{courseId}` | 강의 삭제 | 강사 (본인 강의) | TCH-06, SP-32 |
+| 76-1 | `PATCH` | `/api/v1/instructor/courses/{courseId}/visibility` | 공개 켜기/끄기 | 강사 (본인 강의) | TCH-06 |
 | 77 | `POST` | `/api/v1/instructor/courses/{courseId}/thumbnail` | 썸네일 업로드 | 강사 | TCH-01 |
 | 78 | `PUT` | `/api/v1/instructor/courses/{courseId}/lessons` | 영상·요약글 저장 | 강사 | TCH-02~03, SP-30, DP-31, DP-33 |
 | 79 | `PUT` | `/api/v1/instructor/courses/{courseId}/test-quiz` | 테스트 퀴즈 저장 | 강사 | TCH-04 |
@@ -2199,7 +2200,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-06 |
-| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). |
+| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). categoryName(소주제)·parentCategoryName(상위 카테고리), level(난이도), lessonCount(영상 수)·totalDurationSeconds(영상 재생 시간 합, 초), createdAt(등록일). 강의 수와 상관없이 한 번에 모아 조회(#369). |
 
 **Request**
 
@@ -2208,7 +2209,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
+{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null, "categoryId": 21, "categoryName": "청약통장", "parentCategoryName": "부동산", "level": "BEGINNER", "lessonCount": 3, "totalDurationSeconds": 1520, "createdAt": "2026-10-01T10:00:00" } ] }
 ```
 
 #### 73. 강의 생성
@@ -2219,12 +2220,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
+| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 난이도(level, 선택: BEGINNER 입문·ELEMENTARY 초급·INTERMEDIATE 중급·ADVANCED 고급, 안 보내면 BEGINNER), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
 
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "청약통장 기초와 가점 계산", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
+{ "categoryId": 21, "title": "청약통장 기초와 가점 계산", "description": "...", "level": "BEGINNER", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2234,7 +2235,7 @@ Header: Idempotency-Key: 31aa...
 { "courseId": 7, "status": "DRAFT" }
 ```
 
-**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리)
+**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리), `INVALID_INPUT`(level 이 네 값이 아님)
 
 #### 74. 강의 편집 정보
 
@@ -2252,7 +2253,7 @@ Header: Idempotency-Key: 31aa...
 
 **Response**
 
-- `{ courseId, categoryId, title, description, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
+- `{ courseId, categoryId, title, description, level, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
 
 **Error**: `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
@@ -2269,7 +2270,7 @@ Header: Idempotency-Key: 31aa...
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "...", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
+{ "categoryId": 21, "title": "...", "description": "...", "level": "INTERMEDIATE", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2288,7 +2289,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `DELETE` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-32 |
-| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(비공개는 관리자에게 요청). 없으면 Soft Delete(deleted_at). |
+| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(대신 API 76-1로 비공개). 없으면 Soft Delete(deleted_at). |
 
 **Request**
 
@@ -2299,6 +2300,32 @@ Header: Idempotency-Key: 31aa...
 - 204 No Content
 
 **Error**: `COURSE_HAS_LEARNERS`, `FORBIDDEN`, `NOT_FOUND`
+
+#### 76-1. 공개 켜기/끄기
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/courses/{courseId}/visibility` |
+| Method | `PATCH` |
+| 권한 | 강사 (본인 강의) |
+| 관련 | TCH-06 |
+| 설명 | 본인 강의 중 허가(APPROVED)된 강의만 공개·비공개를 바꾼다. 공개 여부만 바뀌고 상태는 그대로(관리자 검수를 다시 받지 않음). 허가 안 된 강의는 공개할 수 없음(#369). |
+
+**Request**
+
+- Path: courseId=7
+
+```json
+{ "isPublic": false }
+```
+
+**Response**
+
+```json
+{ "courseId": 7, "status": "APPROVED", "isPublic": false }
+```
+
+**Error**: `COURSE_NOT_APPROVED`(허가 안 된 강의), `INVALID_INPUT`(isPublic 없음), `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 77. 썸네일 업로드
 

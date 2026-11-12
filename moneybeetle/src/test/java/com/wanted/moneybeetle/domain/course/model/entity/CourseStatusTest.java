@@ -78,7 +78,7 @@ class CourseStatusTest {
         course.requestReview(NOW);
         course.approve(NOW);
 
-        course.change(21L, "새 제목", "소개", null, null, NOW.plusDays(1));
+        course.change(21L, "새 제목", "소개", CourseLevel.BEGINNER, null, null, NOW.plusDays(1));
 
         assertThat(course.getCourseStatus()).isEqualTo(CourseStatus.REVIEW);
         assertThat(course.isVisibleToLearner()).isFalse();

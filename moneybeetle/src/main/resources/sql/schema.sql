@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS `course` (
                                         `category_id` bigint NOT NULL COMMENT '소주제',
                                         `title` varchar(100) NOT NULL COMMENT '강의 제목',
     `description` text COMMENT '강의 소개',
+    `level` varchar(20) NOT NULL DEFAULT 'BEGINNER' COMMENT '난이도 BEGINNER 입문 / ELEMENTARY 초급 / INTERMEDIATE 중급 / ADVANCED 고급',
     `thumbnail_url` varchar(500) DEFAULT NULL COMMENT '썸네일',
     `status` varchar(20) NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT 작성 중 / REVIEW 검수 중 / APPROVED 허가 / REJECTED 반려',
     `is_public` tinyint(1) NOT NULL DEFAULT '0' COMMENT '공개 여부 (허가 후에도 비공개 가능)',
