@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +85,7 @@ public class InstructorContentService {
     }
 
     /* API 152 요약글 수정: 없는 영상 404(LESSON_NOT_FOUND), 삭제된 강의 404, 남의 강의 403, 검수 중 409(COURSE_IN_REVIEW),
-     * 2,000자 초과 400(SUMMARY_TOO_LONG), 금칙어 400. 빈 글은 요약글을 지운다. 강의 행을 잠가 검사와 저장 사이에 상태가 바뀌지 않게 한다 */
+     * 2,000자 초과 400(SUMMARY_TOO_LONG), 금칙어 400. 빈 글은 요약글을 지운다. 기존과 같은 글이면 바꾸지 않고 재검수도 하지 않는다. 강의 행을 잠가 검사와 저장 사이에 상태가 바뀌지 않게 한다 */
     @Transactional
     public SummaryUpdatedDTO updateSummary(Long instructorId, Long lessonId, SummaryUpdateDTO request) {
         Lesson lesson = lessonRepository.findById(lessonId)
@@ -102,6 +103,11 @@ public class InstructorContentService {
         }
         forbiddenWordService.check(summary);
 
+        if (Objects.equals(summary, lesson.getSummary())) {
+            // 내용이 그대로면 바꾼 것이 아니라서 허가된 강의를 다시 검수로 돌리지 않는다. 검수 중이면 그래도 거절한다
+            course.checkEditable();
+            return new SummaryUpdatedDTO(lesson.getLessonId(), course.getCourseId(), lesson.getSummary(), course.getStatus());
+        }
         course.markContentChanged(LocalDateTime.now(clock));   // 검수 중이면 409, 허가된 강의면 다시 검수
         lesson.change(lesson.getTitle(), lesson.getVideoUrl(), lesson.getDurationSeconds(), summary);
         return new SummaryUpdatedDTO(lesson.getLessonId(), course.getCourseId(), lesson.getSummary(), course.getStatus());

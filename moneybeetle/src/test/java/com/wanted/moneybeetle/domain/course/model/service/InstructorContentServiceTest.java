@@ -183,6 +183,29 @@ class InstructorContentServiceTest {
     }
 
     @Test
+    @DisplayName("요약글 수정: 기존과 같은 글이면 허가된 강의도 다시 검수로 돌리지 않고 그대로 돌려준다")
+    void sameSummaryDoesNotReReview() {
+        Course course = course(1, ME, "청약 기초", CourseStatus.APPROVED, true);
+        Lesson lesson = givenLesson(course, 11);
+
+        SummaryUpdatedDTO result = service.updateSummary(ME, 11L, new SummaryUpdateDTO("  예전 요약  "));
+
+        assertThat(course.getCourseStatus()).isEqualTo(CourseStatus.APPROVED);
+        assertThat(lesson.getSummary()).isEqualTo("예전 요약");
+        assertThat(result).isEqualTo(new SummaryUpdatedDTO(11L, 1L, "예전 요약", "APPROVED"));
+    }
+
+    @Test
+    @DisplayName("요약글 수정: 같은 글이어도 검수 중(REVIEW)인 강의는 거절한다 (COURSE_IN_REVIEW)")
+    void sameSummaryInReviewIsStillRejected() {
+        Course course = course(1, ME, "청약 기초", CourseStatus.REVIEW, false);
+        givenLesson(course, 11);
+
+        assertThatThrownBy(() -> service.updateSummary(ME, 11L, new SummaryUpdateDTO("예전 요약")))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(CourseErrorCode.COURSE_IN_REVIEW));
+    }
+
+    @Test
     @DisplayName("요약글 수정: 빈 글(공백)이나 null 은 요약글을 지운다")
     void blankClearsSummary() {
         Course course = course(1, ME, "청약 기초", CourseStatus.DRAFT, false);

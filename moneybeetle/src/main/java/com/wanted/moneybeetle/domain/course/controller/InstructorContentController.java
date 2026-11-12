@@ -11,6 +11,7 @@ import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,7 +49,7 @@ public class InstructorContentController {
     @PatchMapping("/lessons/{lessonId}/summary")
     public ApiResponse<SummaryUpdatedDTO> updateSummary(@AuthenticationPrincipal AuthDetails me,
                                                         @PathVariable Long lessonId,
-                                                        @RequestBody SummaryUpdateDTO request) {
+                                                        @Valid @RequestBody SummaryUpdateDTO request) {
         return ApiResponse.success(instructorContentService.updateSummary(memberIdOf(me), lessonId, request));
     }
 
