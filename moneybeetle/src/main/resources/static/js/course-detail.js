@@ -262,7 +262,8 @@
       step({ mark: 'Q', title: '4지선다 퀴즈', done: completed, locked: quizLocked, now: state.view === 'quiz',
         sub: completed ? '통과 · 다시 풀 수 있어요' : quizLocked ? '잠김 · 영상을 모두 보면 열려요' : '70점 이상이면 통과',
         onclick: pickQuiz }),
-      h('div', { class: 'lec-goal' }, [
+      // 학습을 마치면 위 칸들처럼 초록 체크로 칠한다 (목업 : 줄 배경 연두, 체크 원 초록, #402)
+      h('div', { class: 'lec-goal' + (completed ? ' lec-goal--done' : '') }, [
         h('span', { class: 'lec-step__mark', text: completed ? '✓' : '★' }),
         h('span', { class: 'lec-step__text' }, [
           h('span', { class: 'lec-step__title', text: '학습 완료' }),
