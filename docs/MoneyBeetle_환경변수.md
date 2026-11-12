@@ -56,7 +56,7 @@
 | `APP_BASE_URL` | 재설정 메일 속 링크의 서버 주소 (`{APP_BASE_URL}/password-reset?token=...`) | | `http://localhost:8080` | 〃 |
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
 | `GOOGLE_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
-| `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
+| `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`app.remember-me-key`, `SecurityConfig`, #367). **기본값이 없어** 비어 있으면 서버가 뜨지 않는다 | ✅ | 로컬 전용 임의 문자열 | USR-06 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
 | `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
@@ -66,7 +66,7 @@
   - 포트나 주소가 다르면 `{주소}/login/oauth2/code/google` 로 등록합니다. 받은 값은 `.env` 에만 넣고 코드·깃에는 올리지 않습니다.
   - 제공자가 이메일을 주지 않거나 확인되지 않은 이메일이면 그 로그인은 막힙니다(`OAUTH_FAILED`).
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
-- `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다.
+- `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다. `.env`에 없으면 서버가 뜨지 않습니다(#367). 키를 바꾸면 이미 받은 로그인 상태 유지 쿠키는 모두 쓸 수 없게 됩니다. 테스트는 `src/test/resources/security-test.properties`의 테스트 전용 값을 씁니다.
 
 ### 2-3 배포용 값 (쓰지 않음)
 
