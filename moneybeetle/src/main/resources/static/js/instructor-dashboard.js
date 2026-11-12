@@ -379,15 +379,23 @@
       addBtn.title = addBtn.disabled ? '퀴즈는 ' + QUIZ_MAX + '문제까지 만들 수 있어요' : '';
     }
 
+    /* 강의를 고르면 그 강의의 퀴즈를 불러온다. 다 불러오기 전(또는 실패)에는 저장을 막는다 :
+     * PUT 은 그 강의의 퀴즈를 통째로 바꾸므로, 앞서 고른 강의의 문제가 새 강의에 저장되면 안 된다 */
     function loadCourse() {
       var c = courseOf(st.courseId);
+      st.loaded = false;
       titleIn.value = c ? c.title + ' 퀴즈' : '';
       err.textContent = '';
-      if (!c) { st.editing = false; st.questions = [blankQuestion()]; info.textContent = ''; drawQuestions(); drawAdd(); save.textContent = '퀴즈 등록'; return; }
+      st.editing = false;
+      st.questions = [blankQuestion()];   // 앞서 고른 강의의 문제를 바로 비운다
+      save.textContent = '퀴즈 등록';
+      drawQuestions(); drawAdd();
+      if (!c) { info.textContent = ''; return; }
       info.textContent = '불러오는 중이에요…';
       MB.api('/api/v1/instructor/courses/' + c.courseId).then(function (d) {
         if (String(c.courseId) !== st.courseId) return;   // 그사이 다른 강의를 골랐으면 버린다
         var qs = toQuestions(d);
+        st.loaded = true;
         st.editing = qs.length > 0;
         st.questions = qs.length ? qs : [blankQuestion()];
         save.textContent = st.editing ? '수정 완료' : '퀴즈 등록';
@@ -397,7 +405,11 @@
           c.status === 'APPROVED' ? '허가된 강의라 저장하면 관리자가 다시 검수해요.' : ''
         ].filter(Boolean).join(' ');
         drawQuestions(); drawAdd();
-      }).catch(function (e) { info.textContent = ''; err.textContent = I.errorText(e, '퀴즈를 불러오지 못했어요'); });
+      }).catch(function (e) {
+        if (String(c.courseId) !== st.courseId) return;
+        info.textContent = '';
+        err.textContent = I.errorText(e, '퀴즈를 불러오지 못했어요') + ' 강의를 다시 골라 주세요';
+      });
     }
 
     courseSel.addEventListener('change', function () { st.courseId = courseSel.value; loadCourse(); });
@@ -410,6 +422,7 @@
     save.addEventListener('click', function () {
       if (save.disabled) return;
       if (!st.courseId) { err.textContent = '연결할 강의를 선택해 주세요'; courseSel.focus(); return; }
+      if (!st.loaded) { err.textContent = '강의의 퀴즈를 다 불러온 뒤에 저장해 주세요'; return; }
       var bad = st.questions.findIndex(function (q) { return !done(q); });
       if (bad >= 0) { err.textContent = '문제 ' + (bad + 1) + '의 문제, 보기 4개, 정답을 모두 입력해 주세요'; return; }
       var noExp = st.questions.findIndex(function (q) { return !q.exp.trim(); });
@@ -427,8 +440,12 @@
       });
     });
 
-    if (st.courseId && courseOf(st.courseId) && courseOf(st.courseId).status !== 'REVIEW') { courseSel.value = st.courseId; courseSel.disabled = true; }
-    else if (st.courseId) { st.courseId = ''; err.textContent = '검수 중인 강의의 퀴즈는 고칠 수 없어요'; }
+    var target = st.courseId ? courseOf(st.courseId) : null;
+    if (target && target.status !== 'REVIEW') { courseSel.value = st.courseId; courseSel.disabled = true; }
+    else if (st.courseId) {   // 주소의 강의가 내 강의 목록에 없거나(삭제·잘못된 주소) 검수 중
+      err.textContent = target ? '검수 중인 강의의 퀴즈는 고칠 수 없어요' : '강의를 찾을 수 없어요. 연결할 강의를 다시 선택해 주세요';
+      st.courseId = '';
+    }
 
     fill(root, h('h1', { class: 'mp-sr', text: courseId ? '퀴즈 수정' : '퀴즈 생성' }),
       h('section', { class: 'db-box db-form' }, [
@@ -543,7 +560,9 @@
       lessonSel.disabled = true;
       if (!courseSel.value) { fill(lessonSel, h('option', { value: '', text: '관련 강의를 먼저 골라 주세요' })); return; }
       fill(lessonSel, h('option', { value: '', text: '영상을 불러오는 중이에요…' }));
-      MB.api('/api/v1/instructor/courses/' + courseSel.value).then(function (d) {
+      var picked = courseSel.value;
+      MB.api('/api/v1/instructor/courses/' + picked).then(function (d) {
+        if (courseSel.value !== picked) return;   // 그사이 다른 강의를 골랐으면 늦게 온 응답은 버린다
         lessons = (d && d.lessons) || [];
         var done = sm.map(function (m) { return m.lessonId; });
         var open = lessons.filter(function (l) { return done.indexOf(l.lessonId) < 0; });
@@ -551,6 +570,7 @@
           .concat(open.map(function (l) { return h('option', { value: String(l.lessonId), text: l.title }); })));
         lessonSel.disabled = !open.length;
       }).catch(function (e) {
+        if (courseSel.value !== picked) return;
         fill(lessonSel, h('option', { value: '', text: '영상을 불러오지 못했어요' }));
         err.textContent = I.errorText(e, '영상을 불러오지 못했어요');
       });
