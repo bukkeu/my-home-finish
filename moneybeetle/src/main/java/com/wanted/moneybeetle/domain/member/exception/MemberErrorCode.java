@@ -24,6 +24,7 @@ public enum MemberErrorCode implements ErrorCode {
     BIRTH_DATE_INVALID("BIRTH_DATE_INVALID", HttpStatus.BAD_REQUEST, "올바른 생년월일을 입력해 주세요."),
     TERMS_NOT_FOUND("TERMS_NOT_FOUND", HttpStatus.BAD_REQUEST, "존재하지 않는 약관이에요."),
     MEMBER_NOT_FOUND("MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND, "존재하지 않는 회원이에요."),
+    INSTRUCTOR_PROFILE_NOT_FOUND("INSTRUCTOR_PROFILE_NOT_FOUND", HttpStatus.NOT_FOUND, "강사 정보를 찾을 수 없어요."),
 
     // 로그인 (API 6). 문구는 API 명세서 4장·정책 정의서 3-2 기준
     LOGIN_FAILED("LOGIN_FAILED", HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호를 확인해 주세요."),

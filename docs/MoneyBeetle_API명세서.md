@@ -129,6 +129,8 @@
 | 10 | `POST` | `/api/v1/auth/password-reset/request` | 비밀번호 재설정 요청 | 비회원 | USR-09, DP-12 |
 | 11 | `POST` | `/api/v1/auth/password-reset/confirm` | 비밀번호 재설정 | 비회원 | USR-09, DP-12 |
 | 12 | `POST` | `/api/v1/auth/instructor-signup` | 강사 가입 신청 | 비회원 | USR-10, ADM-06 |
+| 12-1 | `GET` | `/api/v1/instructor/profile` | 내 강사 프로필 조회 (이름·한 줄 소개·강사 소개·전문 분야) | 강사 | USR-12 |
+| 12-2 | `PATCH` | `/api/v1/instructor/profile` | 내 강사 프로필 수정 | 강사 | USR-12 |
 | 13 | `GET` | `/api/v1/members/me` | 내 정보 (메뉴 프로필) | 회원 | HOM-03~05, USR-12 |
 | 14 | `PATCH` | `/api/v1/members/me` | 설정 수정 | 회원 | USR-12, SP-02 |
 | 15 | `POST` | `/api/v1/members/me/profile-image` | 프로필 이미지 변경 | 회원 | USR-12, DP-32 |
@@ -698,6 +700,52 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 ```
 
 **Error**: `INVALID_INPUT`(형식 오류·비밀번호 확인 불일치), `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`, `PASSWORD_INVALID`, `PASSWORD_MISMATCH`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `IDENTITY_NOT_VERIFIED`
+
+#### 12-1. 내 강사 프로필 조회
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/profile` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | USR-12 |
+| 설명 | 강사 마이페이지에 보여 줄 내 강사 정보. 이름(`displayName`), 한 줄 소개(`headline`), 강사 소개(`bio`), 전문 분야 목록(`fields`)을 돌려준다. 한 줄 소개·강사 소개를 입력한 적 없으면 `null`. `fields` 는 저장된 `instructor_profile.field`(`청약,부동산` 처럼 쉼표로 저장)를 목록으로 나눈 것이고, 가입 때 직접 쓴 값처럼 고를 수 있는 목록에 없는 옛 값도 그대로 내려간다. 닉네임은 이 API 가 아니라 내 정보(API 13)·설정 수정(API 14)에서 다룬다. 학생(MEMBER) 계정은 `403`(`FORBIDDEN`). (#365) |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Error**: `INSTRUCTOR_PROFILE_NOT_FOUND`(404, 강사 정보가 없는 계정)
+
+#### 12-2. 내 강사 프로필 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/profile` |
+| Method | `PATCH` |
+| 권한 | 강사 |
+| 관련 | USR-12 |
+| 설명 | 이름, 한 줄 소개, 강사 소개, 전문 분야를 한꺼번에 바꾼다(보낸 값으로 모두 교체). 이름(`displayName`)은 필수, 앞뒤 공백을 뺀 2~20자이고 금칙어를 검사한다(`FORBIDDEN_WORD`). `headline` 은 60자, `bio` 는 1,000자 이하이며 비우거나 `null` 로 보내면 지운다. `fields` 는 1개 이상이고 고를 수 있는 값은 `청약`, `ETF`, `주식`, `부동산`, `예적금`, `재테크 기초`, `대출` 뿐이다(같은 값을 두 번 보내면 하나만 저장). 길이·분야 오류는 `INVALID_INPUT`(입력칸별 안내는 `error.fields`). 닉네임은 바꾸지 않는다(API 14). 응답은 저장된 값(API 12-1 과 같은 모양). 학생(MEMBER) 계정은 `403`. (#365) |
+
+**Request**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Response**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Error**: `INVALID_INPUT`(이름·한 줄 소개·강사 소개 길이, 전문 분야 없음·고를 수 없는 값), `FORBIDDEN_WORD`, `INSTRUCTOR_PROFILE_NOT_FOUND`(404)
 
 #### 13. 내 정보 (메뉴 프로필)
 
