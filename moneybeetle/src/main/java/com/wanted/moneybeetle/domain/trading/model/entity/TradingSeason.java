@@ -25,6 +25,8 @@ import lombok.NoArgsConstructor;
 *   테이블 trading_season
 *   상태 : READY -> RUNNING <-> HOLIDAY -> SETTLING -> ENDED (SP-65, 거꾸로 가지 않음.
 *          일요일 휴장 뒤에는 다시 진행 중으로 돌아온다)
+*          SETTLING -> ENDED 는 상태 변경(changeStatus, API 117)으로 하지 않고 정산(completeSettlement) 뒤
+*          랭킹 공개(publishRanking, API 139)로만 한다. 상태 변경으로 바로 끝내면 정산·공개·이월금 확정을 할 수 없게 된다 (#329)
 *   created_at·updated_at 은 BaseTimeEntity(JPA 감사, 서울 시간)가 채운다 (#293)
 *  */
 @Entity
@@ -39,12 +41,12 @@ public class TradingSeason extends BaseTimeEntity {
     public static final String STATUS_SETTLING = "SETTLING";
     public static final String STATUS_ENDED = "ENDED";
 
-    /** 지금 상태에서 바꿀 수 있는 다음 상태 (SP-65) */
+    /** 상태 변경(API 117)으로 바꿀 수 있는 다음 상태 (SP-65). 정산 중 -> 종료는 랭킹 공개로만 (#329) */
     private static final Map<String, Set<String>> NEXT_STATUSES = Map.of(
             STATUS_READY, Set.of(STATUS_RUNNING),
             STATUS_RUNNING, Set.of(STATUS_HOLIDAY, STATUS_SETTLING),
             STATUS_HOLIDAY, Set.of(STATUS_RUNNING, STATUS_SETTLING),
-            STATUS_SETTLING, Set.of(STATUS_ENDED),
+            STATUS_SETTLING, Set.of(),
             STATUS_ENDED, Set.of());
 
     /** 시즌 기간: 시작일(월) 포함 14일, 종료일 = 시작일 + 13일 (SP-50) */

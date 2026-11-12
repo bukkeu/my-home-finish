@@ -3229,7 +3229,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-10, SP-65 |
-| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING → ENDED 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. 그 밖의 변경과 거꾸로 가는 변경은 거절. |
+| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. **SETTLING → ENDED 는 이 API 로 바꿀 수 없다** : 종료는 정산(API 138) 뒤 랭킹 공개(API 139)로만 된다(상태 변경으로 바로 끝내면 정산·공개·이월금 확정을 할 수 없게 되므로, #329). `{"status":"ENDED"}` 를 포함해 그 밖의 변경과 거꾸로 가는 변경은 `INVALID_STATUS_TRANSITION`(409). |
 
 **Request**
 

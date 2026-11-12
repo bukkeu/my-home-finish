@@ -222,6 +222,20 @@ class SeasonAdminServiceTest {
                 .isEqualTo(CommonErrorCode.NOT_FOUND);
     }
 
+    @Test
+    void 정산_중인_시즌을_상태_변경으로_종료하면_INVALID_STATUS_TRANSITION이고_정산_중으로_남는다() {
+        // 종료는 정산 -> 랭킹 공개(API 139)로만 한다. 상태 변경(API 117)으로 끝내면 정산·공개·이월금 확정을 할 수 없게 된다 (#329)
+        TradingSeason season = savedSeason(7L, "시즌 7");
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
+        when(seasonRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(season));
+
+        assertThatThrownBy(() -> service.changeStatus(7L, new SeasonStatusDTO("ENDED")))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        assertThat(season.getStatus()).isEqualTo(TradingSeason.STATUS_SETTLING);
+    }
+
     // ===== #207 이전 시즌 정산 확인, 기간 겹침 =====
 
     @Test
