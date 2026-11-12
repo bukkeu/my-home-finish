@@ -1,0 +1,72 @@
+/* comment.
+*   담당 : DBA ① 신아림 (#360, 강사 Q&A 관리)
+*   InstructorDashboard.dc.html 의 qna 보기 인라인 스타일을 그대로 클래스로 옮겼다 (크기·색·여백 같게)
+*   사용자 문의 게시판(inquiry.css)과는 따로 쓴다
+*  */
+.ins-page[data-tab="qna"] { gap: 24px; }
+.qa-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.qa-tab { all: unset; box-sizing: border-box; cursor: pointer; height: 38px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px; background: var(--color-accent-100); color: var(--color-text); }
+.qa-tab.is-on { background: var(--color-text); color: var(--color-accent); }
+.qa-tab__n { font-size: 12px; opacity: .75; }
+.qa-tab:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
+.qa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; align-items: start; }
+.qa-list { border: 1.5px dashed var(--color-divider); background: #fff; border-radius: 16px; overflow: hidden; }
+.qa-row { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 16px 20px;
+  border-bottom: 1px solid var(--color-divider); background: #fff; }
+.qa-row:hover { background: var(--color-bg); }
+.qa-row.is-on { background: var(--color-accent-100); }
+.qa-row:focus-visible { outline: 2px solid var(--color-text); outline-offset: -2px; }
+.qa-row__top { display: flex; align-items: center; gap: 8px; }
+.qa-row__course { font-size: 12px; color: var(--color-neutral-700); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qa-row__date { font-size: 12px; color: var(--color-neutral-700); }
+.qa-row__title { font-weight: 700; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.qa-row__student { font-size: 12px; color: var(--color-neutral-700); }
+.qa-row__student:empty { display: none; }
+.qa-empty { padding: 56px 20px; text-align: center; color: var(--color-neutral-700); font-size: 15px; }
+
+.qa-pill { flex: none; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--color-accent-100); color: var(--color-neutral-700); }
+.qa-pill--big { padding: 4px 12px; }
+.qa-pill--wait { background: #fff0d6; color: #8a4b00; }
+.qa-pill--done { background: var(--color-accent); color: var(--color-text); }
+
+.qa-detail { border: 1.5px dashed var(--color-divider); background: #fff; border-radius: 16px; padding: 26px; display: flex; flex-direction: column; gap: 18px;
+  position: sticky; top: 100px; box-sizing: border-box; }
+.qa-detail__top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qa-detail__course { font-size: 13px; color: var(--color-neutral-700); }
+.qa-detail__title { margin: 0; font-size: 21px; font-weight: 800; line-height: 1.4; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+.qa-detail__who { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--color-neutral-700); }
+.qa-detail__who b { font-weight: 700; color: var(--color-text); }
+.qa-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--color-accent-200); color: var(--color-text); display: grid; place-items: center; font-weight: 800; font-size: 12px; flex: none; }
+.qa-detail__body { margin: 0; font-size: 15px; line-height: 1.8; color: var(--color-text); padding: 16px; background: var(--color-bg); border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.qa-answer { border: 1.5px solid var(--color-accent); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; background: var(--color-accent-100); }
+.qa-answer__head { font-size: 13px; font-weight: 800; color: var(--color-text); }
+.qa-answer__text { margin: 0; font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.qa-answer__actions { display: flex; gap: 4px; }
+
+.qa-editor { display: flex; flex-direction: column; gap: 10px; }
+.qa-editor__label { font-size: 13px; font-weight: 700; color: var(--color-text); }
+.qa-textarea { width: 100%; min-height: 150px; border: 1.5px solid var(--color-divider); border-radius: 12px; padding: 12px 14px; font-size: 15px; line-height: 1.7;
+  font-family: inherit; box-sizing: border-box; resize: vertical; color: var(--color-text); background: #fff; }
+.qa-textarea:focus { outline: none; border-color: var(--color-text); box-shadow: 0 0 0 3px var(--color-accent-100); }
+.qa-err { font-size: 13px; font-weight: 600; color: #b3261e; margin: 0; }
+.qa-editor__actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.qa-btn { all: unset; box-sizing: border-box; cursor: pointer; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; }
+.qa-btn:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.qa-btn:disabled { cursor: default; opacity: .6; }
+.qa-btn--soft { height: 34px; padding: 0 14px; font-size: 13px; background: var(--color-accent-100); color: var(--color-text); }
+.qa-btn--soft:hover { background: var(--color-accent-200); }
+.qa-btn--danger { height: 34px; padding: 0 12px; font-size: 13px; color: #b3261e; }
+.qa-btn--danger:hover { background: #fdecea; }
+.qa-btn--ghost { height: 42px; padding: 0 18px; font-size: 14px; color: var(--color-neutral-700); }
+.qa-btn--ghost:hover { background: var(--color-bg); }
+.qa-btn--primary { height: 42px; padding: 0 24px; font-size: 14px; font-weight: 800; background: var(--color-accent); color: var(--color-text); }
+.qa-btn--primary:hover { background: var(--color-accent-500); }
+
+@media (max-width: 720px) {
+  .qa-grid { grid-template-columns: minmax(0, 1fr); }
+  .qa-detail { position: static; }
+}

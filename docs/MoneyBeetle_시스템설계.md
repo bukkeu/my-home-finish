@@ -41,7 +41,7 @@ flowchart LR
     B["브라우저 (PC·모바일)<br/>Thymeleaf 화면 20개 · JS fetch"] -- "http://localhost:8080<br/>화면·/api (영상·이미지 업로드 포함)" --> A["웹 서버 (Spring Boot MVC)<br/>화면 렌더링 (Thymeleaf)<br/>인증·권한 필터 (세션)<br/>도메인 12개<br/>메모리 캐시 (Caffeine)<br/>예약 작업"]
     A -- JPA --> D[("MySQL 8 (로컬)<br/>회원·학습·캐시<br/>거래·청약·감사")]
     A -- "파일 저장 · /uploads/** 로 제공" --> S["로컬 폴더 ./uploads<br/>강의 영상·썸네일<br/>프로필·단지 이미지"]
-    B -- OAuth · 영상 재생 --> E["외부 서비스<br/>구글 로그인<br/>유튜브"]
+    B -- OAuth --> E["외부 서비스<br/>구글 로그인<br/>"]
     style A fill:#E6F1FB,stroke:#378ADD,stroke-width:2px
 ```
 
@@ -56,11 +56,11 @@ flowchart LR
 | DB | 로컬 MySQL 8 (`money_beetle`) | 모든 업무 데이터와 감사 기록. `schema.sql` + `sample-data.sql`로 만든다 |
 | 파일 | 로컬 폴더 `./uploads` | 영상·썸네일·프로필·단지 이미지. Git 에는 올리지 않음 (`.gitignore`) |
 | 캐시 | 서버 메모리 | 오늘의 용어, 강의 목록, 현재 턴 시세, 설정값 (파일 업로드와 캐시 전략 절) |
-| 외부 서비스 | 구글, 유튜브 | 간편 로그인(우선순위 하), URL로 등록한 강의 영상 재생 |
+| 외부 서비스 | 구글 | 간편 로그인(우선순위 하) |
 
 ## 애플리케이션 모듈 구성
 
-서버는 **도메인(기능 영역)별 패키지**로 나눕니다. 패키지 이름은 팀 프로젝트 골격(`moneybeetle/README.md`)을 따르고, 담당·이슈 범위는 `docs/MoneyBeetle_역할분담.md`와 GitHub 이슈의 담당자 배정을 기준으로 합니다. 같은 도메인 안에서도 이슈에 따라 담당자가 다를 수 있습니다. 모든 도메인 안은 `controller` / `model/dao` / `model/dto` / `model/entity` / `model/service` / `exception`으로 같은 모양입니다. 화면은 역할별 주소(`/user`, `/instructor`, `/admin`)로 나뉘고, 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(`AdminCourseController` 등). 코드 작성 규칙은 코딩 컨벤션 문서를 따릅니다.
+서버는 **도메인(기능 영역)별 패키지**로 나눕니다. 패키지 이름은 팀 프로젝트 골격(`moneybeetle/README.md`)을 따르고, 담당·이슈 범위는 `docs/MoneyBeetle_역할분담.md`와 GitHub 이슈의 담당자 배정을 기준으로 합니다. 같은 도메인 안에서도 이슈에 따라 담당자가 다를 수 있습니다. 모든 도메인 안은 `controller` / `model/dao` / `model/dto` / `model/entity` / `model/policy` / `model/service` / `exception`으로 같은 모양입니다(필요 없는 폴더는 두지 않습니다). 화면은 역할별 주소(`/user`, `/instructor`, `/admin`)로 나뉘고, 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(`AdminCourseController` 등). 코드 작성 규칙은 코딩 컨벤션 문서를 따릅니다.
 
 | 서버 패키지 | 맡는 일 | 쓰는 화면 | 담당 | 호출하는 모듈 |
 | --- | --- | --- | --- | --- |
@@ -295,7 +295,7 @@ dev·prod 서버 환경은 두지 않습니다 (배포하지 않음, 팀 결정 
 | 항목 | 페이지 구현본 | 명세서·정책서 | 설계에 미치는 영향 |
 | --- | --- | --- | --- |
 | 서버 기술 스택·화면 방식 | 없음(화면만) | 없음 | **확정**: Java 21 + Spring Boot 3.5 + Thymeleaf 서버 렌더링 + MySQL (학습 구조, `build.gradle`) |
-| 강의 영상 | 파일 업로드와 URL 둘 다 | 파일 업로드, 영상 1개 500MB·mp4로 확정 (DP-33) | 발표 노트북 디스크 용량·재생 방식 확인 필요. 서버 multipart 한도를 영상 기준으로 둠 |
+| 강의 영상 | 파일 업로드만 | 파일 업로드, 영상 1개 500MB·mp4로 확정 (DP-33) | 발표 노트북 디스크 용량·재생 방식 확인 필요. 서버 multipart 한도를 영상 기준으로 둠 |
 | 청약통장 납입액 | 1회 2만~50만, 인정 25만 | 1회 2만~50만, 하루 인정 25만 (SP-70 확정 #76, 구현본에 맞춤) | 통장·납입 내역에 인정금액 컬럼 추가. 캐시 지급액(SP-12~14)이 이 규모를 감당할 수 있는지 #76에서 함께 확정 |
 | 가점 항목 | 공고별로 68점·85점 두 가지 표, 인정금액·지역·나이 항목 포함 | 무주택·부양가족·통장 84점 (SP-71) | 가점표를 공고 유형별 설정으로 둘지 결정. 신청 때 항목별 점수를 저장하는 구조는 같음 |
 | 당첨 결과 | 당첨·예비 당첨·낙첨 | 당첨·낙첨 | 예비 순번 산정 규칙 추가 필요 |

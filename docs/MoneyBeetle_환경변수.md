@@ -50,13 +50,13 @@
 | --- | --- | --- | --- | --- |
 | `MAIL_HOST` | 비밀번호 재설정·가입 본인인증 메일 발송 (`spring-boot-starter-mail`, `PasswordResetService`, `IdentityVerificationService`) | | `localhost` | USR-09, DP-12, USR-05, DP-44 |
 | `MAIL_PORT` | 메일 서버 포트 | | `1025` (로컬 메일 확인 도구) | 〃 |
-| `MAIL_USERNAME` | 메일 계정 | | 비워 둠 | 〃 |
-| `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호) | ✅ | 비워 둠 | 〃 |
+| `MAIL_USERNAME` | 메일 계정. 로컬 메일 확인 도구는 계정이 필요 없어 지금은 쓰지 않는다 (`.env`에서 빼도 기본값 빈칸으로 뜬다) | | 비워 둠 | 〃 |
+| `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호). `MAIL_USERNAME`과 같이 지금은 쓰지 않는다 | ✅ | 비워 둠 | 〃 |
 | `MAIL_FROM` | 발신자 주소 | | `no-reply@moneybeetle.local` | 〃 |
 | `APP_BASE_URL` | 재설정 메일 속 링크의 서버 주소 (`{APP_BASE_URL}/password-reset?token=...`) | | `http://localhost:8080` | 〃 |
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
 | `GOOGLE_CLIENT_SECRET` | 〃 | ✅ | 개인 테스트 앱의 값 | 〃 |
-| `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`SecurityConfig`) | ✅ | 로컬 전용 임의 문자열 | USR-06 |
+| `REMEMBER_ME_KEY` | 로그인 상태 유지(Remember Me) 쿠키 서명 키 (`app.remember-me-key`, `SecurityConfig`, #367). **기본값이 없어** 비어 있으면 서버가 뜨지 않는다 | ✅ | 로컬 전용 임의 문자열 | USR-06 |
 | `FILE_STORAGE_TYPE` | 파일 저장 방식. 배포하지 않아 로컬 폴더(`local`)만 쓰므로 지금은 읽지 않음 | | `local` | DP-32 |
 | `FILE_UPLOAD_DIR` | 업로드 파일 저장 폴더 (`file.upload-dir`, `FileStorageService` 저장, `WebConfig`가 `/uploads/**`로 연결). 시연용 샘플 영상은 `moneybeetle/uploads/videos/sample-1~3.mp4`(저장소에 포함, #73)라서 기본값 `./uploads`로 `moneybeetle` 폴더에서 실행해야 시드 영상이 재생된다. 다른 폴더를 쓰면 `videos/` 폴더를 그곳에 복사한다 | | `./uploads` | DP-32·33 |
 
@@ -66,7 +66,7 @@
   - 포트나 주소가 다르면 `{주소}/login/oauth2/code/google` 로 등록합니다. 받은 값은 `.env` 에만 넣고 코드·깃에는 올리지 않습니다.
   - 제공자가 이메일을 주지 않거나 확인되지 않은 이메일이면 그 로그인은 막힙니다(`OAUTH_FAILED`).
 - 메일은 로컬에서 실제 메일을 보내지 않고 로컬 메일 확인 도구(예: Mailpit, `1025` 포트)나 로그 출력으로 확인합니다.
-- `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다.
+- `REMEMBER_ME_KEY`는 로컬 전용 임의 문자열을 각자 정합니다. `.env`에 없으면 서버가 뜨지 않습니다(#367). 키를 바꾸면 이미 받은 로그인 상태 유지 쿠키는 모두 쓸 수 없게 됩니다. 테스트는 `src/test/resources/security-test.properties`의 테스트 전용 값을 씁니다.
 
 ### 2-3 배포용 값 (쓰지 않음)
 
@@ -120,12 +120,13 @@ DB_URL=jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&charac
 DB_USERNAME=moneybeetle
 DB_PASSWORD=change-me
 
-# 메일 (비밀번호 재설정·가입 본인인증) - 기능 구현 시
+# 메일 (비밀번호 재설정·가입 본인인증). 로컬 메일 확인 도구는 계정이 필요 없어 MAIL_USERNAME·MAIL_PASSWORD 는 비워 두거나 빼도 된다
 MAIL_HOST=localhost
 MAIL_PORT=1025
 MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM=no-reply@moneybeetle.local
+APP_BASE_URL=http://localhost:8080
 
 # 간편 로그인 (#9). 키가 없으면 꺼진다 (비워 둬도 서버는 뜬다)
 GOOGLE_CLIENT_ID=
@@ -157,7 +158,7 @@ spring:
 ### 5-3 로컬에서 값 넣기 (둘 중 하나)
 
 1. **IntelliJ 실행 설정**: Run/Debug Configurations → Environment variables에 `DB_PASSWORD=...` 형식으로 입력합니다. 파일이 프로젝트 밖(IDE 설정)에 있어서 실수로 올릴 위험이 가장 적습니다.
-2. **`.env` 파일**: `moneybeetle/` 폴더에 `.env.example`을 복사해 `.env`로 만들고 값을 채웁니다. Spring Boot가 `.env`를 읽도록 `application.yaml`에 `spring.config.import: optional:file:.env[.properties]`를 추가합니다. (`.gitignore`에 `.env`가 있는지 **먼저** 확인합니다.)
+2. **`.env` 파일**: `moneybeetle/` 폴더에 `.env.example`을 복사해 `.env`로 만들고 값을 채웁니다. `application.yaml`에 이미 `spring.config.import: optional:file:.env[.properties]`가 있어(#114) 따로 설정할 것은 없습니다. 이 설정은 **실행 위치**의 `.env`를 읽으므로 IntelliJ 실행 설정의 Working directory를 `moneybeetle` 폴더로 둡니다(다른 폴더면 `.env`를 못 읽어 `DB_URL` 오류로 서버가 뜨지 않습니다). 시작 클래스(Main class)는 `com.wanted.moneybeetle.MoneyBeetleApplication`입니다(#114에서 루트 패키지로 옮김. 예전 `global.config` 경로의 실행 설정은 지웁니다). (`.gitignore`에 `.env`가 있는지 **먼저** 확인합니다.)
 
 ### 5-4 발표 노트북에서
 

@@ -3,6 +3,7 @@ package com.wanted.moneybeetle.domain.quiz.model.service;
 import com.wanted.moneybeetle.domain.quiz.exception.QuizErrorCode;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizChoiceRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizQuestionRepository;
+import com.wanted.moneybeetle.domain.quiz.model.dto.CourseQuizStatDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizCountDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSaveDTO;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizChoice;
@@ -10,6 +11,8 @@ import com.wanted.moneybeetle.domain.quiz.model.entity.QuizQuestion;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 *   - 본인 강의·수정 가능 상태 확인과 재검수는 course.InstructorCourseService가 먼저 한다 (여기는 quiz 테이블만)
 *   - 응시 답안·오답노트가 문항·보기 ID를 가리키므로, 푼 기록이 있는 문항은 고치거나 지우지 않고 보관한다
 *     (quiz_type TEST_OLD / MAIN_OLD → 퀴즈·검수·편집 화면에서는 빠지고, 오답노트·응시 결과는 수정 전 내용 그대로)
+*   - #384 : 기록 없는 문항의 보기·정답만 바뀌어도 문항 수정 시각(updated_at)을 공통 Clock(서울) 시각으로 갱신한다
+*     (강사 센터 퀴즈 목록 API 150 의 '최근 수정 순'이 실제와 맞게)
 *  */
 @Service
 @RequiredArgsConstructor
@@ -41,6 +46,15 @@ public class InstructorQuizService {
 
     private final QuizQuestionRepository quizQuestionRepository;
     private final QuizChoiceRepository quizChoiceRepository;
+    private final Clock clock;   // 공통 Clock(Asia/Seoul, TimeConfig). 테스트에서는 Clock.fixed 로 시각을 고정한다
+
+    /* 강사 센터 퀴즈 목록 (API 150, #366): 강의마다 지금 쓰는 문항 수. 문항이 있는 강의만 돌려준다 (course.InstructorContentService 가 부른다) */
+    public List<CourseQuizStatDTO> findQuizStats(List<Long> courseIds) {
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return quizQuestionRepository.findQuizStatsByCourseIds(courseIds);
+    }
 
     /* API 79 테스트 퀴즈: OX 정확히 5문제 + 해설 */
     @Transactional
@@ -135,7 +149,10 @@ public class InstructorQuizService {
                 List<QuizChoice> current = choicesByQuestion.getOrDefault(question.getQuizQuestionId(), List.of());
                 if (!hasHistory(question)) {
                     question.change(next.content(), next.explanation(), sortOrder);
-                    updateChoices(question.getQuizQuestionId(), current, next);
+                    if (updateChoices(question.getQuizQuestionId(), current, next)) {
+                        // 보기·정답이 바뀌었다 : 문항 행이 그대로여도 수정 시각을 갱신한다 (#384)
+                        quizQuestionRepository.touchUpdatedAt(question.getQuizQuestionId(), LocalDateTime.now(clock));
+                    }
                     continue;
                 }
                 if (sameQuestion(question, current, next)) {
@@ -179,16 +196,25 @@ public class InstructorQuizService {
         quizQuestionRepository.deleteAllInBatch(questions);
     }
 
-    /* 기록이 없는 문항의 보기: 개수가 같으면 순서대로 고치고, 다르면 지우고 새로 만든다 */
-    private void updateChoices(Long questionId, List<QuizChoice> current, NewQuestion next) {
+    /* 기록이 없는 문항의 보기: 개수가 같으면 순서대로 고치고, 다르면 지우고 새로 만든다.
+     * 보기 내용이나 정답이 하나라도 바뀌었으면(지우고 새로 만든 경우 포함) true (#384) */
+    private boolean updateChoices(Long questionId, List<QuizChoice> current, NewQuestion next) {
         if (current.size() == next.choices().size()) {
+            boolean changed = false;
             for (int i = 0; i < current.size(); i++) {
-                current.get(i).change(next.choices().get(i), i == next.answerIndex());
+                QuizChoice choice = current.get(i);
+                String content = next.choices().get(i);
+                boolean correct = i == next.answerIndex();
+                if (!choice.getContent().equals(content) || choice.isCorrect() != correct) {
+                    choice.change(content, correct);
+                    changed = true;
+                }
             }
-            return;
+            return changed;
         }
         quizChoiceRepository.deleteAllInBatch(current);
         createChoices(questionId, next);
+        return true;
     }
 
     private void createChoices(Long questionId, NewQuestion next) {

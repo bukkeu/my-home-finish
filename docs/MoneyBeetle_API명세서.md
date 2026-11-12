@@ -15,7 +15,7 @@
 
 - 화면은 Thymeleaf 서버 렌더링이고, 이 문서의 API는 화면 안의 `fetch`가 쓰는 JSON입니다 (1-5 참고).
 - 기준 문서: 요구사항 명세서, 정책 정의서, DB 설계. “관련” 칸의 ID는 요구사항·정책 번호입니다.
-- 총 **148개 API** (사용자 71, 강사 11, 관리자 66)
+- 총 **152개 API** (사용자 72, 강사 14, 관리자 66)
 - 초안입니다. 개발하면서 바뀐 내용은 이 문서에 바로 반영해 주세요.
 
 ---
@@ -129,6 +129,8 @@
 | 10 | `POST` | `/api/v1/auth/password-reset/request` | 비밀번호 재설정 요청 | 비회원 | USR-09, DP-12 |
 | 11 | `POST` | `/api/v1/auth/password-reset/confirm` | 비밀번호 재설정 | 비회원 | USR-09, DP-12 |
 | 12 | `POST` | `/api/v1/auth/instructor-signup` | 강사 가입 신청 | 비회원 | USR-10, ADM-06 |
+| 12-1 | `GET` | `/api/v1/instructor/profile` | 내 강사 프로필 조회 (이름·한 줄 소개·강사 소개·전문 분야) | 강사 | USR-12 |
+| 12-2 | `PATCH` | `/api/v1/instructor/profile` | 내 강사 프로필 수정 | 강사 | USR-12 |
 | 13 | `GET` | `/api/v1/members/me` | 내 정보 (메뉴 프로필) | 회원 | HOM-03~05, USR-12 |
 | 14 | `PATCH` | `/api/v1/members/me` | 설정 수정 | 회원 | USR-12, SP-02 |
 | 15 | `POST` | `/api/v1/members/me/profile-image` | 프로필 이미지 변경 | 회원 | USR-12, DP-32 |
@@ -192,6 +194,8 @@
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
 | 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 52-1 | `PATCH` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 수정 | 답글 작성자 | TCH-09 |
+| 52-2 | `DELETE` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 삭제 | 답글 작성자 | TCH-09 |
 | 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
 
 ### 모의투자
@@ -232,12 +236,17 @@
 | 74 | `GET` | `/api/v1/instructor/courses/{courseId}` | 강의 편집 정보 | 강사 (본인 강의) | TCH-01~05 |
 | 75 | `PUT` | `/api/v1/instructor/courses/{courseId}` | 강의 수정 | 강사 (본인 강의) | TCH-06, SP-31 |
 | 76 | `DELETE` | `/api/v1/instructor/courses/{courseId}` | 강의 삭제 | 강사 (본인 강의) | TCH-06, SP-32 |
+| 76-1 | `PATCH` | `/api/v1/instructor/courses/{courseId}/visibility` | 공개 켜기/끄기 | 강사 (본인 강의) | TCH-06 |
 | 77 | `POST` | `/api/v1/instructor/courses/{courseId}/thumbnail` | 썸네일 업로드 | 강사 | TCH-01 |
 | 78 | `PUT` | `/api/v1/instructor/courses/{courseId}/lessons` | 영상·요약글 저장 | 강사 | TCH-02~03, SP-30, DP-31, DP-33 |
 | 79 | `PUT` | `/api/v1/instructor/courses/{courseId}/test-quiz` | 테스트 퀴즈 저장 | 강사 | TCH-04 |
 | 80 | `PUT` | `/api/v1/instructor/courses/{courseId}/quiz` | 퀴즈 저장 | 강사 | TCH-05 |
 | 81 | `POST` | `/api/v1/instructor/courses/{courseId}/review-request` | 검수 요청 | 강사 | TCH-07, DP-34 |
+| 150 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
 | 82 | `GET` | `/api/v1/instructor/inquiries` | 내 강의 문의 | 강사 | TCH-08 |
+| 150 | `GET` | `/api/v1/instructor/quizzes` | 퀴즈 목록(강의별) | 강사 | TCH-04~05 |
+| 151 | `GET` | `/api/v1/instructor/summaries` | 요약글 목록(영상별) | 강사 | TCH-03 |
+| 152 | `PATCH` | `/api/v1/instructor/lessons/{lessonId}/summary` | 영상 요약글 수정 | 강사 (본인 강의) | TCH-03, SP-31, DP-31 |
 
 ### 관리자
 
@@ -492,10 +501,13 @@
 POST /api/v1/auth/login
 Content-Type: application/x-www-form-urlencoded
 
-email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
+email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 ```
 
 - `email`은 대소문자·앞뒤 공백을 구분하지 않는다. `next`는 선택이고, 로그인 뒤 이동할 사이트 안 경로(`/`로 시작)만 받는다.
+- `remember-me`는 선택이다(**로그인 상태 유지**, #367). `true`(체크박스 값 `on`도 받는다)면 성공 응답에 14일짜리 `remember-me` 쿠키(HttpOnly, SameSite=Lax)를 함께 준다. 세션이 끝나도(브라우저 재시작·30분 만료) 이 쿠키로 다음 요청에서 다시 로그인된다. 보내지 않으면 쿠키 없이 세션(30분)만 쓴다. 강사·학생 로그인이 같은 값을 쓴다. **관리자(`ADMIN`)는 이 API로 로그인해도 `remember-me`를 무시하고 쿠키를 주지 않는다**(세션만, 관리자 로그인 API 83에도 없다).
+- `remember-me` 없이 로그인하면(관리자 포함) 브라우저에 남아 있던 이전 `remember-me` 쿠키를 지운다. 로그아웃 없이 다른 계정으로 로그인한 뒤 이전 계정으로 돌아가지 않게 하기 위해서다.
+- 쿠키로 다시 로그인할 때도 정지·탈퇴·잠금을 확인해 막고 쿠키를 지운다. 비밀번호를 바꾸면 기존 쿠키는 쓸 수 없다.
 - JSON 본문(`{"email": ...}`)은 읽지 않아 `LOGIN_FAILED` 로 응답한다.
 
 **Response**
@@ -525,7 +537,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | USR-06 |
-| 설명 | 세션을 끝낸다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
+| 설명 | 세션을 끝내고 로그인 상태 유지 쿠키(`remember-me`, #367)도 지운다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
 
 **Request**
 
@@ -692,6 +704,52 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```
 
 **Error**: `INVALID_INPUT`(형식 오류·비밀번호 확인 불일치), `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`, `PASSWORD_INVALID`, `PASSWORD_MISMATCH`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `IDENTITY_NOT_VERIFIED`
+
+#### 12-1. 내 강사 프로필 조회
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/profile` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | USR-12 |
+| 설명 | 강사 마이페이지에 보여 줄 내 강사 정보. 이름(`displayName`), 한 줄 소개(`headline`), 강사 소개(`bio`), 전문 분야 목록(`fields`)을 돌려준다. 한 줄 소개·강사 소개를 입력한 적 없으면 `null`. `fields` 는 저장된 `instructor_profile.field`(`청약,부동산` 처럼 쉼표로 저장)를 목록으로 나눈 것이고, 가입 때 직접 쓴 값처럼 고를 수 있는 목록에 없는 옛 값도 그대로 내려간다. 닉네임은 이 API 가 아니라 내 정보(API 13)·설정 수정(API 14)에서 다룬다. 학생(MEMBER) 계정은 `403`(`FORBIDDEN`). (#365) |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Error**: `INSTRUCTOR_PROFILE_NOT_FOUND`(404, 강사 정보가 없는 계정)
+
+#### 12-2. 내 강사 프로필 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/profile` |
+| Method | `PATCH` |
+| 권한 | 강사 |
+| 관련 | USR-12 |
+| 설명 | 이름, 한 줄 소개, 강사 소개, 전문 분야를 한꺼번에 바꾼다(보낸 값으로 모두 교체). 이름(`displayName`)은 필수, 앞뒤 공백을 뺀 2~20자이고 금칙어를 검사한다(`FORBIDDEN_WORD`). `headline` 은 60자, `bio` 는 1,000자 이하이며 비우거나 `null` 로 보내면 지운다. `fields` 는 1개 이상이고 고를 수 있는 값은 `청약`, `ETF`, `주식`, `부동산`, `예적금`, `재테크 기초`, `대출` 뿐이다(같은 값을 두 번 보내면 하나만 저장). 길이·분야 오류는 `INVALID_INPUT`(입력칸별 안내는 `error.fields`). 닉네임은 바꾸지 않는다(API 14). 응답은 저장된 값(API 12-1 과 같은 모양). 학생(MEMBER) 계정은 `403`. (#365) |
+
+**Request**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Response**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Error**: `INVALID_INPUT`(이름·한 줄 소개·강사 소개 길이, 전문 분야 없음·고를 수 없는 값), `FORBIDDEN_WORD`, `INSTRUCTOR_PROFILE_NOT_FOUND`(404)
 
 #### 13. 내 정보 (메뉴 프로필)
 
@@ -1676,6 +1734,46 @@ Header: Idempotency-Key: 7c1e...
 
 **Error**: `FORBIDDEN`, `FORBIDDEN_WORD`
 
+#### 52-1. 답글 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` |
+| Method | `PATCH` |
+| 권한 | 답글 작성자 |
+| 관련 | TCH-09 (화면설계 5.3.1 답변 수정) |
+| 설명 | 답글을 쓴 본인만 고칠 수 있다(다른 강사·관리자·문의 작성자는 `FORBIDDEN`). 내용은 답글 작성(API 52)과 같이 1~1,000자, 금칙어 검사. 관리자가 숨긴 답글은 고칠 수 없다(`INQUIRY_REPLY_HIDDEN`). 문의 상태는 바꾸지 않는다. 지워졌거나 그 문의의 답글이 아니면 `NOT_FOUND` (#370) |
+
+```json
+{ "content": "부모님과 함께 살면 포함돼요." }
+```
+
+**Response**
+
+```
+204 No Content
+```
+
+**Error**: `FORBIDDEN`, `NOT_FOUND`, `INQUIRY_REPLY_HIDDEN`, `FORBIDDEN_WORD`, `INVALID_INPUT`
+
+#### 52-2. 답글 삭제
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` |
+| Method | `DELETE` |
+| 권한 | 답글 작성자 |
+| 관련 | TCH-09 (화면설계 5.3.1 답변 삭제), DH-01 |
+| 설명 | 답글을 쓴 본인만 지울 수 있다. 실제로 지우지 않고 `deleted_at`을 남긴다(문의 상세에서 빠짐). 강사·관리자 답글을 지워서 그 문의에 남은 답변(문의 작성자가 아닌 사람의 답글)이 없으면 문의 상태를 `WAITING`으로 되돌린다. 문의 작성자의 추가 댓글은 답변으로 세지 않는다. 지워졌거나 그 문의의 답글이 아니면 `NOT_FOUND` (#370) |
+
+**Response**
+
+```
+204 No Content
+```
+
+**Error**: `FORBIDDEN`, `NOT_FOUND`
+
 #### 149. 내가 쓴 문의 모음
 
 | 항목 | 내용 |
@@ -2199,7 +2297,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-06 |
-| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). |
+| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). categoryName(소주제)·parentCategoryName(상위 카테고리), level(난이도), lessonCount(영상 수)·totalDurationSeconds(영상 재생 시간 합, 초), createdAt(등록일). 강의 수와 상관없이 한 번에 모아 조회(#369). |
 
 **Request**
 
@@ -2208,7 +2306,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
+{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null, "categoryId": 21, "categoryName": "청약통장", "parentCategoryName": "부동산", "level": "BEGINNER", "lessonCount": 3, "totalDurationSeconds": 1520, "createdAt": "2026-10-01T10:00:00" } ] }
 ```
 
 #### 73. 강의 생성
@@ -2219,12 +2317,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
+| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 난이도(level, 선택: BEGINNER 입문·ELEMENTARY 초급·INTERMEDIATE 중급·ADVANCED 고급, 안 보내면 BEGINNER), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
 
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "청약통장 기초와 가점 계산", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
+{ "categoryId": 21, "title": "청약통장 기초와 가점 계산", "description": "...", "level": "BEGINNER", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2234,7 +2332,7 @@ Header: Idempotency-Key: 31aa...
 { "courseId": 7, "status": "DRAFT" }
 ```
 
-**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리)
+**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리), `INVALID_INPUT`(level 이 네 값이 아님)
 
 #### 74. 강의 편집 정보
 
@@ -2252,7 +2350,7 @@ Header: Idempotency-Key: 31aa...
 
 **Response**
 
-- `{ courseId, categoryId, title, description, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
+- `{ courseId, categoryId, title, description, level, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
 
 **Error**: `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
@@ -2269,7 +2367,7 @@ Header: Idempotency-Key: 31aa...
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "...", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
+{ "categoryId": 21, "title": "...", "description": "...", "level": "INTERMEDIATE", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2288,7 +2386,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `DELETE` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-32 |
-| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(비공개는 관리자에게 요청). 없으면 Soft Delete(deleted_at). |
+| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(대신 API 76-1로 비공개). 없으면 Soft Delete(deleted_at). |
 
 **Request**
 
@@ -2299,6 +2397,32 @@ Header: Idempotency-Key: 31aa...
 - 204 No Content
 
 **Error**: `COURSE_HAS_LEARNERS`, `FORBIDDEN`, `NOT_FOUND`
+
+#### 76-1. 공개 켜기/끄기
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/courses/{courseId}/visibility` |
+| Method | `PATCH` |
+| 권한 | 강사 (본인 강의) |
+| 관련 | TCH-06 |
+| 설명 | 본인 강의 중 허가(APPROVED)된 강의만 공개·비공개를 바꾼다. 공개 여부만 바뀌고 상태는 그대로(관리자 검수를 다시 받지 않음). 허가 안 된 강의는 공개할 수 없음(#369). |
+
+**Request**
+
+- Path: courseId=7
+
+```json
+{ "isPublic": false }
+```
+
+**Response**
+
+```json
+{ "courseId": 7, "status": "APPROVED", "isPublic": false }
+```
+
+**Error**: `COURSE_NOT_APPROVED`(허가 안 된 강의), `INVALID_INPUT`(isPublic 없음), `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 77. 썸네일 업로드
 
@@ -2435,6 +2559,59 @@ Header: Idempotency-Key: 4d8e...
 
 **퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
+#### 150. 퀴즈 문제 파일 읽기
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/quiz-files/parse` |
+| Method | `POST` |
+| 권한 | 강사 |
+| 관련 | TCH-04~05, DP-34 |
+| 설명 | 강의 만들기의 "문제 파일 올리기". 문제 파일(CSV·엑셀 xlsx·텍스트 txt, 1MB 이하)을 읽어 문항 목록을 돌려준다. **저장하지 않는다.** 응답은 저장 요청과 같은 모양이라 화면이 보여 준 뒤 그대로 API 79(테스트 퀴즈)·80(퀴즈)로 보낸다. 데이터를 바꾸지 않지만 POST 라 CSRF 토큰이 필요하다 (#368). |
+
+**Request**
+
+```
+POST /api/v1/instructor/quiz-files/parse
+Content-Type: multipart/form-data
+
+file=(test-quiz.csv)  type=TEST
+```
+
+- `type`: `TEST`(테스트 퀴즈 OX 정확히 5문제) 또는 `MAIN`(퀴즈 4지선다 5~15문제). 다른 값이거나 빠지면 `INVALID_INPUT`.
+- 파일의 첫 줄은 머리글이고 둘째 줄부터 한 줄이 한 문제다. 모든 칸이 빈 줄은 건너뛴다. 칸 앞뒤 공백은 지운다.
+- 머리글은 첫 칸이 `문제`이고 칸 수가 아래 표와 같아야 한다(다른 칸 이름은 따지지 않는다). 칸 수가 다르면 다른 종류의 파일로 보고 알려 준다.
+
+| type | 칸 (순서대로) | 정답 |
+| --- | --- | --- |
+| `TEST` | 문제, 정답, 해설 | `O` 또는 `X` (소문자도 받음) |
+| `MAIN` | 문제, 보기1, 보기2, 보기3, 보기4, 정답, 해설 | 보기 번호 `1`~`4` → 응답 `answerIndex` 는 0~3 |
+
+- CSV: UTF-8(BOM 허용), 쉼표로 나눈다. 글 안에 쉼표·줄바꿈이 있으면 칸 전체를 큰따옴표로 감싸고, 큰따옴표는 `""` 로 쓴다(엑셀 "CSV UTF-8" 저장 모양). 엑셀의 기본 "CSV(쉼표로 분리)"는 CP949 라 읽지 않고 UTF-8 로 저장하라고 알려 준다.
+- TXT: UTF-8, 첫 줄에 탭이 있으면 탭으로, 없으면 쉼표로 나눈다(나머지 규칙은 CSV 와 같다).
+- XLSX: 첫 번째 시트만 읽는다. 칸 값은 엑셀에 보이는 글자 그대로(숫자 1 → `1`), 수식 칸은 엑셀이 저장한 결과 값이다. 압축을 푼 크기가 10MB 를 넘으면 열지 않는다(`FILE_TOO_LARGE`).
+- 칸 한도는 저장 API 와 같다: 문제 500자, 보기 200자, 해설 UTF-8 65,535바이트.
+- 읽는 양을 묶어 둔다: 한 줄에서 종류의 칸 수까지만 보고(넘친 칸은 "칸이 더 있어요" 오류), 문제는 최대 문항 수 + 1 줄까지만 읽는다(넘치면 그 줄 번호로 오류). 엑셀은 한 행씩 읽는다 (#378).
+
+**Response**
+
+```json
+{ "questions": [ { "content": "청약통장은 1인 1개만 만들 수 있다.", "answer": "O", "choices": null, "answerIndex": null, "explanation": "..." } ] }
+```
+
+```json
+{ "questions": [ { "content": "청약 가점 항목이 아닌 것은?", "answer": null, "choices": ["무주택 기간", "부양가족 수", "청약통장 가입 기간", "연 소득"], "answerIndex": 3, "explanation": "..." } ] }
+```
+
+**Error**: `QUIZ_FILE_INVALID`, `FILE_TOO_LARGE`(1MB 초과, 엑셀은 풀어서 10MB 초과), `FILE_TYPE_NOT_ALLOWED`(csv·xlsx·txt 가 아님), `INVALID_INPUT`(type), `FORBIDDEN`(강사 아님)
+
+- `QUIZ_FILE_INVALID` 의 `error.message` 는 첫 번째 오류 하나를 줄 번호와 함께 알려 준다. 줄 번호는 CSV·TXT 는 그 줄이 시작하는 줄, 엑셀은 행 번호다.
+  - 파일 없음·빈 파일: `문제 파일을 골라 주세요` / 빈 줄만 있음: `파일에 내용이 없어요. …`
+  - 머리글 없음: `1번째 줄은 머리글(문제, 정답, 해설)이어야 해요` / 종류가 다른 파일: `테스트 퀴즈 파일의 머리글은 문제, 정답, 해설 순서여야 해요. 퀴즈 종류에 맞는 파일인지 확인해 주세요`
+  - 문항 수 (모자라면 마지막으로 읽은 줄, 넘치면 처음 넘친 문제의 줄): `5번째 줄까지 4문제뿐이에요. 테스트 퀴즈는 5문제가 필요해요`, `17번째 줄: 퀴즈는 5~15문제가 필요한데, 이 줄이 16번째 문제예요. 이 줄부터는 지워 주세요`
+  - 줄 오류: `3번째 줄: 정답은 O 또는 X 로 써 주세요`, `5번째 줄: 정답은 보기 번호 1~4 중 하나로 써 주세요`, `4번째 줄: '해설' 칸이 비어 있어요`, `3번째 줄: 칸이 3개(문제, 정답, 해설)여야 하는데 더 있어요. …`, `2번째 줄: 문제는 500자까지 쓸 수 있어요`
+  - 파일 모양: `UTF-8 로 저장한 파일만 읽을 수 있어요. …`, `엑셀 파일을 열 수 없어요. …`, `6번째 줄: 큰따옴표(")가 닫히지 않았어요`
+
 #### 81. 검수 요청
 
 | 항목 | 내용 |
@@ -2465,7 +2642,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-08 |
-| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount는 필터와 상관없이 내 강의 전체의 답변 대기 수. |
+| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount·answeredCount는 필터와 상관없이 내 강의 전체의 답변 대기·답변 완료 수. 줄마다 writerNickname(질문한 학생 닉네임, 탈퇴 회원은 "탈퇴한 사용자")이 온다 (#370). |
 
 **Request**
 
@@ -2474,10 +2651,81 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 ```json
-{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
+{ "waitingCount": 2, "answeredCount": 5, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "writerNickname": "민지", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
 
 **Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
+
+#### 150. 퀴즈 목록(강의별)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/quizzes` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | TCH-04~05 |
+| 설명 | 강사 센터 "퀴즈 관리". 새 테이블 없이 강의별 퀴즈(`quiz_question`)에 연결한다(#366). 내 강의(삭제하지 않은 강의 전부) 가운데 지금 쓰는 문항이 하나라도 있는 강의마다 한 줄. 문항이 없는 강의는 뺀다. 가장 늦게 바뀐 문항 순(`updatedAt` 최신순). `testCount`는 테스트 퀴즈(OX), `mainCount`는 퀴즈(4지선다) 문항 수이고, 보관한 문항(`TEST_OLD`·`MAIN_OLD`)은 세지 않는다. 퀴즈 내용을 고치는 것은 API 79·80이다. |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "items": [ { "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "testCount": 5, "mainCount": 8, "updatedAt": "2026-11-03T10:00:00" } ] }
+```
+
+**Error**: `FORBIDDEN`(강사가 아님)
+
+#### 151. 요약글 목록(영상별)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/summaries` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | TCH-03 |
+| 설명 | 강사 센터 "요약글 관리". 영상별 요약글(`lesson.summary`)에 연결한다(#366). 내 강의의 영상 가운데 요약글이 있는(공백만이 아닌) 영상마다 한 줄, 최근 수정 순. `published`는 강의가 허가(`APPROVED`)되고 공개 중이면 `true`(화면의 "게시"), 아니면 `false`("임시 저장"). `thumbnailUrl`은 영상에 썸네일이 없어서 강의의 썸네일이다. |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "items": [ { "lessonId": 21, "lessonTitle": "청약통장이란", "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "summary": "...", "thumbnailUrl": "/uploads/a.png", "published": true, "updatedAt": "2026-11-03T10:00:00" } ] }
+```
+
+**Error**: `FORBIDDEN`(강사가 아님)
+
+#### 152. 영상 요약글 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/lessons/{lessonId}/summary` |
+| Method | `PATCH` |
+| 권한 | 강사 (본인 강의) |
+| 관련 | TCH-03, SP-31, DP-31 |
+| 설명 | 영상 하나의 요약글만 고친다(영상·순서·파일은 그대로, 전체 저장은 API 78). 규칙은 API 78과 같다: 2,000자까지(앞뒤 공백은 뺀다), 금칙어 검사, 검수 중(`REVIEW`)인 강의는 고칠 수 없다. **허가(`APPROVED`)된 강의의 요약글을 고치면 다시 검수(`REVIEW`)로 바뀐다**(SP-31). 빈 글을 보내면 요약글이 지워진다. 기존과 같은 글을 보내면 바뀐 것이 없어서 허가된 강의도 다시 검수하지 않는다(검수 중이면 그래도 거절). 응답의 `courseStatus`가 바뀐 강의 상태이다. |
+
+**Request**
+
+- Path: lessonId=21
+- Body
+
+```json
+{ "summary": "청약통장의 종류와 가입 조건을 정리했어요." }
+```
+
+**Response**
+
+```json
+{ "lessonId": 21, "courseId": 7, "summary": "청약통장의 종류와 가입 조건을 정리했어요.", "courseStatus": "REVIEW" }
+```
+
+**Error**: `LESSON_NOT_FOUND`(없는 영상), `NOT_FOUND`(삭제된 강의), `FORBIDDEN`(남의 강의), `COURSE_IN_REVIEW`(검수 중), `SUMMARY_TOO_LONG`(2,000자 초과), `FORBIDDEN_WORD`(금칙어)
 
 ### 관리자
 
@@ -4043,6 +4291,7 @@ email=admin@moneybeetle.kr&password=...
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
 | 학습 | `INQUIRY_TOO_LONG` | 400 | 내용은 1,000자까지 쓸 수 있어요 |
 | 학습 | `INQUIRY_DAILY_LIMIT` | 429 | 오늘은 문의를 더 남길 수 없어요 |
+| 학습 | `INQUIRY_REPLY_HIDDEN` | 409 | 관리자가 숨긴 답변은 수정할 수 없어요 |
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |
@@ -4080,6 +4329,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의 청약 | `ALREADY_ANNOUNCED` | 409 | 이미 발표한 공고예요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
+| 강사·관리자 | `QUIZ_FILE_INVALID` | 400 | 퀴즈 문제 파일을 다시 확인해 주세요 (실제 문구는 줄 번호와 이유, 예: 3번째 줄: 정답은 O 또는 X 로 써 주세요. API 150) |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |

@@ -7,13 +7,16 @@
 </head>
 <body>
 <!--/* comment.
-  담당 : DBA ① 신아림 (#60, 강사 강의 생성 화면)
-  원본 디자인 : InstructorCourseCreate.dc.html (화면설계 5.3.2)
+  담당 : DBA ① 신아림 (#60, 강사 강의 생성 화면) — #374 목업 맞추기는 이재성이 넘겨받아 작업
+  원본 디자인 : moneybeetle-page/InstructorCourseCreate.dc.html (화면설계 5.3.2)
   경로 : /instructor/course-create (새 강의), /instructor/course-create?courseId= (내 강의 고치기) - 승인된 강사만
-  데이터 : GET /api/v1/categories (분류), POST·GET·PUT /api/v1/instructor/courses[/{id}] (기본 정보, API 73·74·75),
-           POST .../thumbnail (썸네일, API 77), POST .../lessons/video·PUT .../lessons (영상·요약글, API 78),
-           PUT .../test-quiz·.../quiz (테스트 퀴즈·퀴즈, API 79·80), POST .../review-request (검수 요청, API 81)
-  - 기본 정보를 먼저 저장해 강의를 만든 뒤(작성 중) 썸네일·영상·퀴즈를 차례로 저장하고 검수를 요청한다
+  화면 : 왼쪽 6구역(1 분류 · 2 강의 정보 · 3 영상과 요약글 · 4 테스트 퀴즈 · 5 퀴즈 · 6 검수 요청)이 한 화면에 모두 보이고,
+         오른쪽에 작성 현황(퍼센트 + 항목 5개)과 임시 저장 · 검수 요청 버튼이 붙어 따라온다 (#374)
+  데이터 : GET /api/v1/categories (분류), POST·GET·PUT /api/v1/instructor/courses[/{id}] (기본 정보·난이도, API 73·74·75),
+           POST .../thumbnail (API 77), POST .../lessons/video·PUT .../lessons (영상·요약글, API 78),
+           POST /api/v1/instructor/quiz-files/parse (문제 파일 읽기, API 150), PUT .../test-quiz·.../quiz (API 79·80),
+           POST .../review-request (검수 요청, API 81)
+  - 임시 저장·검수 요청 버튼 한 번에 강의 → 썸네일 → 영상 → 퀴즈 (→ 검수 요청) 순서로 바뀐 구역만 차례로 저장한다
   - 검수 중인 강의는 고칠 수 없다(COURSE_IN_REVIEW). 반려된 강의는 반려 사유를 보여 준다. 허가된 강의를 고치면 다시 검수된다(SP-31)
 */-->
 <div class="mb-shell">
@@ -21,7 +24,7 @@
   <div class="mb-content">
     <header th:replace="~{fragments/layout/header :: headerFragment}"></header>
     <main class="mb-main">
-      <div class="ins-page cc-page" data-cc-root>
+      <div class="cc-page" data-cc-root>
         <div class="ins-state">강의 정보를 불러오는 중이에요…</div>
       </div>
     </main>

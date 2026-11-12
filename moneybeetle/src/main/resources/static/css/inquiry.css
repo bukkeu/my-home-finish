@@ -2,7 +2,8 @@
 *   담당 : DBA ① 신아림 (#55, 문의 게시판·강의 문의 탭)
 *   UserInquiry.dc.html 의 인라인 스타일을 클래스로 옮겼다. 색·글꼴은 common.css 토큰(var(--color-*))을 쓴다.
 *  */
-.inq-page { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
+/* 디자인(UserInquiry.dc.html)처럼 최대 1080px 로 화면 가운데에 둔다 (#354) */
+.inq-page { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; }
 .inq-hero h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.03em; }
 .inq-hero p { margin: 0; font-size: 15px; line-height: 1.6; color: var(--color-neutral-700); word-break: keep-all; }
 .inq-board { display: flex; flex-direction: column; gap: 14px; }

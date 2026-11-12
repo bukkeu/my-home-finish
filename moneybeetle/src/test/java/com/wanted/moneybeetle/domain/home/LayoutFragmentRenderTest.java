@@ -156,6 +156,26 @@ class LayoutFragmentRenderTest {
     }
 
     @Test
+    @DisplayName("강사: 메뉴에 퀴즈 관리·요약글 관리 링크가 있고, 순서는 대시보드 · 강의 관리 · 강의 생성 · 퀴즈 관리 · 요약글 관리 · Q&A 관리 · 마이페이지 (#366)")
+    void instructorMenuHasQuizAndSummaryLinks() throws Exception {
+        String html = render("INSTRUCTOR", "");
+
+        assertThat(html).contains("/instructor/dashboard?tab=quizzes", "/instructor/dashboard?tab=summaries");
+        int[] positions = {html.indexOf(">대시보드</a>"), html.indexOf(">강의 관리</a>"), html.indexOf(">강의 생성</a>"),
+                html.indexOf(">퀴즈 관리</a>"), html.indexOf(">요약글 관리</a>"), html.indexOf(">Q&amp;A 관리</a>"),
+                html.indexOf(">마이페이지</a>")};
+        assertThat(positions).isSorted();
+        assertThat(positions[0]).isNotNegative();
+    }
+
+    @Test
+    @DisplayName("학습자·관리자 메뉴에는 강사 전용 퀴즈 관리·요약글 관리가 보이지 않는다")
+    void quizAndSummaryLinksAreInstructorOnly() throws Exception {
+        assertThat(render("MEMBER", "")).doesNotContain("퀴즈 관리", "요약글 관리");
+        assertThat(render("ADMIN", "")).doesNotContain("요약글 관리");
+    }
+
+    @Test
     @DisplayName("관리자: 고정 사이드바와 운영 메뉴가 보인다")
     void adminMenu() throws Exception {
         String html = render("ADMIN", "");

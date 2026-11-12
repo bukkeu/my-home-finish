@@ -99,4 +99,19 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
         Long getCourseId();
         long getLessons();
     }
+
+    /* 강사 내 강의 목록(API 72)의 구성 : 강의 여러 개의 영상 수·재생 시간 합을 한 번에 (#369, 강의 수만큼 쿼리가 늘지 않게) */
+    @Query("""
+            select l.courseId as courseId, count(l) as lessons, coalesce(sum(l.durationSeconds), 0) as totalDurationSeconds
+            from Lesson l
+            where l.courseId in :courseIds
+            group by l.courseId
+            """)
+    List<CourseLessonStat> findLessonStatsByCourseIds(@Param("courseIds") List<Long> courseIds);
+
+    interface CourseLessonStat {
+        Long getCourseId();
+        long getLessons();
+        long getTotalDurationSeconds();
+    }
 }

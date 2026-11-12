@@ -17,6 +17,7 @@ public record CourseEditDTO(
         Long categoryId,
         String title,
         String description,
+        String level,
         String thumbnailUrl,
         String status,
         boolean isPublic,
@@ -39,7 +40,7 @@ public record CourseEditDTO(
     public static CourseEditDTO of(Course course, String rejectReason, List<Lesson> lessons,
                                    List<QuizReviewDTO> quizzes) {
         return new CourseEditDTO(course.getCourseId(), course.getCategoryId(), course.getTitle(),
-                course.getDescription(), course.getThumbnailUrl(), course.getStatus(), course.isPublic(),
+                course.getDescription(), course.getLevel().name(), course.getThumbnailUrl(), course.getStatus(), course.isPublic(),
                 course.getInfoBaseDate(), course.getInfoSource(), course.getSubmittedAt(), course.getApprovedAt(),
                 rejectReason, lessons.stream().map(LessonItem::from).toList(), quizzes);
     }

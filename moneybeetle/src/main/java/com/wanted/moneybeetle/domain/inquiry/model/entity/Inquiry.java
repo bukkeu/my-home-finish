@@ -81,6 +81,11 @@ public class Inquiry extends BaseTimeEntity {
         this.status = STATUS_ANSWERED;
     }
 
+    /* 남은 답변(강사·관리자 답글)이 모두 지워지면 다시 답변 대기 (API 52-2, #370) */
+    public void markWaiting() {
+        this.status = STATUS_WAITING;
+    }
+
     /* 실제로 지우지 않고 삭제 일시만 기록한다 (DH-01). 시각은 서비스가 공통 Clock으로 넘긴다 */
     public void delete(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;

@@ -6,7 +6,7 @@
 #     로컬은 moneybeetle/.env (Git 제외, .env.example 복사) 또는 IntelliJ 실행 설정의 Environment variables 에 값을 넣는다
 #     비밀 값(DB_PASSWORD)에는 기본값을 두지 않는다 -> 설정을 안 하면 서버가 뜨지 않아 바로 알 수 있다 (환경변수 문서 5-2)
 #   - spring.jpa : ddl-auto none (resources/sql 스크립트로 테이블 생성), show-sql·format_sql 은 local 프로필에서만 (맨 아래 구역, #114)
-#   - server.servlet.session.timeout : 30m (DP-11)
+#   - server.servlet.session.timeout : 30m (DP-11). 로그인 상태 유지(remember-me)는 14일 쿠키로 따로 둔다 (#367, SecurityConfig)
 #   - spring.servlet.multipart : max-file-size 500MB(강의 영상, DP-33), max-request-size 510MB. 프로필 이미지 2MB(DP-32)는 FileStorageService 가 용도별로 검사
 #   - jackson 시간대 : Asia/Seoul (DP-42)
 
@@ -54,6 +54,8 @@ app:
   # 메일 속 링크의 주소(재설정 화면)와 발신자 주소
   base-url: ${APP_BASE_URL:http://localhost:8080}
   mail-from: ${MAIL_FROM:no-reply@moneybeetle.local}
+  # 로그인 상태 유지(Remember Me) 쿠키 서명 키 (#367). 비밀 값이라 기본값이 없다 -> .env 에 REMEMBER_ME_KEY 가 없으면 서버가 뜨지 않는다
+  remember-me-key: ${REMEMBER_ME_KEY}
 
 # 서버 상태 확인 (#84, 시스템 설계 "모니터링") : health·info 만 웹으로 연다. 나머지(env, beans, …)는 열지 않는다
 management:

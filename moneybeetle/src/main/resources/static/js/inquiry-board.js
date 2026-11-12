@@ -4,6 +4,7 @@
 *   - 사이트 문의 게시판 /user/inquiry          : mount(box, { mode: 'site', openId })
 *   - 강의 상세의 '강의 문의' 탭 (#52 화면)     : mount(box, { mode: 'course', courseId })
 *   - 강사 센터 Q&A 관리 (#59)                  : mount(box, { mode: 'instructor', openId })
+*     (2026-11-12 #360 부터 강사 센터는 instructor-qna.js 가 따로 그린다. instructor 모드는 지금 쓰는 화면이 없다)
 *     → 강사 문의함 API 82 로 내 강의의 문의만 받고, 펼쳐서 답변을 남긴다(API 52). 문의 작성 버튼은 없다
 *   API : GET·POST /api/v1/inquiries, GET·PATCH·DELETE /api/v1/inquiries/{id}, POST /{id}/replies (API 47~52)
 *   - 볼 수 있는 사람은 작성자, 그 강의의 강사, 관리자 (서버가 정한다, SP-40). 그래서 공개/비공개 선택은 두지 않는다

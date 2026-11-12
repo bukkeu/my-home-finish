@@ -128,6 +128,8 @@
                 <a th:href="@{/instructor/dashboard}" th:classappend="${active == 'dashboard'} ? 'is-active'">대시보드</a>
                 <a th:href="@{/instructor/dashboard(tab='courses')}" th:classappend="${active == 'courses'} ? 'is-active'">강의 관리</a>
                 <a th:href="@{/instructor/course-create}" th:classappend="${active == 'course-create'} ? 'is-active'">강의 생성</a>
+                <a th:href="@{/instructor/dashboard(tab='quizzes')}" th:classappend="${active == 'quizzes'} ? 'is-active'">퀴즈 관리</a>
+                <a th:href="@{/instructor/dashboard(tab='summaries')}" th:classappend="${active == 'summaries'} ? 'is-active'">요약글 관리</a>
                 <a th:href="@{/instructor/dashboard(tab='qna')}" th:classappend="${active == 'qna'} ? 'is-active'">Q&amp;A 관리</a>
                 <a th:href="@{/instructor/dashboard(tab='mypage')}" th:classappend="${active == 'mypage'} ? 'is-active'">마이페이지</a>
                 <a th:href="@{/user/home}">← 수강생 화면으로</a>
