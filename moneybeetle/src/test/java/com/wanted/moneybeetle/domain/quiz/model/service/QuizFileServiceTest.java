@@ -19,9 +19,12 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -29,6 +32,8 @@ import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockMultipartFile;
 
 /* comment.
@@ -165,6 +170,43 @@ class QuizFileServiceTest {
                     + "문제 4,O,해설\n" + "문제 5,O,해설\n";
 
             assertError(file("q.csv", text), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID, "5번째 줄: 정답은 O 또는 X");
+        }
+
+        @ParameterizedTest(name = "date1904 = {0}")
+        @ValueSource(booleans = {false, true})
+        @DisplayName("엑셀 보기 칸이 날짜면 1900·1904 날짜 기준 모두 엑셀에 보이는 날짜 그대로 읽는다 (#378 CodeRabbit)")
+        void xlsxDateCellKeepsDate(boolean date1904) throws IOException {
+            try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                if (date1904) {
+                    var ct = workbook.getCTWorkbook();
+                    (ct.isSetWorkbookPr() ? ct.getWorkbookPr() : ct.addNewWorkbookPr()).setDate1904(true);
+                }
+                CellStyle dateStyle = workbook.createCellStyle();
+                dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+                Sheet sheet = workbook.createSheet();
+                String[] header = {"문제", "보기1", "보기2", "보기3", "보기4", "정답", "해설"};
+                Row first = sheet.createRow(0);
+                for (int c = 0; c < header.length; c++) {
+                    first.createCell(c).setCellValue(header[c]);
+                }
+                for (int r = 1; r <= 5; r++) {
+                    Row row = sheet.createRow(r);
+                    row.createCell(0).setCellValue("청약 1순위가 발표되는 날은?");
+                    Cell date = row.createCell(1);
+                    date.setCellValue(LocalDate.of(2026, 11, 12));   // 날짜 기준에 맞는 숫자로 저장된다
+                    date.setCellStyle(dateStyle);
+                    for (int c = 2; c <= 4; c++) {
+                        row.createCell(c).setCellValue("다른 날");
+                    }
+                    row.createCell(5).setCellValue(1);
+                    row.createCell(6).setCellValue("해설");
+                }
+                workbook.write(out);
+
+                QuizSaveDTO result = service.parse(new MockMultipartFile("file", "q.xlsx", null, out.toByteArray()), QuizFileType.MAIN);
+
+                assertThat(result.questions()).allSatisfy(q -> assertThat(q.choices().get(0)).isEqualTo("2026-11-12"));
+            }
         }
 
         @Test

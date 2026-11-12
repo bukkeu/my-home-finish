@@ -23,8 +23,11 @@ import org.apache.poi.xssf.eventusermodel.XSSFReader;
 import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
 import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler.SheetContentsHandler;
 import org.apache.poi.xssf.usermodel.XSSFComment;
+import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
 
 /* comment.
 *   담당 : 서수영 (#368, quiz 도메인 담당 신아림이 나눠 준 작업)
@@ -94,7 +97,7 @@ final class QuizFileParser {
             }
             XMLReader parser = XMLHelper.newXMLReader();
             parser.setContentHandler(new XSSFSheetXMLHandler(reader.getStylesTable(), new ReadOnlySharedStringsTable(pkg),
-                    collector, new DataFormatter(), false));    // false : 수식 대신 저장된 결과 값
+                    collector, formatter(isDate1904(reader)), false));    // false : 수식 대신 저장된 결과 값
             try (InputStream sheet = sheets.next()) {
                 parser.parse(new InputSource(sheet));
             }
@@ -106,6 +109,44 @@ final class QuizFileParser {
             // 확장자만 xlsx 인 다른 파일, 깨진 파일, 암호가 걸린 파일 등
             throw new BusinessException(QuizErrorCode.QUIZ_FILE_INVALID, "엑셀 파일을 열 수 없어요. xlsx 로 저장한 파일인지 확인해 주세요");
         }
+    }
+
+    /* 엑셀의 날짜 기준 (#378 CodeRabbit). 예전 Mac 엑셀 파일은 1904년을 기준으로 날짜를 숫자로 저장한다(workbook.xml 의 workbookPr date1904).
+     * 이벤트 방식 처리기(XSSFSheetXMLHandler)는 날짜 기준 없이 서식을 바꾸는 메서드를 불러 늘 1900 기준으로 보므로,
+     * 날짜 칸이 1,462일 앞당겨져 나온다. 그래서 기준을 읽어 서식 변환기에 넘긴다 */
+    private static DataFormatter formatter(boolean date1904) {
+        return new DataFormatter() {
+            @Override
+            public String formatRawCellContents(double value, int formatIndex, String formatString) {
+                return super.formatRawCellContents(value, formatIndex, formatString, date1904);
+            }
+        };
+    }
+
+    /* workbook.xml 의 workbookPr 에 date1904 가 켜져 있는가. workbookPr 는 시트 목록보다 앞에 있으므로 시트 목록을 만나면 그만 읽는다 */
+    private static boolean isDate1904(XSSFReader reader) throws Exception {
+        boolean[] date1904 = {false};
+        XMLReader parser = XMLHelper.newXMLReader();
+        parser.setContentHandler(new DefaultHandler() {
+            @Override
+            public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
+                String name = localName.isEmpty() ? qName : localName;
+                if ("workbookPr".equals(name)) {
+                    String value = attributes.getValue("date1904");
+                    date1904[0] = "1".equals(value) || "true".equalsIgnoreCase(value);
+                    throw new FoundEnough();
+                }
+                if ("sheets".equals(name)) {
+                    throw new FoundEnough();
+                }
+            }
+        });
+        try (InputStream workbook = reader.getWorkbookData()) {
+            parser.parse(new InputSource(workbook));
+        } catch (FoundEnough e) {
+            // 필요한 곳까지 읽었다
+        }
+        return date1904[0];
     }
 
     /* 압축을 풀면서 크기만 센다. 10MB 를 넘는 순간 멈추므로 아무리 크게 부풀린 파일도 10MB 이상 풀지 않는다.
@@ -270,6 +311,10 @@ final class QuizFileParser {
                 throw new StopReading();
             }
         }
+    }
+
+    /** workbook.xml 에서 날짜 기준을 찾았을 때 읽기를 멈추는 신호 */
+    private static final class FoundEnough extends SAXException {
     }
 
     /** 필요한 만큼 읽었을 때 시트 읽기를 멈추는 신호 */
