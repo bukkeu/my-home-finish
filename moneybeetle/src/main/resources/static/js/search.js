@@ -4,14 +4,19 @@
 *   - 검색어는 주소의 q (공통 헤더 검색창이 보내는 이름) 에서 읽는다. 검색 버튼은 같은 주소로 다시 이동(GET)한다.
 *   - 응답 courses(강의 제목·카테고리 경로), stocks(종목 이름·분야), terms(경제 용어) 를 종류별로 보여 주고 종류 칩으로 거른다(화면에서만).
 *   - 종목은 모의투자가 해금된 회원에게만 서버가 결과에 넣어 준다 (INV-01, NFR-09).
+*   - 강의는 서버가 최근 강의부터 최대 50개만 준다 (CourseService.SEARCH_LIMIT, #296). 50개를 받으면 더 있을 수 있으니
+*     건수를 "50건+"로 보이고 안내 한 줄을 붙인다 (#341, 추가 쿼리 없이 화면에서만).
 *   서버가 준 문구는 모두 textContent 로 넣는다 (HTML 로 해석하지 않는다). 모양은 디자인(UserSearch.dc.html)과 같다.
 *  */
 (function () {
   'use strict';
   if (!window.MB || !window.MB.api) return;
 
+  /** 서버가 주는 강의 최대 개수 (CourseService.SEARCH_LIMIT 과 같아야 한다). 이만큼 받으면 더 있을 수 있다 */
+  var COURSE_LIMIT = 50;
+
   var GROUPS = [
-    { key: 'courses', label: '강의', badge: '', href: function (i) { return '/user/lecture-detail?courseId=' + encodeURIComponent(i.courseId); },
+    { key: 'courses', label: '강의', badge: '', limit: COURSE_LIMIT, href: function (i) { return '/user/lecture-detail?courseId=' + encodeURIComponent(i.courseId); },
       title: function (i) { return i.title; }, desc: function () { return ''; },
       tags: function (i) { return String(i.categoryName || '').split('›').map(function (s) { return s.trim(); }).filter(Boolean); } },
     { key: 'stocks', label: '종목', badge: 'is-stock', href: function (i) { return '/user/demo-trading?stockId=' + encodeURIComponent(i.stockId); },
@@ -53,16 +58,27 @@
     return box;
   }
 
+  /** 종류별 건수와, 상한에 닿아 실제로는 더 있을 수 있는지(more) */
   function counts(d) {
-    var c = { all: 0 };
-    GROUPS.forEach(function (g) { c[g.key] = (d[g.key] || []).length; c.all += c[g.key]; });
+    var c = { all: 0, more: {} };
+    GROUPS.forEach(function (g) {
+      c[g.key] = (d[g.key] || []).length;
+      c.all += c[g.key];
+      c.more[g.key] = !!g.limit && c[g.key] >= g.limit;
+      if (c.more[g.key]) c.more.all = true;
+    });
     return c;
+  }
+
+  /** 건수 글자 : 더 있을 수 있으면 맨 뒤에 + (예: countText(c, 'courses', '건') → 50건+, 칩은 50+) */
+  function countText(c, key, unit) {
+    return c[key] + (unit || '') + (c.more[key] ? '+' : '');
   }
 
   function renderHead(c) {
     var title = $('srch-title');
     title.replaceChildren(document.createTextNode('‘'), el('span', null, S.q), document.createTextNode('’ 검색 결과'));
-    $('srch-count').textContent = '전체 ' + c.all + '건';
+    $('srch-count').textContent = '전체 ' + countText(c, 'all', '건');
     show($('srch-head'), true);
   }
 
@@ -74,7 +90,7 @@
       b.type = 'button';
       b.dataset.srchFilter = g.key;
       b.setAttribute('aria-pressed', String(S.filter === g.key));
-      b.append(el('span', null, g.label), el('small', null, String(c[g.key])));
+      b.append(el('span', null, g.label), el('small', null, countText(c, g.key)));
       return b;
     }));
     show(box, true);
@@ -99,7 +115,7 @@
       if (!list.length || (S.filter !== 'all' && S.filter !== g.key)) return;
       var section = el('section', 'srch-group');
       var head = el('div', 'srch-group__head');
-      head.append(el('span', 'srch-badge ' + g.badge, g.label), el('strong', null, list.length + '건'));
+      head.append(el('span', 'srch-badge ' + g.badge, g.label), el('strong', null, countText(c, g.key, '건')));
       var box = el('div', 'srch-list');
       list.forEach(function (item) {
         var link = g.href ? el('a', 'srch-card') : el('div', 'srch-card');
@@ -121,7 +137,12 @@
         }
         box.appendChild(link);
       });
-      section.append(head, box);
+      section.appendChild(head);
+      if (c.more[g.key]) {
+        section.appendChild(el('p', 'srch-group__note',
+            '최근 ' + g.label + ' ' + g.limit + '건까지만 보여 드려요. 검색어를 더 자세히 입력해 보세요.'));
+      }
+      section.appendChild(box);
       sections.push(section);
     });
     body.replaceChildren.apply(body, sections);
