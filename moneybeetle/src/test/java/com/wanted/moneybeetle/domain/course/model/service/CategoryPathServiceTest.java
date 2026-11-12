@@ -2,6 +2,8 @@ package com.wanted.moneybeetle.domain.course.model.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,79 +11,46 @@ import static org.mockito.Mockito.when;
 import com.wanted.moneybeetle.domain.course.model.dao.CategoryRepository;
 import com.wanted.moneybeetle.domain.course.model.dao.CourseRepository;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
-import com.wanted.moneybeetle.global.config.CacheConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /* comment.
-*   담당 : DBA ① 신아림 (#296)
-*   카테고리 표시 이름 캐시: 이름 만들기, 두 번째부터는 DB 를 읽지 않음, 관리자 변경이 커밋되면 다시 읽음,
-*   캐시가 없을 때 여러 요청이 동시에 와도 DB 읽기(= 연결 하나 더 쓰기)는 한 번만
-*   - 캐시 프록시와 트랜잭션(커밋·롤백 뒤 동작)이 실제로 돌아야 해서, CacheConfig·두 서비스·실제 트랜잭션 관리자(H2 메모리 DB)만 올린
-*     작은 스프링 컨텍스트로 확인한다. 저장소는 가짜라 findAll 이 몇 번 불렸는지로 "DB 를 읽었는지" 본다
+*   담당 : DBA ① 신아림 (#296, #349)
+*   카테고리 표시 이름 snapshot : 이름 만들기, 메모리에서 읽기, 관리자 변경이 커밋된 뒤에만 다시 읽기, 롤백 무시,
+*   읽는 동안 또 바뀌면 다시 읽기, 그리고 요청 중에는 DB 연결을 더 요청하지 않기(#349)
+*   - 트랜잭션은 실제 관리자(H2 + 연결 풀)를 쓰고, 저장소는 가짜라 findAll 이 몇 번 불렸는지로 "DB 를 읽었는지" 본다
+*   - 다시 읽기를 맡는 스레드는 테스트에서 직접 정한다 : 바로 실행(Runnable::run) 또는 모아 두고 나중에 실행(pending)
 *  */
-@SpringJUnitConfig(classes = {CacheConfig.class, CategoryPathService.class, AdminCategoryService.class,
-        CategoryPathServiceTest.TxConfig.class})
 class CategoryPathServiceTest {
 
-    @Configuration
-    @EnableTransactionManagement
-    static class TxConfig {
-        @Bean
-        DataSource dataSource() {
-            return new DriverManagerDataSource("jdbc:h2:mem:category-path-cache-test;DB_CLOSE_DELAY=-1", "sa", "");
-        }
-
-        @Bean
-        PlatformTransactionManager transactionManager(DataSource dataSource) {
-            return new DataSourceTransactionManager(dataSource);
-        }
-
-        @Bean
-        TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
-            return new TransactionTemplate(transactionManager);
-        }
-    }
-
-    @MockitoBean
-    private CategoryRepository categoryRepository;
-    @MockitoBean
-    private CourseRepository courseRepository;
-
-    @Autowired
-    private CategoryPathService categoryPathService;
-    @Autowired
-    private AdminCategoryService adminCategoryService;
-    @Autowired
+    private HikariDataSource dataSource;
     private TransactionTemplate tx;
-
+    private CategoryRepository categoryRepository;
+    private CourseRepository courseRepository;
     private Category realEstate;
     private List<Category> categories;
+    private final List<Runnable> pending = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
-        categoryPathService.markChanged();   // 트랜잭션 밖이라 바로 버전이 올라간다 → 테스트끼리 캐시가 섞이지 않는다
+        dataSource = pool("category-path-" + System.nanoTime(), 4);
+        tx = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        categoryRepository = mock(CategoryRepository.class);
+        courseRepository = mock(CourseRepository.class);
         realEstate = category(Category.createCategory("부동산", 1), 1L);
         Category subscription = category(Category.createSubCategory(realEstate, "청약", 1), 11L);
         Category closed = category(Category.createSubCategory(realEstate, "경매", 2), 12L);
@@ -92,113 +61,204 @@ class CategoryPathServiceTest {
         when(courseRepository.existsByCategoryId(1L)).thenReturn(true);   // 강의가 있어 삭제 대신 비활성 처리
     }
 
+    @AfterEach
+    void tearDown() {
+        dataSource.close();
+    }
+
+    private static HikariDataSource pool(String name, int size) {
+        HikariDataSource ds = new HikariDataSource();
+        ds.setJdbcUrl("jdbc:h2:mem:" + name + ";DB_CLOSE_DELAY=-1");
+        ds.setUsername("sa");
+        ds.setMaximumPoolSize(size);
+        ds.setConnectionTimeout(250);   // 연결을 못 얻으면 0.25초 뒤 실패 → 멈춤을 테스트로 잡는다
+        return ds;
+    }
+
     private static Category category(Category category, long id) {
         ReflectionTestUtils.setField(category, "categoryId", id);
         return category;
     }
 
+    /* 다시 읽기를 부른 스레드에서 바로 한다 */
+    private CategoryPathService immediate() {
+        return new CategoryPathService(categoryRepository, tx.getTransactionManager(), Runnable::run);
+    }
+
+    /* 다시 읽기를 모아 두기만 한다 (나중에 runPending 으로 실행) */
+    private CategoryPathService deferred() {
+        return new CategoryPathService(categoryRepository, tx.getTransactionManager(), pending::add);
+    }
+
+    private void runPending() {
+        List<Runnable> tasks = new ArrayList<>(pending);
+        pending.clear();
+        tasks.forEach(Runnable::run);
+    }
+
+    private AdminCategoryService admin(CategoryPathService service) {
+        return new AdminCategoryService(categoryRepository, courseRepository, service);
+    }
+
     @Test
-    @DisplayName("상위는 자기 이름, 소주제는 '상위 › 소주제'. 비활성 카테고리도 이름이 있다")
+    @DisplayName("상위는 자기 이름, 소주제는 '상위 › 소주제'. 비활성 카테고리도 이름이 있고 값은 바꿀 수 없다")
     void buildsPaths() {
-        Map<Long, String> paths = categoryPathService.findCategoryPaths();
+        CategoryPathService service = immediate();
+        service.warmUp();
+
+        Map<Long, String> paths = service.findCategoryPaths();
 
         assertThat(paths).containsEntry(1L, "부동산")
                 .containsEntry(11L, "부동산 › 청약")
                 .containsEntry(12L, "부동산 › 경매");
-        assertThatThrownBy(() -> paths.put(99L, "x")).isInstanceOf(UnsupportedOperationException.class);  // 캐시 값은 못 바꾼다
+        assertThatThrownBy(() -> paths.put(99L, "x")).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
-    @DisplayName("두 번째부터는 캐시에서 꺼내고 카테고리를 다시 읽지 않는다")
-    void cachedAfterFirstCall() {
-        categoryPathService.findCategoryPaths();
-        categoryPathService.findCategoryPaths();
-        categoryPathService.findCategoryPaths();
+    @DisplayName("서버 시작 때 한 번 읽고, 그 뒤 요청은 메모리에서 꺼내 DB 를 읽지 않는다")
+    void servedFromMemoryAfterWarmUp() {
+        CategoryPathService service = immediate();
+        service.warmUp();
+
+        service.findCategoryPaths();
+        service.findCategoryPaths();
+        service.findCategoryPaths();
 
         verify(categoryRepository, times(1)).findAll();
     }
 
     @Test
-    @DisplayName("관리자 변경이 커밋되기 전에는 캐시를 그대로 쓰고, 커밋된 뒤의 조회는 새로 읽는다")
+    @DisplayName("관리자 변경이 커밋되기 전에는 그대로 쓰고, 커밋된 뒤에 다시 읽어 새 이름을 쓴다")
     void reloadsOnlyAfterCommit() {
-        categoryPathService.findCategoryPaths();
+        Category renamed = category(Category.createCategory("집", 1), 1L);
+        when(categoryRepository.findAll()).thenReturn(categories, List.of(renamed));
+        CategoryPathService service = immediate();
+        service.warmUp();
 
         tx.executeWithoutResult(status -> {
-            adminCategoryService.delete(1L);
-            categoryPathService.findCategoryPaths();
-            verify(categoryRepository, times(1)).findAll();   // 아직 커밋 전: 캐시 사용
+            admin(service).delete(1L);
+            assertThat(service.findCategoryPaths()).containsEntry(1L, "부동산");   // 아직 커밋 전 : 옛 이름
+            verify(categoryRepository, times(1)).findAll();
         });
-        categoryPathService.findCategoryPaths();
 
-        verify(categoryRepository, times(2)).findAll();       // 커밋 뒤: 새로 읽음
+        verify(categoryRepository, times(2)).findAll();                          // 커밋 뒤 다시 읽음
+        assertThat(service.findCategoryPaths()).containsEntry(1L, "집");          // 새 이름이 반영됨
     }
 
     @Test
-    @DisplayName("관리자 변경이 롤백되면 캐시를 그대로 쓴다")
-    void keepsCacheOnRollback() {
-        categoryPathService.findCategoryPaths();
+    @DisplayName("다시 읽어 저장한 직후(아직 다시 읽는 중으로 표시된 때) 또 바뀌어도 놓치지 않고 한 번 더 읽는다")
+    void changeRightAfterStoreIsNotMissed() {
+        Category renamed = category(Category.createCategory("집", 1), 1L);
+        when(categoryRepository.findAll()).thenReturn(categories, List.of(renamed));
+        AtomicBoolean changeOnce = new AtomicBoolean();
+        // 저장은 끝났지만 아직 reloading 이 풀리기 전에 관리자 변경이 커밋된 상황을 만든다
+        CategoryPathService service = new CategoryPathService(categoryRepository, tx.getTransactionManager(), Runnable::run) {
+            @Override
+            boolean reload() {
+                boolean stored = super.reload();
+                if (changeOnce.compareAndSet(false, true)) {
+                    markChanged();   // 이때는 다시 읽는 중이라 새로 예약되지 않는다
+                }
+                return stored;
+            }
+        };
+
+        service.markChanged();
+
+        verify(categoryRepository, times(2)).findAll();                  // 끝날 때 버전을 다시 보고 한 번 더 읽었다
+        assertThat(service.findCategoryPaths()).containsEntry(1L, "집");
+    }
+
+    @Test
+    @DisplayName("관리자 변경이 롤백되면 다시 읽지 않는다")
+    void keepsSnapshotOnRollback() {
+        CategoryPathService service = immediate();
+        service.warmUp();
 
         tx.executeWithoutResult(status -> {
-            adminCategoryService.delete(1L);
+            admin(service).delete(1L);
             status.setRollbackOnly();
         });
-        categoryPathService.findCategoryPaths();
+        service.findCategoryPaths();
 
         verify(categoryRepository, times(1)).findAll();
     }
 
     @Test
-    @DisplayName("옛 데이터를 읽던 조회가 관리자 변경 커밋 뒤에 끝나도, 다음 조회는 그 옛 값을 쓰지 않고 새로 읽는다")
-    void slowReaderDoesNotOverwriteNewerData() {
+    @DisplayName("다시 읽는 동안 관리자 변경이 또 커밋되면, 그 읽기 결과는 버리고 한 번 더 읽어 새 값을 쓴다")
+    void reloadOvertakenByChangeReadsAgain() {
+        CategoryPathService service = immediate();
+        service.warmUp();
         Category renamed = category(Category.createCategory("집", 1), 1L);
         AtomicInteger reads = new AtomicInteger();
         when(categoryRepository.findAll()).thenAnswer(invocation -> {
             if (reads.incrementAndGet() == 1) {
-                // 이 조회가 옛 데이터를 읽은 직후, 다른 요청(다른 스레드·다른 트랜잭션)에서 관리자 변경이 커밋된다
-                CompletableFuture.runAsync(() -> tx.executeWithoutResult(status -> adminCategoryService.delete(1L))).join();
-                return categories;
+                // 이 읽기 도중, 다른 스레드의 독립된 관리자 트랜잭션이 카테고리를 바꾸고 커밋한다 (끝날 때까지 기다린다)
+                CompletableFuture.runAsync(() -> tx.executeWithoutResult(status -> admin(service).delete(1L))).join();
+                return categories;       // 이 읽기는 옛 값
             }
             return List.of(renamed);
         });
 
-        assertThat(categoryPathService.findCategoryPaths()).containsEntry(1L, "부동산");   // 늦게 끝난 조회는 옛 값
+        service.markChanged();
 
-        assertThat(categoryPathService.findCategoryPaths()).containsEntry(1L, "집");      // 다음 조회는 새 값
+        assertThat(service.findCategoryPaths()).containsEntry(1L, "집");
+        assertThat(reads.get()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("다시 읽기가 끝나기 전에도 요청은 기다리지 않고 바로 전 이름을 돌려준다")
+    void requestDoesNotWaitForReload() {
+        CategoryPathService service = deferred();
+        service.reload();
+        service.markChanged();   // 다시 읽기는 아직 실행되지 않았다
+
+        assertThat(service.findCategoryPaths()).containsEntry(11L, "부동산 › 청약");
+        verify(categoryRepository, times(1)).findAll();
+
+        runPending();
         verify(categoryRepository, times(2)).findAll();
     }
 
     @Test
-    @DisplayName("캐시가 없을 때 두 요청이 동시에 와도 DB 는 한 번만 읽고, 기다린 요청은 먼저 읽은 값을 쓴다")
-    void concurrentMissesReadOnce() throws Exception {
-        CountDownLatch firstReading = new CountDownLatch(1);
-        CountDownLatch releaseFirst = new CountDownLatch(1);
-        AtomicInteger reads = new AtomicInteger();
-        when(categoryRepository.findAll()).thenAnswer(invocation -> {
-            reads.incrementAndGet();
-            firstReading.countDown();
-            assertThat(releaseFirst.await(5, TimeUnit.SECONDS)).isTrue();   // 첫 요청이 읽는 동안 두 번째 요청이 들어온다
-            return categories;
-        });
+    @DisplayName("처음 조회 값은 그 요청에만 쓰고, 이어진 다시 읽기가 실패하면 다음 요청이 다시 읽기를 또 맡긴다")
+    void firstReadIsNotSharedAndFailedReloadIsRetried() {
+        when(categoryRepository.findAll())
+                .thenReturn(categories)                                  // 1 : 처음 조회 (부른 쪽 트랜잭션)
+                .thenThrow(new IllegalStateException("DB 일시 오류"))      // 2 : 다시 읽기 실패
+                .thenReturn(categories);                                 // 3 이후 : 정상
+        CategoryPathService service = deferred();
 
-        CompletableFuture<Map<Long, String>> first = CompletableFuture.supplyAsync(categoryPathService::findCategoryPaths);
-        assertThat(firstReading.await(5, TimeUnit.SECONDS)).isTrue();
-        AtomicReference<Thread> secondThread = new AtomicReference<>();
-        CompletableFuture<Map<Long, String>> second = CompletableFuture.supplyAsync(() -> {
-            secondThread.set(Thread.currentThread());
-            return categoryPathService.findCategoryPaths();
-        });
-        // 두 번째 요청이 정말로 잠금(loadLock) 앞에서 기다리는 것을 확인한 뒤에 첫 요청을 끝낸다. 2초 안에 못 오면 실패
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
-        while (secondThread.get() == null || secondThread.get().getState() != Thread.State.BLOCKED) {
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError("두 번째 조회가 잠금에 도달하지 않음");
-            }
-            Thread.sleep(5);
+        assertThat(service.findCategoryPaths()).containsEntry(11L, "부동산 › 청약");
+        assertThat(pending).hasSize(1);
+        runPending();                                                    // 다시 읽기 실패 → snapshot 은 여전히 없음
+
+        assertThat(service.findCategoryPaths()).containsEntry(11L, "부동산 › 청약");   // 다시 부른 쪽 연결로 읽고
+        assertThat(pending).hasSize(1);                                  // 다시 읽기를 또 맡겼다
+        runPending();                                                    // 이번에는 성공
+
+        service.findCategoryPaths();
+        verify(categoryRepository, times(4)).findAll();                  // 성공한 뒤로는 메모리에서 꺼낸다
+        assertThat(pending).isEmpty();
+    }
+
+    @Test
+    @DisplayName("연결 풀이 1개뿐이고 바깥 트랜잭션이 그 연결을 쥐고 있어도, 처음 조회(snapshot 없음)가 멈추지 않는다")
+    void noExtraConnectionInsideOuterTransaction() {
+        HikariDataSource single = pool("category-path-single-" + System.nanoTime(), 1);
+        try {
+            TransactionTemplate outer = new TransactionTemplate(new DataSourceTransactionManager(single));
+            CategoryPathService service = new CategoryPathService(categoryRepository, outer.getTransactionManager(),
+                    pending::add);
+
+            Map<Long, String> paths = assertTimeoutPreemptively(Duration.ofSeconds(3),
+                    () -> outer.execute(status -> service.findCategoryPaths()));   // 새 연결을 기다리면 0.25초 뒤 실패한다
+
+            assertThat(paths).containsEntry(11L, "부동산 › 청약");
+            runPending();   // 바깥 트랜잭션이 끝난 뒤 전용 스레드 몫의 다시 읽기는 연결을 얻는다
+            verify(categoryRepository, times(2)).findAll();
+        } finally {
+            single.close();
         }
-        releaseFirst.countDown();
-
-        assertThat(first.get(5, TimeUnit.SECONDS)).containsEntry(11L, "부동산 › 청약");
-        assertThat(second.get(5, TimeUnit.SECONDS)).containsEntry(11L, "부동산 › 청약");
-        assertThat(reads.get()).isEqualTo(1);
     }
 }
