@@ -161,9 +161,14 @@
   /* 로고·단계는 위에 두고, 제목·입력 묶음은 남은 높이의 가운데에 둔다 (한가운데에 몰리지 않게 위아래로 띄운다) */
   .ins-auth__card--wide .ins-steps { margin: 28px 0 0; }
   .ins-auth__card--wide .ins-kicker { margin-top: auto; padding-top: 24px; }
-  .ins-auth__card--wide [data-ins-signup] { margin: 16px 0 auto; padding-bottom: 24px; }
-  .ins-auth__card--wide .ins-form { gap: 24px; }
-  .ins-auth__card--wide .ins-stack { gap: 22px; }
+  .ins-auth__card--wide [data-ins-signup] { margin: 40px 0 auto; padding-bottom: 24px; }
+  /* 제목·입력 묶음 안의 간격도 세로로 넉넉하게 */
+  .ins-auth__card.ins-auth__card--wide h1 { margin-top: 10px; }
+  .ins-auth__card--wide .ins-auth__sub { margin-top: 10px; }
+  .ins-auth__card--wide .ins-form { gap: 28px; margin-top: 0; }
+  .ins-auth__card--wide .ins-stack { gap: 36px; }
+  .ins-auth__card--wide .ins-field { gap: 14px; }
+  .ins-auth__card--wide .ins-hint { margin-top: 2px; }
   .ins-auth__card--wide .ins-auth__logo img { height: 36px; }
   .ins-auth__card.ins-auth__card--wide h1 { font-size: 32px; }
   .ins-auth__card--wide .ins-auth__sub, .ins-auth__card--wide .ins-field { font-size: 15px; }
