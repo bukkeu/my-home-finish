@@ -3,6 +3,7 @@
 *   - 로그인은 Spring Security 폼 로그인이라 폼 형식(email, password) + CSRF 헤더로 보낸다 (API 6).
 *     MB.api 는 본문을 JSON 으로 바꾸고 401 이면 학생 로그인으로 보내므로 여기서는 fetch 를 직접 쓴다
 *   - 응답 role 이 INSTRUCTOR 가 아니면(승인 전 강사·학생 계정) 바로 로그아웃하고 안내한다
+*   - #372 : '로그인 상태 유지'(목업 기본 켜짐)를 켜면 remember-me=true 를 같이 보낸다. 서버 기능은 #367 (그 전에는 서버가 무시한다)
 *  */
 (function () {
   var form = document.querySelector('[data-ins-login]');
@@ -11,6 +12,7 @@
   var submit = form.querySelector('button[type="submit"]');
   var pw = form.querySelector('input[name="password"]');
   var toggle = form.querySelector('[data-ins-pw-toggle]');
+  var keep = form.querySelector('[data-ins-keep]');
 
   var MESSAGES = {
     LOGIN_FAILED: '이메일 또는 비밀번호가 맞지 않아요.',
@@ -59,18 +61,26 @@
     toggle.setAttribute('aria-pressed', String(show));
   });
 
+  keep.addEventListener('click', function () {
+    keep.setAttribute('aria-pressed', String(keep.getAttribute('aria-pressed') !== 'true'));
+  });
+
+  [form.email, pw].forEach(function (el) { el.addEventListener('input', function () { showError(''); }); });
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     if (submit.disabled) return;   // 처리 중에 엔터로 다시 들어온 제출은 무시한다
     var email = form.email.value.trim();
     var password = pw.value;
-    if (!email || !password) { showError('이메일과 비밀번호를 입력해 주세요.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('이메일 주소를 확인해 주세요'); return; }   // 목업 문구
+    if (password.length < 8) { showError('비밀번호를 8자 이상 입력해 주세요'); return; }
     showError('');
     submit.disabled = true;
 
     var body = new URLSearchParams();
     body.set('email', email);
     body.set('password', password);
+    if (keep.getAttribute('aria-pressed') === 'true') body.set('remember-me', 'true');
     var next = new URLSearchParams(location.search).get('next');
     if (next && next.indexOf('/instructor/') === 0) body.set('next', next);
 
