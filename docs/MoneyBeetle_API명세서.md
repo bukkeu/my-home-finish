@@ -15,7 +15,7 @@
 
 - 화면은 Thymeleaf 서버 렌더링이고, 이 문서의 API는 화면 안의 `fetch`가 쓰는 JSON입니다 (1-5 참고).
 - 기준 문서: 요구사항 명세서, 정책 정의서, DB 설계. “관련” 칸의 ID는 요구사항·정책 번호입니다.
-- 총 **152개 API** (사용자 72, 강사 14, 관리자 66)
+- 총 **153개 API** (사용자 72, 강사 15, 관리자 66)
 - 초안입니다. 개발하면서 바뀐 내용은 이 문서에 바로 반영해 주세요.
 
 ---
@@ -242,7 +242,7 @@
 | 79 | `PUT` | `/api/v1/instructor/courses/{courseId}/test-quiz` | 테스트 퀴즈 저장 | 강사 | TCH-04 |
 | 80 | `PUT` | `/api/v1/instructor/courses/{courseId}/quiz` | 퀴즈 저장 | 강사 | TCH-05 |
 | 81 | `POST` | `/api/v1/instructor/courses/{courseId}/review-request` | 검수 요청 | 강사 | TCH-07, DP-34 |
-| 150 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
+| 153 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
 | 82 | `GET` | `/api/v1/instructor/inquiries` | 내 강의 문의 | 강사 | TCH-08 |
 | 150 | `GET` | `/api/v1/instructor/quizzes` | 퀴즈 목록(강의별) | 강사 | TCH-04~05 |
 | 151 | `GET` | `/api/v1/instructor/summaries` | 요약글 목록(영상별) | 강사 | TCH-03 |
@@ -2559,7 +2559,7 @@ Header: Idempotency-Key: 4d8e...
 
 **퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
-#### 150. 퀴즈 문제 파일 읽기
+#### 153. 퀴즈 문제 파일 읽기
 
 | 항목 | 내용 |
 | --- | --- |
@@ -4329,7 +4329,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의 청약 | `ALREADY_ANNOUNCED` | 409 | 이미 발표한 공고예요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
-| 강사·관리자 | `QUIZ_FILE_INVALID` | 400 | 퀴즈 문제 파일을 다시 확인해 주세요 (실제 문구는 줄 번호와 이유, 예: 3번째 줄: 정답은 O 또는 X 로 써 주세요. API 150) |
+| 강사·관리자 | `QUIZ_FILE_INVALID` | 400 | 퀴즈 문제 파일을 다시 확인해 주세요 (실제 문구는 줄 번호와 이유, 예: 3번째 줄: 정답은 O 또는 X 로 써 주세요. API 153) |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |

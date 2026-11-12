@@ -38,7 +38,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 /* comment.
 *   담당 : 서수영 (#368)
-*   퀴즈 문제 파일 읽기 (API 150) : 예시 파일 3개(csv·xlsx·txt, src/test/resources/quiz-files)와 줄마다 틀린 경우
+*   퀴즈 문제 파일 읽기 (API 153) : 예시 파일 3개(csv·xlsx·txt, src/test/resources/quiz-files)와 줄마다 틀린 경우
 *   - 결과는 저장 API(79·80)의 요청(QuizSaveDTO) 모양과 같아야 한다 (TEST : answer "O"/"X", MAIN : choices 4개 + answerIndex 0~3)
 *   - 오류는 QUIZ_FILE_INVALID 이고 문구에 줄 번호와 이유가 있다. 용량·형식은 FILE_TOO_LARGE·FILE_TYPE_NOT_ALLOWED
 *  */
