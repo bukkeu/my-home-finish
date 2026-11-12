@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryCreateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryDetailDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryListItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryReplyCreateDTO;
+import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryReplyUpdateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryUpdateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.MyInquiryItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
  *   담당 : DBA ① (문의)
  *   API 47~52 문의 게시판. 볼 수 있는 사람: 작성자, 그 강의의 강사, 관리자 (SP-40)
  *   API 106~107 관리자 문의 게시판 관리(조회·숨김·해제, #38)
+ *   API 52-1·52-2 답변 수정·삭제 (#370) : 답글을 쓴 본인만. 지우면 남은 답변(강사·관리자 답글)이 없을 때 문의를 다시 답변 대기로
  *  */
 @Service
 @RequiredArgsConstructor
@@ -208,6 +210,35 @@ public class InquiryService {
         return reply.getInquiryReplyId();
     }
 
+    /* API 52-1 답변 수정: 답글을 쓴 본인만 (#370) */
+    @Transactional
+    public void updateReply(Long memberId, Long inquiryId, Long replyId, InquiryReplyUpdateDTO request) {
+        getInquiryOrThrow(inquiryId);
+        InquiryReply reply = getReplyOrThrow(inquiryId, replyId);
+        if (!reply.isWrittenBy(memberId)) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+        forbiddenWordService.check(request.content());
+        reply.changeContent(request.content());               // 관리자가 숨긴 답글이면 409 INQUIRY_REPLY_HIDDEN
+    }
+
+    /* API 52-2 답변 삭제: 답글을 쓴 본인만, Soft Delete (#370).
+     * 강사·관리자 답글을 지워서 남은 답변이 없으면 문의를 다시 답변 대기(WAITING)로 돌린다. 작성자의 추가 댓글은 답변으로 세지 않는다 */
+    @Transactional
+    public void deleteReply(Long memberId, Long inquiryId, Long replyId) {
+        Inquiry inquiry = getInquiryOrThrow(inquiryId);
+        InquiryReply reply = getReplyOrThrow(inquiryId, replyId);
+        if (!reply.isWrittenBy(memberId)) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+        reply.delete(LocalDateTime.now(clock));
+        inquiryReplyRepository.flush();                       // 지운 답글이 아래 '남은 답변' 확인에 섞이지 않게 먼저 반영한다
+        if (inquiry.isAnswered()
+                && !inquiryReplyRepository.existsByInquiryIdAndWriterIdNotAndDeletedAtIsNull(inquiryId, inquiry.getMemberId())) {
+            inquiry.markWaiting();
+        }
+    }
+
     /* ===== 관리자 (#38) ===== */
 
     /* API 106 관리자 문의 게시판: 숨김·삭제 포함, 필터는 모두 선택 (null이면 거르지 않음) */
@@ -254,6 +285,11 @@ public class InquiryService {
 
     private Inquiry getInquiryOrThrow(Long inquiryId) {
         return inquiryRepository.findByInquiryIdAndDeletedAtIsNull(inquiryId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    private InquiryReply getReplyOrThrow(Long inquiryId, Long replyId) {
+        return inquiryReplyRepository.findByInquiryReplyIdAndInquiryIdAndDeletedAtIsNull(replyId, inquiryId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
