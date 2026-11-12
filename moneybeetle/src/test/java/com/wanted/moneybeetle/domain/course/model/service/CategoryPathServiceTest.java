@@ -219,6 +219,28 @@ class CategoryPathServiceTest {
     }
 
     @Test
+    @DisplayName("처음 조회 값은 그 요청에만 쓰고, 이어진 다시 읽기가 실패하면 다음 요청이 다시 읽기를 또 맡긴다")
+    void firstReadIsNotSharedAndFailedReloadIsRetried() {
+        when(categoryRepository.findAll())
+                .thenReturn(categories)                                  // 1 : 처음 조회 (부른 쪽 트랜잭션)
+                .thenThrow(new IllegalStateException("DB 일시 오류"))      // 2 : 다시 읽기 실패
+                .thenReturn(categories);                                 // 3 이후 : 정상
+        CategoryPathService service = deferred();
+
+        assertThat(service.findCategoryPaths()).containsEntry(11L, "부동산 › 청약");
+        assertThat(pending).hasSize(1);
+        runPending();                                                    // 다시 읽기 실패 → snapshot 은 여전히 없음
+
+        assertThat(service.findCategoryPaths()).containsEntry(11L, "부동산 › 청약");   // 다시 부른 쪽 연결로 읽고
+        assertThat(pending).hasSize(1);                                  // 다시 읽기를 또 맡겼다
+        runPending();                                                    // 이번에는 성공
+
+        service.findCategoryPaths();
+        verify(categoryRepository, times(4)).findAll();                  // 성공한 뒤로는 메모리에서 꺼낸다
+        assertThat(pending).isEmpty();
+    }
+
+    @Test
     @DisplayName("연결 풀이 1개뿐이고 바깥 트랜잭션이 그 연결을 쥐고 있어도, 처음 조회(snapshot 없음)가 멈추지 않는다")
     void noExtraConnectionInsideOuterTransaction() {
         HikariDataSource single = pool("category-path-single-" + System.nanoTime(), 1);

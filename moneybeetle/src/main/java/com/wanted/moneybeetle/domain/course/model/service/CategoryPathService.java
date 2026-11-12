@@ -36,8 +36,8 @@ import java.util.stream.Collectors;
 *   - 요청은 메모리의 snapshot 만 읽는다. 다시 읽기는 요청 스레드가 아니라 전용 스레드(category-path-reload)가 하고,
 *     그 스레드는 다른 연결을 쥐고 있지 않으므로 연결이 모자라도 서로 기다리며 멈추는 일이 없다
 *   - 채우는 때 : 서버 시작 직후(ApplicationReadyEvent), 관리자 변경이 커밋된 뒤(markChanged)
-*   - 서버가 막 떠서 아직 snapshot 이 없을 때만, 부른 쪽 트랜잭션이 이미 쥔 연결로 한 번 읽는다 (새 연결 없음).
-*     그 값은 부른 쪽의 오래된 스냅샷일 수 있어서, 곧바로 전용 스레드로 한 번 더 읽어 바꾼다
+*   - 아직 snapshot 이 없을 때(서버가 막 떴거나 미리 읽기가 실패했을 때)만, 부른 쪽 트랜잭션이 이미 쥔 연결로 읽어 그 요청에만 쓴다
+*     (새 연결 없음). 그 값은 부른 쪽의 오래된 스냅샷일 수 있어서 snapshot 에 넣지 않고, 전용 스레드의 다시 읽기를 맡긴다
 *
 *   옛 이름이 남지 않게 하는 방법 (버전)
 *   - 관리자 변경이 **커밋된 뒤에** 버전을 1 올린다. 롤백되면 그대로
@@ -94,10 +94,10 @@ public class CategoryPathService {
     public Map<Long, String> findCategoryPaths() {
         Snapshot current = snapshot;
         if (current == null) {
-            long startedRevision = revision.get();
-            Map<Long, String> paths = toPaths(categoryRepository.findAll());   // 부른 쪽 트랜잭션(이미 쥔 연결)으로 읽는다
-            store(startedRevision, paths);
-            scheduleReload();                                                  // 부른 쪽 스냅샷이 오래됐을 수 있어 한 번 더 읽는다
+            // 부른 쪽 트랜잭션(이미 쥔 연결)으로 읽어 이 요청에만 쓴다. 부른 쪽 스냅샷이 오래됐을 수 있어 공유 snapshot 에는 넣지 않고,
+            // 새 트랜잭션에서 다시 읽기가 성공해야 snapshot 이 생긴다. 다시 읽기가 실패하면 다음 요청이 또 맡긴다
+            Map<Long, String> paths = toPaths(categoryRepository.findAll());
+            scheduleReload();
             return paths;
         }
         if (isStale()) {
