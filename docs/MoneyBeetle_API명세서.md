@@ -15,7 +15,7 @@
 
 - 화면은 Thymeleaf 서버 렌더링이고, 이 문서의 API는 화면 안의 `fetch`가 쓰는 JSON입니다 (1-5 참고).
 - 기준 문서: 요구사항 명세서, 정책 정의서, DB 설계. “관련” 칸의 ID는 요구사항·정책 번호입니다.
-- 총 **148개 API** (사용자 71, 강사 11, 관리자 66)
+- 총 **152개 API** (사용자 72, 강사 14, 관리자 66)
 - 초안입니다. 개발하면서 바뀐 내용은 이 문서에 바로 반영해 주세요.
 
 ---
@@ -244,6 +244,9 @@
 | 81 | `POST` | `/api/v1/instructor/courses/{courseId}/review-request` | 검수 요청 | 강사 | TCH-07, DP-34 |
 | 150 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
 | 82 | `GET` | `/api/v1/instructor/inquiries` | 내 강의 문의 | 강사 | TCH-08 |
+| 150 | `GET` | `/api/v1/instructor/quizzes` | 퀴즈 목록(강의별) | 강사 | TCH-04~05 |
+| 151 | `GET` | `/api/v1/instructor/summaries` | 요약글 목록(영상별) | 강사 | TCH-03 |
+| 152 | `PATCH` | `/api/v1/instructor/lessons/{lessonId}/summary` | 영상 요약글 수정 | 강사 (본인 강의) | TCH-03, SP-31, DP-31 |
 
 ### 관리자
 
@@ -2652,6 +2655,77 @@ file=(test-quiz.csv)  type=TEST
 ```
 
 **Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
+
+#### 150. 퀴즈 목록(강의별)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/quizzes` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | TCH-04~05 |
+| 설명 | 강사 센터 "퀴즈 관리". 새 테이블 없이 강의별 퀴즈(`quiz_question`)에 연결한다(#366). 내 강의(삭제하지 않은 강의 전부) 가운데 지금 쓰는 문항이 하나라도 있는 강의마다 한 줄. 문항이 없는 강의는 뺀다. 가장 늦게 바뀐 문항 순(`updatedAt` 최신순). `testCount`는 테스트 퀴즈(OX), `mainCount`는 퀴즈(4지선다) 문항 수이고, 보관한 문항(`TEST_OLD`·`MAIN_OLD`)은 세지 않는다. 퀴즈 내용을 고치는 것은 API 79·80이다. |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "items": [ { "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "testCount": 5, "mainCount": 8, "updatedAt": "2026-11-03T10:00:00" } ] }
+```
+
+**Error**: `FORBIDDEN`(강사가 아님)
+
+#### 151. 요약글 목록(영상별)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/summaries` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | TCH-03 |
+| 설명 | 강사 센터 "요약글 관리". 영상별 요약글(`lesson.summary`)에 연결한다(#366). 내 강의의 영상 가운데 요약글이 있는(공백만이 아닌) 영상마다 한 줄, 최근 수정 순. `published`는 강의가 허가(`APPROVED`)되고 공개 중이면 `true`(화면의 "게시"), 아니면 `false`("임시 저장"). `thumbnailUrl`은 영상에 썸네일이 없어서 강의의 썸네일이다. |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "items": [ { "lessonId": 21, "lessonTitle": "청약통장이란", "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "summary": "...", "thumbnailUrl": "/uploads/a.png", "published": true, "updatedAt": "2026-11-03T10:00:00" } ] }
+```
+
+**Error**: `FORBIDDEN`(강사가 아님)
+
+#### 152. 영상 요약글 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/lessons/{lessonId}/summary` |
+| Method | `PATCH` |
+| 권한 | 강사 (본인 강의) |
+| 관련 | TCH-03, SP-31, DP-31 |
+| 설명 | 영상 하나의 요약글만 고친다(영상·순서·파일은 그대로, 전체 저장은 API 78). 규칙은 API 78과 같다: 2,000자까지(앞뒤 공백은 뺀다), 금칙어 검사, 검수 중(`REVIEW`)인 강의는 고칠 수 없다. **허가(`APPROVED`)된 강의의 요약글을 고치면 다시 검수(`REVIEW`)로 바뀐다**(SP-31). 빈 글을 보내면 요약글이 지워진다. 기존과 같은 글을 보내면 바뀐 것이 없어서 허가된 강의도 다시 검수하지 않는다(검수 중이면 그래도 거절). 응답의 `courseStatus`가 바뀐 강의 상태이다. |
+
+**Request**
+
+- Path: lessonId=21
+- Body
+
+```json
+{ "summary": "청약통장의 종류와 가입 조건을 정리했어요." }
+```
+
+**Response**
+
+```json
+{ "lessonId": 21, "courseId": 7, "summary": "청약통장의 종류와 가입 조건을 정리했어요.", "courseStatus": "REVIEW" }
+```
+
+**Error**: `LESSON_NOT_FOUND`(없는 영상), `NOT_FOUND`(삭제된 강의), `FORBIDDEN`(남의 강의), `COURSE_IN_REVIEW`(검수 중), `SUMMARY_TOO_LONG`(2,000자 초과), `FORBIDDEN_WORD`(금칙어)
 
 ### 관리자
 
