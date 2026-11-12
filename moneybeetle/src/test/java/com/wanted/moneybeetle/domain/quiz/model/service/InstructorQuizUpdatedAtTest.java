@@ -37,7 +37,7 @@ import org.springframework.test.context.ContextConfiguration;
 *   #384 : 푼 기록이 없는 문항에서 보기·정답만 바꿔도 문항 수정 시각(updated_at)이 갱신되는지 실제 쿼리(H2)로 확인한다
 *   - 처음 저장 시각(감사 기능)은 11-01 09:00, 서비스의 공통 Clock 은 11-20 10:00 으로 고정해 둘을 구별한다
 *   - 보기만 바꿈 / 정답만 바꿈 → 바뀐 문항만 11-20 10:00, 나머지 문항은 그대로
-*   - 아무것도 안 바꿈 → 그대로
+*   - 아무것도 안 바꿈 → 그대로 (감사 시각을 앞으로 보내도 UPDATE 가 나가지 않는다)
 *   - 보기 개수가 달라 지우고 새로 만듦 → 11-20 10:00
 *   - 강사 센터 퀴즈 목록(API 150)의 가장 늦은 수정 시각에도 반영된다
 *  */
@@ -147,6 +147,7 @@ class InstructorQuizUpdatedAtTest {
     @DisplayName("아무것도 안 바꾸고 다시 저장하면 수정 시각은 그대로다")
     void noChangeKeepsUpdatedAt() {
         saveInitial();
+        AUDIT_NOW.set(SAVED);   // 감사 시각도 앞으로 보낸다 : 불필요한 UPDATE 가 나가면 updated_at 이 SAVED 로 바뀌어 잡힌다
 
         save(baseQuestions());
 
