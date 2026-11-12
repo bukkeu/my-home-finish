@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.course.model.dao.LessonRepository;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseEditDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseStatusDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseVisibilityResultDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonIdsDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.MyCourseItemDTO;
@@ -59,6 +60,7 @@ import org.springframework.web.multipart.MultipartFile;
 *   - 내 강의 목록·생성·편집 정보·수정·삭제·썸네일 (API 72~77, #30)
 *   - 검수 요청 (API 81, #32)
 *   - 영상 파일 올리기·영상·요약글 저장, 테스트 퀴즈·퀴즈 저장 (API 78~80, #31)
+*   - 난이도·목록의 카테고리·구성·등록일, 강사 공개 켜기/끄기 (API 72~75·76-1, #369 — 신아림이 나눠 준 작업, 이재성)
 *   - 모든 작업은 본인 강의만 (남의 강의 403, 삭제된 강의 404)
 *  */
 @Service
@@ -86,7 +88,8 @@ public class InstructorCourseService {
     @Value("${file.upload-dir}")
     private String uploadDir;                                        // FileStorageService와 같은 저장 폴더 (영상 키 확인용)
 
-    /* API 72 내 강의 목록: 검수 상태 포함, 수강생 수·답변 대기 문의 수·최근 반려 사유는 강의 여러 개를 한 번에 조회 */
+    /* API 72 내 강의 목록: 검수 상태 포함. 수강생 수·답변 대기 문의 수·최근 반려 사유·카테고리 이름·영상 수와 재생 시간 합은
+     * 강의 여러 개를 한 번에 조회한다 (강의 수와 상관없이 쿼리 수가 같다, #369) */
     public MyCourseListDTO findMyCourses(Long instructorId, String status) {
         List<Course> courses = courseRepository.findMyCourses(instructorId, CourseStatus.filterOf(status));
         if (courses.isEmpty()) {
@@ -100,13 +103,43 @@ public class InstructorCourseService {
                         LearningProgressRepository.CourseLearnerCount::getLearners));
         Map<Long, Long> waiting = instructorInquiryService.countWaitingByCourse(courseIds);
         Map<Long, String> rejectReasons = findLatestRejectReasons(courseIds);
+        Map<Long, CourseRepository.CourseLessonStat> lessonStats =
+                courseRepository.findLessonStatsByCourseIds(courseIds).stream()
+                        .collect(Collectors.toMap(CourseRepository.CourseLessonStat::getCourseId, Function.identity()));
+        Map<Long, Category> categories = findCategoriesWithParents(courses);
 
         return new MyCourseListDTO(courses.stream()
-                .map(course -> MyCourseItemDTO.of(course,
-                        learners.getOrDefault(course.getCourseId(), 0L),
-                        waiting.getOrDefault(course.getCourseId(), 0L),
-                        course.isRejected() ? rejectReasons.get(course.getCourseId()) : null))
+                .map(course -> {
+                    Long courseId = course.getCourseId();
+                    Category category = categories.get(course.getCategoryId());
+                    Category parent = category == null || category.getParentId() == null
+                            ? null : categories.get(category.getParentId());
+                    CourseRepository.CourseLessonStat stat = lessonStats.get(courseId);
+                    return MyCourseItemDTO.of(course, new MyCourseItemDTO.Extra(
+                            learners.getOrDefault(courseId, 0L),
+                            waiting.getOrDefault(courseId, 0L),
+                            course.isRejected() ? rejectReasons.get(courseId) : null,
+                            category == null ? null : category.getName(),
+                            parent == null ? null : parent.getName(),
+                            stat == null ? 0L : stat.getLessons(),
+                            stat == null ? 0L : stat.getTotalDurationSeconds()));
+                })
                 .toList());
+    }
+
+    /* 강의들의 소주제와 그 상위 카테고리를 한 번에 (카테고리는 2단계라 많아야 두 번 조회) */
+    private Map<Long, Category> findCategoriesWithParents(List<Course> courses) {
+        Set<Long> ids = courses.stream().map(Course::getCategoryId).collect(Collectors.toSet());
+        Map<Long, Category> found = new HashMap<>();
+        categoryRepository.findAllById(ids).forEach(c -> found.put(c.getCategoryId(), c));
+        Set<Long> parentIds = found.values().stream()
+                .map(Category::getParentId)
+                .filter(id -> id != null && !found.containsKey(id))
+                .collect(Collectors.toSet());
+        if (!parentIds.isEmpty()) {
+            categoryRepository.findAllById(parentIds).forEach(c -> found.put(c.getCategoryId(), c));
+        }
+        return found;
     }
 
     /* API 73 강의 생성: 사용 중인 소주제에만, 금칙어 검사, 작성 중(DRAFT)으로 시작 */
@@ -115,7 +148,7 @@ public class InstructorCourseService {
         checkSelectableCategory(request.categoryId());
         checkForbiddenWords(request);
         Course course = Course.create(instructorId, request.categoryId(), request.title().strip(),
-                request.description(), request.infoBaseDate(), request.infoSource());
+                request.description(), request.levelOrDefault(), request.infoBaseDate(), request.infoSource());
         return CourseStatusDTO.from(courseRepository.save(course));
     }
 
@@ -137,9 +170,18 @@ public class InstructorCourseService {
         Course course = getMyCourseForUpdate(instructorId, courseId);
         checkSelectableCategory(request.categoryId());
         checkForbiddenWords(request);
-        course.change(request.categoryId(), request.title().strip(), request.description(),
+        course.change(request.categoryId(), request.title().strip(), request.description(), request.levelOrDefault(),
                 request.infoBaseDate(), request.infoSource(), LocalDateTime.now(clock));
         return CourseStatusDTO.from(course);
+    }
+
+    /* API 76-1 공개 켜기/끄기 (#369): 본인 강의 중 허가(APPROVED)된 강의만. 공개 여부만 바뀌고 다시 검수하지 않는다.
+     * 허가 안 된 강의면 COURSE_NOT_APPROVED (Course.changeVisibility 가 확인) */
+    @Transactional
+    public CourseVisibilityResultDTO changeVisibility(Long instructorId, Long courseId, boolean isPublic) {
+        Course course = getMyCourseForUpdate(instructorId, courseId);
+        course.changeVisibility(isPublic);
+        return CourseVisibilityResultDTO.from(course);
     }
 
     /* API 76 강의 삭제: 학습 기록이 있으면 삭제 불가 (SP-32), 없으면 Soft Delete */
