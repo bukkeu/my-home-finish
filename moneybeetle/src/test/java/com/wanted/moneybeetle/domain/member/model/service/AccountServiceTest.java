@@ -13,6 +13,7 @@ import com.wanted.moneybeetle.domain.member.exception.MemberErrorCode;
 import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.PasswordResetTokenRepository;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import com.wanted.moneybeetle.domain.member.model.entity.PasswordResetToken;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -217,7 +218,7 @@ class AccountServiceTest {
     void withdraws() {
         service.withdraw(1L, "beetle1234", session);
 
-        assertThat(member.getStatus()).isEqualTo(Member.STATUS_WITHDRAWN);
+        assertThat(member.getStatus()).isEqualTo(MemberStatus.WITHDRAWN.name());
         assertThat(member.getWithdrawnAt()).isEqualTo(NOW);
         assertThat(member.getEmail()).isEqualTo("minji@gmail.com");
     }
@@ -253,7 +254,7 @@ class AccountServiceTest {
 
         service.withdraw(1L, null, session);
 
-        assertThat(member.getStatus()).isEqualTo(Member.STATUS_WITHDRAWN);
+        assertThat(member.getStatus()).isEqualTo(MemberStatus.WITHDRAWN.name());
         assertThat(member.getWithdrawnAt()).isEqualTo(NOW);
         verify(withdrawVerifier).consumeVerified(1L, session);
     }

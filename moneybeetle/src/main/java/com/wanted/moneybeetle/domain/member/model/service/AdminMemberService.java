@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminMemberService {
 
     private static final Set<String> ROLES = Set.of(Member.ROLE_MEMBER, Member.ROLE_INSTRUCTOR);
-    private static final Set<String> STATUSES = Set.of(Member.STATUS_ACTIVE, Member.STATUS_SUSPENDED, Member.STATUS_WITHDRAWN);
+    private static final Set<String> STATUSES = Set.of(MemberStatus.ACTIVE.name(), MemberStatus.SUSPENDED.name(), MemberStatus.WITHDRAWN.name());
     private static final int KEYWORD_MAX_LENGTH = 100;
     private static final String LOG_ACTION_SUSPEND = "MEMBER_SUSPEND";
     private static final String LOG_ACTION_ACTIVATE = "MEMBER_ACTIVATE";

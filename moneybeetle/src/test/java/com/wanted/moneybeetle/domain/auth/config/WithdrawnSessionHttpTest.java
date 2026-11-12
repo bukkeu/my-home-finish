@@ -160,7 +160,7 @@ class WithdrawnSessionHttpTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"" + PASSWORD + "\"}"))
                 .andExpect(status().isNoContent());
-        assertThat(member.getStatus()).isEqualTo(Member.STATUS_WITHDRAWN);
+        assertThat(member.getStatus()).isEqualTo(MemberStatus.WITHDRAWN.name());
         assertThat(phone.isInvalid()).isTrue();   // 탈퇴한 세션 자신은 컨트롤러가 끝낸다
 
         // 탈퇴 요청을 보내지 않은 laptop 세션은 ActiveMemberFilter 가 막는다
