@@ -1204,7 +1204,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01 |
-| 설명 | 카테고리(자본·부동산) → 소주제 트리. |
+| 설명 | 카테고리(자본·부동산) → 소주제 트리. `data`는 객체로 감싸지 않은 카테고리 배열이고, 소주제의 `children`은 빈 배열이다. |
 
 **Request**
 
@@ -1213,7 +1213,11 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 **Response**
 
 ```json
-{ "categories": [ { "categoryId": 1, "name": "자본", "children": [ { "categoryId": 11, "name": "월급 관리" }, { "categoryId": 12, "name": "ETF·분산 투자" } ] } ] }
+[
+  { "categoryId": 1, "name": "자본", "children": [
+      { "categoryId": 11, "name": "월급 관리", "children": [] },
+      { "categoryId": 12, "name": "ETF·분산 투자", "children": [] } ] }
+]
 ```
 
 #### 30. 강의 목록
@@ -1229,6 +1233,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 **Request**
 
 - Query: categoryId=12&page=0&size=20
+- `categoryId`는 **필수**다. 빠지면 `400 INVALID_INPUT`. `page`(기본 0)·`size`는 선택
 
 **Response**
 
@@ -1645,7 +1650,7 @@ Header: Idempotency-Key: 7c1e...
 { "inquiryId": 12 }
 ```
 
-**Error**: `INQUIRY_EMPTY`, `INQUIRY_TOO_LONG`, `INQUIRY_DAILY_LIMIT`, `FORBIDDEN_WORD`
+**Error**: `INVALID_INPUT`(400, 제목·내용이 비었거나 내용 1,000자 초과. 입력칸별 문구는 `error.fields`), `INQUIRY_DAILY_LIMIT`, `FORBIDDEN_WORD`
 
 #### 49. 문의 상세
 
@@ -4289,7 +4294,6 @@ email=admin@moneybeetle.kr&password=...
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
-| 학습 | `INQUIRY_TOO_LONG` | 400 | 내용은 1,000자까지 쓸 수 있어요 |
 | 학습 | `INQUIRY_DAILY_LIMIT` | 429 | 오늘은 문의를 더 남길 수 없어요 |
 | 학습 | `INQUIRY_REPLY_HIDDEN` | 409 | 관리자가 숨긴 답변은 수정할 수 없어요 |
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
@@ -4344,6 +4348,15 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
 | 강사·관리자 | `INVALID_REWARD_RULE_AMOUNTS` | 400 | 이 보상 규칙은 지급할 수 없는 캐시 또는 경험치가 있습니다 |
+| 강사·관리자 | `REWARD_RULE_NOT_FOUND` | 404 | 사용 중인 보상 규칙이 없습니다 |
+| 강사·관리자 | `SETTING_VALUE_INVALID` | 400 | 설정 값 형식이 올바르지 않습니다 |
+| 강사·관리자 | `TERM_NOT_FOUND` | 404 | 사용 중인 경제 용어를 찾을 수 없어요 |
+| 강사·관리자 | `TERM_SELECTION_INVALID` | 400 | 서로 다른 용어 5개를 지정해 주세요 |
+| 강사·관리자 | `SCHEDULE_CONFLICT` | 409 | 다른 관리자가 같은 날짜를 수정하고 있어요. 잠시 뒤 다시 시도해 주세요 |
+| 성장 | `INVALID_HISTORY_TYPE` | 400 | 내역 종류는 EARN 또는 USE 만 쓸 수 있습니다 |
+| 성장 | `ALREADY_USED` | 409 | 이미 처리된 요청입니다 (같은 원인으로 캐시를 이미 썼을 때, 이중 차감 방지) |
+| 성장 | `REWARD_NOT_SUPPORTED` | 500 | 지원하지 않는 보상 설정입니다 (서버 설정 오류) |
+| 성장 | `LEVEL_POLICY_INVALID` | 500 | 레벨 정책 설정이 올바르지 않습니다 (서버 설정 오류) |
 
 ---
 
