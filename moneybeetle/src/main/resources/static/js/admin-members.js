@@ -8,7 +8,8 @@
 *   - 강사 가입 신청 : GET /api/v1/admin/instructor-applications?status= (API 104), 승인 POST .../{memberId}/approve (API 105)
 *   문의 게시판 (?view=board)
 *   - 목록 : GET /api/v1/admin/inquiries?status=&hidden=&deleted= (API 106, 숨긴 글도 원문 제목)
-*   - 내용·답글 보기 : GET /api/v1/inquiries/{id} (API 49). 숨기기 전에 글 내용을 확인하는 용도 (답글 작성은 이 이슈 범위가 아니라 넣지 않는다)
+*   - 내용·답글 보기 : GET /api/v1/inquiries/{id} (API 49). 숨기기 전에 글 내용을 확인하는 용도
+*   - 답변 작성 : POST /api/v1/inquiries/{id}/replies { content } (API 52, #406). 관리자 답변이면 서버가 답변 완료로 바꾸고 작성자에게 알린다
 *   - 숨김·해제 : PATCH /api/v1/admin/inquiries/{id}/hidden { hidden } (API 107)
 *   오류는 서버 문구를 그대로 보여 준다. 되돌리기 어려운 작업은 확인 창(MBA.confirm)을 거친다
 *  */
@@ -395,6 +396,7 @@
     var current = 'all';
     var posts = pager(function () { return '/api/v1/admin/inquiries?' + query(FILTERS[current]); }, function (q) { return q.inquiryId; });
     var open = {}, details = {}, loading = {}, errors = {}, busy = {};
+    var replyDraft = {}, replyError = {}, replying = {};   // 문의 ID → 입력 중인 답변·실패 문구·등록 중 (다시 그려도 남게 상태로 둔다)
     var box = root.querySelector('[data-ao-posts]');
 
     root.querySelectorAll('[data-ao-filter]').forEach(function (b) {
@@ -463,8 +465,49 @@
           var w = r.writer || {};
           var who = w.role === 'ADMIN' ? '관리자' : w.role === 'INSTRUCTOR' ? '강사 ' + (w.nickname || '') : (w.nickname || '작성자');
           return h('div', { class: 'ao-reply' }, [h('b', { text: who + ' · ' + day(r.createdAt) }), r.content || '']);
-        })) : h('span', { class: 'ao-td-sub', text: '아직 답글이 없어요.' })
+        })) : h('span', { class: 'ao-td-sub', text: '아직 답글이 없어요.' }),
+        q.isDeleted ? null : replyForm(q)
       ];
+    }
+
+    /* 관리자 답변 작성 (API 52, #406). 등록하면 답글 목록을 새로 받고, 상태는 답변 완료로 바꿔 보여 준다 */
+    function replyForm(q) {
+      var id = q.inquiryId;
+      var sending = !!replying[id];
+      var input = h('textarea', { class: 'ao-textarea', maxlength: '1000', placeholder: '답변을 입력해 주세요', 'aria-label': '관리자 답변',
+        value: replyDraft[id] || '', disabled: sending, 'aria-invalid': replyError[id] ? 'true' : null });
+      var error = h('span', { class: 'adm-error', role: 'alert', text: replyError[id] || null });
+      var ok = h('button', { type: 'button', class: 'btn btn-primary adm-btn-sm', text: sending ? '등록하는 중…' : '답변 등록', disabled: sending });
+      input.addEventListener('input', function () {
+        replyDraft[id] = input.value;
+        input.removeAttribute('aria-invalid');
+        delete replyError[id];
+        error.textContent = '';
+      });
+      ok.addEventListener('click', function () {
+        if (replying[id]) return;
+        var content = input.value.trim();
+        if (!content) { input.setAttribute('aria-invalid', 'true'); error.textContent = '답변 내용을 입력해 주세요.'; input.focus(); return; }
+        replying[id] = true;
+        delete replyError[id];
+        draw();
+        MB.api('/api/v1/inquiries/' + id + '/replies', { method: 'POST', body: { content: content } }).then(function () {
+          delete replyDraft[id];
+          q.status = 'ANSWERED';
+          MB.toast('답변을 등록했어요.');
+          delete replying[id];
+          fetchDetail(q);                                  // 새 답글이 보이게 내용을 다시 받는다
+        }, function (err) {
+          replyError[id] = errText(err, '답변을 등록하지 못했어요.');
+          delete replying[id];
+          draw();
+        });
+      });
+      return h('div', { class: 'ao-inline' }, [
+        h('label', { class: 'adm-field' }, ['관리자 답변', h('small', { text: '1,000자까지. 등록하면 작성자에게 알림이 가요.' }), input]),
+        error,
+        h('div', { class: 'adm-actions' }, [ok])
+      ]);
     }
 
     function toggle(q) {

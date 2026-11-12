@@ -4,7 +4,7 @@
     경로 : /admin/dashboard?view=members (&tab=users|applications) · /admin/dashboard?view=board
     내용 : 틀이 members·board 두 탭에 이 파일을 함께 쓴다. ${view} 로 어느 탭인지 나눠 그린다
       - members : 사용자·강사 목록(검색·필터), 계정 정지·해제, 강사 권한 부여·회수 / 강사 가입 신청 목록·승인 (API 101~105)
-      - board   : 문의 목록(전체·답변 대기·숨김·삭제된 글), 내용·답글 보기, 숨김·해제 (API 106·107, 내용은 API 49)
+      - board   : 문의 목록(전체·답변 대기·숨김·삭제된 글), 내용·답글 보기, 답변 작성, 숨김·해제 (API 106·107, 내용은 API 49, 답변은 API 52 #406)
     데이터 : static/js/admin-members.js (요소는 data-ao-… 로 찾는다)
 */-->
 <link rel="stylesheet" type="text/css" th:href="@{/css/admin-ops.css}">
@@ -68,5 +68,5 @@
     </div>
   </div>
   <div data-ao-posts><p class="adm-empty">불러오고 있어요…</p></div>
-  <p class="adm-note">숨긴 글은 사용자 목록에서 빠지고, 상세에는 "관리자에 의해 숨김 처리된 글이에요"로 보여요.</p>
+  <p class="adm-note">'내용·답글 보기'를 펼쳐 답변을 달 수 있어요. 숨긴 글은 사용자 목록에서 빠지고, 상세에는 "관리자에 의해 숨김 처리된 글이에요"로 보여요.</p>
 </section>
