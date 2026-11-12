@@ -56,6 +56,8 @@ app:
   mail-from: ${MAIL_FROM:no-reply@moneybeetle.local}
   # 로그인 상태 유지(Remember Me) 쿠키 서명 키 (#367). 비밀 값이라 기본값이 없다 -> .env 에 REMEMBER_ME_KEY 가 없으면 서버가 뜨지 않는다
   remember-me-key: ${REMEMBER_ME_KEY}
+  # 시연용 현재 시각 (#405). 비워 두면 실제 시각. "2026-11-16T19:50" 처럼 주면 서버가 뜬 순간을 그 시각으로 보고 흐른다 (TimeConfig)
+  demo-now: ${APP_DEMO_NOW:}
 
 # 서버 상태 확인 (#84, 시스템 설계 "모니터링") : health·info 만 웹으로 연다. 나머지(env, beans, …)는 열지 않는다
 management:
