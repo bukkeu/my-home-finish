@@ -19,8 +19,6 @@ import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
 import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
-import com.wanted.moneybeetle.domain.trading.model.dto.RankingAwardDTO;
-import com.wanted.moneybeetle.domain.trading.model.service.RankingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.file.FileStorageService;
@@ -47,7 +45,7 @@ class MemberProfileServiceTest {
     private FileStorageService fileStorageService;
     private AttendanceService attendanceService;
     private SystemSettingService systemSettingService;
-    private RankingService rankingService;
+    private RankingAwardReader rankingAwardReader;
     private MemberProfileService service;
 
     @BeforeEach
@@ -58,9 +56,9 @@ class MemberProfileServiceTest {
         fileStorageService = mock(FileStorageService.class);
         attendanceService = mock(AttendanceService.class);
         systemSettingService = mock(SystemSettingService.class);   // 설정이 없으면 기본 해금 레벨 8·12
-        rankingService = mock(RankingService.class);   // 수상 내역 (모의투자 도메인 Service, #338). 기본은 빈 목록
+        rankingAwardReader = mock(RankingAwardReader.class);   // 수상 내역 (구현은 trading.RankingService, #338). 기본은 빈 목록
         service = new MemberProfileService(memberService, growthService, courseService, attendanceService, fileStorageService,
-                new UnlockLevelProvider(systemSettingService), rankingService);
+                new UnlockLevelProvider(systemSettingService), rankingAwardReader);
 
         LevelTable table = levelTable();   // when() 안에서 다른 Mock 을 만들지 않도록 먼저 만든다
         when(growthService.loadLevelTable()).thenReturn(table);
@@ -178,9 +176,9 @@ class MemberProfileServiceTest {
     @DisplayName("공개 프로필의 수상 내역은 모의투자 도메인이 준 순서 그대로 시즌 이름·랭킹 종류·순위로 담는다 (#338)")
     void publicProfileHasRankingAwards() {
         when(memberService.getActiveProfile(2L)).thenReturn(profile(15, 2100, 0));   // 프로필의 회원 번호는 1
-        when(rankingService.findAwards(1L)).thenReturn(List.of(
-                new RankingAwardDTO("시즌 7", "ASSET", 1), new RankingAwardDTO("시즌 7", "RETURN", 3),
-                new RankingAwardDTO("시즌 5", "ASSET", 2)));
+        when(rankingAwardReader.findAwards(1L)).thenReturn(List.of(
+                new PublicProfileDTO.Award("시즌 7", "ASSET", 1), new PublicProfileDTO.Award("시즌 7", "RETURN", 3),
+                new PublicProfileDTO.Award("시즌 5", "ASSET", 2)));
 
         PublicProfileDTO result = service.getPublicProfile(2L);
 

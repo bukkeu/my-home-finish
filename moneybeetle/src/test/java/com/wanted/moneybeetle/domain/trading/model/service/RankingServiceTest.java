@@ -14,7 +14,7 @@ import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.RankingAwardRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.SeasonParticipantRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.TradingSeasonRepository;
-import com.wanted.moneybeetle.domain.trading.model.dto.RankingAwardDTO;
+import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.RankingDTO;
 import com.wanted.moneybeetle.domain.trading.model.entity.RankingAward;
 import com.wanted.moneybeetle.domain.trading.model.entity.SeasonParticipant;
@@ -189,9 +189,11 @@ class RankingServiceTest {
 
     // ===== #338 회원별 수상 내역 (공개 프로필 API 18) =====
 
+    /** 랭킹을 공개한 시즌 */
     private static TradingSeason seasonOf(long id, String name, LocalDate start) {
         TradingSeason s = TradingSeason.create(name, start, 1L);
         ReflectionTestUtils.setField(s, "tradingSeasonId", id);
+        ReflectionTestUtils.setField(s, "rankingPublishedAt", start.plusDays(14).atTime(9, 0));
         return s;
     }
 
@@ -206,12 +208,25 @@ class RankingServiceTest {
                 RankingAward.createAssetAward(7L, 10L, 1, "순자산 1위")));
         when(seasonRepository.findAllById(any())).thenReturn(List.of(s5, s7));
 
-        List<RankingAwardDTO> awards = service.findAwards(10L);
+        List<PublicProfileDTO.Award> awards = service.findAwards(10L);
 
         assertThat(awards).containsExactly(
-                new RankingAwardDTO("시즌 7", RankingAward.TYPE_ASSET, 1),
-                new RankingAwardDTO("시즌 7", RankingAward.TYPE_RETURN, 3),
-                new RankingAwardDTO("시즌 5", RankingAward.TYPE_ASSET, 2));
+                new PublicProfileDTO.Award("시즌 7", RankingAward.TYPE_ASSET, 1),
+                new PublicProfileDTO.Award("시즌 7", RankingAward.TYPE_RETURN, 3),
+                new PublicProfileDTO.Award("시즌 5", RankingAward.TYPE_ASSET, 2));
+    }
+
+    @Test
+    void 랭킹을_공개하지_않은_시즌의_수상은_빼고_준다() {
+        TradingSeason s7 = seasonOf(7L, "시즌 7", LocalDate.of(2026, 11, 2));
+        TradingSeason s8 = TradingSeason.create("시즌 8", LocalDate.of(2026, 11, 16), 1L);   // 공개 전
+        ReflectionTestUtils.setField(s8, "tradingSeasonId", 8L);
+        when(awardRepository.findByMemberId(10L)).thenReturn(List.of(
+                RankingAward.createAssetAward(8L, 10L, 1, "순자산 1위"),
+                RankingAward.createAssetAward(7L, 10L, 2, "순자산 2위")));
+        when(seasonRepository.findAllById(any())).thenReturn(List.of(s7, s8));
+
+        assertThat(service.findAwards(10L)).containsExactly(new PublicProfileDTO.Award("시즌 7", RankingAward.TYPE_ASSET, 2));
     }
 
     @Test
