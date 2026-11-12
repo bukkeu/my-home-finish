@@ -15,7 +15,32 @@
 .ins-auth { min-height: 100vh; display: grid; place-items: center; padding: 32px 16px; box-sizing: border-box; }
 .ins-auth__card { width: 100%; max-width: 420px; background: #fff; border: 1.5px dashed var(--color-divider); border-radius: 24px;
   padding: 32px 28px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
-.ins-auth__card--wide { max-width: 520px; }
+.ins-auth__card--wide { max-width: 840px; }
+
+/* 강사 가입(이메일 인증 → 강사 정보) 카드는 넓은 화면에서 작아 보여 디자인(InstructorSignup.dc.html: 제목 46px·입력칸 68px) 크기로 키운다.
+   강사 로그인 카드(420px)는 그대로 둔다 */
+.ins-auth__card--wide { padding: 52px 64px; gap: 18px; border-radius: 32px; }
+.ins-auth__card--wide .ins-auth__logo img { height: 46px; }
+.ins-auth__card--wide .ins-steps { margin: 14px 0 10px; gap: 12px; }
+.ins-auth__card--wide .ins-step { gap: 10px; font-size: 16px; }
+.ins-auth__card--wide .ins-step__no { width: 40px; height: 40px; font-size: 16px; }
+.ins-auth__card--wide .ins-kicker { font-size: 16px; }
+.ins-auth__card.ins-auth__card--wide h1 { font-size: 46px; }
+.ins-auth__card--wide .ins-auth__sub { font-size: 19px; }
+.ins-auth__card--wide .ins-auth__note, .ins-auth__card--wide .ins-info { padding: 16px 20px; font-size: 17px; }
+.ins-auth__card--wide .ins-form { gap: 22px; margin-top: 14px; }
+.ins-auth__card--wide .ins-stack { gap: 22px; }
+.ins-auth__card--wide .ins-field { gap: 10px; font-size: 18px; }
+.ins-auth__card--wide .ins-input { height: 68px; padding: 0 24px; border-radius: 16px; font-size: 20px; }
+.ins-auth__card--wide .ins-pw .ins-input { padding-right: 96px; }
+.ins-auth__card--wide .ins-pw__toggle { font-size: 16px; }
+.ins-auth__card--wide .ins-hint { font-size: 15px; }
+.ins-auth__card--wide .ins-error, .ins-auth__card--wide .ins-ok { font-size: 17px; }
+.ins-auth__card--wide .btn, .ins-auth__card--wide .ins-submit, .ins-auth__card--wide .ins-actions .btn,
+.ins-auth__card--wide .ins-code .btn { height: 68px; font-size: 20px; padding: 0 28px; }
+.ins-auth__card--wide .ins-check { font-size: 18px; padding: 10px 0; }
+.ins-auth__card--wide .ins-check--all { padding: 16px 20px; }
+.ins-auth__card--wide .ins-check__mark { width: 28px; height: 28px; font-size: 14px; }
 .ins-auth__card h1 { margin: 0; font-size: 26px; letter-spacing: -0.03em; }
 .ins-auth__logo img { height: 32px; }
 .ins-auth__sub { margin: 0; font-size: 14px; color: var(--color-neutral-700); }
@@ -153,6 +178,30 @@
   .ins-auth__card { padding: 24px 18px; border-radius: 18px; }
   .ins-auth--login { padding: 12px; }
   .ins-auth__card--login { --ins-login-scale: 1.25; padding: 30px 22px; border-radius: 22px; }
+  /* 모바일 강사 가입: 카드가 화면 전체를 채운다 (바깥 여백·테두리 없이 흰 화면, 내용은 세로 가운데) */
+  .ins-auth:has(.ins-auth__card--wide) { padding: 0; align-items: stretch; }
+  .ins-auth__card.ins-auth__card--wide { max-width: none; min-height: 100vh; min-height: 100dvh; padding: 32px 22px 48px; gap: 12px;
+    border: 0; border-radius: 0; justify-content: flex-start; }
+  /* 로고·단계는 위에 두고, 제목·입력 묶음은 남은 높이의 가운데에 둔다 (한가운데에 몰리지 않게 위아래로 띄운다) */
+  .ins-auth__card--wide .ins-steps { margin: 28px 0 0; }
+  .ins-auth__card--wide .ins-kicker { margin-top: auto; padding-top: 24px; }
+  .ins-auth__card--wide [data-ins-signup] { margin: 40px 0 auto; padding-bottom: 24px; }
+  /* 제목·입력 묶음 안의 간격도 세로로 넉넉하게 */
+  .ins-auth__card.ins-auth__card--wide h1 { margin-top: 10px; }
+  .ins-auth__card--wide .ins-auth__sub { margin-top: 10px; }
+  .ins-auth__card--wide .ins-form { gap: 28px; margin-top: 0; }
+  .ins-auth__card--wide .ins-stack { gap: 36px; }
+  .ins-auth__card--wide .ins-field { gap: 14px; }
+  .ins-auth__card--wide .ins-hint { margin-top: 2px; }
+  .ins-auth__card--wide .ins-auth__logo img { height: 36px; }
+  .ins-auth__card.ins-auth__card--wide h1 { font-size: 32px; }
+  .ins-auth__card--wide .ins-auth__sub, .ins-auth__card--wide .ins-field { font-size: 15px; }
+  .ins-auth__card--wide .ins-input { height: 58px; padding: 0 18px; font-size: 17px; }
+  .ins-auth__card--wide .btn, .ins-auth__card--wide .ins-submit,
+  .ins-auth__card--wide .ins-actions .btn, .ins-auth__card--wide .ins-code .btn { height: 58px; font-size: 17px; }
+  .ins-auth__card--wide .ins-step { font-size: 12px; }
+  .ins-auth__card--wide .ins-step__no { width: 32px; height: 32px; font-size: 14px; }
+  .ins-auth__card--wide .ins-hint { font-size: 13px; }
   .ins-head h1 { font-size: 24px; }
   .ins-head .btn { width: 100%; }
   .ins-row__actions { width: 100%; justify-content: stretch; }
