@@ -154,13 +154,16 @@
 @media (max-width: 767px) {
   .ins-auth { padding: 16px; align-items: start; }
   .ins-auth__card { padding: 24px 18px; border-radius: 18px; }
-  .ins-auth__card--wide { padding: 28px 20px; gap: 14px; border-radius: 20px; }
+  /* 모바일 강사 가입: 카드가 화면 전체를 채운다 (바깥 여백·테두리 없이 흰 화면, 내용은 세로 가운데) */
+  .ins-auth:has(.ins-auth__card--wide) { padding: 0; align-items: stretch; }
+  .ins-auth__card.ins-auth__card--wide { max-width: none; min-height: 100vh; min-height: 100dvh; padding: 36px 22px 40px; gap: 16px;
+    border: 0; border-radius: 0; justify-content: center; }
   .ins-auth__card--wide .ins-auth__logo img { height: 36px; }
-  .ins-auth__card.ins-auth__card--wide h1 { font-size: 30px; }
+  .ins-auth__card.ins-auth__card--wide h1 { font-size: 32px; }
   .ins-auth__card--wide .ins-auth__sub, .ins-auth__card--wide .ins-field { font-size: 15px; }
-  .ins-auth__card--wide .ins-input { height: 56px; padding: 0 16px; font-size: 17px; }
+  .ins-auth__card--wide .ins-input { height: 58px; padding: 0 18px; font-size: 17px; }
   .ins-auth__card--wide .btn, .ins-auth__card--wide .ins-submit,
-  .ins-auth__card--wide .ins-actions .btn, .ins-auth__card--wide .ins-code .btn { height: 56px; font-size: 17px; }
+  .ins-auth__card--wide .ins-actions .btn, .ins-auth__card--wide .ins-code .btn { height: 58px; font-size: 17px; }
   .ins-auth__card--wide .ins-step { font-size: 12px; }
   .ins-auth__card--wide .ins-step__no { width: 32px; height: 32px; font-size: 14px; }
   .ins-auth__card--wide .ins-hint { font-size: 13px; }
