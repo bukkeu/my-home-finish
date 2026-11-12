@@ -312,8 +312,10 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `instructor_profile_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 강사 정보 ID |
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE | - | 강사 회원 (1:1) |
-| `display_name` | VARCHAR(30) | N | - | - | 강의에 표시할 이름 |
-| `field` | VARCHAR(100) | Y | - | - | 전문 분야 (예: 청약, ETF) |
+| `display_name` | VARCHAR(30) | N | - | - | 강의에 표시할 이름 (강사가 API 12-2 로 바꿀 때는 2~20자) |
+| `headline` | VARCHAR(60) | Y | - | - | 한 줄 소개 (강사 마이페이지, API 12-2, #365). 기존 DB는 `sql/migration/2026-11-12_instructor_profile_headline_bio.sql` |
+| `bio` | VARCHAR(1000) | Y | - | - | 강사 소개 (강사 마이페이지, API 12-2, #365). 위 migration 과 같은 파일 |
+| `field` | VARCHAR(100) | Y | - | - | 전문 분야 (예: 청약, ETF). 여러 개면 `청약,부동산` 처럼 쉼표로 저장 (고를 수 있는 값은 API 12-2) |
 | `approval_status` | VARCHAR(20) | N | - | PENDING | PENDING / APPROVED / REVOKED |
 | `approved_by` | BIGINT | Y | FK → member.member_id | - | 승인한 관리자 |
 | `approved_at` | DATETIME | Y | - | - | 승인 일시 |
@@ -531,6 +533,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `category_id` | BIGINT | N | FK → category.category_id | - | 소주제 |
 | `title` | VARCHAR(100) | N | - | - | 강의 제목 |
 | `description` | TEXT | Y | - | - | 강의 소개 |
+| `level` | VARCHAR(20) | N | - | BEGINNER | 난이도: BEGINNER 입문 / ELEMENTARY 초급 / INTERMEDIATE 중급 / ADVANCED 고급 (#369) |
 | `thumbnail_url` | VARCHAR(500) | Y | - | - | 썸네일 |
 | `status` | VARCHAR(20) | N | - | DRAFT | DRAFT 작성 중 / REVIEW 검수 중 / APPROVED 허가 / REJECTED 반려 |
 | `is_public` | BOOLEAN | N | - | FALSE | 공개 여부 (허가 후에도 비공개 가능) |

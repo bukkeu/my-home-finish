@@ -42,6 +42,8 @@ public class Course extends BaseTimeEntity {
     private String thumbnailUrl;
     @Enumerated(EnumType.STRING)
     private CourseStatus status;    // 상태값은 enum (#295). DB 컬럼은 그대로 VARCHAR, 저장되는 값도 같다
+    @Enumerated(EnumType.STRING)
+    private CourseLevel level;      // 난이도 (#369). 안 고르면 입문(BEGINNER)
     private boolean isPublic;
     private LocalDate infoBaseDate;
     private String infoSource;
@@ -49,12 +51,13 @@ public class Course extends BaseTimeEntity {
     private LocalDateTime approvedAt;
     private LocalDateTime deletedAt;
 
-    private Course(Long instructorId, Long categoryId, String title, String description,
+    private Course(Long instructorId, Long categoryId, String title, String description, CourseLevel level,
                    LocalDate infoBaseDate, String infoSource) {
         this.instructorId = instructorId;
         this.categoryId = categoryId;
         this.title = title;
         this.description = description;
+        this.level = level;
         this.infoBaseDate = infoBaseDate;
         this.infoSource = infoSource;
         this.status = CourseStatus.DRAFT;
@@ -63,8 +66,14 @@ public class Course extends BaseTimeEntity {
 
     /* 강의 생성 (API 73, TCH-01). 작성 중(DRAFT)·비공개로 시작한다 */
     public static Course create(Long instructorId, Long categoryId, String title, String description,
+                                CourseLevel level, LocalDate infoBaseDate, String infoSource) {
+        return new Course(instructorId, categoryId, title, description, level, infoBaseDate, infoSource);
+    }
+
+    /* 난이도를 따로 고르지 않은 강의 (입문, #369) */
+    public static Course create(Long instructorId, Long categoryId, String title, String description,
                                 LocalDate infoBaseDate, String infoSource) {
-        return new Course(instructorId, categoryId, title, description, infoBaseDate, infoSource);
+        return create(instructorId, categoryId, title, description, CourseLevel.BEGINNER, infoBaseDate, infoSource);
     }
 
     /* 화면·JSON·관리자 로그가 읽는 상태 문자열 ("REVIEW" 등). 응답 모양을 바꾸지 않으려고 String 으로 돌려준다 */
@@ -113,7 +122,8 @@ public class Course extends BaseTimeEntity {
         this.isPublic = false;
     }
 
-    /* 공개·비공개 (API 93). 허가된 강의만 바꿀 수 있다 → 허가 안 된 강의가 공개되는 일을 막는다 */
+    /* 공개·비공개 (API 93 관리자, API 76-1 강사 #369). 허가된 강의만 바꿀 수 있다 → 허가 안 된 강의가 공개되는 일을 막는다.
+     * 공개 여부만 바뀌고 상태는 그대로다 (다시 검수하지 않는다) */
     public void changeVisibility(boolean isPublic) {
         if (!isApproved()) {
             throw new BusinessException(CourseErrorCode.COURSE_NOT_APPROVED);
@@ -149,12 +159,13 @@ public class Course extends BaseTimeEntity {
 
     /* 강의 정보 수정 (API 75, TCH-06·SP-31). 검수 중에는 못 고친다.
      * 허가된 강의를 고치면 다시 검수(REVIEW) → 허가 전까지 사용자에게 보이지 않는다(isVisibleToLearner) */
-    public void change(Long categoryId, String title, String description, LocalDate infoBaseDate, String infoSource,
-                       LocalDateTime now) {
+    public void change(Long categoryId, String title, String description, CourseLevel level,
+                       LocalDate infoBaseDate, String infoSource, LocalDateTime now) {
         checkEditable();
         this.categoryId = categoryId;
         this.title = title;
         this.description = description;
+        this.level = level;
         this.infoBaseDate = infoBaseDate;
         this.infoSource = infoSource;
         reReviewIfApproved(now);

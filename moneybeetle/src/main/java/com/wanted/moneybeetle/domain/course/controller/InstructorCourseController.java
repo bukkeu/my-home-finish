@@ -4,6 +4,8 @@ import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseEditDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.CourseStatusDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseVisibilityDTO;
+import com.wanted.moneybeetle.domain.course.model.dto.CourseVisibilityResultDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonIdsDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.LessonSaveDTO;
 import com.wanted.moneybeetle.domain.course.model.dto.MyCourseListDTO;
@@ -23,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,9 +39,10 @@ import org.springframework.web.multipart.MultipartFile;
 /* comment.
 *   담당 : DBA ① (강의·퀴즈)
 *   GET/POST /api/v1/instructor/courses, GET/PUT/DELETE /api/v1/instructor/courses/{courseId}
-*   POST /thumbnail, PUT /lessons, PUT /test-quiz, PUT /quiz, POST /review-request
+*   POST /thumbnail, PUT /lessons, PUT /test-quiz, PUT /quiz, POST /review-request, PATCH /visibility
 *   화면 : /instructor/dashboard, /instructor/course-create
 *   - 72~77 (#30), 78~80 영상·요약글·퀴즈 저장 + 영상 파일 올리기 (#31), 81 검수 요청 (#32)
+*   - 76-1 공개 켜기/끄기 (#369)
 *   - 권한: SecurityConfig가 /api/v1/instructor/** 를 승인된 강사(INSTRUCTOR)만 허용. 본인 강의 확인은 서비스가 한다
 *  */
 @RestController
@@ -83,6 +87,15 @@ public class InstructorCourseController {
     public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthDetails me, @PathVariable Long courseId) {
         instructorCourseService.deleteCourse(memberIdOf(me), courseId);
         return ResponseEntity.noContent().build();
+    }
+
+    /* API 76-1 공개 켜기/끄기 (허가된 본인 강의만, 다시 검수하지 않음) */
+    @PatchMapping("/{courseId}/visibility")
+    public ApiResponse<CourseVisibilityResultDTO> changeVisibility(@AuthenticationPrincipal AuthDetails me,
+                                                                   @PathVariable Long courseId,
+                                                                   @Valid @RequestBody CourseVisibilityDTO request) {
+        return ApiResponse.success(
+                instructorCourseService.changeVisibility(memberIdOf(me), courseId, request.isPublic()));
     }
 
     /* API 77 썸네일 업로드 (multipart/form-data, 필드 이름 file) */

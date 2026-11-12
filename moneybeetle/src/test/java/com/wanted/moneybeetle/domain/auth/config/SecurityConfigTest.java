@@ -33,8 +33,8 @@ class SecurityConfigTest {
     @RestController
     static class DummyController {
         @GetMapping({"/api/v1/auth/check-email", "/api/v1/admin/auth/login", "/api/v1/courses",
-                "/api/v1/admin/members", "/api/v1/instructor/courses", "/api/v1/instructor/quizzes",
-                "/api/v1/instructor/summaries", "/admin/dashboard", "/mypage",
+                "/api/v1/admin/members", "/api/v1/instructor/courses", "/api/v1/instructor/profile",
+                "/api/v1/instructor/quizzes", "/api/v1/instructor/summaries", "/admin/dashboard", "/mypage",
                 "/instructor/dashboard"})
         String ok() {
             return "ok";
@@ -104,6 +104,15 @@ class SecurityConfigTest {
     }
 
     @Test
+    void 학생_계정이_강사_프로필_API를_부르면_403_JSON() throws Exception {   // 이슈 #365, API 12-1·12-2
+        mockMvc.perform(get("/api/v1/instructor/profile").with(as("MEMBER")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+        mockMvc.perform(get("/api/v1/instructor/profile"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void 일반_회원이_관리자_화면에_오면_403() throws Exception {
         mockMvc.perform(get("/admin/dashboard").with(as("MEMBER")))
                 .andExpect(status().isForbidden());
@@ -134,6 +143,7 @@ class SecurityConfigTest {
     void 역할이_맞으면_통과한다() throws Exception {
         mockMvc.perform(get("/api/v1/admin/members").with(as("ADMIN"))).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/instructor/courses").with(as("INSTRUCTOR"))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/instructor/profile").with(as("INSTRUCTOR"))).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/courses").with(as("MEMBER"))).andExpect(status().isOk());
     }
 }

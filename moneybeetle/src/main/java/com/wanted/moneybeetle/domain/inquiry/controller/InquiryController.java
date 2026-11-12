@@ -6,6 +6,7 @@ import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryCreatedDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryDetailDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryListItemDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryReplyCreateDTO;
+import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryReplyUpdateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.dto.InquiryUpdateDTO;
 import com.wanted.moneybeetle.domain.inquiry.model.service.InquiryService;
 import com.wanted.moneybeetle.global.common.ApiResponse;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   담당 : DBA ① (문의)
  *   GET/POST /api/v1/inquiries, GET/PATCH/DELETE /api/v1/inquiries/{inquiryId}
  *   POST /api/v1/inquiries/{inquiryId}/replies   (API 47~52, #22)
+ *   PATCH/DELETE /api/v1/inquiries/{inquiryId}/replies/{replyId} (API 52-1·52-2 답변 수정·삭제, #370)
  *   GET /api/v1/instructor/inquiries             (API 82, #32에서 추가)
  *   화면 : /user/inquiry
  *   로그인 회원: @AuthenticationPrincipal AuthDetails (#132). 관리자 여부는 권한(role)이 ADMIN인지로 판단
@@ -93,6 +95,23 @@ public class InquiryController {
         Long replyId = inquiryService.createReply(memberIdOf(me), isAdmin(me), inquiryId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(InquiryCreatedDTO.ofReply(replyId)));
+    }
+
+    @PatchMapping("/{inquiryId}/replies/{replyId}")
+    public ResponseEntity<Void> updateReply(@AuthenticationPrincipal AuthDetails me,
+                                            @PathVariable Long inquiryId,
+                                            @PathVariable Long replyId,
+                                            @Valid @RequestBody InquiryReplyUpdateDTO request) {
+        inquiryService.updateReply(memberIdOf(me), inquiryId, replyId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{inquiryId}/replies/{replyId}")
+    public ResponseEntity<Void> deleteReply(@AuthenticationPrincipal AuthDetails me,
+                                            @PathVariable Long inquiryId,
+                                            @PathVariable Long replyId) {
+        inquiryService.deleteReply(memberIdOf(me), inquiryId, replyId);
+        return ResponseEntity.noContent().build();
     }
 
     private Pageable toPageable(int page, int size) {

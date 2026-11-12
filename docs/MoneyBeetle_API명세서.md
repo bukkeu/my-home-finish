@@ -129,6 +129,8 @@
 | 10 | `POST` | `/api/v1/auth/password-reset/request` | 비밀번호 재설정 요청 | 비회원 | USR-09, DP-12 |
 | 11 | `POST` | `/api/v1/auth/password-reset/confirm` | 비밀번호 재설정 | 비회원 | USR-09, DP-12 |
 | 12 | `POST` | `/api/v1/auth/instructor-signup` | 강사 가입 신청 | 비회원 | USR-10, ADM-06 |
+| 12-1 | `GET` | `/api/v1/instructor/profile` | 내 강사 프로필 조회 (이름·한 줄 소개·강사 소개·전문 분야) | 강사 | USR-12 |
+| 12-2 | `PATCH` | `/api/v1/instructor/profile` | 내 강사 프로필 수정 | 강사 | USR-12 |
 | 13 | `GET` | `/api/v1/members/me` | 내 정보 (메뉴 프로필) | 회원 | HOM-03~05, USR-12 |
 | 14 | `PATCH` | `/api/v1/members/me` | 설정 수정 | 회원 | USR-12, SP-02 |
 | 15 | `POST` | `/api/v1/members/me/profile-image` | 프로필 이미지 변경 | 회원 | USR-12, DP-32 |
@@ -192,6 +194,8 @@
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
 | 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 52-1 | `PATCH` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 수정 | 답글 작성자 | TCH-09 |
+| 52-2 | `DELETE` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 삭제 | 답글 작성자 | TCH-09 |
 | 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
 
 ### 모의투자
@@ -232,6 +236,7 @@
 | 74 | `GET` | `/api/v1/instructor/courses/{courseId}` | 강의 편집 정보 | 강사 (본인 강의) | TCH-01~05 |
 | 75 | `PUT` | `/api/v1/instructor/courses/{courseId}` | 강의 수정 | 강사 (본인 강의) | TCH-06, SP-31 |
 | 76 | `DELETE` | `/api/v1/instructor/courses/{courseId}` | 강의 삭제 | 강사 (본인 강의) | TCH-06, SP-32 |
+| 76-1 | `PATCH` | `/api/v1/instructor/courses/{courseId}/visibility` | 공개 켜기/끄기 | 강사 (본인 강의) | TCH-06 |
 | 77 | `POST` | `/api/v1/instructor/courses/{courseId}/thumbnail` | 썸네일 업로드 | 강사 | TCH-01 |
 | 78 | `PUT` | `/api/v1/instructor/courses/{courseId}/lessons` | 영상·요약글 저장 | 강사 | TCH-02~03, SP-30, DP-31, DP-33 |
 | 79 | `PUT` | `/api/v1/instructor/courses/{courseId}/test-quiz` | 테스트 퀴즈 저장 | 강사 | TCH-04 |
@@ -495,10 +500,13 @@
 POST /api/v1/auth/login
 Content-Type: application/x-www-form-urlencoded
 
-email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
+email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 ```
 
 - `email`은 대소문자·앞뒤 공백을 구분하지 않는다. `next`는 선택이고, 로그인 뒤 이동할 사이트 안 경로(`/`로 시작)만 받는다.
+- `remember-me`는 선택이다(**로그인 상태 유지**, #367). `true`(체크박스 값 `on`도 받는다)면 성공 응답에 14일짜리 `remember-me` 쿠키(HttpOnly, SameSite=Lax)를 함께 준다. 세션이 끝나도(브라우저 재시작·30분 만료) 이 쿠키로 다음 요청에서 다시 로그인된다. 보내지 않으면 쿠키 없이 세션(30분)만 쓴다. 강사·학생 로그인이 같은 값을 쓴다. **관리자(`ADMIN`)는 이 API로 로그인해도 `remember-me`를 무시하고 쿠키를 주지 않는다**(세션만, 관리자 로그인 API 83에도 없다).
+- `remember-me` 없이 로그인하면(관리자 포함) 브라우저에 남아 있던 이전 `remember-me` 쿠키를 지운다. 로그아웃 없이 다른 계정으로 로그인한 뒤 이전 계정으로 돌아가지 않게 하기 위해서다.
+- 쿠키로 다시 로그인할 때도 정지·탈퇴·잠금을 확인해 막고 쿠키를 지운다. 비밀번호를 바꾸면 기존 쿠키는 쓸 수 없다.
 - JSON 본문(`{"email": ...}`)은 읽지 않아 `LOGIN_FAILED` 로 응답한다.
 
 **Response**
@@ -528,7 +536,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | USR-06 |
-| 설명 | 세션을 끝낸다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
+| 설명 | 세션을 끝내고 로그인 상태 유지 쿠키(`remember-me`, #367)도 지운다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
 
 **Request**
 
@@ -695,6 +703,52 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 ```
 
 **Error**: `INVALID_INPUT`(형식 오류·비밀번호 확인 불일치), `EMAIL_INVALID`, `EMAIL_DUPLICATED`, `NICKNAME_INVALID`, `NICKNAME_DUPLICATED`, `FORBIDDEN_WORD`, `PASSWORD_INVALID`, `PASSWORD_MISMATCH`, `TERMS_NOT_FOUND`, `REQUIRED_TERMS_NOT_AGREED`, `IDENTITY_NOT_VERIFIED`
+
+#### 12-1. 내 강사 프로필 조회
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/profile` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | USR-12 |
+| 설명 | 강사 마이페이지에 보여 줄 내 강사 정보. 이름(`displayName`), 한 줄 소개(`headline`), 강사 소개(`bio`), 전문 분야 목록(`fields`)을 돌려준다. 한 줄 소개·강사 소개를 입력한 적 없으면 `null`. `fields` 는 저장된 `instructor_profile.field`(`청약,부동산` 처럼 쉼표로 저장)를 목록으로 나눈 것이고, 가입 때 직접 쓴 값처럼 고를 수 있는 목록에 없는 옛 값도 그대로 내려간다. 닉네임은 이 API 가 아니라 내 정보(API 13)·설정 수정(API 14)에서 다룬다. 학생(MEMBER) 계정은 `403`(`FORBIDDEN`). (#365) |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Error**: `INSTRUCTOR_PROFILE_NOT_FOUND`(404, 강사 정보가 없는 계정)
+
+#### 12-2. 내 강사 프로필 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/profile` |
+| Method | `PATCH` |
+| 권한 | 강사 |
+| 관련 | USR-12 |
+| 설명 | 이름, 한 줄 소개, 강사 소개, 전문 분야를 한꺼번에 바꾼다(보낸 값으로 모두 교체). 이름(`displayName`)은 필수, 앞뒤 공백을 뺀 2~20자이고 금칙어를 검사한다(`FORBIDDEN_WORD`). `headline` 은 60자, `bio` 는 1,000자 이하이며 비우거나 `null` 로 보내면 지운다. `fields` 는 1개 이상이고 고를 수 있는 값은 `청약`, `ETF`, `주식`, `부동산`, `예적금`, `재테크 기초`, `대출` 뿐이다(같은 값을 두 번 보내면 하나만 저장). 길이·분야 오류는 `INVALID_INPUT`(입력칸별 안내는 `error.fields`). 닉네임은 바꾸지 않는다(API 14). 응답은 저장된 값(API 12-1 과 같은 모양). 학생(MEMBER) 계정은 `403`. (#365) |
+
+**Request**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Response**
+
+```json
+{ "displayName": "박서연", "headline": "청약 가점, 한 번에 이해시켜 드려요", "bio": "10년차 공인중개사입니다...", "fields": ["청약", "부동산"] }
+```
+
+**Error**: `INVALID_INPUT`(이름·한 줄 소개·강사 소개 길이, 전문 분야 없음·고를 수 없는 값), `FORBIDDEN_WORD`, `INSTRUCTOR_PROFILE_NOT_FOUND`(404)
 
 #### 13. 내 정보 (메뉴 프로필)
 
@@ -1679,6 +1733,46 @@ Header: Idempotency-Key: 7c1e...
 
 **Error**: `FORBIDDEN`, `FORBIDDEN_WORD`
 
+#### 52-1. 답글 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` |
+| Method | `PATCH` |
+| 권한 | 답글 작성자 |
+| 관련 | TCH-09 (화면설계 5.3.1 답변 수정) |
+| 설명 | 답글을 쓴 본인만 고칠 수 있다(다른 강사·관리자·문의 작성자는 `FORBIDDEN`). 내용은 답글 작성(API 52)과 같이 1~1,000자, 금칙어 검사. 관리자가 숨긴 답글은 고칠 수 없다(`INQUIRY_REPLY_HIDDEN`). 문의 상태는 바꾸지 않는다. 지워졌거나 그 문의의 답글이 아니면 `NOT_FOUND` (#370) |
+
+```json
+{ "content": "부모님과 함께 살면 포함돼요." }
+```
+
+**Response**
+
+```
+204 No Content
+```
+
+**Error**: `FORBIDDEN`, `NOT_FOUND`, `INQUIRY_REPLY_HIDDEN`, `FORBIDDEN_WORD`, `INVALID_INPUT`
+
+#### 52-2. 답글 삭제
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` |
+| Method | `DELETE` |
+| 권한 | 답글 작성자 |
+| 관련 | TCH-09 (화면설계 5.3.1 답변 삭제), DH-01 |
+| 설명 | 답글을 쓴 본인만 지울 수 있다. 실제로 지우지 않고 `deleted_at`을 남긴다(문의 상세에서 빠짐). 강사·관리자 답글을 지워서 그 문의에 남은 답변(문의 작성자가 아닌 사람의 답글)이 없으면 문의 상태를 `WAITING`으로 되돌린다. 문의 작성자의 추가 댓글은 답변으로 세지 않는다. 지워졌거나 그 문의의 답글이 아니면 `NOT_FOUND` (#370) |
+
+**Response**
+
+```
+204 No Content
+```
+
+**Error**: `FORBIDDEN`, `NOT_FOUND`
+
 #### 149. 내가 쓴 문의 모음
 
 | 항목 | 내용 |
@@ -2202,7 +2296,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-06 |
-| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). |
+| 설명 | 내 강의(삭제 제외), 최근 만든 순. 검수 상태 포함. status 필터는 선택. learners(학습 시작 회원 수), waitingInquiries(답변 대기 문의 수, 삭제·숨김 제외), rejectReason(반려 상태일 때 가장 최근 반려 사유, 그 외 null). categoryName(소주제)·parentCategoryName(상위 카테고리), level(난이도), lessonCount(영상 수)·totalDurationSeconds(영상 재생 시간 합, 초), createdAt(등록일). 강의 수와 상관없이 한 번에 모아 조회(#369). |
 
 **Request**
 
@@ -2211,7 +2305,7 @@ Header: Idempotency-Key: 31aa...
 **Response**
 
 ```json
-{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null } ] }
+{ "items": [ { "courseId": 7, "title": "청약통장 기초와 가점 계산", "status": "APPROVED", "isPublic": true, "thumbnailUrl": "/uploads/....png", "learners": 214, "waitingInquiries": 2, "rejectReason": null, "categoryId": 21, "categoryName": "청약통장", "parentCategoryName": "부동산", "level": "BEGINNER", "lessonCount": 3, "totalDurationSeconds": 1520, "createdAt": "2026-10-01T10:00:00" } ] }
 ```
 
 #### 73. 강의 생성
@@ -2222,12 +2316,12 @@ Header: Idempotency-Key: 31aa...
 | Method | `POST` |
 | 권한 | 강사 |
 | 관련 | TCH-01 |
-| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
+| 설명 | 사용 중인 소주제(2단계), 제목(100자), 소개(2,000자), 난이도(level, 선택: BEGINNER 입문·ELEMENTARY 초급·INTERMEDIATE 중급·ADVANCED 고급, 안 보내면 BEGINNER), 정보 기준일·출처(200자, 선택)로 강의를 만든다(DRAFT, 비공개). 제목·소개·출처 금칙어 검사. |
 
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "청약통장 기초와 가점 계산", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
+{ "categoryId": 21, "title": "청약통장 기초와 가점 계산", "description": "...", "level": "BEGINNER", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2237,7 +2331,7 @@ Header: Idempotency-Key: 31aa...
 { "courseId": 7, "status": "DRAFT" }
 ```
 
-**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리)
+**Error**: `FORBIDDEN_WORD`, `CATEGORY_NOT_SELECTABLE`(없거나 비활성이거나 상위 카테고리), `INVALID_INPUT`(level 이 네 값이 아님)
 
 #### 74. 강의 편집 정보
 
@@ -2255,7 +2349,7 @@ Header: Idempotency-Key: 31aa...
 
 **Response**
 
-- `{ courseId, categoryId, title, description, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
+- `{ courseId, categoryId, title, description, level, thumbnailUrl, status, isPublic, infoBaseDate, infoSource, submittedAt, approvedAt, rejectReason, lessons: [ { lessonId, sortOrder, title, videoUrl, durationSeconds, summary } ], quizzes: [ { quizQuestionId, quizType(TEST·MAIN), questionType, content, explanation, sortOrder, choices: [ { quizChoiceId, content, isCorrect, sortOrder } ] } ] }`
 
 **Error**: `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
@@ -2272,7 +2366,7 @@ Header: Idempotency-Key: 31aa...
 **Request**
 
 ```json
-{ "categoryId": 21, "title": "...", "description": "...", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
+{ "categoryId": 21, "title": "...", "description": "...", "level": "INTERMEDIATE", "infoBaseDate": "2026-10-01", "infoSource": "청약홈" }
 ```
 
 **Response**
@@ -2291,7 +2385,7 @@ Header: Idempotency-Key: 31aa...
 | Method | `DELETE` |
 | 권한 | 강사 (본인 강의) |
 | 관련 | TCH-06, SP-32 |
-| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(비공개는 관리자에게 요청). 없으면 Soft Delete(deleted_at). |
+| 설명 | 본인 강의만. 학습 기록이 있으면 삭제 불가(대신 API 76-1로 비공개). 없으면 Soft Delete(deleted_at). |
 
 **Request**
 
@@ -2302,6 +2396,32 @@ Header: Idempotency-Key: 31aa...
 - 204 No Content
 
 **Error**: `COURSE_HAS_LEARNERS`, `FORBIDDEN`, `NOT_FOUND`
+
+#### 76-1. 공개 켜기/끄기
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/courses/{courseId}/visibility` |
+| Method | `PATCH` |
+| 권한 | 강사 (본인 강의) |
+| 관련 | TCH-06 |
+| 설명 | 본인 강의 중 허가(APPROVED)된 강의만 공개·비공개를 바꾼다. 공개 여부만 바뀌고 상태는 그대로(관리자 검수를 다시 받지 않음). 허가 안 된 강의는 공개할 수 없음(#369). |
+
+**Request**
+
+- Path: courseId=7
+
+```json
+{ "isPublic": false }
+```
+
+**Response**
+
+```json
+{ "courseId": 7, "status": "APPROVED", "isPublic": false }
+```
+
+**Error**: `COURSE_NOT_APPROVED`(허가 안 된 강의), `INVALID_INPUT`(isPublic 없음), `FORBIDDEN`(남의 강의), `NOT_FOUND`(삭제된 강의)
 
 #### 77. 썸네일 업로드
 
@@ -2468,7 +2588,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-08 |
-| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount는 필터와 상관없이 내 강의 전체의 답변 대기 수. |
+| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount·answeredCount는 필터와 상관없이 내 강의 전체의 답변 대기·답변 완료 수. 줄마다 writerNickname(질문한 학생 닉네임, 탈퇴 회원은 "탈퇴한 사용자")이 온다 (#370). |
 
 **Request**
 
@@ -2477,7 +2597,7 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 ```json
-{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
+{ "waitingCount": 2, "answeredCount": 5, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "writerNickname": "민지", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
 
 **Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
@@ -4117,6 +4237,7 @@ email=admin@moneybeetle.kr&password=...
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
 | 학습 | `INQUIRY_TOO_LONG` | 400 | 내용은 1,000자까지 쓸 수 있어요 |
 | 학습 | `INQUIRY_DAILY_LIMIT` | 429 | 오늘은 문의를 더 남길 수 없어요 |
+| 학습 | `INQUIRY_REPLY_HIDDEN` | 409 | 관리자가 숨긴 답변은 수정할 수 없어요 |
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |

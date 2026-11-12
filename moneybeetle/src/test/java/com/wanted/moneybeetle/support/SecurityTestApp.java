@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.PropertySource;
 
 /* comment.
 *   담당 : SCM (공통 기반·보안)
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Import;
 *   - 로그인 핸들러는 domain.auth.handler 패키지를 통째로 스캔한다 → 핸들러가 새로 생겨도 테스트 파일은 그대로
 *   - 쓰는 법 : @SpringBootTest(classes = {SecurityTestApp.class, 테스트에만 필요한 컨트롤러·서비스})
 *     핸들러가 쓰는 서비스를 가짜로 두려면 테스트 클래스에 @MockSecurityServices 를 붙인다
+*   - 로그인 상태 유지 쿠키 서명 키(REMEMBER_ME_KEY, #367)는 기본값이 없어 테스트 전용 값을 security-test.properties 에서 읽는다
 *  */
 @Configuration
 @EnableAutoConfiguration(exclude = {
@@ -26,5 +28,6 @@ import org.springframework.context.annotation.Import;
         HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class})
 @ComponentScan(basePackageClasses = AuthSuccessHandler.class)        // 로그인 성공·실패·로그아웃·관리자 로그인 핸들러
 @Import({SecurityConfig.class, SecurityErrorHandler.class})
+@PropertySource("classpath:security-test.properties")
 public class SecurityTestApp {
 }
