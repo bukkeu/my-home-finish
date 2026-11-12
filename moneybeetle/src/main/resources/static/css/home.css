@@ -116,6 +116,8 @@
 .hm-card__go { align-self: flex-start; text-decoration: none; }
 .hm-card__lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 0; background: color-mix(in srgb, var(--color-bg) 88%, transparent);
   backdrop-filter: blur(5px); color: var(--color-text); font: inherit; text-align: center; cursor: pointer; }
+/* 잠금 버튼은 카드 전체를 덮고 카드는 overflow: hidden 이라, 공통 포커스 윤곽선(바깥 2px)이 잘린다. 안쪽으로 그려 키보드 사용자가 위치를 볼 수 있게 한다 */
+.hm-card__lock:focus-visible { outline-offset: -4px; }
 .hm-card__lock-title { font-size: 14px; font-weight: 500; }
 .hm-card__lock-sub { color: var(--color-neutral-700); font-size: 12px; }
 
