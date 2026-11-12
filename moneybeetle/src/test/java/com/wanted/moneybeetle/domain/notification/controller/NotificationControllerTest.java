@@ -17,6 +17,7 @@ import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.domain.notification.model.dto.NotificationDTO;
 import com.wanted.moneybeetle.domain.notification.model.dto.NotificationListDTO;
 import com.wanted.moneybeetle.domain.notification.model.entity.Notification;
+import com.wanted.moneybeetle.domain.notification.model.entity.NotificationType;
 import com.wanted.moneybeetle.domain.notification.model.service.NotificationService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
@@ -69,7 +70,7 @@ class NotificationControllerTest {
     @Test
     @DisplayName("알림 목록: 안 읽은 수와 items 를 isRead 필드명으로 돌려준다 (API 25)")
     void getsNotifications() throws Exception {
-        Notification notification = Notification.create(8L, Notification.TYPE_INQUIRY_REPLY,
+        Notification notification = Notification.create(8L, NotificationType.INQUIRY_REPLY,
                 "문의에 답변이 등록됐어요", "/user/inquiry/3");
         ReflectionTestUtils.setField(notification, "notificationId", 5L);
         when(service.findNotifications(eq(8L), any(Pageable.class)))

@@ -29,6 +29,7 @@
 .srch-group { display: flex; flex-direction: column; gap: 12px; }
 .srch-group__head { display: flex; align-items: center; gap: 10px; }
 .srch-group__head strong { font-size: 18px; }
+.srch-group__note { margin: 0; font-size: 14px; color: var(--color-neutral-700); word-break: keep-all; }
 .srch-badge { color: #263B1A; font-size: 13px; font-weight: 800; border-radius: 999px; padding: 4px 14px; background: #9fe870; }
 .srch-badge.is-stock { background: #DCEFF0; }
 .srch-badge.is-term { background: #F2EAD9; }

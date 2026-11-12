@@ -44,7 +44,7 @@ class NotificationServiceTest {
     @Test
     @DisplayName("send: 받는 회원·종류·제목·이동 주소로 알림을 저장한다 (처음에는 안 읽음)")
     void sendSavesNotification() {
-        service.send(7L, Notification.TYPE_INQUIRY_REPLY, "문의에 답변이 등록됐어요", "/user/inquiry/3");
+        service.send(7L, NotificationType.INQUIRY_REPLY, "문의에 답변이 등록됐어요", "/user/inquiry/3");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(repository).save(captor.capture());
@@ -57,38 +57,30 @@ class NotificationServiceTest {
     }
 
     @Test
-    @DisplayName("send(NotificationType): 모든 종류가 enum 이름 그대로 저장되고, 옛 문자열 버전과 같은 알림을 만든다")
-    void sendWithEnumSavesSameAsString() {
+    @DisplayName("send(NotificationType): 모든 종류가 enum 이름 그대로 저장된다")
+    void sendWithEnumSavesName() {
         for (NotificationType type : NotificationType.values()) {
             NotificationRepository fresh = mock(NotificationRepository.class);
             NotificationService freshService = new NotificationService(fresh);
 
             freshService.send(7L, type, "제목", "/user/home");
-            freshService.send(7L, type.name(), "제목", "/user/home");
 
             ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
-            verify(fresh, org.mockito.Mockito.times(2)).save(captor.capture());
-            Notification byEnum = captor.getAllValues().get(0);
-            Notification byString = captor.getAllValues().get(1);
-            assertThat(byEnum.getType()).as(type.name()).isEqualTo(type.name());
-            assertThat(byEnum.getMemberId()).isEqualTo(byString.getMemberId());
-            assertThat(byEnum.getType()).isEqualTo(byString.getType());
-            assertThat(byEnum.getTitle()).isEqualTo(byString.getTitle());
-            assertThat(byEnum.getLinkUrl()).isEqualTo(byString.getLinkUrl());
-            assertThat(byEnum.isRead()).isFalse();
+            verify(fresh).save(captor.capture());
+            Notification saved = captor.getValue();
+            assertThat(saved.getType()).as(type.name()).isEqualTo(type.name());
+            assertThat(saved.getMemberId()).isEqualTo(7L);
+            assertThat(saved.getTitle()).isEqualTo("제목");
+            assertThat(saved.getLinkUrl()).isEqualTo("/user/home");
+            assertThat(saved.isRead()).isFalse();
         }
     }
 
     @Test
-    @DisplayName("NotificationType: DB 에 저장돼 있는 종류 5개와 이름이 같고, 옛 문자열 상수도 같은 값이다")
+    @DisplayName("NotificationType: DB 에 저장돼 있는 종류 5개와 이름이 같다")
     void typeNamesMatchStoredValues() {
         assertThat(NotificationType.values()).extracting(Enum::name)
                 .containsExactlyInAnyOrder("UNLOCK", "INQUIRY_REPLY", "HOUSING_RESULT", "RANKING", "COURSE_REJECTED");
-        assertThat(Notification.TYPE_UNLOCK).isEqualTo(NotificationType.UNLOCK.name());
-        assertThat(Notification.TYPE_INQUIRY_REPLY).isEqualTo(NotificationType.INQUIRY_REPLY.name());
-        assertThat(Notification.TYPE_HOUSING_RESULT).isEqualTo(NotificationType.HOUSING_RESULT.name());
-        assertThat(Notification.TYPE_RANKING).isEqualTo(NotificationType.RANKING.name());
-        assertThat(Notification.TYPE_COURSE_REJECTED).isEqualTo(NotificationType.COURSE_REJECTED.name());
     }
 
     @Test
@@ -122,7 +114,7 @@ class NotificationServiceTest {
     @Test
     @DisplayName("send: 이동 주소는 비워 둘 수 있다")
     void linkUrlIsOptional() {
-        service.send(7L, Notification.TYPE_UNLOCK, "모의투자가 열렸어요", null);
+        service.send(7L, NotificationType.UNLOCK, "모의투자가 열렸어요", null);
 
         verify(repository).save(any(Notification.class));
     }
@@ -130,25 +122,25 @@ class NotificationServiceTest {
     @Test
     @DisplayName("send: 잘못된 값(회원 없음·빈 종류·빈 제목·긴 제목·바깥 주소)은 저장하지 않고 IllegalArgumentException")
     void sendRejectsInvalidValues() {
-        assertThatThrownBy(() -> service.send(null, "UNLOCK", "제목", null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, " ", "제목", null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "", null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "가".repeat(101), null))
+        assertThatThrownBy(() -> service.send(null, NotificationType.UNLOCK, "제목", null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Notification.create(7L, " ", "제목", null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "", null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "가".repeat(101), null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "U".repeat(31), "제목", null))
+        assertThatThrownBy(() -> Notification.create(7L, "U".repeat(31), "제목", null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "https://evil.example"))
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "https://evil.example"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "//evil.example"))
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "//evil.example"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "javascript:alert(1)"))
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "javascript:alert(1)"))
                 .isInstanceOf(IllegalArgumentException.class);
         // 브라우저가 "//evil.example" 로 해석하는 우회: 역슬래시, 탭·줄바꿈 삽입
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "/\\evil.example"))
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "/\\evil.example"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "/\t/evil.example"))
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "/\t/evil.example"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.send(7L, "UNLOCK", "제목", "/\n/evil.example"))
+        assertThatThrownBy(() -> service.send(7L, NotificationType.UNLOCK, "제목", "/\n/evil.example"))
                 .isInstanceOf(IllegalArgumentException.class);
         verify(repository, never()).save(any());
     }

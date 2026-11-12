@@ -59,7 +59,7 @@ class MemberPurgeRepositoryTest {
         member("active@gmail.com", "정상회원", null);                     // 탈퇴하지 않음
         Member old2 = member("old2@gmail.com", "오래전2", CUTOFF);        // 기준 시각 정확히 = 포함
         Member suspended = member("susp@gmail.com", "정지회원", null);
-        ReflectionTestUtilsHelper.setStatus(suspended, Member.STATUS_SUSPENDED);
+        ReflectionTestUtilsHelper.setStatus(suspended, MemberStatus.SUSPENDED.name());
         memberRepository.saveAndFlush(suspended);
 
         List<Member> targets = memberRepository.findPurgeTargets(CUTOFF, PageRequest.of(0, 100));

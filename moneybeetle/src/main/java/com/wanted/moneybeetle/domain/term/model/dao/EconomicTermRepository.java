@@ -4,6 +4,7 @@ import com.wanted.moneybeetle.domain.term.model.entity.EconomicTerm;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -34,4 +35,14 @@ public interface EconomicTermRepository extends JpaRepository<EconomicTerm, Long
             + "or t.description like concat('%', :keyword, '%')) "
             + "order by t.economicTermId asc")
     Slice<EconomicTerm> search(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * 통합 검색 (API 28): 사용 중인 용어 중 용어·뜻에 keyword 가 들어간 것을 등록 순으로 limit 개까지.
+     * keyword 의 LIKE 특수문자(! % _)는 부르는 쪽이 '!' 로 이스케이프해서 넘긴다 → 글자 그대로 찾는다
+     */
+    @Query("select t from EconomicTerm t where t.active = true "
+            + "and (t.term like concat('%', :keyword, '%') escape '!' "
+            + "or t.description like concat('%', :keyword, '%') escape '!') "
+            + "order by t.economicTermId asc")
+    List<EconomicTerm> searchActive(@Param("keyword") String keyword, Limit limit);
 }

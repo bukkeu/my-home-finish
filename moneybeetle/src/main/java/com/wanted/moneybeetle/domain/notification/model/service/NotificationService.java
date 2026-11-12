@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 *   알림 창구 (역할분담 문서 §7 연동 약속)
 *   - send(memberId, NotificationType, title, linkUrl) : 알림 한 건을 만든다 [호출: 신아림 검수 결과, 이재성 턴 진행·랭킹 공개, 서수영 청약 결과, 김예린 해금]
 *       부르는 쪽 트랜잭션에 함께 묶인다. 그 트랜잭션이 되돌려지면 알림도 사라진다
-*       종류를 문자열로 받는 send(Long, String, ...) 는 옮기는 동안만 남긴 옛 버전이다 (@Deprecated, 정리 이슈 #301)
 *   - TITLE_MAX_LENGTH / LINK_MAX_LENGTH : 다른 도메인이 엔티티를 몰라도 제목·주소를 자를 수 있게 공개한 한도
 *   - findNotifications / markRead / markAllRead : 내 알림 조회·읽음 (API 25~27)
 *   - 알림 끄기·읽음 표시 같은 화면 편의 설정은 브라우저가 맡고 서버는 모른다 (시스템 설계)
@@ -40,17 +39,6 @@ public class NotificationService {
      */
     @Transactional
     public void send(Long memberId, NotificationType type, String title, String linkUrl) {
-        notificationRepository.save(Notification.create(memberId, type, title, linkUrl));
-    }
-
-    /**
-     * 종류를 문자열로 받는 옛 버전. 다른 도메인 코드가 NotificationType 으로 옮길 때까지 남겨 두고 정리 이슈(#301)에서 지운다.
-     *
-     * @deprecated {@link #send(Long, NotificationType, String, String)} 를 쓴다
-     */
-    @Deprecated
-    @Transactional
-    public void send(Long memberId, String type, String title, String linkUrl) {
         notificationRepository.save(Notification.create(memberId, type, title, linkUrl));
     }
 

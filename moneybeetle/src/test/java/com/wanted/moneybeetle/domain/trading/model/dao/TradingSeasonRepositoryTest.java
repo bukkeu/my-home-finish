@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /* comment.
 *   담당 : PM (모의투자)
@@ -46,7 +47,8 @@ class TradingSeasonRepositoryTest {
         TradingSeason ended = TradingSeason.create("시즌 1", LocalDate.of(2026, 10, 19), 1L);
         ended.changeStatus(TradingSeason.STATUS_RUNNING);
         ended.changeStatus(TradingSeason.STATUS_SETTLING);
-        ended.changeStatus(TradingSeason.STATUS_ENDED);
+        ended.completeSettlement(LocalDate.of(2026, 11, 2).atStartOfDay());
+        ended.publishRanking(LocalDate.of(2026, 11, 2).atTime(1, 0));
         TradingSeason running = TradingSeason.create("시즌 2", LocalDate.of(2026, 11, 2), 1L);
         running.changeStatus(TradingSeason.STATUS_RUNNING);
         TradingSeason ready = TradingSeason.create("시즌 3", LocalDate.of(2026, 11, 16), 1L);
@@ -84,7 +86,8 @@ class TradingSeasonRepositoryTest {
         TradingSeason endedOnly = TradingSeason.create("시즌 6", LocalDate.of(2026, 10, 19), 1L);
         endedOnly.changeStatus(TradingSeason.STATUS_RUNNING);
         endedOnly.changeStatus(TradingSeason.STATUS_SETTLING);
-        endedOnly.changeStatus(TradingSeason.STATUS_ENDED);   // 랭킹을 공개하지 않고 상태만 종료
+        // #329 이전에 상태 변경으로만 종료한(랭킹을 공개하지 않은) 시즌이 남아 있는 경우를 흉내 낸다. 지금은 상태 변경으로 종료할 수 없다
+        ReflectionTestUtils.setField(endedOnly, "status", TradingSeason.STATUS_ENDED);
         TradingSeason current = TradingSeason.create("시즌 7", LocalDate.of(2026, 11, 2), 1L);
         current.changeStatus(TradingSeason.STATUS_RUNNING);
         TradingSeason later = published("시즌 8", LocalDate.of(2026, 11, 16));   // 더 늦게 시작한 시즌은 지난 시즌이 아니다

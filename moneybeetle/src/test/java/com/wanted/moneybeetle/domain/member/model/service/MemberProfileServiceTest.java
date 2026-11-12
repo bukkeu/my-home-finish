@@ -18,10 +18,10 @@ import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
+import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.file.FileStorageService;
-import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
 import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -45,6 +45,7 @@ class MemberProfileServiceTest {
     private FileStorageService fileStorageService;
     private AttendanceService attendanceService;
     private SystemSettingService systemSettingService;
+    private RankingAwardReader rankingAwardReader;
     private MemberProfileService service;
 
     @BeforeEach
@@ -55,8 +56,9 @@ class MemberProfileServiceTest {
         fileStorageService = mock(FileStorageService.class);
         attendanceService = mock(AttendanceService.class);
         systemSettingService = mock(SystemSettingService.class);   // 설정이 없으면 기본 해금 레벨 8·12
+        rankingAwardReader = mock(RankingAwardReader.class);   // 수상 내역 (구현은 trading.RankingService, #338). 기본은 빈 목록
         service = new MemberProfileService(memberService, growthService, courseService, attendanceService, fileStorageService,
-                new UnlockLevelProvider(systemSettingService));
+                new UnlockLevelProvider(systemSettingService), rankingAwardReader);
 
         LevelTable table = levelTable();   // when() 안에서 다른 Mock 을 만들지 않도록 먼저 만든다
         when(growthService.loadLevelTable()).thenReturn(table);
@@ -164,10 +166,25 @@ class MemberProfileServiceTest {
 
         assertThat(result.nickname()).isEqualTo("민지");
         assertThat(result.title()).isEqualTo("칭호15");
-        assertThat(result.awards()).isEmpty();
+        assertThat(result.awards()).isEmpty();   // 수상이 없는 회원
         assertThat(PublicProfileDTO.class.getRecordComponents())
                 .extracting(c -> c.getName())
                 .doesNotContain("email", "birthDate", "gender", "cash", "exp");
+    }
+
+    @Test
+    @DisplayName("공개 프로필의 수상 내역은 모의투자 도메인이 준 순서 그대로 시즌 이름·랭킹 종류·순위로 담는다 (#338)")
+    void publicProfileHasRankingAwards() {
+        when(memberService.getActiveProfile(2L)).thenReturn(profile(15, 2100, 0));   // 프로필의 회원 번호는 1
+        when(rankingAwardReader.findAwards(1L)).thenReturn(List.of(
+                new PublicProfileDTO.Award("시즌 7", "ASSET", 1), new PublicProfileDTO.Award("시즌 7", "RETURN", 3),
+                new PublicProfileDTO.Award("시즌 5", "ASSET", 2)));
+
+        PublicProfileDTO result = service.getPublicProfile(2L);
+
+        assertThat(result.awards()).containsExactly(
+                new PublicProfileDTO.Award("시즌 7", "ASSET", 1), new PublicProfileDTO.Award("시즌 7", "RETURN", 3),
+                new PublicProfileDTO.Award("시즌 5", "ASSET", 2));
     }
 
     @Test

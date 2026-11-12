@@ -10,6 +10,7 @@ import com.wanted.moneybeetle.domain.course.model.entity.LearningProgress;
 import com.wanted.moneybeetle.domain.course.model.entity.Lesson;
 import com.wanted.moneybeetle.domain.course.model.dto.WatchHistoryDTO;
 import com.wanted.moneybeetle.domain.course.model.entity.LessonWatch;
+import com.wanted.moneybeetle.domain.course.model.service.CategoryPathService;
 import com.wanted.moneybeetle.domain.course.model.service.CourseService;
 import com.wanted.moneybeetle.domain.member.model.service.InstructorService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
@@ -99,7 +100,7 @@ class LearningCountRepositoryTest {
         courseService = new CourseService(categoryRepository, courseRepository, lessonRepository, progressRepository,
                 watchRepository, scrapRepository, courseReviewRepository,
                 Clock.fixed(NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
-                mock(MemberService.class), mock(InstructorService.class));
+                mock(MemberService.class), mock(InstructorService.class), mock(CategoryPathService.class));
         visible = course("보이는 강의", true, false);
         other = course("다른 보이는 강의", true, false);
         hidden = course("비공개 강의", false, false);

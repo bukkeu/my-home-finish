@@ -1,6 +1,7 @@
 package com.wanted.moneybeetle.domain.member.model.dto;
 
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import com.wanted.moneybeetle.domain.member.model.entity.MemberStatus;
 import java.time.LocalDateTime;
 import lombok.Getter;
 
@@ -38,11 +39,11 @@ public class LoginMemberDTO {
     }
 
     public boolean isWithdrawn() {
-        return Member.STATUS_WITHDRAWN.equals(status);
+        return MemberStatus.WITHDRAWN.name().equals(status);
     }
 
     public boolean isSuspended() {
-        return Member.STATUS_SUSPENDED.equals(status);
+        return MemberStatus.SUSPENDED.name().equals(status);
     }
 
     /** 지금 로그인 잠금 중인가 */

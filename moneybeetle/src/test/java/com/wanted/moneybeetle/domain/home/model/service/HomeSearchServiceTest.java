@@ -15,6 +15,8 @@ import com.wanted.moneybeetle.domain.home.model.dto.SearchResultDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.StockSearchDTO;
 import com.wanted.moneybeetle.domain.trading.model.service.StockSearchService;
 import com.wanted.moneybeetle.domain.operation.model.service.SystemSettingService;
+import com.wanted.moneybeetle.domain.term.model.dto.EconomicTermDTO;
+import com.wanted.moneybeetle.domain.term.model.service.TermService;
 import com.wanted.moneybeetle.global.security.UnlockLevelProvider;
 import java.util.List;
 import java.util.OptionalInt;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Test;
 *  */
 class HomeSearchServiceTest {
 
+    private TermService termService;
     private CourseService courseService;
     private StockSearchService stockSearchService;
     private GrowthService growthService;
@@ -37,14 +40,16 @@ class HomeSearchServiceTest {
 
     @BeforeEach
     void setUp() {
+        termService = mock(TermService.class);
         courseService = mock(CourseService.class);
         stockSearchService = mock(StockSearchService.class);
         growthService = mock(GrowthService.class);
         systemSettingService = mock(SystemSettingService.class);   // 설정이 없으면 기본 모의투자 해금 Lv.8
-        service = new HomeService(null, courseService, growthService, stockSearchService, null, null,
+        service = new HomeService(termService, courseService, growthService, stockSearchService, null, null,
                 java.time.Clock.fixed(java.time.Instant.parse("2026-11-10T00:00:00Z"), java.time.ZoneId.of("Asia/Seoul")),
                 new UnlockLevelProvider(systemSettingService));
         when(courseService.search("청약")).thenReturn(List.of(CourseLabelDTO.of(7L, "청약통장 기초", "부동산 › 청약")));
+        when(termService.search("청약")).thenReturn(List.of(new EconomicTermDTO(11L, "청약 가점", "청약 점수 계산")));
         when(stockSearchService.searchStocks("청약")).thenReturn(List.of(StockSearchDTO.of(1L, "청약종목", "부동산")));
     }
 
@@ -53,14 +58,15 @@ class HomeSearchServiceTest {
         SearchResultDTO result = service.search("  청약 ", null);
 
         assertThat(result.getCourses()).extracting(CourseLabelDTO::getTitle).containsExactly("청약통장 기초");
-        assertThat(result.getTerms()).isEmpty();
+        assertThat(result.getTerms()).extracting(SearchResultDTO.TermItem::getEconomicTermId, SearchResultDTO.TermItem::getTerm,
+                SearchResultDTO.TermItem::getDescription).containsExactly(org.assertj.core.groups.Tuple.tuple(11L, "청약 가점", "청약 점수 계산"));
     }
 
     @Test
     void 빈_키워드는_아무것도_찾지_않는다() {
         assertThat(service.search("   ", 8L).getCourses()).isEmpty();
         assertThat(service.search(null, 8L).getStocks()).isEmpty();
-        verifyNoInteractions(courseService, stockSearchService, growthService);
+        verifyNoInteractions(termService, courseService, stockSearchService, growthService);
     }
 
     @Test

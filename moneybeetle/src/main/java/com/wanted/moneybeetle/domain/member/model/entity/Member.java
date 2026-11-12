@@ -37,17 +37,6 @@ public class Member {
     public static final String ROLE_INSTRUCTOR = "INSTRUCTOR";
     public static final String ROLE_ADMIN = "ADMIN";
 
-    /**
-     * 계정 상태 (SP-06). 이제 {@link MemberStatus} enum 을 쓴다. 다른 도메인 코드가 깨지지 않도록 남겨 둔 옛 문자열 상수이고,
-     * 모두 옮긴 뒤 마지막 정리 이슈(#301)에서 지운다.
-     */
-    @Deprecated
-    public static final String STATUS_ACTIVE = "ACTIVE";
-    @Deprecated
-    public static final String STATUS_SUSPENDED = "SUSPENDED";
-    @Deprecated
-    public static final String STATUS_WITHDRAWN = "WITHDRAWN";
-
     /** 탈퇴한 회원의 개인정보를 지우기까지 두는 기간(일) (DP-06) */
     public static final int PERSONAL_INFO_RETENTION_DAYS = 30;
     /** 개인정보를 지운 뒤 닉네임은 "탈퇴한 사용자#회원ID" 가 된다 (닉네임 컬럼은 NULL 불가·고유라서 ID 를 붙인다) */

@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -11,6 +14,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.NewsRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.NewsTagRepository;
@@ -42,16 +46,19 @@ import org.springframework.test.util.ReflectionTestUtils;
 *   NewsAdminService 확인 (DB 없이 Repository 는 가짜(mock))
 *   - 지난 턴(현재 턴 이하) 뉴스 : 제목·본문·메모만 수정, 턴·관련 분야·종목 변경과 삭제는 PAST_TURN_NEWS_LOCKED
 *   - 지난 턴에 등록하거나 옮기기 막음, 없는 분야·종목은 404, 목록에 관리자 메모 포함
+*   - 지난 턴 뉴스 수정은 관리자 작업 기록(NEWS_UPDATE)에 바뀌기 전후 값을 남긴다. 다음 턴 뉴스 수정은 남기지 않는다 (#340)
 *  */
 class NewsAdminServiceTest {
 
     private static final long SEASON_ID = 7L;
+    private static final Long ADMIN_ID = 1L;
 
     private TradingSeasonRepository seasonRepository;
     private NewsRepository newsRepository;
     private NewsTagRepository newsTagRepository;
     private SectorRepository sectorRepository;
     private StockRepository stockRepository;
+    private AdminLogService adminLogService;
     private NewsAdminService service;
 
     @BeforeEach
@@ -61,8 +68,9 @@ class NewsAdminServiceTest {
         newsTagRepository = mock(NewsTagRepository.class);
         sectorRepository = mock(SectorRepository.class);
         stockRepository = mock(StockRepository.class);
+        adminLogService = mock(AdminLogService.class);
         service = new NewsAdminService(seasonRepository, newsRepository, newsTagRepository, sectorRepository,
-                stockRepository);
+                stockRepository, adminLogService);
 
         // 시즌 7 은 5턴 진행 중
         TradingSeason season = TradingSeason.create("시즌 7", LocalDate.of(2026, 10, 19), new BigDecimal("100.00"),
@@ -157,7 +165,7 @@ class NewsAdminServiceTest {
     void 다음_턴_뉴스는_턴과_관련_분야_종목까지_고칠_수_있다() {
         News news = savedNews(40L, 6);
 
-        service.changeNews(40L, request(8, List.of(1L), List.of()));
+        service.changeNews(40L, request(8, List.of(1L), List.of()), ADMIN_ID);
 
         assertThat(news.getTurnNo()).isEqualTo(8);
         assertThat(news.getTitle()).isEqualTo("새 제목");
@@ -169,7 +177,7 @@ class NewsAdminServiceTest {
     void 다음_턴_뉴스를_지난_턴으로_옮길_수_없다() {
         News news = savedNews(40L, 6);
 
-        assertThatThrownBy(() -> service.changeNews(40L, request(5, List.of(), List.of())))
+        assertThatThrownBy(() -> service.changeNews(40L, request(5, List.of(), List.of()), ADMIN_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         assertThat(news.getTurnNo()).isEqualTo(6);
@@ -181,7 +189,7 @@ class NewsAdminServiceTest {
         when(newsTagRepository.findByNewsId(9L)).thenReturn(List.of(
                 NewsTag.createForSector(9L, 1L), NewsTag.createForStock(9L, 1L)));
 
-        service.changeNews(9L, request(5, List.of(1L), List.of(1L)));
+        service.changeNews(9L, request(5, List.of(1L), List.of(1L)), ADMIN_ID);
 
         assertThat(news.getTitle()).isEqualTo("새 제목");
         assertThat(news.getAdminMemo()).isEqualTo("새 메모");
@@ -193,10 +201,10 @@ class NewsAdminServiceTest {
         News news = savedNews(9L, 5);
         when(newsTagRepository.findByNewsId(9L)).thenReturn(List.of(NewsTag.createForStock(9L, 1L)));
 
-        assertThatThrownBy(() -> service.changeNews(9L, request(6, List.of(), List.of(1L))))
+        assertThatThrownBy(() -> service.changeNews(9L, request(6, List.of(), List.of(1L)), ADMIN_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
-        assertThatThrownBy(() -> service.changeNews(9L, request(5, List.of(1L), List.of(1L))))
+        assertThatThrownBy(() -> service.changeNews(9L, request(5, List.of(1L), List.of(1L)), ADMIN_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
         assertThat(news.getTitle()).isEqualTo("원래 제목");
@@ -221,7 +229,7 @@ class NewsAdminServiceTest {
     void 없는_뉴스를_고치거나_지우면_NOT_FOUND() {
         when(newsRepository.findSeasonIdByNewsId(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.changeNews(99L, request(6, List.of(), List.of())))
+        assertThatThrownBy(() -> service.changeNews(99L, request(6, List.of(), List.of()), ADMIN_ID))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(CommonErrorCode.NOT_FOUND);
         assertThatThrownBy(() -> service.deleteNews(99L))
@@ -257,7 +265,7 @@ class NewsAdminServiceTest {
         savedNews(51L, 7);
 
         service.createNews(SEASON_ID, request(6, List.of(1L), List.of(1L)));
-        service.changeNews(50L, request(6, List.of(1L), List.of(1L)));
+        service.changeNews(50L, request(6, List.of(1L), List.of(1L)), ADMIN_ID);
         service.deleteNews(51L);
 
         verify(seasonRepository, times(3)).findByIdForUpdate(SEASON_ID);
@@ -268,7 +276,7 @@ class NewsAdminServiceTest {
         savedNews(50L, 6);
         savedNews(51L, 7);
 
-        service.changeNews(50L, request(6, List.of(1L), List.of(1L)));
+        service.changeNews(50L, request(6, List.of(1L), List.of(1L)), ADMIN_ID);
         service.deleteNews(51L);
 
         // 뉴스 객체를 먼저 올리지 않고(시즌 번호만 읽음), 시즌 잠금 -> 뉴스 잠금 읽기 순서로 읽는다. 단순 findById 는 쓰지 않는다
@@ -280,5 +288,61 @@ class NewsAdminServiceTest {
         order.verify(seasonRepository).findByIdForUpdate(SEASON_ID);
         order.verify(newsRepository).findByIdForUpdate(51L);
         verify(newsRepository, never()).findById(any());
+    }
+    @Test
+    void 지난_턴_뉴스를_고치면_바뀌기_전후_값을_관리자_작업_기록에_남긴다() {
+        savedNews(9L, 5);
+        when(newsTagRepository.findByNewsId(9L)).thenReturn(List.of(
+                NewsTag.createForSector(9L, 1L), NewsTag.createForStock(9L, 1L)));
+
+        service.changeNews(9L, request(5, List.of(1L), List.of(1L)), ADMIN_ID);
+
+        ArgumentCaptor<String> detail = ArgumentCaptor.forClass(String.class);
+        verify(adminLogService).record(eq(ADMIN_ID), eq(NewsAdminService.ACTION_NEWS_UPDATE),
+                eq(NewsAdminService.TARGET_TYPE_NEWS), eq(9L), detail.capture());
+        assertThat(detail.getValue()).isEqualTo("{\"before\":{\"turnNo\":5,\"title\":\"원래 제목\",\"content\":\"원래 본문\","
+                + "\"adminMemo\":\"원래 메모\"},\"after\":{\"turnNo\":5,\"title\":\"새 제목\",\"content\":\"새 본문\","
+                + "\"adminMemo\":\"새 메모\"}}");
+    }
+
+    @Test
+    void 지난_턴_뉴스를_같은_값으로_저장하면_기록하지_않는다() {
+        savedNews(9L, 5);
+        when(newsTagRepository.findByNewsId(9L)).thenReturn(List.of());
+
+        service.changeNews(9L, new NewsSaveDTO(5, "원래 제목", "원래 본문", List.of(), List.of(), "원래 메모"), ADMIN_ID);
+
+        verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
+    }
+
+    @Test
+    void 다음_턴_뉴스_수정은_관리자_작업_기록에_남기지_않는다() {
+        savedNews(40L, 6);
+
+        service.changeNews(40L, request(6, List.of(1L), List.of(1L)), ADMIN_ID);
+
+        verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
+    }
+
+    @Test
+    void 지난_턴_뉴스를_고치다_막히면_기록하지_않는다() {
+        savedNews(9L, 5);
+        when(newsTagRepository.findByNewsId(9L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.changeNews(9L, request(6, List.of(), List.of()), ADMIN_ID))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
+        verify(adminLogService, never()).record(anyLong(), anyString(), anyString(), anyLong(), any());
+    }
+
+    @Test
+    void 로그인_관리자_번호가_없으면_뉴스를_고치지_않는다() {
+        News news = savedNews(9L, 5);
+
+        assertThatThrownBy(() -> service.changeNews(9L, request(5, List.of(), List.of()), null))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.UNAUTHORIZED);
+        assertThat(news.getTitle()).isEqualTo("원래 제목");
+        verify(newsRepository, never()).findSeasonIdByNewsId(any());
     }
 }

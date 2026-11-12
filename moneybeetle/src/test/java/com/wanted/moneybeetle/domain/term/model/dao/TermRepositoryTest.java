@@ -64,6 +64,48 @@ class TermRepositoryTest {
     }
 
     @Test
+    @DisplayName("통합 검색: 용어나 뜻에 키워드가 들어간 사용 중인 용어만 등록 순으로 찾는다 (비활성 용어는 제외)")
+    void searchActiveFindsByTermOrDescription() {
+        EconomicTerm byTerm = saveTerm("청약 가점", "점수");
+        EconomicTerm byDescription = saveTerm("주택 공급", "청약 제도의 기본");
+        EconomicTerm off = saveTerm("청약 통장", "비활성 용어");
+        off.deactivate();
+        saveTerm("복리", "이자에 이자");
+        termRepository.flush();
+
+        assertThat(termRepository.searchActive("청약", org.springframework.data.domain.Limit.of(50)))
+                .extracting(EconomicTerm::getEconomicTermId)
+                .containsExactly(byTerm.getEconomicTermId(), byDescription.getEconomicTermId());
+    }
+
+    @Test
+    @DisplayName("통합 검색: 개수 상한만큼만 등록 순으로 돌려준다")
+    void searchActiveHonorsLimit() {
+        for (int i = 1; i <= 5; i++) {
+            saveTerm("청약" + i, "설명" + i);
+        }
+        termRepository.flush();
+
+        assertThat(termRepository.searchActive("청약", org.springframework.data.domain.Limit.of(3)))
+                .extracting(EconomicTerm::getTerm).containsExactly("청약1", "청약2", "청약3");
+    }
+
+    @Test
+    @DisplayName("통합 검색: '!' 로 이스케이프한 키워드의 % 와 _ 는 글자 그대로 찾는다")
+    void searchActiveEscapesLikeCharacters() {
+        EconomicTerm percent = saveTerm("수익률 5%", "퍼센트");
+        saveTerm("수익률 50", "퍼센트 없음");
+        EconomicTerm underscore = saveTerm("a_b", "밑줄");
+        saveTerm("axb", "밑줄 없음");
+        termRepository.flush();
+
+        assertThat(termRepository.searchActive("5!%", org.springframework.data.domain.Limit.of(50)))
+                .extracting(EconomicTerm::getEconomicTermId).containsExactly(percent.getEconomicTermId());
+        assertThat(termRepository.searchActive("a!_b", org.springframework.data.domain.Limit.of(50)))
+                .extracting(EconomicTerm::getEconomicTermId).containsExactly(underscore.getEconomicTermId());
+    }
+
+    @Test
     @DisplayName("사용 중인 용어만 번호(등록) 순서로 돌려준다")
     void findsActiveTermsInOrder() {
         EconomicTerm a = saveTerm("복리", "이자에 이자");

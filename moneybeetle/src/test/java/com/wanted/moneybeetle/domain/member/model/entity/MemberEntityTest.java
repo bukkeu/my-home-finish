@@ -23,7 +23,7 @@ class MemberEntityTest {
 
         assertThat(m.getEmail()).isEqualTo("minji@gmail.com");
         assertThat(m.getRole()).isEqualTo(Member.ROLE_MEMBER);
-        assertThat(m.getStatus()).isEqualTo(Member.STATUS_ACTIVE);
+        assertThat(m.getStatus()).isEqualTo(MemberStatus.ACTIVE.name());
         assertThat(m.isActive()).isTrue();
         assertThat(m.isMember()).isTrue();
         assertThat(m.getLevel()).isEqualTo(1);
@@ -159,7 +159,7 @@ class MemberEntityTest {
         Member m = newMember();
 
         assertThat(m.getMemberStatus()).isEqualTo(MemberStatus.ACTIVE);
-        assertThat(m.getStatus()).isEqualTo("ACTIVE").isEqualTo(Member.STATUS_ACTIVE);
+        assertThat(m.getStatus()).isEqualTo("ACTIVE").isEqualTo(MemberStatus.ACTIVE.name());
         assertThat(MemberStatus.from("SUSPENDED")).isEqualTo(MemberStatus.SUSPENDED);
         assertThatThrownBy(() -> MemberStatus.from("DELETED")).isInstanceOf(IllegalArgumentException.class);
     }

@@ -1075,7 +1075,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | --- | --- | --- | --- | --- | --- |
 | `admin_log_id` | BIGINT | N | PK, AUTO_INCREMENT | - | 기록 ID |
 | `admin_id` | BIGINT | N | FK → member.member_id | - | 작업한 관리자 |
-| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE. 회원·강사 관리(#37, target_type MEMBER): MEMBER_SUSPEND / MEMBER_ACTIVATE / MEMBER_ROLE_CHANGE / INSTRUCTOR_APPROVE |
+| `action` | VARCHAR(50) | N | - | - | TURN_ADVANCE / SETTLE / RANKING_PUBLISH / CASH_GIVE 등. 모의 청약(#178): HOUSING_COMPLEX_CREATE / HOUSING_COMPLEX_UPDATE / HOUSING_COMPLEX_DELETE / HOUSING_COMPUTE / HOUSING_ANNOUNCE. 회원·강사 관리(#37, target_type MEMBER): MEMBER_SUSPEND / MEMBER_ACTIVATE / MEMBER_ROLE_CHANGE / INSTRUCTOR_APPROVE. 모의투자 뉴스(#340, target_type NEWS): NEWS_UPDATE (지난 턴 뉴스 수정, detail 에 수정 전·후 제목·본문·관리자 메모) |
 | `target_type` | VARCHAR(30) | N | - | - | 대상 종류 (SEASON, MEMBER, COURSE, HOUSING_COMPLEX …) |
 | `target_id` | BIGINT | Y | - | - | 대상 ID |
 | `detail` | JSON | Y | - | - | 변경 전·후 값 |

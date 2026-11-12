@@ -43,7 +43,7 @@ class MemberPurgeTest {
         member.purgePersonalInfo();
 
         assertThat(member.getMemberId()).isEqualTo(8L);
-        assertThat(member.getStatus()).isEqualTo(Member.STATUS_WITHDRAWN);
+        assertThat(member.getStatus()).isEqualTo(MemberStatus.WITHDRAWN.name());
         assertThat(member.getWithdrawnAt()).isEqualTo(LocalDateTime.of(2026, 10, 1, 9, 0));
         assertThat(member.getRole()).isEqualTo(Member.ROLE_MEMBER);
     }

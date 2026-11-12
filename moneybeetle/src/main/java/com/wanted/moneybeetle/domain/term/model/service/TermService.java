@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,11 +39,15 @@ import org.springframework.transaction.annotation.Transactional;
 *   - findMonth : 그 달에 일정이 있는 날의 현황 (지정·자동 구분)
 *   - assign : 한 날짜를 서로 다른 용어 5개로 지정한다. 지난 날짜는 바꿀 수 없다 (오늘은 가능).
 *       기존 일정(자동 선정 포함)을 지우고 새로 넣는다.
+*   - search : 통합 검색(API 28, #339)의 경제 용어. 사용 중인 용어 중 용어·뜻에 키워드가 들어간 것을 최대 SEARCH_LIMIT 개 돌려준다.
+*       홈 도메인의 HomeService 가 이 메서드를 부른다. 키워드의 LIKE 특수문자(! % _)는 글자 그대로 찾는다.
 *  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class TermService {
+
+    static final int SEARCH_LIMIT = 50;                 // 통합 검색 경제 용어 최대 개수 (API 28, 강의 검색과 같은 50개)
 
     private final TermScheduleRepository termScheduleRepository;
     private final EconomicTermRepository economicTermRepository;
@@ -171,5 +176,20 @@ public class TermService {
         List<Long> ids = rows.stream().map(TermSchedule::getEconomicTermId).distinct().toList();
         return economicTermRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(EconomicTerm::getEconomicTermId, Function.identity()));
+    }
+
+    /** 통합 검색 (API 28): 사용 중인 용어 중 용어·뜻에 키워드가 들어간 것을 등록 순으로 최대 SEARCH_LIMIT 개. 키워드가 비면 빈 목록 */
+    public List<EconomicTermDTO> search(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+        return economicTermRepository.searchActive(escapeLike(keyword.strip()), Limit.of(SEARCH_LIMIT)).stream()
+                .map(EconomicTermDTO::from)
+                .toList();
+    }
+
+    /* LIKE 특수문자를 글자 그대로 찾게 한다 (쿼리의 escape '!'). 이스케이프 문자 '!' 를 먼저 바꾼다 */
+    private String escapeLike(String keyword) {
+        return keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 }

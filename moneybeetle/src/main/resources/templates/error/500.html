@@ -1,18 +1,44 @@
 <!DOCTYPE html>
-<!-- comment.
-    담당 : SCM 서수영 (#2, 공통 오류 처리)
-    내용 : 서버 오류 - "처리하지 못했어요. 내 정보는 바뀌지 않았어요"
+<!--/* comment.
+    담당 : SCM 서수영 (#2, 공통 오류 처리 · 화면 #333)
+    내용 : 서버 오류 - 예상하지 못한 오류
     경로 : EP-04
--->
+    화면 : 프로토타입 moneybeetle-page/500.dc.html
+    값   : message - 서버가 넣은 안내 문구 (없으면 화면 기본 문구)
+           Spring 기본 오류 처리(/error)가 넣는 'No message available' 은 문구가 없는 것으로 본다 (devtools 실행 시 생김)
+    버튼 : 홈으로 가기 - 역할별 첫 화면 (로그인 전 /, 회원 /user/home, 강사 /instructor/dashboard, 관리자 /admin/dashboard)
+           이전 페이지 - static/js/error.js (기록이 없으면 홈으로)
+*/-->
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>오류가 발생했어요</title>
+  <th:block th:replace="~{fragments/layout/header :: headFragment('오류가 발생했어요')}"></th:block>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/error.css}">
 </head>
-<body>
-<h1>500</h1>
-<p th:text="${message} ?: '처리하지 못했어요. 내 정보는 바뀌지 않았어요.'">처리하지 못했어요. 내 정보는 바뀌지 않았어요.</p>
-<a th:href="@{/}">메인으로</a>
+<body th:with="hasMessage=${!#strings.isEmpty(message) and message != 'No message available'},
+                 home=${#authorization.expression('hasAuthority(''ADMIN'')')} ? '/admin/dashboard'
+                 : (${#authorization.expression('hasAuthority(''INSTRUCTOR'')')} ? '/instructor/dashboard'
+                 : (${#authorization.expression('hasAuthority(''MEMBER'')')} ? '/user/home' : '/'))">
+<div class="error-page">
+  <a class="error-brand" th:href="@{${home}}" aria-label="머니비틀 홈"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+  <main class="error-center">
+    <section class="error-card">
+      <div class="error-text">
+        <span class="error-badge">오류 코드 500</span>
+        <span class="error-code">500</span>
+        <h1 class="error-title">오류가 발생했어요</h1>
+        <p class="error-desc" th:if="${hasMessage}" th:text="${message}"></p>
+        <p class="error-desc" th:unless="${hasMessage}">일시적인 오류로 페이지를 불러오지 못했어요.<br>잠시 후 다시 시도해 주세요.</p>
+        <div class="error-actions">
+          <a class="error-btn error-btn-home" th:href="@{${home}}">홈으로 가기</a>
+          <button type="button" class="error-btn error-btn-back" data-error-back th:data-home="@{${home}}">이전 페이지</button>
+        </div>
+      </div>
+      <div class="error-mascot">
+        <img th:src="@{/images/beetle-mascot.png}" alt="머니비틀 캐릭터">
+      </div>
+    </section>
+  </main>
+</div>
+<script th:src="@{/js/error.js}" defer></script>
 </body>
 </html>
-

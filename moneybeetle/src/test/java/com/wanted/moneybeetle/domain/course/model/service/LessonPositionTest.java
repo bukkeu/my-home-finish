@@ -56,7 +56,7 @@ class LessonPositionTest {
         courseService = new CourseService(mock(CategoryRepository.class), courseRepository, lessonRepository,
                 progressRepository, watchRepository, mock(ScrapRepository.class), mock(CourseReviewRepository.class),
                 Clock.fixed(Instant.parse("2026-11-11T01:00:00Z"), ZoneId.of("Asia/Seoul")),
-                mock(MemberService.class), mock(InstructorService.class));
+                mock(MemberService.class), mock(InstructorService.class), mock(CategoryPathService.class));
 
         Course course = mock(Course.class);
         when(course.isVisibleToLearner()).thenReturn(true);

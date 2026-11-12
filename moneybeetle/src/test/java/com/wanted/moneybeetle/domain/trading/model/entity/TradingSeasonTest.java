@@ -64,8 +64,31 @@ class TradingSeasonTest {
         season.changeStatus(TradingSeason.STATUS_HOLIDAY);
         season.changeStatus(TradingSeason.STATUS_RUNNING);     // 일요일 휴장 뒤 다시 진행
         season.changeStatus(TradingSeason.STATUS_SETTLING);
-        season.changeStatus(TradingSeason.STATUS_ENDED);
+        // 종료는 상태 변경이 아니라 정산 -> 랭킹 공개로만 된다 (#329)
+        season.completeSettlement(LocalDateTime.of(2026, 11, 30, 0, 0));
+        season.publishRanking(LocalDateTime.of(2026, 11, 30, 0, 1));
 
+        assertThat(season.isEnded()).isTrue();
+    }
+
+    @Test
+    void 정산_중_시즌은_상태_변경으로_종료할_수_없다_정산_전후_모두() {
+        TradingSeason season = season();
+        season.changeStatus(TradingSeason.STATUS_RUNNING);
+        season.changeStatus(TradingSeason.STATUS_SETTLING);
+
+        assertThat(season.canChangeStatusTo(TradingSeason.STATUS_ENDED)).isFalse();
+        assertThatThrownBy(() -> season.changeStatus(TradingSeason.STATUS_ENDED))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION);
+
+        season.completeSettlement(LocalDateTime.of(2026, 11, 30, 0, 0));
+        assertThatThrownBy(() -> season.changeStatus(TradingSeason.STATUS_ENDED))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TradingErrorCode.INVALID_STATUS_TRANSITION);
+        // 거절돼도 정산 중 그대로라 랭킹 공개로 끝낼 수 있다
+        assertThat(season.getStatus()).isEqualTo(TradingSeason.STATUS_SETTLING);
+        season.publishRanking(LocalDateTime.of(2026, 11, 30, 0, 1));
         assertThat(season.isEnded()).isTrue();
     }
 

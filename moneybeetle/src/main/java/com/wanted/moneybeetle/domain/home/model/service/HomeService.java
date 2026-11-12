@@ -34,7 +34,7 @@ import org.springframework.stereotype.Service;
 *   course / term / trading 서비스의 조회 메서드만 모아서 보여 준다 (다른 도메인 테이블 직접 조회 금지)
 *   - 통합 검색(#15, API 28) : 강의(보이는 강의만), 경제 용어, 종목(모의투자 해금 레벨 이상일 때만. 운영 설정, 기본 Lv.8)
 *     키워드는 앞뒤 공백을 빼고, 비어 있으면 빈 결과
-*     TODO(DBA ② TermService) 경제 용어 검색 메서드가 생기면 terms 를 채운다 (지금은 빈 목록)
+*     경제 용어는 term 도메인의 TermService.search (사용 중인 용어, 최대 50개, #339)
 *   - 홈 화면 (API 19): 오늘의 경제 용어(term), 이어서 볼 강의·학습 기록(course), 트레이닝 해금(growth 의 레벨)을 한 번에 모은다.
 *     시안의 값(#261): 이어서 볼 영상의 길이·몇 강째인지·소주제(course), 모의투자 시즌 요약(trading), 접수 중 공고 수·내 납입 횟수(housing)도 담는다.
 *     요약은 해금된 기능만 만들고, 만들 수 없으면(시즌·통장 없음, 예상 밖 오류) 홈 전체를 실패시키지 않고 그 요약만 null 로 둔다.
@@ -179,7 +179,10 @@ public class HomeService {
         if (word.isEmpty()) {
             return SearchResultDTO.empty();
         }
-        return SearchResultDTO.of(courseService.search(word), List.of(), searchStocksIfUnlocked(word, memberId));
+        List<SearchResultDTO.TermItem> terms = termService.search(word).stream()
+                .map(term -> new SearchResultDTO.TermItem(term.economicTermId(), term.term(), term.description()))
+                .toList();
+        return SearchResultDTO.of(courseService.search(word), terms, searchStocksIfUnlocked(word, memberId));
     }
 
     /** 종목은 모의투자가 해금된 회원에게만 보여 준다 (INV-01) */

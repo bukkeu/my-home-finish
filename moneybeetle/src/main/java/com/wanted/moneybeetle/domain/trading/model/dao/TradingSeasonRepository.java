@@ -59,8 +59,8 @@ public interface TradingSeasonRepository extends JpaRepository<TradingSeason, Lo
 
     /**
      * 이 시작일보다 먼저 시작했고 랭킹을 공개한 시즌 중 가장 최근 시즌 = 모의투자 홈의 "지난 시즌 랭킹" (#310).
-     * 상태(ENDED)가 아니라 공개 시각으로 고른다 : 관리자가 정산 -> 종료로 상태만 바꾸면 랭킹을 공개하지 않은 종료 시즌이
-     * 생길 수 있고, 그 시즌은 랭킹 API(62)가 RANKING_NOT_PUBLISHED 로 거절한다
+     * 상태(ENDED)가 아니라 공개 시각으로 고른다 : #329 이전에 상태 변경으로만 종료한(랭킹을 공개하지 않은) 시즌이 남아 있을 수
+     * 있고, 그 시즌은 랭킹 API(62)가 RANKING_NOT_PUBLISHED 로 거절한다
      */
     Optional<TradingSeason> findFirstByStartDateBeforeAndRankingPublishedAtIsNotNullOrderByStartDateDesc(
             LocalDate startDate);

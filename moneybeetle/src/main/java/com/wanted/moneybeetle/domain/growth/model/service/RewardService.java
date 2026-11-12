@@ -34,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 *   다른 도메인이 부르는 보상 창구 (역할분담 문서 §7 연동 약속)
 *   - grant(memberId, ruleCode, sourceId)             : 경험치·캐시 지급   [호출: 신아림 학습 완료·퀴즈, 출석]
 *   - grantRankingReward(memberId, rank, awardId)     : 시즌 랭킹 1~3위 캐시 지급 (SP-64) [호출: 이재성 랭킹 공개]
-*   - spendCash(memberId, CashSource, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입] (String 버전은 @Deprecated)
+*   - spendCash(memberId, CashSource, sourceId, amt)  : 캐시 사용         [호출: 이재성 시즌 참가, 서수영 청약통장 납입]
 *   - adjustByAdmin(adminId, memberId, give, amt, why): 관리자 수동 지급·회수 [호출: growth.CashAdjustService, 이슈 #39]
 *   - getBalance(memberId) / getBalanceSnapshot       : 회원 캐시 잔액·성장 정보 조회
 *   - findCashHistories / findExpHistories            : 내역 조회 (API 22, 23)
@@ -308,24 +308,6 @@ public class RewardService {
         MemberBalanceDTO after = memberService.deductCash(memberId, amount);
         cashHistoryRepository.save(CashHistory.use(memberId, source, sourceId, amount, after.getCash()));
         return after.getCash();
-    }
-
-    /**
-     * 캐시를 사용한다 (옛 문자열 버전). {@link #spendCash(Long, CashSource, Long, long)} 로 옮겨 가는 동안만 남겨 둔다.
-     * 문자열은 CashSource 이름과 같아야 하고, 모르는 문자열은 예전처럼 IllegalArgumentException 이다. 마지막 정리 이슈(#301)에서 지운다.
-     *
-     * @deprecated 원인 종류를 CashSource 로 넘기는 spendCash 를 쓴다
-     */
-    @Deprecated
-    @Transactional
-    public long spendCash(Long memberId, String sourceType, Long sourceId, long amount) {
-        CashSource source = null;
-        for (CashSource candidate : CashSource.values()) {
-            if (candidate.name().equals(sourceType)) {
-                source = candidate;
-            }
-        }
-        return spendCash(memberId, source, sourceId, amount);
     }
 
     /**

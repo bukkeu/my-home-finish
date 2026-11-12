@@ -9,6 +9,7 @@
 *     늦게 온 응답이 최신 결과를 덮지 않게 요청 번호가 마지막인 것만 그린다.
 *   - 키보드: ↑↓ 로 고르고 Enter 로 이동, Esc 로 닫는다. 아무것도 고르지 않고 Enter 를 누르면 입력한 글자로 그대로 검색한다.
 *   - 접근성: 입력칸이 combobox, 목록이 listbox, 각 항목이 option 이다 (aria-activedescendant 로 고른 항목을 알린다).
+*   - 강의는 서버가 최대 50개만 준다 (CourseService.SEARCH_LIMIT, #296). 50개를 받으면 "50건+"로 보인다 (#341, search.js 와 같은 규칙).
 *   서버가 준 문구는 모두 textContent 로 넣는다 (HTML 로 해석하지 않는다).
 *  */
 (function () {
@@ -23,8 +24,11 @@
   var SEARCH_PATH = form.getAttribute('action') || '/user/search';
   function searchHref(q) { return SEARCH_PATH + '?q=' + encodeURIComponent(q); }
 
+  /** 서버가 주는 강의 최대 개수 (CourseService.SEARCH_LIMIT 과 같아야 한다). 이만큼 받으면 더 있을 수 있다 */
+  var COURSE_LIMIT = 50;
+
   var GROUPS = [
-    { key: 'courses', label: '강의', badge: 'is-course',
+    { key: 'courses', label: '강의', badge: 'is-course', limit: COURSE_LIMIT,
       title: function (i) { return i.title; },
       meta: function (i) { return String(i.categoryName || '').split('›').map(function (s) { return s.trim(); }).filter(Boolean).join(' · '); },
       href: function (i) { return i.courseId != null ? '/user/lecture-detail?courseId=' + encodeURIComponent(i.courseId) : null; } },
@@ -148,13 +152,16 @@
     input.removeAttribute('aria-activedescendant');
     var nodes = [];
     GROUPS.forEach(function (g) {
-      var all = (data && data[g.key] || []).filter(function (i) { return g.title(i) && g.href(i); });
+      var received = data && data[g.key] || [];
+      var all = received.filter(function (i) { return g.title(i) && g.href(i); });
       if (!all.length) return;
+      // 상한만큼 받았으면 더 있을 수 있다 (#341)
+      var count = all.length + '건' + (g.limit && received.length >= g.limit ? '+' : '');
       var group = el('div', 'mb-suggest__group');
       group.setAttribute('role', 'group');
-      group.setAttribute('aria-label', g.label + ' ' + all.length + '건');
+      group.setAttribute('aria-label', g.label + ' ' + count);
       var head = el('div', 'mb-suggest__head');
-      head.append(el('span', 'mb-suggest__badge ' + g.badge, g.label), el('span', null, all.length + '건'));
+      head.append(el('span', 'mb-suggest__badge ' + g.badge, g.label), el('span', null, count));
       group.appendChild(head);
       all.slice(0, PER_GROUP).forEach(function (i) { group.appendChild(option(g.href(i), q, g.title(i), g.meta(i))); });
       nodes.push(group);

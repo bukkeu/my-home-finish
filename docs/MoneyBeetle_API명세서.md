@@ -879,7 +879,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | DP-03, HOM-06 |
-| 설명 | 닉네임, 프로필 이미지, 칭호, 레벨, 랭킹 수상 내역만 보여 준다. 이메일·생년월일·성별은 내려주지 않는다. 탈퇴·정지 회원은 `MEMBER_NOT_FOUND`. (`awards`는 모의투자 도메인이 수상 내역 조회를 공개하기 전까지 빈 목록) |
+| 설명 | 닉네임, 프로필 이미지, 칭호, 레벨, 랭킹 수상 내역만 보여 준다. 이메일·생년월일·성별은 내려주지 않는다. 탈퇴·정지 회원은 `MEMBER_NOT_FOUND`. `awards`는 랭킹 공개(API 139) 때 받은 상위 3위 수상(`ranking_award`) 중 랭킹을 공개한 시즌 것만이고, 최근 시즌(시작일 늦은 순)부터, 같은 시즌 안에서는 순자산(`ASSET`) → 수익률(`RETURN`) 순서다. 수상이 없으면 빈 목록 (#338) |
 
 **Request**
 
@@ -1120,7 +1120,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01, INV-06 |
-| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. 키워드는 앞뒤 공백을 빼고 비어 있으면 세 목록 모두 빈 결과. 강의는 보이는 강의(허가·공개·미삭제) 중 제목에 키워드가 들어간 것을 최근 강의부터, 종목은 모의투자 해금(Lv.8) 회원에게만 사용 중 분야·종목 중 이름에 키워드가 들어간 것(`stockId`, `name`, `sectorName`). 경제 용어는 경제 용어 담당 검색 메서드가 생기면 채운다(그전에는 빈 목록). 로그인 회원 번호는 세션에서 꺼내며, 로그인 정보가 없으면 종목은 빈 목록 (#15). 헤더 검색창의 추천 검색어(자동완성, #278)도 이 API를 그대로 쓴다. 화면이 입력을 멈춘 뒤 한 번 요청하고, 종류마다 건수와 앞의 3개를 보여 준다 |
+| 설명 | 강의, 경제 용어, 종목(해금 시)을 키워드로 찾는다. DB 키워드 검색. 키워드는 앞뒤 공백을 빼고 비어 있으면 세 목록 모두 빈 결과. 강의는 보이는 강의(허가·공개·미삭제) 중 제목에 키워드가 들어간 것을 최근 강의부터 최대 50개(#296), 종목은 모의투자 해금(Lv.8) 회원에게만 사용 중 분야·종목 중 이름에 키워드가 들어간 것(`stockId`, `name`, `sectorName`). 경제 용어는 사용 중인 용어 중 용어·뜻에 키워드가 들어간 것을 등록 순으로 최대 50개(#339, `economicTermId`, `term`, `description`). 키워드의 `%`·`_`는 글자 그대로 찾는다. 로그인 회원 번호는 세션에서 꺼내며, 로그인 정보가 없으면 종목은 빈 목록 (#15). 헤더 검색창의 추천 검색어(자동완성, #278)도 이 API를 그대로 쓴다. 화면이 입력을 멈춘 뒤 한 번 요청하고, 종류마다 건수와 앞의 3개를 보여 준다 |
 
 **Request**
 
@@ -3229,7 +3229,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PATCH` |
 | 권한 | 관리자 |
 | 관련 | ADM-10, SP-65 |
-| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING → ENDED 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. 그 밖의 변경과 거꾸로 가는 변경은 거절. |
+| 설명 | READY → RUNNING ⇄ HOLIDAY → SETTLING 순서로만(SP-65). 휴장(HOLIDAY) 뒤에는 다시 RUNNING으로 돌아오고, 정산(SETTLING)은 RUNNING·HOLIDAY에서 시작한다. **SETTLING → ENDED 는 이 API 로 바꿀 수 없다** : 종료는 정산(API 138) 뒤 랭킹 공개(API 139)로만 된다(상태 변경으로 바로 끝내면 정산·공개·이월금 확정을 할 수 없게 되므로, #329). `{"status":"ENDED"}` 를 포함해 그 밖의 변경과 거꾸로 가는 변경은 `INVALID_STATUS_TRANSITION`(409). |
 
 **Request**
 
@@ -3615,7 +3615,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-27, SP-60 |
-| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
+| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스를 고치면 로그인 관리자 번호로 admin_log 에 남긴다: action `NEWS_UPDATE`, targetType `NEWS`, targetId = 뉴스 번호, detail = 바뀌기 전후 `turnNo`·`title`·`content`·`adminMemo` (바뀐 값이 없으면 남기지 않음, 다음 턴 이후 뉴스 수정은 남기지 않음). 로그인 관리자 번호가 없으면 401 `UNAUTHORIZED` (#43, #340) |
 
 **Request**
 
@@ -3625,7 +3625,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`, `UNAUTHORIZED`
 
 #### 134. 뉴스 삭제
 
