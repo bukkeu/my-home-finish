@@ -155,6 +155,9 @@
 .lec-step__sub { font-size: 12px; color: var(--color-neutral-700); }
 .lec-step--locked { opacity: .55; }
 .lec-goal { display: flex; align-items: center; gap: 10px; border-top: 1px dashed var(--color-divider); margin-top: 8px; padding: 12px 10px 0; }
+/* 학습 완료 (#402) : 목업처럼 줄 배경 연두, 체크 원 초록 */
+.lec-goal--done { border-top: 0; margin-top: 12px; padding: 12px 10px; border-radius: 12px; background: var(--color-accent-100); }
+.lec-goal--done .lec-step__mark { background: var(--color-accent); color: var(--color-accent-700); }
 
 /* ---------- 반응형 (NFR-10) ---------- */
 @media (max-width: 1023px) {
