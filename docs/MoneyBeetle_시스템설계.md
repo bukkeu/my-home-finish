@@ -60,7 +60,7 @@ flowchart LR
 
 ## 애플리케이션 모듈 구성
 
-서버는 **도메인(기능 영역)별 패키지**로 나눕니다. 패키지 이름은 팀 프로젝트 골격(`moneybeetle/README.md`)을 따르고, 담당·이슈 범위는 `docs/MoneyBeetle_역할분담.md`와 GitHub 이슈의 담당자 배정을 기준으로 합니다. 같은 도메인 안에서도 이슈에 따라 담당자가 다를 수 있습니다. 모든 도메인 안은 `controller` / `model/dao` / `model/dto` / `model/entity` / `model/service` / `exception`으로 같은 모양입니다. 화면은 역할별 주소(`/user`, `/instructor`, `/admin`)로 나뉘고, 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(`AdminCourseController` 등). 코드 작성 규칙은 코딩 컨벤션 문서를 따릅니다.
+서버는 **도메인(기능 영역)별 패키지**로 나눕니다. 패키지 이름은 팀 프로젝트 골격(`moneybeetle/README.md`)을 따르고, 담당·이슈 범위는 `docs/MoneyBeetle_역할분담.md`와 GitHub 이슈의 담당자 배정을 기준으로 합니다. 같은 도메인 안에서도 이슈에 따라 담당자가 다를 수 있습니다. 모든 도메인 안은 `controller` / `model/dao` / `model/dto` / `model/entity` / `model/policy` / `model/service` / `exception`으로 같은 모양입니다(필요 없는 폴더는 두지 않습니다). 화면은 역할별 주소(`/user`, `/instructor`, `/admin`)로 나뉘고, 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(`AdminCourseController` 등). 코드 작성 규칙은 코딩 컨벤션 문서를 따릅니다.
 
 | 서버 패키지 | 맡는 일 | 쓰는 화면 | 담당 | 호출하는 모듈 |
 | --- | --- | --- | --- | --- |

@@ -121,7 +121,7 @@ com.wanted.moneybeetle
    └─ trading              모의투자·주문·랭킹·시즌·정산
 ```
 
-도메인 안은 같은 모양입니다: `controller` / `exception` / `model/{dao, dto, entity, service}`
+도메인 안은 같은 모양입니다: `controller` / `exception` / `model/{dao, dto, entity, policy, service}`
 (필요 없는 폴더는 두지 않습니다. `auth`만 `config`, `handler`가 더 있습니다.)
 
 관리자·강사용 Controller·Service도 해당 도메인 안에 둡니다(예: `course/controller/AdminCourseController`, `InstructorCourseController`). `admin` 패키지는 따로 만들지 않습니다.
