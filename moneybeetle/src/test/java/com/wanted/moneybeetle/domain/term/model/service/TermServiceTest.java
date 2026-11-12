@@ -55,6 +55,31 @@ class TermServiceTest {
         });
     }
 
+    @Test
+    @DisplayName("통합 검색: 앞뒤 공백을 빼고 LIKE 특수문자를 이스케이프해 상한 50개로 찾고, 용어 한 건 모양으로 돌려준다")
+    void searchEscapesKeywordAndLimits() {
+        when(termRepository.searchActive(org.mockito.ArgumentMatchers.eq("5!%!_!!"),
+                org.mockito.ArgumentMatchers.eq(org.springframework.data.domain.Limit.of(TermService.SEARCH_LIMIT))))
+                .thenReturn(List.of(term(3)));
+
+        List<com.wanted.moneybeetle.domain.term.model.dto.EconomicTermDTO> result = service.search("  5%_!  ");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).economicTermId()).isEqualTo(3L);
+        assertThat(result.get(0).term()).isEqualTo("용어3");
+        assertThat(result.get(0).description()).isEqualTo("뜻3");
+        assertThat(TermService.SEARCH_LIMIT).isEqualTo(50);
+    }
+
+    @Test
+    @DisplayName("통합 검색: 키워드가 비어 있으면 DB 를 부르지 않고 빈 목록")
+    void searchWithBlankKeywordReturnsEmpty() {
+        assertThat(service.search(null)).isEmpty();
+        assertThat(service.search("   ")).isEmpty();
+        org.mockito.Mockito.verify(termRepository, org.mockito.Mockito.never())
+                .searchActive(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
+
     private EconomicTerm term(long id) {
         EconomicTerm term = EconomicTerm.create("용어" + id, "뜻" + id);
         ReflectionTestUtils.setField(term, "economicTermId", id);
