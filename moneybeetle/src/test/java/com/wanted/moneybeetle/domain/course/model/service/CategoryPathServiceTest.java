@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -192,8 +193,9 @@ class CategoryPathServiceTest {
         AtomicInteger reads = new AtomicInteger();
         when(categoryRepository.findAll()).thenAnswer(invocation -> {
             if (reads.incrementAndGet() == 1) {
-                service.markChanged();   // 이 읽기 도중 다른 변경이 커밋됐다 (트랜잭션 밖이라 바로 반영)
-                return categories;       // 옛 값
+                // 이 읽기 도중, 다른 스레드의 독립된 관리자 트랜잭션이 카테고리를 바꾸고 커밋한다 (끝날 때까지 기다린다)
+                CompletableFuture.runAsync(() -> tx.executeWithoutResult(status -> admin(service).delete(1L))).join();
+                return categories;       // 이 읽기는 옛 값
             }
             return List.of(renamed);
         });
