@@ -2,9 +2,11 @@ package com.wanted.moneybeetle.domain.course.model.service;
 
 import com.wanted.moneybeetle.domain.course.model.dao.CategoryRepository;
 import com.wanted.moneybeetle.domain.course.model.entity.Category;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.Cacheable;
+import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -15,93 +17,172 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /* comment.
-*   담당 : DBA ① 신아림 (#296)
+*   담당 : DBA ① 신아림 (#296, #349)
 *   카테고리 ID → "부동산 › 청약" 같은 표시 이름. 스크랩 목록·오답노트·통합 검색이 같이 쓴다
-*   - 카테고리는 관리자만 가끔 바꾸므로 한 번 읽어 캐시에 두고, 바뀌면 다시 읽는다
-*   - @Cacheable 은 다른 빈에서 부를 때만 동작해서 (같은 클래스 안 호출은 프록시를 거치지 않음) CourseService 와 나눴다
+*   - 카테고리는 관리자만 가끔 바꾸므로 한 번 읽어 서버 메모리(snapshot)에 두고, 바뀌면 다시 읽는다
 *   - 비활성 카테고리도 넣는다 (이미 그 카테고리에 있는 강의의 이름표는 계속 보여야 한다)
 *
-*   옛 이름이 캐시에 남지 않게 하는 방법 (버전 키)
-*   - 캐시 키는 "카테고리 버전" 이다. 관리자 변경이 **커밋된 뒤에** 버전을 1 올린다 (markChanged). 롤백되면 그대로
-*   - 조회는 시작할 때 버전을 키로 정한다. 변경 전에 옛 데이터를 읽던 조회가 늦게 끝나도 옛 버전 키에 넣으므로,
-*     새 버전 키를 쓰는 다음 조회는 그 값을 보지 않고 새로 읽는다
-*   - 캐시가 없을 때 읽는 쿼리는 새 읽기 전용 트랜잭션에서 실행한다. 부른 쪽 트랜잭션이 커밋 전에 시작한 스냅샷(MySQL 반복 읽기)으로
-*     읽으면, 새 버전 키에 옛 데이터가 들어갈 수 있기 때문이다 (캐시가 있으면 쿼리도 트랜잭션도 없다)
+*   요청 처리 중에는 DB 연결을 더 요청하지 않는다 (#349)
+*   - 요청은 메모리의 snapshot 만 읽는다. 다시 읽기는 요청 스레드가 아니라 전용 스레드(category-path-reload)가 하고,
+*     그 스레드는 다른 연결을 쥐고 있지 않으므로 연결이 모자라도 서로 기다리며 멈추는 일이 없다
+*   - 채우는 때 : 서버 시작 직후(ApplicationReadyEvent), 관리자 변경이 커밋된 뒤(markChanged)
+*   - 아직 snapshot 이 없을 때(서버가 막 떴거나 미리 읽기가 실패했을 때)만, 부른 쪽 트랜잭션이 이미 쥔 연결로 읽어 그 요청에만 쓴다
+*     (새 연결 없음). 그 값은 부른 쪽의 오래된 스냅샷일 수 있어서 snapshot 에 넣지 않고, 전용 스레드의 다시 읽기를 맡긴다
 *
-*   연결 수 (캐시가 없을 때만)
-*   - 새 트랜잭션은 부른 쪽이 쥔 연결 말고 연결을 하나 더 쓴다. 동시에 여러 요청이 캐시 없음을 만나도 읽기는 한 번에 한 요청만 하게 막아서
-*     (loadLock) 더 쓰는 연결은 서버 전체에서 많아야 1개다. 먼저 읽은 요청이 캐시에 넣고 나면 기다리던 요청은 DB 를 읽지 않는다
-*   - 캐시가 비는 때는 서버 시작 직후와 관리자가 카테고리를 바꾼 직후뿐이다
+*   옛 이름이 남지 않게 하는 방법 (버전)
+*   - 관리자 변경이 **커밋된 뒤에** 버전을 1 올린다. 롤백되면 그대로
+*   - 다시 읽기는 시작할 때 버전을 적고 새 트랜잭션에서 읽는다. 다 읽은 뒤 버전이 그대로일 때만 snapshot 을 바꾼다
+*     (읽는 동안 또 바뀌었으면 버리고 다시 읽는다). 그래서 변경 전에 시작한 읽기가 새 이름을 덮지 않는다
+*   - 다시 읽기가 끝나기 전 아주 잠깐은 바로 전 이름을 보여 준다 (요청을 멈추지 않기 위해서)
 *  */
+@Slf4j
 @Service
 public class CategoryPathService {
 
-    public static final String CACHE_NAME = "categoryPaths";   // 카테고리 ID → "상위 › 소주제" 이름
-
     private final CategoryRepository categoryRepository;
-    private final CacheManager cacheManager;
-    private final TransactionTemplate freshReadTransaction;
+    private final TransactionTemplate freshReadTransaction;   // 다시 읽기 전용 (요청 스레드에서는 쓰지 않는다)
+    private final Executor reloadExecutor;
+    private final ExecutorService ownedExecutor;              // 이 빈이 만든 스레드면 종료할 때 닫는다
     private final AtomicLong revision = new AtomicLong();
-    private final Object loadLock = new Object();             // 캐시가 없을 때 DB 를 읽는 요청은 한 번에 하나
+    private final AtomicBoolean reloading = new AtomicBoolean();
+    private volatile Snapshot snapshot;                       // 아직 한 번도 못 읽었으면 null
 
-    public CategoryPathService(CategoryRepository categoryRepository, CacheManager cacheManager,
-                               PlatformTransactionManager transactionManager) {
+    private record Snapshot(long revision, Map<Long, String> paths) {
+    }
+
+    @Autowired
+    public CategoryPathService(CategoryRepository categoryRepository, PlatformTransactionManager transactionManager) {
+        this(categoryRepository, transactionManager, Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "category-path-reload");
+            thread.setDaemon(true);
+            return thread;
+        }));
+    }
+
+    /* 테스트용 : 다시 읽기를 어느 스레드에서 할지 정한다 (예: Runnable::run 이면 부른 스레드에서 바로) */
+    CategoryPathService(CategoryRepository categoryRepository, PlatformTransactionManager transactionManager,
+                        Executor reloadExecutor) {
         this.categoryRepository = categoryRepository;
-        this.cacheManager = cacheManager;
         this.freshReadTransaction = new TransactionTemplate(transactionManager);
         this.freshReadTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.freshReadTransaction.setReadOnly(true);
+        this.reloadExecutor = reloadExecutor;
+        this.ownedExecutor = reloadExecutor instanceof ExecutorService service ? service : null;
     }
 
-    /* 지금 카테고리 버전 (캐시 키) */
-    public long currentRevision() {
-        return revision.get();
-    }
-
-    /* 전체 카테고리의 표시 이름. 캐시에 들어가므로 바꿀 수 없는 Map 으로 돌려준다 */
-    @Cacheable(cacheNames = CACHE_NAME, key = "#root.target.currentRevision()")
-    @SuppressWarnings("unchecked")
-    public Map<Long, String> findCategoryPaths() {
-        synchronized (loadLock) {
-            long key = currentRevision();
-            Cache cache = cache();
-            Map<Long, String> loaded = cache.get(key, Map.class);   // 기다리는 동안 다른 요청이 이미 읽어 넣었으면 그대로 쓴다
-            if (loaded == null) {
-                loaded = freshReadTransaction.execute(status -> toPaths(categoryRepository.findAll()));
-                cache.put(key, loaded);                             // 잠금을 풀기 전에 넣어서, 다음 요청이 다시 읽지 않게 한다
-            }
-            return loaded;
+    /* 서버 시작 직후 미리 채운다. 이 시점에는 요청이 쥔 연결이 없다 */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUp() {
+        try {
+            reload();
+        } catch (RuntimeException e) {
+            log.warn("카테고리 이름을 미리 읽지 못했어요. 첫 요청 때 다시 읽어요", e);
         }
     }
 
-    /* 카테고리를 바꾸는 트랜잭션 안에서 부른다 (AdminCategoryService). 커밋된 뒤에만 버전을 올리고 옛 캐시를 비운다.
+    /* 전체 카테고리의 표시 이름 (바꿀 수 없는 Map). 요청 중에는 새 DB 연결을 요청하지 않는다 */
+    public Map<Long, String> findCategoryPaths() {
+        Snapshot current = snapshot;
+        if (current == null) {
+            // 부른 쪽 트랜잭션(이미 쥔 연결)으로 읽어 이 요청에만 쓴다. 부른 쪽 스냅샷이 오래됐을 수 있어 공유 snapshot 에는 넣지 않고,
+            // 새 트랜잭션에서 다시 읽기가 성공해야 snapshot 이 생긴다. 다시 읽기가 실패하면 다음 요청이 또 맡긴다
+            Map<Long, String> paths = toPaths(categoryRepository.findAll());
+            scheduleReload();
+            return paths;
+        }
+        if (isStale()) {
+            scheduleReload();
+        }
+        return current.paths();
+    }
+
+    /* 카테고리를 바꾸는 트랜잭션 안에서 부른다 (AdminCategoryService). 커밋된 뒤에만 버전을 올리고 다시 읽기를 맡긴다.
      * 트랜잭션이 없으면 바로 올린다 */
     public void markChanged() {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            bumpRevision();
+            changed();
             return;
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                bumpRevision();
+                changed();
             }
         });
     }
 
-    private void bumpRevision() {
+    private void changed() {
         revision.incrementAndGet();
-        cache().invalidate();   // 옛 버전 키 값은 더 쓰지 않으니 메모리에서 지운다
+        scheduleReload();
     }
 
-    private Cache cache() {
-        return Objects.requireNonNull(cacheManager.getCache(CACHE_NAME));
+    /* 다시 읽기를 전용 스레드에 맡긴다. 이미 읽는 중이면 그 읽기가 끝난 뒤 버전을 보고 다시 읽는다 */
+    private void scheduleReload() {
+        if (!reloading.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            reloadExecutor.execute(() -> {
+                boolean reloaded = false;
+                try {
+                    reload();
+                    reloaded = true;
+                } catch (RuntimeException e) {
+                    log.warn("카테고리 이름을 다시 읽지 못했어요. 다음 요청 때 다시 읽어요", e);
+                } finally {
+                    reloading.set(false);
+                }
+                // 읽는 동안, 또는 저장한 직후(아직 reloading 이던 때) 또 바뀌었으면 한 번 더 읽는다.
+                // 실패했으면 여기서 다시 시도하지 않고 다음 요청이 다시 맡긴다 (실패가 계속돼도 무한 반복하지 않는다)
+                if (reloaded && isStale()) {
+                    scheduleReload();
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            reloading.set(false);
+        }
+    }
+
+    /* snapshot 이 없거나 지금 버전보다 오래됐는지 */
+    private boolean isStale() {
+        Snapshot current = snapshot;
+        return current == null || current.revision() != revision.get();
+    }
+
+    /* 새 트랜잭션에서 읽어 snapshot 을 바꾼다. 읽는 동안 버전이 바뀌어 버렸으면 false */
+    boolean reload() {
+        long startedRevision = revision.get();
+        Map<Long, String> paths = freshReadTransaction.execute(status -> toPaths(categoryRepository.findAll()));
+        return store(startedRevision, paths);
+    }
+
+    /* 읽기를 시작할 때의 버전이 지금 버전과 같을 때만 바꾼다 */
+    private synchronized boolean store(long startedRevision, Map<Long, String> paths) {
+        if (startedRevision != revision.get()) {
+            return false;
+        }
+        Snapshot current = snapshot;
+        if (current == null || current.revision() <= startedRevision) {
+            snapshot = new Snapshot(startedRevision, paths);
+        }
+        return true;
+    }
+
+    @PreDestroy
+    void shutdown() {
+        if (ownedExecutor != null) {
+            ownedExecutor.shutdownNow();
+        }
     }
 
     /* 상위 › 소주제 이름을 만든다. 상위가 없으면 자기 이름만 */
