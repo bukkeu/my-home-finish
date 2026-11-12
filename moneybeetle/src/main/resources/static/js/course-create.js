@@ -419,11 +419,13 @@
       l.error = '';
       if (!/\.mp4$/i.test(f.name) && f.type !== 'video/mp4') { l.error = 'mp4 파일만 올릴 수 있어요'; draw(); return; }
       if (f.size > 500 * 1024 * 1024) { l.error = '영상은 500MB 이하로 올려 주세요'; draw(); return; }
+      var readId = l.readId = (l.readId || 0) + 1;   // 길이를 읽는 동안 다른 파일을 고르면 늦게 끝난 앞 파일은 버린다
       readDuration(f).then(function (sec) {
+        if (l.readId !== readId) return;
         if (sec < 1) throw { message: '영상 길이를 확인해 주세요' };
         l.file = f; l.fileName = f.name; l.durationSeconds = sec; l.minutes = String(Math.max(1, Math.round(sec / 60)));
         st.dirty.lessons = true;
-      }).catch(function (err) { l.error = errorText(err, '영상을 읽지 못했어요'); }).then(draw);
+      }).catch(function (err) { if (l.readId === readId) l.error = errorText(err, '영상을 읽지 못했어요'); }).then(draw);
     });
     var label = l.file ? l.fileName + ' · ' + minutesText(l.durationSeconds) + ' (저장할 때 올라가요)'
       : l.videoUrl ? '저장된 영상 · ' + minutesText(l.durationSeconds) + ' · 다른 파일로 바꾸기' : '영상 파일 선택 (MP4)';
@@ -527,6 +529,8 @@
     if (!/\.(csv|xlsx|txt)$/i.test(f.name)) { q.error = 'CSV, 엑셀(xlsx), 텍스트(txt) 파일만 올릴 수 있어요'; draw(); return; }
     if (f.size > 1024 * 1024) { q.error = '문제 파일은 1MB 이하로 올려 주세요'; draw(); return; }
     q.reading = true;
+    var readId = q.readId = (q.readId || 0) + 1;
+    var current = function () { return st.quiz[type] === q && q.readId === readId; };   // 그사이 파일을 지웠거나 다른 파일을 골랐으면 false
     draw();
     var data = new FormData();
     data.append('file', f);
@@ -538,11 +542,12 @@
       if (err && err.status === 404) throw { message: '엑셀 파일은 아직 읽을 수 없어요. CSV(UTF-8)나 텍스트로 저장해 올려 주세요' };
       throw err;
     }).then(function (questions) {
+      if (!current()) return;
       st.quiz[type] = Object.assign(blankQuiz(), { questions: normalize(type, questions), saved: q.saved, fileName: f.name, fileSize: f.size });
       st.dirty[type] = true;
     }).catch(function (err) {
-      q.error = errorText(err, '파일을 읽지 못했어요');
-    }).then(function () { st.quiz[type].reading = false; draw(); });
+      if (current()) q.error = errorText(err, '파일을 읽지 못했어요');
+    }).then(function () { q.reading = false; draw(); });
   }
 
   function normalize(type, questions) {
@@ -576,7 +581,7 @@
             if (rows.length < MAIN_MIN || rows.length > MAIN_MAX) throw { message: '퀴즈는 5~15문제가 필요해요. 파일에는 ' + rows.length + '문제가 있어요' };
             resolve(rows.map(function (r, i) {
               var n = Number(r[5]);
-              if (!(n >= 1 && n <= 4)) throw { message: (i + 2) + '번째 줄: 정답은 보기 번호 1~4 중 하나로 써 주세요' };
+              if (!Number.isInteger(n) || n < 1 || n > 4) throw { message: (i + 2) + '번째 줄: 정답은 보기 번호 1~4 중 하나로 써 주세요' };
               if (!r[0] || !r[6] || [1, 2, 3, 4].some(function (k) { return !r[k]; })) throw { message: (i + 2) + '번째 줄: 문제·보기 4개·해설을 채워 주세요' };
               return { content: r[0], choices: [r[1], r[2], r[3], r[4]], answerIndex: n - 1, explanation: r[6] };
             }));
@@ -642,7 +647,7 @@
         }))
       ]),
       h('div', { class: 'cc-aside__btns' }, [saveButton(false), saveButton(true)]),
-      h('span', { class: 'cc-saved', text: st.savedAt || (isDirty() ? '저장하지 않은 내용이 있어요' : '') })
+      h('span', { class: 'cc-saved', text: isDirty() ? '저장하지 않은 내용이 있어요' : st.savedAt })
     );
   }
 
@@ -654,7 +659,11 @@
 
   /* ---------- 저장 ---------- */
 
+  function quizReading() { return st.quiz.test.reading || st.quiz.main.reading; }
+  var READING_TEXT = '문제 파일을 읽고 있어요. 다 읽은 뒤에 다시 눌러 주세요';
+
   function askSubmit() {
+    if (quizReading()) { setStatus(READING_TEXT); scrollToStatus(); return; }
     var p = problem();
     if (p) { setStatus(p); scrollToStatus(); return; }
     st.modal = true;
@@ -686,6 +695,7 @@
   /* 버튼 한 번에 바뀐 구역을 차례로 저장한다. submit 이면 마지막에 검수를 요청한다 */
   function save(submit) {
     if (st.busy) return;
+    if (quizReading()) { setStatus(READING_TEXT); scrollToStatus(); return; }
     var f = st.form;
     if (!f.categoryId) { setStatus('카테고리와 소제목을 골라 주세요'); scrollToStatus(); return; }
     if (!f.title.trim()) { setStatus(submit ? '강의 제목을 입력해 주세요' : '임시 저장하려면 강의 제목을 입력해 주세요'); scrollToStatus(); return; }
@@ -817,7 +827,12 @@
       xhr.onload = function () {
         var body = null;
         try { body = JSON.parse(xhr.responseText); } catch (e) { /* 본문 없음 */ }
-        if (xhr.status === 401) { location.href = '/instructor/login?next=' + encodeURIComponent(location.pathname + location.search); return; }
+        if (xhr.status === 401) {
+          // 로그인 화면으로 보내되, 이동을 취소해도 저장이 끝나 버튼이 다시 풀리게 거절로 마친다
+          reject({ message: '로그인이 끊겼어요. 다시 로그인한 뒤 저장해 주세요.' });
+          location.href = '/instructor/login?next=' + encodeURIComponent(location.pathname + location.search);
+          return;
+        }
         if (xhr.status >= 200 && xhr.status < 300 && body && body.data) resolve(body.data);
         else reject((body && body.error) || { message: '영상을 올리지 못했어요.' });
       };
