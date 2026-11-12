@@ -29,13 +29,13 @@
 
       <form class="ia-form" data-ins-login novalidate>
         <label class="ia-label" for="ia-email">강사 계정 이메일</label>
-        <input class="ia-input" id="ia-email" type="email" name="email" autocomplete="username" placeholder="teacher@moneybeetle.kr" required>
+        <input class="ia-input" id="ia-email" type="email" name="email" autocomplete="username" placeholder="teacher@moneybeetle.kr" required aria-describedby="ia-login-error" aria-invalid="false">
         <label class="ia-label ia-label--gap" for="ia-password">비밀번호</label>
         <div class="ia-pw">
-          <input class="ia-input" id="ia-password" type="password" name="password" autocomplete="current-password" placeholder="비밀번호" required>
+          <input class="ia-input" id="ia-password" type="password" name="password" autocomplete="current-password" placeholder="비밀번호" required aria-describedby="ia-login-error" aria-invalid="false">
           <button type="button" class="ia-pw__toggle" data-ins-pw-toggle aria-pressed="false" aria-controls="ia-password">보기</button>
         </div>
-        <p class="ia-error" role="alert" data-ins-error></p>
+        <p class="ia-error" id="ia-login-error" role="alert" data-ins-error></p>
         <div class="ia-row">
           <button type="button" class="ia-keep" data-ins-keep aria-pressed="true">
             <span class="ia-check" aria-hidden="true">✓</span>로그인 상태 유지

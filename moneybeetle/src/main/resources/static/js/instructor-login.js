@@ -29,8 +29,12 @@
     return headers;
   }
 
-  function showError(text) {
+  /* 오류 문구를 보이고, 문제가 있는 입력칸에 aria-invalid 를 단다 (문구는 aria-describedby 로 두 칸에 연결돼 있다) */
+  function showError(text, fields) {
     errorEl.textContent = text || '';
+    [form.email, pw].forEach(function (el) {
+      el.setAttribute('aria-invalid', fields && fields.indexOf(el) >= 0 ? 'true' : 'false');
+    });
   }
 
   /* 강사 권한이 없는 계정으로 로그인됐으면 세션을 바로 끝낸다.
@@ -72,8 +76,8 @@
     if (submit.disabled) return;   // 처리 중에 엔터로 다시 들어온 제출은 무시한다
     var email = form.email.value.trim();
     var password = pw.value;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('이메일 주소를 확인해 주세요'); return; }   // 목업 문구
-    if (password.length < 8) { showError('비밀번호를 8자 이상 입력해 주세요'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('이메일 주소를 확인해 주세요', [form.email]); form.email.focus(); return; }   // 목업 문구
+    if (password.length < 8) { showError('비밀번호를 8자 이상 입력해 주세요', [pw]); pw.focus(); return; }
     showError('');
     submit.disabled = true;
 
@@ -105,7 +109,8 @@
           });
         }
         var code = r.json && r.json.error && r.json.error.code;
-        showError(MESSAGES[code] || (r.json && r.json.error && r.json.error.message) || '로그인하지 못했어요. 다시 시도해 주세요.');
+        showError(MESSAGES[code] || (r.json && r.json.error && r.json.error.message) || '로그인하지 못했어요. 다시 시도해 주세요.',
+          code === 'LOGIN_FAILED' ? [form.email, pw] : null);
       })
       .catch(function () { showError('네트워크 연결을 확인하고 다시 시도해 주세요.'); })
       .then(function () { submit.disabled = false; });

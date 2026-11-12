@@ -11,12 +11,13 @@
 .ia-close:focus-visible, .ia-logo:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; border-radius: 8px; }
 
 .ia-kicker { align-self: flex-start; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: var(--color-text); color: var(--color-accent); }
+.ia-title:focus { outline: none; }   /* 단계가 바뀔 때 화면 읽기용으로만 제목에 초점을 준다 */
 .ia-title { margin: 0; font-weight: 800; letter-spacing: -0.03em; color: var(--color-text); }
 .ia-link-strong { font-weight: 800; color: var(--color-text); text-decoration: underline; text-decoration-color: var(--color-accent); text-decoration-thickness: 3px; text-underline-offset: 3px; }
 .ia-link { font-weight: 700; color: var(--color-text); text-decoration: underline; }
 .ia-input { height: 56px; border: 2px solid var(--color-text); border-radius: 12px; padding: 0 18px; font-size: 19px; font-family: inherit; box-sizing: border-box;
   color: var(--color-text); background: #fff; width: 100%; }
-.ia-input:focus { outline: none; box-shadow: 0 0 0 3px var(--color-accent-100); }
+.ia-input:focus { outline: 2px solid var(--color-text); outline-offset: 2px; box-shadow: 0 0 0 3px var(--color-accent-100); }   /* 키보드 초점이 배경과 확실히 구별되게 */
 .ia-input:disabled { background: var(--color-bg); color: var(--color-neutral-700); }
 
 /* 아래 안내 띠 */
@@ -84,7 +85,7 @@
 .ia-big--follow { margin-top: 20px; }
 .ia-big { height: 68px; border: 2px solid var(--color-text); border-radius: 14px; padding: 0 24px; font-size: 26px; font-family: inherit; box-sizing: border-box; color: var(--color-text);
   background: #fff; width: 100%; }
-.ia-big:focus { outline: none; box-shadow: 0 0 0 3px var(--color-accent-100); }
+.ia-big:focus { outline: 2px solid var(--color-text); outline-offset: 2px; box-shadow: 0 0 0 3px var(--color-accent-100); }
 .ia-big:disabled { background: var(--color-bg); color: var(--color-neutral-700); }
 .ia-block > .ia-big:first-of-type { margin-top: 20px; }
 .ia-block--gap > .ia-big:first-of-type { margin-top: 0; }

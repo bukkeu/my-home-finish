@@ -90,7 +90,7 @@
     if (st.step === 0) return EMAIL.test(st.email) && (!st.codeSent || st.verified || /^\d{6}$/.test(st.code));
     if (st.step === 1) return PASSWORD.test(st.password) && st.password === st.password2;
     if (st.step === 2) return !!st.terms && st.terms.filter(function (t) { return t.isRequired; }).every(function (t) { return st.agreed[t.termsId]; });
-    return NICKNAME.test(st.displayName);
+    return NICKNAME.test(st.displayName) && !!st.field;   // 전문 분야도 필수
   }
 
   function refreshNext() {
@@ -104,7 +104,10 @@
     draw(true);
   }
 
+  /* 다시 그리면 버튼이 새로 만들어지므로, 초점이 있던 요소(같은 id)로 초점을 되돌린다.
+   * focus 가 true(단계 이동)이면 첫 입력칸, 입력칸이 없는 단계(약관)면 제목에 초점을 준다 */
   function draw(focus) {
+    var focusedId = !focus && document.activeElement && box.contains(document.activeElement) ? document.activeElement.id : '';
     fill(stepsEl, STEPS.map(function (label, i) {
       var now = i === st.step && !st.done;
       return h('li', { class: 'ia-step' + (i < st.step || st.done ? ' is-done' : '') + (now ? ' is-now' : ''), 'aria-current': now ? 'step' : null, text: (i + 1) + ' ' + label });
@@ -123,6 +126,10 @@
     if (focus) {
       var first = box.querySelector('input:not([disabled])');
       if (first) first.focus();
+      else { titleEl.tabIndex = -1; titleEl.focus(); }
+    } else if (focusedId) {
+      var again = document.getElementById(focusedId);
+      if (again && !again.disabled) again.focus();
     }
   }
 
@@ -147,7 +154,7 @@
 
   function drawEmail() {
     var email = h('input', { class: 'ia-big', type: 'email', id: 'ia-su-email', autocomplete: 'email', placeholder: 'teacher@moneybeetle.kr', value: st.email,
-      disabled: st.verified || st.codeSent, oninput: function () { st.email = email.value.trim(); st.error = ''; refreshNext(); } });
+      disabled: st.verified || st.codeSent || st.busy, oninput: function () { st.email = email.value.trim(); st.error = ''; refreshNext(); } });
     var parts = [
       h('label', { class: 'ia-big-label', for: 'ia-su-email', text: '먼저 이메일 주소를 입력해 주세요' }),
       email,
@@ -165,7 +172,7 @@
         h('span', { class: 'ia-hint', text: '인증번호를 보냈어요. 5분 안에 입력해 주세요. 메일이 안 보이면 스팸함도 확인해 주세요' }),
         h('div', { class: 'ia-links' }, [
         h('button', { type: 'button', class: 'ia-resend', 'data-ins-send': '', text: sendLabel(), disabled: st.busy || st.cooldown > 0, onclick: function () { sendCode(); } }),
-        h('button', { type: 'button', class: 'ia-resend', text: '이메일 다시 입력', onclick: function () {
+        h('button', { type: 'button', class: 'ia-resend', text: '이메일 다시 입력', disabled: st.busy, onclick: function () {
           st.codeSent = false; st.code = ''; st.error = ''; draw(true);
         } })
         ])
@@ -300,16 +307,16 @@
       var on = !!st.agreed[t.termsId];
       var bodyId = 'ia-term-' + t.termsId;
       rows.push(h('div', { class: 'ia-term' }, [
-        h('button', { type: 'button', class: 'ia-term__btn', 'aria-pressed': String(on), onclick: function () { st.agreed[t.termsId] = !on; st.error = ''; draw(); } },
+        h('button', { type: 'button', class: 'ia-term__btn', id: 'ia-term-agree-' + t.termsId, 'aria-pressed': String(on), onclick: function () { st.agreed[t.termsId] = !on; st.error = ''; draw(); } },
           [check(on), h('span', { class: 'ia-term__name', text: t.title })]),
-        t.content ? h('button', { type: 'button', class: 'ia-term__view', 'aria-expanded': String(!!st.opened[t.termsId]), 'aria-controls': bodyId,
+        t.content ? h('button', { type: 'button', class: 'ia-term__view', id: 'ia-term-view-' + t.termsId, 'aria-expanded': String(!!st.opened[t.termsId]), 'aria-controls': bodyId,
           text: st.opened[t.termsId] ? '접기' : '보기', onclick: function () { st.opened[t.termsId] = !st.opened[t.termsId]; draw(); } }) : null,
         h('span', { class: 'ia-term__tag' + (t.isRequired ? ' ia-term__tag--req' : ''), text: t.isRequired ? '필수' : '선택' })
       ]));
       if (st.opened[t.termsId]) rows.push(h('p', { class: 'ia-term__body', id: bodyId, text: t.content || '' }));
     });
     return h('div', { class: 'ia-block ia-block--terms' }, [
-      h('button', { type: 'button', class: 'ia-all', 'aria-pressed': String(all), onclick: function () {
+      h('button', { type: 'button', class: 'ia-all', id: 'ia-term-all', 'aria-pressed': String(all), onclick: function () {
         st.terms.forEach(function (t) { st.agreed[t.termsId] = !all; }); st.error = ''; draw();
       } }, [check(all), '전체 동의'])
     ].concat(rows));
@@ -321,7 +328,7 @@
     var name = h('input', { class: 'ia-big', id: 'ia-su-name', maxlength: '12', placeholder: '강의에 표시될 이름', value: st.displayName,
       oninput: function () { st.displayName = name.value.trim(); st.error = ''; refreshNext(); } });
     var fieldInput = h('input', { class: 'ia-big', id: 'ia-su-field', maxlength: '100', placeholder: '예: 청약, ETF, 주식', value: st.field,
-      oninput: function () { st.field = fieldInput.value.trim(); st.error = ''; } });
+      oninput: function () { st.field = fieldInput.value.trim(); st.error = ''; refreshNext(); } });
     return h('div', { class: 'ia-block ia-block--gap' }, [
       h('label', { class: 'ia-big-label', for: 'ia-su-name', text: '강사명' }),
       name,
