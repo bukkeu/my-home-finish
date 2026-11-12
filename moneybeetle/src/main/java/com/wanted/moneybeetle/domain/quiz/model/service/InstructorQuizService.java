@@ -3,6 +3,7 @@ package com.wanted.moneybeetle.domain.quiz.model.service;
 import com.wanted.moneybeetle.domain.quiz.exception.QuizErrorCode;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizChoiceRepository;
 import com.wanted.moneybeetle.domain.quiz.model.dao.QuizQuestionRepository;
+import com.wanted.moneybeetle.domain.quiz.model.dto.CourseQuizStatDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizCountDTO;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizSaveDTO;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizChoice;
@@ -41,6 +42,14 @@ public class InstructorQuizService {
 
     private final QuizQuestionRepository quizQuestionRepository;
     private final QuizChoiceRepository quizChoiceRepository;
+
+    /* 강사 센터 퀴즈 목록 (API 150, #366): 강의마다 지금 쓰는 문항 수. 문항이 있는 강의만 돌려준다 (course.InstructorContentService 가 부른다) */
+    public List<CourseQuizStatDTO> findQuizStats(List<Long> courseIds) {
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return quizQuestionRepository.findQuizStatsByCourseIds(courseIds);
+    }
 
     /* API 79 테스트 퀴즈: OX 정확히 5문제 + 해설 */
     @Transactional

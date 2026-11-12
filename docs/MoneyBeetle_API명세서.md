@@ -15,7 +15,7 @@
 
 - 화면은 Thymeleaf 서버 렌더링이고, 이 문서의 API는 화면 안의 `fetch`가 쓰는 JSON입니다 (1-5 참고).
 - 기준 문서: 요구사항 명세서, 정책 정의서, DB 설계. “관련” 칸의 ID는 요구사항·정책 번호입니다.
-- 총 **148개 API** (사용자 71, 강사 11, 관리자 66)
+- 총 **152개 API** (사용자 72, 강사 14, 관리자 66)
 - 초안입니다. 개발하면서 바뀐 내용은 이 문서에 바로 반영해 주세요.
 
 ---
@@ -242,7 +242,11 @@
 | 79 | `PUT` | `/api/v1/instructor/courses/{courseId}/test-quiz` | 테스트 퀴즈 저장 | 강사 | TCH-04 |
 | 80 | `PUT` | `/api/v1/instructor/courses/{courseId}/quiz` | 퀴즈 저장 | 강사 | TCH-05 |
 | 81 | `POST` | `/api/v1/instructor/courses/{courseId}/review-request` | 검수 요청 | 강사 | TCH-07, DP-34 |
+| 150 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
 | 82 | `GET` | `/api/v1/instructor/inquiries` | 내 강의 문의 | 강사 | TCH-08 |
+| 150 | `GET` | `/api/v1/instructor/quizzes` | 퀴즈 목록(강의별) | 강사 | TCH-04~05 |
+| 151 | `GET` | `/api/v1/instructor/summaries` | 요약글 목록(영상별) | 강사 | TCH-03 |
+| 152 | `PATCH` | `/api/v1/instructor/lessons/{lessonId}/summary` | 영상 요약글 수정 | 강사 (본인 강의) | TCH-03, SP-31, DP-31 |
 
 ### 관리자
 
@@ -2555,6 +2559,59 @@ Header: Idempotency-Key: 4d8e...
 
 **퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
+#### 150. 퀴즈 문제 파일 읽기
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/quiz-files/parse` |
+| Method | `POST` |
+| 권한 | 강사 |
+| 관련 | TCH-04~05, DP-34 |
+| 설명 | 강의 만들기의 "문제 파일 올리기". 문제 파일(CSV·엑셀 xlsx·텍스트 txt, 1MB 이하)을 읽어 문항 목록을 돌려준다. **저장하지 않는다.** 응답은 저장 요청과 같은 모양이라 화면이 보여 준 뒤 그대로 API 79(테스트 퀴즈)·80(퀴즈)로 보낸다. 데이터를 바꾸지 않지만 POST 라 CSRF 토큰이 필요하다 (#368). |
+
+**Request**
+
+```
+POST /api/v1/instructor/quiz-files/parse
+Content-Type: multipart/form-data
+
+file=(test-quiz.csv)  type=TEST
+```
+
+- `type`: `TEST`(테스트 퀴즈 OX 정확히 5문제) 또는 `MAIN`(퀴즈 4지선다 5~15문제). 다른 값이거나 빠지면 `INVALID_INPUT`.
+- 파일의 첫 줄은 머리글이고 둘째 줄부터 한 줄이 한 문제다. 모든 칸이 빈 줄은 건너뛴다. 칸 앞뒤 공백은 지운다.
+- 머리글은 첫 칸이 `문제`이고 칸 수가 아래 표와 같아야 한다(다른 칸 이름은 따지지 않는다). 칸 수가 다르면 다른 종류의 파일로 보고 알려 준다.
+
+| type | 칸 (순서대로) | 정답 |
+| --- | --- | --- |
+| `TEST` | 문제, 정답, 해설 | `O` 또는 `X` (소문자도 받음) |
+| `MAIN` | 문제, 보기1, 보기2, 보기3, 보기4, 정답, 해설 | 보기 번호 `1`~`4` → 응답 `answerIndex` 는 0~3 |
+
+- CSV: UTF-8(BOM 허용), 쉼표로 나눈다. 글 안에 쉼표·줄바꿈이 있으면 칸 전체를 큰따옴표로 감싸고, 큰따옴표는 `""` 로 쓴다(엑셀 "CSV UTF-8" 저장 모양). 엑셀의 기본 "CSV(쉼표로 분리)"는 CP949 라 읽지 않고 UTF-8 로 저장하라고 알려 준다.
+- TXT: UTF-8, 첫 줄에 탭이 있으면 탭으로, 없으면 쉼표로 나눈다(나머지 규칙은 CSV 와 같다).
+- XLSX: 첫 번째 시트만 읽는다. 칸 값은 엑셀에 보이는 글자 그대로(숫자 1 → `1`), 수식 칸은 엑셀이 저장한 결과 값이다. 압축을 푼 크기가 10MB 를 넘으면 열지 않는다(`FILE_TOO_LARGE`).
+- 칸 한도는 저장 API 와 같다: 문제 500자, 보기 200자, 해설 UTF-8 65,535바이트.
+- 읽는 양을 묶어 둔다: 한 줄에서 종류의 칸 수까지만 보고(넘친 칸은 "칸이 더 있어요" 오류), 문제는 최대 문항 수 + 1 줄까지만 읽는다(넘치면 그 줄 번호로 오류). 엑셀은 한 행씩 읽는다 (#378).
+
+**Response**
+
+```json
+{ "questions": [ { "content": "청약통장은 1인 1개만 만들 수 있다.", "answer": "O", "choices": null, "answerIndex": null, "explanation": "..." } ] }
+```
+
+```json
+{ "questions": [ { "content": "청약 가점 항목이 아닌 것은?", "answer": null, "choices": ["무주택 기간", "부양가족 수", "청약통장 가입 기간", "연 소득"], "answerIndex": 3, "explanation": "..." } ] }
+```
+
+**Error**: `QUIZ_FILE_INVALID`, `FILE_TOO_LARGE`(1MB 초과, 엑셀은 풀어서 10MB 초과), `FILE_TYPE_NOT_ALLOWED`(csv·xlsx·txt 가 아님), `INVALID_INPUT`(type), `FORBIDDEN`(강사 아님)
+
+- `QUIZ_FILE_INVALID` 의 `error.message` 는 첫 번째 오류 하나를 줄 번호와 함께 알려 준다. 줄 번호는 CSV·TXT 는 그 줄이 시작하는 줄, 엑셀은 행 번호다.
+  - 파일 없음·빈 파일: `문제 파일을 골라 주세요` / 빈 줄만 있음: `파일에 내용이 없어요. …`
+  - 머리글 없음: `1번째 줄은 머리글(문제, 정답, 해설)이어야 해요` / 종류가 다른 파일: `테스트 퀴즈 파일의 머리글은 문제, 정답, 해설 순서여야 해요. 퀴즈 종류에 맞는 파일인지 확인해 주세요`
+  - 문항 수 (모자라면 마지막으로 읽은 줄, 넘치면 처음 넘친 문제의 줄): `5번째 줄까지 4문제뿐이에요. 테스트 퀴즈는 5문제가 필요해요`, `17번째 줄: 퀴즈는 5~15문제가 필요한데, 이 줄이 16번째 문제예요. 이 줄부터는 지워 주세요`
+  - 줄 오류: `3번째 줄: 정답은 O 또는 X 로 써 주세요`, `5번째 줄: 정답은 보기 번호 1~4 중 하나로 써 주세요`, `4번째 줄: '해설' 칸이 비어 있어요`, `3번째 줄: 칸이 3개(문제, 정답, 해설)여야 하는데 더 있어요. …`, `2번째 줄: 문제는 500자까지 쓸 수 있어요`
+  - 파일 모양: `UTF-8 로 저장한 파일만 읽을 수 있어요. …`, `엑셀 파일을 열 수 없어요. …`, `6번째 줄: 큰따옴표(")가 닫히지 않았어요`
+
 #### 81. 검수 요청
 
 | 항목 | 내용 |
@@ -2598,6 +2655,77 @@ Header: Idempotency-Key: 4d8e...
 ```
 
 **Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
+
+#### 150. 퀴즈 목록(강의별)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/quizzes` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | TCH-04~05 |
+| 설명 | 강사 센터 "퀴즈 관리". 새 테이블 없이 강의별 퀴즈(`quiz_question`)에 연결한다(#366). 내 강의(삭제하지 않은 강의 전부) 가운데 지금 쓰는 문항이 하나라도 있는 강의마다 한 줄. 문항이 없는 강의는 뺀다. 가장 늦게 바뀐 문항 순(`updatedAt` 최신순). `testCount`는 테스트 퀴즈(OX), `mainCount`는 퀴즈(4지선다) 문항 수이고, 보관한 문항(`TEST_OLD`·`MAIN_OLD`)은 세지 않는다. 퀴즈 내용을 고치는 것은 API 79·80이다. |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "items": [ { "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "testCount": 5, "mainCount": 8, "updatedAt": "2026-11-03T10:00:00" } ] }
+```
+
+**Error**: `FORBIDDEN`(강사가 아님)
+
+#### 151. 요약글 목록(영상별)
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/summaries` |
+| Method | `GET` |
+| 권한 | 강사 |
+| 관련 | TCH-03 |
+| 설명 | 강사 센터 "요약글 관리". 영상별 요약글(`lesson.summary`)에 연결한다(#366). 내 강의의 영상 가운데 요약글이 있는(공백만이 아닌) 영상마다 한 줄, 최근 수정 순. `published`는 강의가 허가(`APPROVED`)되고 공개 중이면 `true`(화면의 "게시"), 아니면 `false`("임시 저장"). `thumbnailUrl`은 영상에 썸네일이 없어서 강의의 썸네일이다. |
+
+**Request**
+
+- 없음
+
+**Response**
+
+```json
+{ "items": [ { "lessonId": 21, "lessonTitle": "청약통장이란", "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "summary": "...", "thumbnailUrl": "/uploads/a.png", "published": true, "updatedAt": "2026-11-03T10:00:00" } ] }
+```
+
+**Error**: `FORBIDDEN`(강사가 아님)
+
+#### 152. 영상 요약글 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/instructor/lessons/{lessonId}/summary` |
+| Method | `PATCH` |
+| 권한 | 강사 (본인 강의) |
+| 관련 | TCH-03, SP-31, DP-31 |
+| 설명 | 영상 하나의 요약글만 고친다(영상·순서·파일은 그대로, 전체 저장은 API 78). 규칙은 API 78과 같다: 2,000자까지(앞뒤 공백은 뺀다), 금칙어 검사, 검수 중(`REVIEW`)인 강의는 고칠 수 없다. **허가(`APPROVED`)된 강의의 요약글을 고치면 다시 검수(`REVIEW`)로 바뀐다**(SP-31). 빈 글을 보내면 요약글이 지워진다. 기존과 같은 글을 보내면 바뀐 것이 없어서 허가된 강의도 다시 검수하지 않는다(검수 중이면 그래도 거절). 응답의 `courseStatus`가 바뀐 강의 상태이다. |
+
+**Request**
+
+- Path: lessonId=21
+- Body
+
+```json
+{ "summary": "청약통장의 종류와 가입 조건을 정리했어요." }
+```
+
+**Response**
+
+```json
+{ "lessonId": 21, "courseId": 7, "summary": "청약통장의 종류와 가입 조건을 정리했어요.", "courseStatus": "REVIEW" }
+```
+
+**Error**: `LESSON_NOT_FOUND`(없는 영상), `NOT_FOUND`(삭제된 강의), `FORBIDDEN`(남의 강의), `COURSE_IN_REVIEW`(검수 중), `SUMMARY_TOO_LONG`(2,000자 초과), `FORBIDDEN_WORD`(금칙어)
 
 ### 관리자
 
@@ -4201,6 +4329,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의 청약 | `ALREADY_ANNOUNCED` | 409 | 이미 발표한 공고예요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
+| 강사·관리자 | `QUIZ_FILE_INVALID` | 400 | 퀴즈 문제 파일을 다시 확인해 주세요 (실제 문구는 줄 번호와 이유, 예: 3번째 줄: 정답은 O 또는 X 로 써 주세요. API 150) |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
