@@ -305,6 +305,24 @@ class LoginHttpTest {
     }
 
     @Test
+    @DisplayName("이전 remember-me 쿠키가 남은 브라우저에서 관리자가 remember-me=true 로 로그인하면 새 쿠키 없이 이전 쿠키만 지운다")
+    void adminLoginDeletesOldCookie() throws Exception {
+        Cookie oldCookie = loginRememberMe().getResponse().getCookie("remember-me");   // 일반 회원일 때 받은 쿠키
+        ReflectionTestUtils.setField(member, "role", Member.ROLE_ADMIN);
+
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
+                        .param("email", EMAIL).param("password", PASSWORD).param("remember-me", "true").cookie(oldCookie)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertThat(login.getResponse().getContentAsString()).contains("\"role\":\"ADMIN\"");
+        assertThat(login.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .filteredOn(header -> header.startsWith("remember-me="))
+                .singleElement().asString().contains("Max-Age=0");
+    }
+
+    @Test
     @DisplayName("형식이 잘못된 remember-me 쿠키(예: JQ → '%')는 서버 오류가 아니라 로그인 안 됨(401)으로 끝나고 쿠키를 지운다")
     void malformedCookieIsDeletedInsteadOfServerError() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/courses").cookie(new Cookie("remember-me", "JQ")))
