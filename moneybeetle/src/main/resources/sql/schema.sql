@@ -310,6 +310,8 @@ CREATE TABLE IF NOT EXISTS `instructor_profile` (
                                                     `instructor_profile_id` bigint NOT NULL AUTO_INCREMENT COMMENT '강사 정보 ID',
                                                     `member_id` bigint NOT NULL COMMENT '강사 회원 (1:1)',
                                                     `display_name` varchar(30) NOT NULL COMMENT '강의에 표시할 이름',
+    `headline` varchar(60) DEFAULT NULL COMMENT '한 줄 소개 (강사 마이페이지, #365)',
+    `bio` varchar(1000) DEFAULT NULL COMMENT '강사 소개 (강사 마이페이지, #365)',
     `field` varchar(100) DEFAULT NULL COMMENT '전문 분야 (예: 청약, ETF)',
     `approval_status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING / APPROVED / REVOKED',
     `approved_by` bigint DEFAULT NULL COMMENT '승인한 관리자',
