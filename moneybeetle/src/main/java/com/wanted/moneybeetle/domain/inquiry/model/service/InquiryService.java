@@ -192,7 +192,7 @@ public class InquiryService {
     /* API 52 답글 작성: 강사·관리자 답글이면 ANSWERED + 작성자에게 알림 */
     @Transactional
     public Long createReply(Long memberId, boolean admin, Long inquiryId, InquiryReplyCreateDTO request) {
-        Inquiry inquiry = getInquiryOrThrow(inquiryId);
+        Inquiry inquiry = getInquiryForUpdateOrThrow(inquiryId);   // 동시에 들어온 답변 삭제와 순서대로 (#370 리뷰)
         boolean instructor = memberId.equals(findInstructorId(inquiry));
         boolean writer = inquiry.isWrittenBy(memberId);
         if (!admin && !instructor && !writer) {
@@ -218,15 +218,16 @@ public class InquiryService {
         if (!reply.isWrittenBy(memberId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
+        reply.checkEditable();                                // 관리자가 숨긴 답글이면 409 INQUIRY_REPLY_HIDDEN (금칙어 검사보다 먼저)
         forbiddenWordService.check(request.content());
-        reply.changeContent(request.content());               // 관리자가 숨긴 답글이면 409 INQUIRY_REPLY_HIDDEN
+        reply.changeContent(request.content());
     }
 
     /* API 52-2 답변 삭제: 답글을 쓴 본인만, Soft Delete (#370).
      * 강사·관리자 답글을 지워서 남은 답변이 없으면 문의를 다시 답변 대기(WAITING)로 돌린다. 작성자의 추가 댓글은 답변으로 세지 않는다 */
     @Transactional
     public void deleteReply(Long memberId, Long inquiryId, Long replyId) {
-        Inquiry inquiry = getInquiryOrThrow(inquiryId);
+        Inquiry inquiry = getInquiryForUpdateOrThrow(inquiryId);   // 동시에 들어온 답글 작성과 순서대로 (첫 조회여야 한다)
         InquiryReply reply = getReplyOrThrow(inquiryId, replyId);
         if (!reply.isWrittenBy(memberId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
@@ -290,6 +291,12 @@ public class InquiryService {
 
     private InquiryReply getReplyOrThrow(Long inquiryId, Long replyId) {
         return inquiryReplyRepository.findByInquiryReplyIdAndInquiryIdAndDeletedAtIsNull(replyId, inquiryId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
+    /* 문의 행을 잠그고 읽는다 : 답글 작성·삭제가 같은 문의의 상태를 동시에 정하지 않게 한다 (#370 리뷰) */
+    private Inquiry getInquiryForUpdateOrThrow(Long inquiryId) {
+        return inquiryRepository.findActiveByIdForUpdate(inquiryId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 

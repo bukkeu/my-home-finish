@@ -1,9 +1,11 @@
 package com.wanted.moneybeetle.domain.inquiry.model.dao;
 
 import com.wanted.moneybeetle.domain.inquiry.model.entity.Inquiry;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +21,13 @@ import java.util.Optional;
 public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
 
     Optional<Inquiry> findByInquiryIdAndDeletedAtIsNull(Long inquiryId);
+
+    /* 답글 작성·삭제처럼 답글을 보고 문의 상태(WAITING·ANSWERED)를 정하는 작업용 (SELECT ... FOR UPDATE, #370 리뷰).
+     * 같은 문의에 답글 작성과 마지막 답변 삭제가 동시에 들어와도 앞 작업이 끝날 때까지 기다렸다가
+     * 바뀐 답글 목록으로 상태를 정한다. 트랜잭션의 첫 조회로 불러야 뒤의 조회가 앞 작업의 결과를 본다 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from Inquiry i where i.inquiryId = :inquiryId and i.deletedAt is null")
+    Optional<Inquiry> findActiveByIdForUpdate(@Param("inquiryId") Long inquiryId);
 
     /* 강사 문의함 (API 82, TCH-08): 내 강의의 문의. 답변 대기 글 먼저, 그다음 최신순
      * - 삭제된 글과 관리자가 숨긴 글은 뺀다 (숨긴 글은 관리자만 본다, DP-22)
