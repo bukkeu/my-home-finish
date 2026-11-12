@@ -2,6 +2,8 @@ package com.wanted.moneybeetle.domain.quiz.model.service;
 
 import com.wanted.moneybeetle.domain.quiz.exception.QuizErrorCode;
 import com.wanted.moneybeetle.global.exception.BusinessException;
+import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -9,12 +11,20 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import org.apache.poi.ss.usermodel.Cell;
+import java.util.zip.ZipInputStream;
+import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.util.XMLHelper;
+import org.apache.poi.xssf.eventusermodel.ReadOnlySharedStringsTable;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler.SheetContentsHandler;
+import org.apache.poi.xssf.usermodel.XSSFComment;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
 
 /* comment.
 *   담당 : 서수영 (#368, quiz 도메인 담당 신아림이 나눠 준 작업)
@@ -25,10 +35,18 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 *   - 줄 번호는 CSV·TXT 는 그 줄이 시작하는 줄, XLSX 는 엑셀의 행 번호다. 오류 문구 "N번째 줄"에 쓴다
 *   - 칸 값의 앞뒤 공백은 지운다. 모든 칸이 빈 줄도 그대로 돌려주고, 건너뛸지는 QuizFileService 가 정한다
 *   - 스프링 빈이 아니라 값만 바꾸는 도우미라 static 메서드로 둔다 (QuestionSheet 처럼 바로 테스트할 수 있다)
+*
+*   읽는 양을 처음부터 묶어 둔다 (#378 CodeRabbit 지적, CWE-400). 1MB 는 압축된 크기라 엑셀은 풀면 훨씬 커질 수 있다
+*   - 칸 : 한 줄에서 maxColumns 칸까지만 담고, 그 뒤에 글자가 있는 칸이 있으면 "넘친 칸" 하나만 덧붙인다
+*     (그래야 QuizFileService 가 "칸이 더 있어요"로 알려 줄 수 있다). 마지막 열(XFD)에만 값이 있는 행도 칸 16,384개를 만들지 않는다
+*   - 줄 : 글자가 있는 줄을 maxLines 개 읽으면 그만 읽는다 (머리글 + 최대 문항 수 + 1 이면 "문제가 넘친다"를 알 수 있다)
+*   - XLSX : 압축을 푼 전체 크기가 10MB 를 넘으면 열지 않는다(FILE_TOO_LARGE). 시트는 한꺼번에 메모리에 올리지 않고
+*     POI 의 이벤트 방식(XSSFReader + XSSFSheetXMLHandler)으로 한 행씩 읽다가 필요한 만큼 읽으면 멈춘다
 *  */
 final class QuizFileParser {
 
     private static final char BOM = '﻿';
+    static final long XLSX_MAX_UNZIPPED_SIZE = 10L * 1024 * 1024;   // 문제 15개짜리 엑셀은 풀어도 수백 KB 다
 
     private QuizFileParser() {
     }
@@ -52,39 +70,61 @@ final class QuizFileParser {
     }
 
     /** CSV : 쉼표로 나눈 표 */
-    static List<Line> readCsv(byte[] bytes) {
-        return readDelimited(decodeUtf8(bytes), ',');
+    static List<Line> readCsv(byte[] bytes, int maxColumns, int maxLines) {
+        return readDelimited(decodeUtf8(bytes), ',', maxColumns, maxLines);
     }
 
     /** TXT : 첫 줄에 탭이 있으면 탭, 없으면 쉼표로 나눈 표 */
-    static List<Line> readTxt(byte[] bytes) {
+    static List<Line> readTxt(byte[] bytes, int maxColumns, int maxLines) {
         String text = decodeUtf8(bytes);
         int firstLineEnd = text.indexOf('\n');
         String firstLine = firstLineEnd < 0 ? text : text.substring(0, firstLineEnd);
-        return readDelimited(text, firstLine.indexOf('\t') >= 0 ? '\t' : ',');
+        return readDelimited(text, firstLine.indexOf('\t') >= 0 ? '\t' : ',', maxColumns, maxLines);
     }
 
-    /** XLSX : 첫 번째 시트. 엑셀 파일이 아니거나 깨졌으면 QUIZ_FILE_INVALID */
-    static List<Line> readXlsx(InputStream in) {
-        try (XSSFWorkbook workbook = new XSSFWorkbook(in)) {
-            if (workbook.getNumberOfSheets() == 0) {
-                return List.of();
+    /** XLSX : 첫 번째 시트. 풀어서 10MB 가 넘으면 FILE_TOO_LARGE, 엑셀 파일이 아니거나 깨졌으면 QUIZ_FILE_INVALID */
+    static List<Line> readXlsx(byte[] bytes, int maxColumns, int maxLines) {
+        checkUnzippedSize(bytes);
+        RowCollector collector = new RowCollector(maxColumns, maxLines);
+        try (OPCPackage pkg = OPCPackage.open(new ByteArrayInputStream(bytes))) {
+            XSSFReader reader = new XSSFReader(pkg);
+            Iterator<InputStream> sheets = reader.getSheetsData();
+            if (!sheets.hasNext()) {
+                return collector.lines;
             }
-            Sheet sheet = workbook.getSheetAt(0);
-            DataFormatter formatter = new DataFormatter();
-            formatter.setUseCachedValuesForFormulaCells(true);   // 수식은 실행하지 않고 엑셀이 저장해 둔 결과 값을 읽는다
-            List<Line> lines = new ArrayList<>();
-            for (Row row : sheet) {                                // 빈 행(엑셀에 없는 행)은 건너뛰고, 행 번호는 그대로 쓴다
-                List<String> cells = new ArrayList<>();
-                for (int i = 0; i < Math.max(row.getLastCellNum(), 0); i++) {
-                    Cell cell = row.getCell(i);
-                    cells.add(cell == null ? "" : formatter.formatCellValue(cell).strip());
+            XMLReader parser = XMLHelper.newXMLReader();
+            parser.setContentHandler(new XSSFSheetXMLHandler(reader.getStylesTable(), new ReadOnlySharedStringsTable(pkg),
+                    collector, new DataFormatter(), false));    // false : 수식 대신 저장된 결과 값
+            try (InputStream sheet = sheets.next()) {
+                parser.parse(new InputSource(sheet));
+            }
+            return collector.lines;
+        } catch (Exception e) {
+            if (collector.full) {
+                return collector.lines;                         // 필요한 만큼 읽어서 멈춘 것 (StopReading)
+            }
+            // 확장자만 xlsx 인 다른 파일, 깨진 파일, 암호가 걸린 파일 등
+            throw new BusinessException(QuizErrorCode.QUIZ_FILE_INVALID, "엑셀 파일을 열 수 없어요. xlsx 로 저장한 파일인지 확인해 주세요");
+        }
+    }
+
+    /* 압축을 풀면서 크기만 센다. 10MB 를 넘는 순간 멈추므로 아무리 크게 부풀린 파일도 10MB 이상 풀지 않는다.
+     * zip 이 아니면 센 크기가 0 이고, 엑셀인지는 다음 단계(POI)가 판단한다 */
+    private static void checkUnzippedSize(byte[] bytes) {
+        long total = 0;
+        byte[] buffer = new byte[8192];
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(bytes))) {
+            while (zip.getNextEntry() != null) {
+                int read;
+                while ((read = zip.read(buffer)) > 0) {
+                    total += read;
+                    if (total > XLSX_MAX_UNZIPPED_SIZE) {
+                        throw new BusinessException(CommonErrorCode.FILE_TOO_LARGE,
+                                "엑셀 파일 내용이 너무 커요. 첫 시트에 머리글과 문제만 남겨 다시 저장해 주세요");
+                    }
                 }
-                lines.add(new Line(row.getRowNum() + 1, cells));
             }
-            return lines;
-        } catch (IOException | RuntimeException e) {
-            // 확장자만 xlsx 인 다른 파일, 깨진 파일, 암호가 걸린 파일, 지나치게 압축된 파일(POI 가 막음) 등
+        } catch (IOException e) {
             throw new BusinessException(QuizErrorCode.QUIZ_FILE_INVALID, "엑셀 파일을 열 수 없어요. xlsx 로 저장한 파일인지 확인해 주세요");
         }
     }
@@ -104,9 +144,11 @@ final class QuizFileParser {
         }
     }
 
-    /* 구분 문자(쉼표·탭)로 나눈 표를 읽는다. 큰따옴표로 감싼 칸은 그 안의 구분 문자·줄바꿈을 글자로 보고, "" 는 " 하나다 */
-    private static List<Line> readDelimited(String text, char delimiter) {
+    /* 구분 문자(쉼표·탭)로 나눈 표를 읽는다. 큰따옴표로 감싼 칸은 그 안의 구분 문자·줄바꿈을 글자로 보고, "" 는 " 하나다.
+     * 글자가 있는 줄을 maxLines 개 읽으면 멈춘다 */
+    private static List<Line> readDelimited(String text, char delimiter, int maxColumns, int maxLines) {
         List<Line> lines = new ArrayList<>();
+        int filled = 0;                 // 글자가 있는 줄 수
         List<String> cells = new ArrayList<>();
         StringBuilder cell = new StringBuilder();
         boolean inQuotes = false;       // 큰따옴표 안을 읽는 중
@@ -137,15 +179,19 @@ final class QuizFileParser {
                 inQuotes = true;
                 quotedCell = true;
             } else if (c == delimiter) {
-                cells.add(cell.toString().strip());
+                addCell(cells, cell.toString().strip(), maxColumns);
                 cell.setLength(0);
                 quotedCell = false;
             } else if (c == '\r' || c == '\n') {
                 if (c == '\r' && i + 1 < text.length() && text.charAt(i + 1) == '\n') {
                     i++;
                 }
-                cells.add(cell.toString().strip());
-                lines.add(new Line(startLine, cells));
+                addCell(cells, cell.toString().strip(), maxColumns);
+                Line line = new Line(startLine, cells);
+                lines.add(line);
+                if (!line.isBlank() && ++filled >= maxLines) {
+                    return lines;                               // 필요한 만큼 읽었다
+                }
                 cells = new ArrayList<>();
                 cell.setLength(0);
                 quotedCell = false;
@@ -160,9 +206,77 @@ final class QuizFileParser {
                     startLine + "번째 줄: 큰따옴표(\")가 닫히지 않았어요");
         }
         if (!cells.isEmpty() || !cell.isEmpty()) {             // 마지막 줄에 줄바꿈이 없을 때
-            cells.add(cell.toString().strip());
+            addCell(cells, cell.toString().strip(), maxColumns);
             lines.add(new Line(startLine, cells));
         }
         return lines;
+    }
+
+    /* maxColumns 칸까지는 그대로 담고, 그 뒤로는 글자가 있는 칸 하나("넘친 칸")만 담는다 */
+    private static void addCell(List<String> cells, String value, int maxColumns) {
+        if (cells.size() < maxColumns) {
+            cells.add(value);
+        } else if (cells.size() == maxColumns && !value.isEmpty()) {
+            cells.add(value);
+        }
+    }
+
+    /* XLSX 한 행씩 받는 곳 (XSSFSheetXMLHandler 가 부른다). 칸·줄 한도는 readDelimited 와 같다 */
+    private static final class RowCollector implements SheetContentsHandler {
+
+        private final int maxColumns;
+        private final int maxLines;
+        private final List<Line> lines = new ArrayList<>();
+        private List<String> cells;
+        private int nextColumn;          // 열 위치(r 속성)가 없는 칸을 위해 다음 열 번호를 센다
+        private int filled;              // 글자가 있는 줄 수
+        private boolean full;            // 필요한 만큼 읽어서 멈췄는가
+
+        RowCollector(int maxColumns, int maxLines) {
+            this.maxColumns = maxColumns;
+            this.maxLines = maxLines;
+        }
+
+        @Override
+        public void startRow(int rowNum) {
+            cells = new ArrayList<>();
+            nextColumn = 0;
+        }
+
+        @Override
+        public void cell(String cellReference, String formattedValue, XSSFComment comment) {
+            int column = cellReference == null ? nextColumn : new CellReference(cellReference).getCol();
+            nextColumn = column + 1;
+            String value = formattedValue == null ? "" : formattedValue.strip();
+            if (column < maxColumns) {
+                while (cells.size() < column) {
+                    cells.add("");                              // 빈 칸은 시트 XML 에 없으므로 채운다
+                }
+                cells.add(value);
+            } else if (!value.isEmpty() && cells.size() <= maxColumns) {
+                while (cells.size() < maxColumns) {
+                    cells.add("");
+                }
+                cells.add(value);                               // 넘친 칸 하나만
+            }
+        }
+
+        @Override
+        public void endRow(int rowNum) {
+            Line line = new Line(rowNum + 1, cells);
+            lines.add(line);
+            if (!line.isBlank() && ++filled >= maxLines) {
+                full = true;
+                throw new StopReading();
+            }
+        }
+    }
+
+    /** 필요한 만큼 읽었을 때 시트 읽기를 멈추는 신호 */
+    private static final class StopReading extends RuntimeException {
+
+        StopReading() {
+            super(null, null, false, false);
+        }
     }
 }

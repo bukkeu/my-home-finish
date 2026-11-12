@@ -2,6 +2,7 @@ package com.wanted.moneybeetle.domain.quiz.model.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import com.wanted.moneybeetle.domain.quiz.exception.QuizErrorCode;
 import com.wanted.moneybeetle.domain.quiz.model.dto.QuizFileType;
@@ -12,11 +13,18 @@ import com.wanted.moneybeetle.global.exception.ErrorCode;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -174,14 +182,17 @@ class QuizFileServiceTest {
     class Count {
 
         @Test
+        @DisplayName("모자라면 마지막으로 읽은 줄 번호와 함께 알려 준다")
         void 테스트퀴즈_4문제는_오류() {
             assertError(file("q.csv", testRows(4)), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID,
-                    "테스트 퀴즈는 5문제가 필요해요. 파일에는 4문제가 있어요");
+                    "5번째 줄까지 4문제뿐이에요. 테스트 퀴즈는 5문제가 필요해요");
         }
 
         @Test
+        @DisplayName("넘치면 처음 넘친 문제의 줄 번호와 함께 알려 준다")
         void 테스트퀴즈_6문제는_오류() {
-            assertError(file("q.csv", testRows(6)), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID, "파일에는 6문제가");
+            assertError(file("q.csv", testRows(6)), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID,
+                    "7번째 줄: 테스트 퀴즈는 5문제가 필요한데, 이 줄이 6번째 문제예요. 이 줄부터는 지워 주세요");
         }
 
         @Test
@@ -193,14 +204,23 @@ class QuizFileServiceTest {
         @Test
         void 퀴즈_4문제와_16문제는_오류() {
             assertError(file("q.csv", mainRows(4)), QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID,
-                    "퀴즈는 5~15문제가 필요해요. 파일에는 4문제가 있어요");
-            assertError(file("q.csv", mainRows(16)), QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID, "파일에는 16문제가");
+                    "5번째 줄까지 4문제뿐이에요. 퀴즈는 5~15문제가 필요해요");
+            assertError(file("q.csv", mainRows(16)), QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID,
+                    "17번째 줄: 퀴즈는 5~15문제가 필요한데, 이 줄이 16번째 문제예요");
+        }
+
+        @Test
+        @DisplayName("빈 줄이 섞여 있어도 줄 번호는 실제 줄을 따른다")
+        void countLineWithBlankLines() {
+            String text = TEST_HEADER + "\n" + testRows(6).substring(TEST_HEADER.length()).replace("문제 6", "\n\n문제 6");
+            // 머리글 1, 빈 줄 2, 문제 1~5 는 3~7, 빈 줄 8~9, 문제 6 은 10번째 줄
+            assertError(file("q.csv", text), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID, "10번째 줄: 테스트 퀴즈는");
         }
 
         @Test
         @DisplayName("머리글만 있으면 0문제")
         void headerOnly() {
-            assertError(file("q.csv", TEST_HEADER), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID, "파일에는 0문제가");
+            assertError(file("q.csv", TEST_HEADER), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID, "1번째 줄까지 0문제뿐이에요");
         }
 
         @Test
@@ -323,6 +343,93 @@ class QuizFileServiceTest {
         void 닫히지_않은_따옴표는_오류() {
             String text = testRows(4) + "\"문제 5,O,해설\n";
             assertError(file("q.csv", text), QuizFileType.TEST, QuizErrorCode.QUIZ_FILE_INVALID, "6번째 줄: 큰따옴표(\")가 닫히지 않았어요");
+        }
+    }
+
+    @Nested
+    @DisplayName("읽는 양 제한 (#378 CodeRabbit, CWE-400)")
+    class Limits {
+
+        /** 머리글 + rows 줄짜리 4지선다 엑셀. extraColumn 이 0 이상이면 2번째 줄의 그 열에도 값을 넣는다 */
+        private MockMultipartFile xlsx(int rows, int extraColumn) throws IOException {
+            try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                Sheet sheet = workbook.createSheet();
+                String[] header = {"문제", "보기1", "보기2", "보기3", "보기4", "정답", "해설"};
+                Row first = sheet.createRow(0);
+                for (int c = 0; c < header.length; c++) {
+                    first.createCell(c).setCellValue(header[c]);
+                }
+                for (int r = 1; r <= rows; r++) {
+                    Row row = sheet.createRow(r);
+                    String[] cells = {"문제 " + r, "가", "나", "다", "라", "1", "해설"};
+                    for (int c = 0; c < cells.length; c++) {
+                        row.createCell(c).setCellValue(cells[c]);
+                    }
+                }
+                if (extraColumn >= 0) {
+                    sheet.getRow(1).createCell(extraColumn).setCellValue("끝 열의 값");
+                }
+                workbook.write(out);
+                return new MockMultipartFile("file", "q.xlsx", null, out.toByteArray());
+            }
+        }
+
+        @Test
+        @DisplayName("마지막 열(XFD)에만 값이 더 있는 행 : 칸 16,384개를 만들지 않고 '칸이 더 있어요'로 알려 준다 (큰따옴표 안내 없음)")
+        void sparseXlsxRow() throws IOException {
+            MockMultipartFile file = xlsx(5, 16_383);
+            assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+                    assertError(file, QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID, "2번째 줄: 칸이 7개(")
+                            .hasMessageEndingWith("여야 하는데 더 있어요"));
+        }
+
+        @Test
+        @DisplayName("문제가 수천 줄인 엑셀 : 16번째 문제까지만 읽고 그 줄 번호로 알려 준다")
+        void manyXlsxRows() throws IOException {
+            MockMultipartFile file = xlsx(5_000, -1);
+            assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+                    assertError(file, QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID, "17번째 줄: 퀴즈는 5~15문제가 필요한데"));
+            // 읽기 도우미가 실제로 멈추는지 : 머리글 + 16문제 = 17줄만 돌려준다
+            assertThat(QuizFileParser.readXlsx(file.getBytes(), 7, 17)).hasSize(17);
+        }
+
+        @Test
+        @DisplayName("1MB 안에 4만 줄을 넣은 CSV 도 16번째 문제까지만 읽는다")
+        void manyCsvRows() {
+            StringBuilder text = new StringBuilder(MAIN_HEADER);
+            for (int i = 0; i < 40_000; i++) {
+                text.append("q,1,2,3,4,1,e\n");
+            }
+            MockMultipartFile file = file("q.csv", text.toString());
+            assertThat(file.getSize()).isLessThan(QuizFileService.MAX_FILE_SIZE);
+            assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+                    assertError(file, QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID, "17번째 줄: 퀴즈는"));
+        }
+
+        @Test
+        @DisplayName("한 줄에 쉼표가 수십만 개인 CSV 도 칸 7개 + 넘친 칸 하나만 담는다")
+        void manyCsvColumns() {
+            String wide = "문제 1,가,나,다,라,1,해설" + ",x".repeat(300_000) + "\n";
+            String text = MAIN_HEADER + wide + mainRows(4).substring(MAIN_HEADER.length());
+            assertError(file("q.csv", text), QuizFileType.MAIN, QuizErrorCode.QUIZ_FILE_INVALID,
+                    "2번째 줄: 칸이 7개(문제, 보기1, 보기2, 보기3, 보기4, 정답, 해설)여야 하는데 더 있어요. 글 안의 쉼표는");
+        }
+
+        @Test
+        @DisplayName("압축을 풀면 10MB 가 넘는 xlsx 는 열지 않고 FILE_TOO_LARGE")
+        void zipBomb() throws IOException {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (ZipOutputStream zip = new ZipOutputStream(out)) {
+                zip.putNextEntry(new ZipEntry("xl/worksheets/sheet1.xml"));
+                byte[] zeros = new byte[1024 * 1024];
+                for (int i = 0; i < 11; i++) {
+                    zip.write(zeros);                           // 풀면 11MB, 압축하면 수십 KB
+                }
+                zip.closeEntry();
+            }
+            MockMultipartFile file = new MockMultipartFile("file", "q.xlsx", null, out.toByteArray());
+            assertThat(file.getSize()).isLessThan(QuizFileService.MAX_FILE_SIZE);
+            assertError(file, QuizFileType.MAIN, CommonErrorCode.FILE_TOO_LARGE, "엑셀 파일 내용이 너무 커요");
         }
     }
 

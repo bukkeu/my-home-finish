@@ -7,7 +7,6 @@ import com.wanted.moneybeetle.domain.quiz.model.service.QuizFileParser.Line;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,16 +38,22 @@ public class QuizFileService {
     /** API 150 : 파일을 읽어 문항 목록을 돌려준다 (저장하지 않음) */
     public QuizSaveDTO parse(MultipartFile file, QuizFileType type) {
         String extension = checkFile(file);
-        List<Line> lines = read(file, extension).stream().filter(line -> !line.isBlank()).toList();
+        List<Line> lines = read(file, extension, type).stream().filter(line -> !line.isBlank()).toList();
 
         if (lines.isEmpty()) {
             throw invalid("파일에 내용이 없어요. 첫 줄은 머리글(" + String.join(", ", type.getColumns()) + ")이고 둘째 줄부터 문제를 써 주세요");
         }
         checkHeader(lines.get(0), type);
 
+        // 문항 수도 줄 번호와 함께 알려 준다 (#378 CodeRabbit). 넘치면 처음 넘친 문제의 줄, 모자라면 마지막으로 읽은 줄
         List<Line> rows = lines.subList(1, lines.size());
-        if (rows.size() < type.getMinCount() || rows.size() > type.getMaxCount()) {
-            throw invalid(type.getLabel() + "는 " + type.countText() + "가 필요해요. 파일에는 " + rows.size() + "문제가 있어요");
+        if (rows.size() > type.getMaxCount()) {
+            throw invalid(rows.get(type.getMaxCount()).lineNumber() + "번째 줄: " + type.getLabel() + "는 " + type.countText()
+                    + "가 필요한데, 이 줄이 " + (type.getMaxCount() + 1) + "번째 문제예요. 이 줄부터는 지워 주세요");
+        }
+        if (rows.size() < type.getMinCount()) {
+            throw invalid(lines.get(lines.size() - 1).lineNumber() + "번째 줄까지 " + rows.size() + "문제뿐이에요. "
+                    + type.getLabel() + "는 " + type.countText() + "가 필요해요");
         }
 
         boolean delimited = !".xlsx".equals(extension);   // 쉼표·탭으로 나눈 글 파일 (칸이 넘칠 때 큰따옴표 안내를 붙인다)
@@ -78,15 +83,18 @@ public class QuizFileService {
         return extension;
     }
 
-    private List<Line> read(MultipartFile file, String extension) {
+    /* 읽는 양을 정해 준다 : 한 줄에 이 종류의 칸 수까지, 글자가 있는 줄은 머리글 + 최대 문항 수 + 1 개까지
+     * (+1 은 "문제가 넘친다"를 알려 주려고 한 줄 더 읽는 것이다. QuizFileParser 주석 참고) */
+    private List<Line> read(MultipartFile file, String extension, QuizFileType type) {
+        int maxColumns = type.getColumns().size();
+        int maxLines = 1 + type.getMaxCount() + 1;
         try {
-            if (".xlsx".equals(extension)) {
-                try (InputStream in = file.getInputStream()) {
-                    return QuizFileParser.readXlsx(in);
-                }
-            }
-            byte[] bytes = file.getBytes();
-            return ".csv".equals(extension) ? QuizFileParser.readCsv(bytes) : QuizFileParser.readTxt(bytes);
+            byte[] bytes = file.getBytes();                   // 1MB 이하인 것을 확인했다
+            return switch (extension) {
+                case ".xlsx" -> QuizFileParser.readXlsx(bytes, maxColumns, maxLines);
+                case ".csv" -> QuizFileParser.readCsv(bytes, maxColumns, maxLines);
+                default -> QuizFileParser.readTxt(bytes, maxColumns, maxLines);
+            };
         } catch (IOException e) {
             throw invalid("파일을 읽지 못했어요. 다시 올려 주세요");
         }
