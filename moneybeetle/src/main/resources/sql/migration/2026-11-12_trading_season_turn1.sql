@@ -16,11 +16,12 @@ WHERE trading_season_id = 1
   AND current_turn > 1
   AND NOT EXISTS (SELECT 1 FROM season_participant WHERE trading_season_id = 1);
 
--- 위에서 1턴이 된 경우에만 2턴 이후 진행 기록을 비운다
+-- 위에서 1턴이 된 경우에만 2턴 이후 진행 기록을 비운다 (휴장·정산·종료 시즌은 건드리지 않게 진행 중일 때만)
 UPDATE season_turn
 SET progressed_at = NULL,
     progressed_by = NULL
 WHERE trading_season_id = 1
   AND turn_no > 1
+  AND (SELECT status FROM trading_season WHERE trading_season_id = 1) = 'RUNNING'
   AND (SELECT current_turn FROM trading_season WHERE trading_season_id = 1) = 1
   AND NOT EXISTS (SELECT 1 FROM season_participant WHERE trading_season_id = 1);
