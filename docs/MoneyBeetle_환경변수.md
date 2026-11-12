@@ -50,8 +50,8 @@
 | --- | --- | --- | --- | --- |
 | `MAIL_HOST` | 비밀번호 재설정·가입 본인인증 메일 발송 (`spring-boot-starter-mail`, `PasswordResetService`, `IdentityVerificationService`) | | `localhost` | USR-09, DP-12, USR-05, DP-44 |
 | `MAIL_PORT` | 메일 서버 포트 | | `1025` (로컬 메일 확인 도구) | 〃 |
-| `MAIL_USERNAME` | 메일 계정 | | 비워 둠 | 〃 |
-| `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호) | ✅ | 비워 둠 | 〃 |
+| `MAIL_USERNAME` | 메일 계정. 로컬 메일 확인 도구는 계정이 필요 없어 지금은 쓰지 않는다 (`.env`에서 빼도 기본값 빈칸으로 뜬다) | | 비워 둠 | 〃 |
+| `MAIL_PASSWORD` | 메일 계정 비밀번호 (앱 비밀번호). `MAIL_USERNAME`과 같이 지금은 쓰지 않는다 | ✅ | 비워 둠 | 〃 |
 | `MAIL_FROM` | 발신자 주소 | | `no-reply@moneybeetle.local` | 〃 |
 | `APP_BASE_URL` | 재설정 메일 속 링크의 서버 주소 (`{APP_BASE_URL}/password-reset?token=...`) | | `http://localhost:8080` | 〃 |
 | `GOOGLE_CLIENT_ID` | 구글 간편 로그인 (`spring-boot-starter-oauth2-client`, `OAuth2SuccessHandler`) | | 개인 테스트 앱의 값 | USR-07, DP-13 |
@@ -120,12 +120,13 @@ DB_URL=jdbc:mysql://localhost:3306/money_beetle?serverTimezone=Asia/Seoul&charac
 DB_USERNAME=moneybeetle
 DB_PASSWORD=change-me
 
-# 메일 (비밀번호 재설정·가입 본인인증) - 기능 구현 시
+# 메일 (비밀번호 재설정·가입 본인인증). 로컬 메일 확인 도구는 계정이 필요 없어 MAIL_USERNAME·MAIL_PASSWORD 는 비워 두거나 빼도 된다
 MAIL_HOST=localhost
 MAIL_PORT=1025
 MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM=no-reply@moneybeetle.local
+APP_BASE_URL=http://localhost:8080
 
 # 간편 로그인 (#9). 키가 없으면 꺼진다 (비워 둬도 서버는 뜬다)
 GOOGLE_CLIENT_ID=
@@ -157,7 +158,7 @@ spring:
 ### 5-3 로컬에서 값 넣기 (둘 중 하나)
 
 1. **IntelliJ 실행 설정**: Run/Debug Configurations → Environment variables에 `DB_PASSWORD=...` 형식으로 입력합니다. 파일이 프로젝트 밖(IDE 설정)에 있어서 실수로 올릴 위험이 가장 적습니다.
-2. **`.env` 파일**: `moneybeetle/` 폴더에 `.env.example`을 복사해 `.env`로 만들고 값을 채웁니다. Spring Boot가 `.env`를 읽도록 `application.yaml`에 `spring.config.import: optional:file:.env[.properties]`를 추가합니다. (`.gitignore`에 `.env`가 있는지 **먼저** 확인합니다.)
+2. **`.env` 파일**: `moneybeetle/` 폴더에 `.env.example`을 복사해 `.env`로 만들고 값을 채웁니다. `application.yaml`에 이미 `spring.config.import: optional:file:.env[.properties]`가 있어(#114) 따로 설정할 것은 없습니다. 이 설정은 **실행 위치**의 `.env`를 읽으므로 IntelliJ 실행 설정의 Working directory를 `moneybeetle` 폴더로 둡니다(다른 폴더면 `.env`를 못 읽어 `DB_URL` 오류로 서버가 뜨지 않습니다). 시작 클래스(Main class)는 `com.wanted.moneybeetle.MoneyBeetleApplication`입니다(#114에서 루트 패키지로 옮김. 예전 `global.config` 경로의 실행 설정은 지웁니다). (`.gitignore`에 `.env`가 있는지 **먼저** 확인합니다.)
 
 ### 5-4 발표 노트북에서
 
