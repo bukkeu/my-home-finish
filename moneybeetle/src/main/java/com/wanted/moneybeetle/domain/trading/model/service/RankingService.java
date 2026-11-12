@@ -1,6 +1,8 @@
 package com.wanted.moneybeetle.domain.trading.model.service;
 
+import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
+import com.wanted.moneybeetle.domain.member.model.service.RankingAwardReader;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.RankingAwardRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.SeasonParticipantRepository;
@@ -11,6 +13,7 @@ import com.wanted.moneybeetle.domain.trading.model.entity.SeasonParticipant;
 import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -30,11 +33,13 @@ import org.springframework.transaction.annotation.Transactional;
 *   - type : ASSET(순자산, 기본) / RETURN(수익률)
 *   - 내 순위(me) : 이 시즌에 참가한 회원이면 그 값, 아니면 null
 *   - 상위 3위 수상(ranking_award)이 있으면 뱃지·칭호를 title·hasBadge 로 보여 준다
+*   #338 회원별 수상 내역 (findAwards) : 공개 프로필(API 18)의 awards. member 쪽 인터페이스 RankingAwardReader 를 구현해서
+*     member 가 trading 을 직접 참조하지 않게 한다 (trading -> member 한 방향, 도메인 순환 없음)
 *  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class RankingService {
+public class RankingService implements RankingAwardReader {
 
     public static final int DEFAULT_SIZE = 10;
     public static final int MAX_SIZE = 50;
@@ -81,6 +86,35 @@ public class RankingService {
                 .toList();
         return new RankingDTO(season.getName(), rankingType, rows.getTotalElements(), items,
                 findMe(seasonId, memberId, asset));
+    }
+
+    /**
+     * 회원 한 명의 랭킹 수상 내역 (#338, 공개 프로필 API 18 의 awards).
+     * 최근 시즌(시작일 늦은 순)부터, 같은 시즌 안에서는 순자산(ASSET) → 수익률(RETURN) 순서. 수상이 없거나 회원 번호가 없으면 빈 목록
+     */
+    @Override
+    public List<PublicProfileDTO.Award> findAwards(Long memberId) {
+        if (memberId == null) {
+            return List.of();
+        }
+        List<RankingAward> awards = awardRepository.findByMemberId(memberId);
+        if (awards.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, TradingSeason> seasons = seasonRepository
+                .findAllById(awards.stream().map(RankingAward::getTradingSeasonId).distinct().toList()).stream()
+                .collect(Collectors.toMap(TradingSeason::getTradingSeasonId, Function.identity()));
+        return awards.stream()
+                // 랭킹을 공개한 시즌의 수상만 (시즌 랭킹 API 62 와 같은 기준)
+                .filter(award -> seasons.containsKey(award.getTradingSeasonId())
+                        && seasons.get(award.getTradingSeasonId()).isRankingPublished())
+                .sorted(Comparator.comparing((RankingAward award) -> seasons.get(award.getTradingSeasonId()).getStartDate())
+                        .reversed()
+                        .thenComparing(award -> RankingAward.TYPE_ASSET.equals(award.getRankingType()) ? 0 : 1)
+                        .thenComparingInt(RankingAward::getRankNo))
+                .map(award -> new PublicProfileDTO.Award(seasons.get(award.getTradingSeasonId()).getName(),
+                        award.getRankingType(), award.getRankNo()))
+                .toList();
     }
 
     private RankingDTO.Me findMe(Long seasonId, Long memberId, boolean asset) {
