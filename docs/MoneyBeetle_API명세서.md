@@ -190,10 +190,10 @@
 | --- | --- | --- | --- | --- | --- |
 | 47 | `GET` | `/api/v1/inquiries` | 문의 목록 | 회원 | LRN-09, SP-40 |
 | 48 | `POST` | `/api/v1/inquiries` | 문의 작성 | 회원 | LRN-09, DP-30, DP-21 |
-| 49 | `GET` | `/api/v1/inquiries/{inquiryId}` | 문의 상세 | 작성자·강사·관리자 | LRN-09, SP-40, DP-22 |
+| 49 | `GET` | `/api/v1/inquiries/{inquiryId}` | 문의 상세 | 작성자·강사(내 강의, 승인된 강사만 #410)·관리자 | LRN-09, SP-40, DP-22 |
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
-| 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의, 승인된 강사만 #410)·관리자 | TCH-09, LRN-09 |
 | 52-1 | `PATCH` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 수정 | 답글 작성자 | TCH-09 |
 | 52-2 | `DELETE` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 삭제 | 답글 작성자 | TCH-09 |
 | 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
