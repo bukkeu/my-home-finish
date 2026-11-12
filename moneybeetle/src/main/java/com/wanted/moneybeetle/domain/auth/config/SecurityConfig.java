@@ -115,6 +115,9 @@ public class SecurityConfig {
                     auth.requestMatchers("/admin/**", "/api/v1/admin/**").hasAuthority("ADMIN");          // ⑤
                     // ⑥ 승인된 강사만 INSTRUCTOR 권한을 받도록 하는 것은 로그인(AuthService, 김예린 #6)에서 확인
                     auth.requestMatchers("/instructor/**", "/api/v1/instructor/**").hasAuthority("INSTRUCTOR");
+                    // 학습자 화면은 학습자(MEMBER)만 (#415). 강사·관리자로 로그인한 채 주소만 바꿔 들어오지 못하게 한다.
+                    // 승인 전 강사는 MEMBER 권한이라 들어온다(SP-07). 다른 권한이면 SecurityErrorHandler 가 학습자 로그인 화면으로 보낸다
+                    auth.requestMatchers("/user/**").hasAuthority("MEMBER");
                     auth.anyRequest().authenticated();                                         // ⑦ 로그인만 하면
                 })
                 .formLogin(login -> {

@@ -16,16 +16,22 @@ import org.springframework.security.web.authentication.LoginUrlAuthenticationEnt
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /* comment.
 *   담당 : SCM (공통 기반·보안)
 *   Security 필터 단계의 인증·권한 실패 응답 (컨트롤러 전이라 GlobalExceptionHandler 가 못 잡는다)
 *   - 로그인 안 함 : API -> 401 UNAUTHORIZED JSON / 화면 -> 로그인 화면으로 이동
 *   - 권한 없음   : API -> 403 FORBIDDEN JSON    / 화면 -> error/403.html
+*                  단, 학습자 화면(/user/**)을 강사·관리자로 연 경우는 학습자 로그인 화면(/login?next=원래 주소)으로 보낸다 (#415).
+*                  학습자 계정으로 로그인하면 next 로 원래 보려던 화면에 간다 (AuthSuccessHandler)
 *  */
 @Component
 @RequiredArgsConstructor
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
+
+    private static final String LEARNER_PAGE_PREFIX = "/user/";
 
     private final ObjectMapper objectMapper;   // 스프링이 만들어 둔 JSON 변환기
     private final AuthenticationEntryPoint loginPage = new LoginUrlAuthenticationEntryPoint("/login");
@@ -49,11 +55,33 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
             writeJson(response, CommonErrorCode.FORBIDDEN);
             return;
         }
+        if (isLearnerPage(request)) {
+            response.sendRedirect(request.getContextPath() + "/login?next=" + URLEncoder.encode(pathWithQuery(request), StandardCharsets.UTF_8));
+            return;
+        }
         response.sendError(HttpServletResponse.SC_FORBIDDEN);   // -> /error -> templates/error/403.html
     }
 
     private boolean isApi(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/api/");
+        return path(request).startsWith("/api/");
+    }
+
+    /* 학습자 화면 (/user/**) */
+    private boolean isLearnerPage(HttpServletRequest request) {
+        return path(request).startsWith(LEARNER_PAGE_PREFIX);
+    }
+
+    /* 앱 안의 경로 (컨텍스트 경로를 뺀 주소) */
+    private String path(HttpServletRequest request) {
+        return request.getRequestURI().substring(request.getContextPath().length());
+    }
+
+    /* 로그인 뒤 돌아갈 주소 : 경로 + 쿼리 (예: /user/my-page?tab=wrong).
+     * 로그인 화면이 이 값으로 바로 이동하므로 컨텍스트 경로를 포함한 주소를 쓴다 (저장된 요청으로 돌아가는 경우와 같게, #418 CodeRabbit) */
+    private String pathWithQuery(HttpServletRequest request) {
+        String query = request.getQueryString();
+        String returnPath = request.getRequestURI();
+        return query == null ? returnPath : returnPath + "?" + query;
     }
 
     private void writeJson(HttpServletResponse response, ErrorCode errorCode) throws IOException {
