@@ -38,7 +38,7 @@ public class QuizFileService {
     /** API 150 : 파일을 읽어 문항 목록을 돌려준다 (저장하지 않음) */
     public QuizSaveDTO parse(MultipartFile file, QuizFileType type) {
         String extension = checkFile(file);
-        List<Line> lines = read(file, extension, type).stream().filter(line -> !line.isBlank()).toList();
+        List<Line> lines = read(file, extension, type);   // 글자가 있는 줄만 (빈 줄은 QuizFileParser 가 담지 않는다)
 
         if (lines.isEmpty()) {
             throw invalid("파일에 내용이 없어요. 첫 줄은 머리글(" + String.join(", ", type.getColumns()) + ")이고 둘째 줄부터 문제를 써 주세요");

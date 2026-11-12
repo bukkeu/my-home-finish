@@ -436,6 +436,51 @@ class QuizFileServiceTest {
         }
 
         @Test
+        @DisplayName("빈 줄이 수십만 개인 CSV : 빈 줄은 담지 않고, 문제 줄 번호는 실제 줄을 따른다")
+        void blankHeavyCsv() {
+            String text = TEST_HEADER + "\n".repeat(300_000) + testRows(5).substring(TEST_HEADER.length());
+            byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+            assertThat((long) bytes.length).isLessThan(QuizFileService.MAX_FILE_SIZE);
+
+            List<QuizFileParser.Line> lines = QuizFileParser.readCsv(bytes, 3, 7);
+
+            assertThat(lines).hasSize(6);                                   // 머리글 + 문제 5줄만
+            assertThat(lines.get(1).lineNumber()).isEqualTo(300_002);      // 머리글 1 + 빈 줄 300,000 다음 줄
+            assertThat(service.parse(file("q.csv", text), QuizFileType.TEST).questions()).hasSize(5);
+        }
+
+        @Test
+        @DisplayName("빈 행이 수천 개인 엑셀 : 빈 행은 담지 않고, 문제 행 번호는 실제 행을 따른다")
+        void blankHeavyXlsx() throws IOException {
+            try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                Sheet sheet = workbook.createSheet();
+                Row header = sheet.createRow(0);
+                String[] columns = {"문제", "정답", "해설"};
+                for (int c = 0; c < columns.length; c++) {
+                    header.createCell(c).setCellValue(columns[c]);
+                }
+                for (int r = 1; r <= 5_000; r++) {
+                    sheet.createRow(r).createCell(0).setCellValue("");     // 값이 빈 칸만 있는 행
+                }
+                for (int r = 5_001; r <= 5_005; r++) {
+                    Row row = sheet.createRow(r);
+                    row.createCell(0).setCellValue("문제 " + r);
+                    row.createCell(1).setCellValue("O");
+                    row.createCell(2).setCellValue("해설");
+                }
+                workbook.write(out);
+                byte[] bytes = out.toByteArray();
+
+                List<QuizFileParser.Line> lines = QuizFileParser.readXlsx(bytes, 3, 7);
+
+                assertThat(lines).hasSize(6);
+                assertThat(lines.get(1).lineNumber()).isEqualTo(5_002);        // 엑셀 행 번호 (0부터 센 5,001 + 1)
+                assertThat(service.parse(new MockMultipartFile("file", "q.xlsx", null, bytes), QuizFileType.TEST).questions())
+                        .hasSize(5);
+            }
+        }
+
+        @Test
         @DisplayName("1MB 안에 4만 줄을 넣은 CSV 도 16번째 문제까지만 읽는다")
         void manyCsvRows() {
             StringBuilder text = new StringBuilder(MAIN_HEADER);

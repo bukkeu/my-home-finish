@@ -36,7 +36,7 @@ import org.xml.sax.helpers.DefaultHandler;
 *   - TXT : CSV 와 같은 규칙인데, 첫 줄에 탭이 있으면 탭으로, 없으면 쉼표로 나눈다
 *   - XLSX : 첫 번째 시트만 읽는다. 칸 값은 엑셀 화면에 보이는 글자 그대로(숫자 1 → "1"), 수식 칸은 저장된 결과 값을 쓴다(수식을 실행하지 않음)
 *   - 줄 번호는 CSV·TXT 는 그 줄이 시작하는 줄, XLSX 는 엑셀의 행 번호다. 오류 문구 "N번째 줄"에 쓴다
-*   - 칸 값의 앞뒤 공백은 지운다. 모든 칸이 빈 줄도 그대로 돌려주고, 건너뛸지는 QuizFileService 가 정한다
+*   - 칸 값의 앞뒤 공백은 지운다. 모든 칸이 빈 줄(끝의 빈 줄, 서식만 있는 행)은 담지 않는다. 줄 번호는 빈 줄을 포함한 실제 줄 번호다
 *   - 스프링 빈이 아니라 값만 바꾸는 도우미라 static 메서드로 둔다 (QuestionSheet 처럼 바로 테스트할 수 있다)
 *
 *   읽는 양을 처음부터 묶어 둔다 (#378 CodeRabbit 지적, CWE-400). 1MB 는 압축된 크기라 엑셀은 풀면 훨씬 커질 수 있다
@@ -189,7 +189,6 @@ final class QuizFileParser {
      * 글자가 있는 줄을 maxLines 개 읽으면 멈춘다 */
     private static List<Line> readDelimited(String text, char delimiter, int maxColumns, int maxLines) {
         List<Line> lines = new ArrayList<>();
-        int filled = 0;                 // 글자가 있는 줄 수
         List<String> cells = new ArrayList<>();
         StringBuilder cell = new StringBuilder();
         boolean inQuotes = false;       // 큰따옴표 안을 읽는 중
@@ -228,9 +227,7 @@ final class QuizFileParser {
                     i++;
                 }
                 addCell(cells, cell.toString().strip(), maxColumns);
-                Line line = new Line(startLine, cells);
-                lines.add(line);
-                if (!line.isBlank() && ++filled >= maxLines) {
+                if (keep(lines, new Line(startLine, cells), maxLines)) {
                     return lines;                               // 필요한 만큼 읽었다
                 }
                 cells = new ArrayList<>();
@@ -248,9 +245,18 @@ final class QuizFileParser {
         }
         if (!cells.isEmpty() || !cell.isEmpty()) {             // 마지막 줄에 줄바꿈이 없을 때
             addCell(cells, cell.toString().strip(), maxColumns);
-            lines.add(new Line(startLine, cells));
+            keep(lines, new Line(startLine, cells), maxLines);
         }
         return lines;
+    }
+
+    /* 글자가 있는 줄만 담는다 (빈 줄이 아무리 많아도 목록이 커지지 않게, #378 CodeRabbit). 줄 번호는 실제 줄 그대로다.
+     * maxLines 개를 채웠으면 true (그만 읽는다) */
+    private static boolean keep(List<Line> lines, Line line, int maxLines) {
+        if (!line.isBlank()) {
+            lines.add(line);
+        }
+        return lines.size() >= maxLines;
     }
 
     /* maxColumns 칸까지는 그대로 담고, 그 뒤로는 글자가 있는 칸 하나("넘친 칸")만 담는다 */
@@ -270,7 +276,6 @@ final class QuizFileParser {
         private final List<Line> lines = new ArrayList<>();
         private List<String> cells;
         private int nextColumn;          // 열 위치(r 속성)가 없는 칸을 위해 다음 열 번호를 센다
-        private int filled;              // 글자가 있는 줄 수
         private boolean full;            // 필요한 만큼 읽어서 멈췄는가
 
         RowCollector(int maxColumns, int maxLines) {
@@ -304,9 +309,7 @@ final class QuizFileParser {
 
         @Override
         public void endRow(int rowNum) {
-            Line line = new Line(rowNum + 1, cells);
-            lines.add(line);
-            if (!line.isBlank() && ++filled >= maxLines) {
+            if (keep(lines, new Line(rowNum + 1, cells), maxLines)) {
                 full = true;
                 throw new StopReading();
             }
