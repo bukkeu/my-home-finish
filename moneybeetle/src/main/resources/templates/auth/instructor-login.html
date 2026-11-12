@@ -2,41 +2,54 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
   <th:block th:replace="~{fragments/layout/header :: headFragment('강사 로그인')}"></th:block>
-  <link rel="stylesheet" type="text/css" th:href="@{/css/instructor.css}">
+  <link rel="stylesheet" type="text/css" th:href="@{/css/instructor-auth.css}">
 </head>
-<body class="ins-auth-body">
+<body class="ia-body">
 <!--/* comment.
-  담당 : DBA ① 신아림 (#59, 강사 로그인 화면)
-  원본 디자인 : InstructorLogin.dc.html (화면설계 5.1.4)
+  담당 : DBA ① 신아림 (#59 강사 로그인 화면, #372 목업과 똑같이)
+  원본 디자인 : InstructorLogin.dc.html (화면설계 5.1.4) - 카드 없이 화면 전체, 아래 안내 띠
   경로 : /instructor/login (누구나)
   데이터 : POST /api/v1/auth/login (폼 형식 + CSRF, API 6). 응답의 role 이 INSTRUCTOR 일 때만 강사 대시보드로 보낸다
   - 승인 전 강사·학생 계정은 MEMBER 로 로그인되므로(SP-07) 바로 로그아웃하고 안내한다 (강사 화면에 들어오지 못하게)
-  - '로그인 상태 유지'·'비밀번호 찾기'는 서버 기능이 없어 시안에서 뺐다
+  - '로그인 상태 유지'를 켜면 remember-me=true 를 같이 보낸다 (서버 기능은 #367)
+  - '비밀번호 찾기'는 목업처럼 '준비 중'으로만 보인다
 */-->
-<div class="ins-auth ins-auth--login">
-  <main class="ins-auth__card ins-auth__card--login">
-    <a class="ins-auth__logo" th:href="@{/}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
-    <span class="ins-kicker">강사 센터</span>
-    <h1>강사 로그인</h1>
-    <p class="ins-auth__sub">처음이신가요? <a th:href="@{/instructor/signup}">강사 회원가입</a></p>
-    <form class="ins-form" data-ins-login novalidate>
-      <label class="ins-field">
-        <span>강사 계정 이메일</span>
-        <input class="ins-input" type="email" name="email" autocomplete="username" placeholder="teacher@moneybeetle.kr" required>
-      </label>
-      <label class="ins-field">
-        <span>비밀번호</span>
-        <span class="ins-pw">
-          <input class="ins-input" type="password" name="password" autocomplete="current-password" placeholder="비밀번호" required>
-          <button type="button" class="ins-pw__toggle" data-ins-pw-toggle aria-pressed="false">보기</button>
-        </span>
-      </label>
-      <p class="ins-error" role="alert" data-ins-error></p>
-      <button type="submit" class="btn btn-primary ins-submit">로그인</button>
-    </form>
-    <p class="ins-auth__note">강사 로그인은 이메일과 비밀번호로만 할 수 있어요.<br>관리자가 강사 권한을 승인한 계정만 강사 화면에 들어올 수 있어요.</p>
-    <p class="ins-auth__sub">학생이신가요? <a th:href="@{/login}">학생 로그인</a></p>
+<div class="ia-page">
+  <main class="ia-main">
+    <div class="ia-top">
+      <a class="ia-logo" th:href="@{/}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+      <a class="ia-close" th:href="@{/}" aria-label="닫기">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </a>
+    </div>
+    <div class="ia-login">
+      <span class="ia-kicker">강사 센터</span>
+      <h1 class="ia-title">강사 로그인</h1>
+      <p class="ia-sub">처음이신가요? <a class="ia-link-strong" th:href="@{/instructor/signup}">강사 회원가입</a></p>
+
+      <form class="ia-form" data-ins-login novalidate>
+        <label class="ia-label" for="ia-email">강사 계정 이메일</label>
+        <input class="ia-input" id="ia-email" type="email" name="email" autocomplete="username" placeholder="teacher@moneybeetle.kr" required aria-describedby="ia-login-error" aria-invalid="false">
+        <label class="ia-label ia-label--gap" for="ia-password">비밀번호</label>
+        <div class="ia-pw">
+          <input class="ia-input" id="ia-password" type="password" name="password" autocomplete="current-password" placeholder="비밀번호" required aria-describedby="ia-login-error" aria-invalid="false">
+          <button type="button" class="ia-pw__toggle" data-ins-pw-toggle aria-pressed="false" aria-controls="ia-password">보기</button>
+        </div>
+        <p class="ia-error" id="ia-login-error" role="alert" data-ins-error></p>
+        <div class="ia-row">
+          <button type="button" class="ia-keep" data-ins-keep aria-pressed="true">
+            <span class="ia-check" aria-hidden="true">✓</span>로그인 상태 유지
+          </button>
+          <span class="ia-soon" aria-disabled="true" title="준비 중인 기능이에요">비밀번호 찾기 (준비 중)</span>
+        </div>
+        <button type="submit" class="ia-submit">로그인</button>
+      </form>
+
+      <div class="ia-note">강사 로그인은 이메일과 비밀번호로만 할 수 있어요.<br>학생 계정으로는 강사 화면에 들어올 수 없어요.</div>
+      <p class="ia-student">학생이신가요? <a class="ia-link" th:href="@{/login}">학생 로그인</a></p>
+    </div>
   </main>
+  <div class="ia-banner"><span class="ia-banner__tag">안내</span><span>강사 센터는 강사 권한이 있는 계정만 이용할 수 있어요</span></div>
 </div>
 <script th:src="@{/js/common.js}"></script>
 <script th:src="@{/js/instructor-login.js}"></script>

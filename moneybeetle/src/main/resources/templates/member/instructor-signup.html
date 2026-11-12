@@ -2,27 +2,36 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
   <th:block th:replace="~{fragments/layout/header :: headFragment('강사 회원가입')}"></th:block>
-  <link rel="stylesheet" type="text/css" th:href="@{/css/instructor.css}">
+  <link rel="stylesheet" type="text/css" th:href="@{/css/instructor-auth.css}">
 </head>
-<body class="ins-auth-body">
+<body class="ia-body">
 <!--/* comment.
-  담당 : DBA ① 신아림 (#59, 강사 가입 화면)
-  원본 디자인 : InstructorSignup.dc.html (화면설계 5.1.4)
+  담당 : DBA ① 신아림 (#59 강사 가입 화면, #372 목업과 똑같이)
+  원본 디자인 : InstructorSignup.dc.html (화면설계 5.1.4) - 위쪽 머리 + 막대형 4단계 + 큰 입력칸, 아래 안내 띠
   경로 : /instructor/signup (누구나)
   데이터 : POST /api/v1/auth/identity-verification/request·/identity-verification (본인인증, API 5-1·5),
            GET /api/v1/agreements (약관, API 1), POST /api/v1/auth/instructor-signup (가입 신청, API 12)
-  - 단계: 이메일 인증 → 비밀번호 → 약관 동의 → 강사 정보 → 신청 완료(관리자 승인 안내 → 강사 로그인)
+  - 단계: 이메일(+ 인증번호) → 비밀번호 → 약관 동의 → 강사 정보 → 신청 완료(관리자 승인 안내 → 강사 로그인)
+  - 목업에는 이메일 인증번호 칸이 없지만 가입 전 본인인증이 필수라(DP-44) 1단계 '다음'을 누르면 번호를 보내고 같은 모양의 칸을 연다
   - 강사명은 회원 닉네임으로도 쓰인다(#30): 2~12자 한글·영문·숫자, 이미 있으면 다른 이름
 */-->
-<div class="ins-auth">
-  <main class="ins-auth__card ins-auth__card--wide">
-    <a class="ins-auth__logo" th:href="@{/}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
-    <ol class="ins-steps" data-ins-steps aria-label="가입 단계"></ol>
-    <span class="ins-kicker">강사 회원가입</span>
-    <h1 data-ins-title>이메일 인증</h1>
-    <p class="ins-auth__sub">이미 계정이 있나요? <a th:href="@{/instructor/login}">강사 로그인</a></p>
-    <div data-ins-signup aria-live="polite"></div>
+<div class="ia-page">
+  <header class="ia-head">
+    <a class="ia-logo" th:href="@{/}"><img th:src="@{/images/logo.png}" alt="Money Beetle"></a>
+    <a class="ia-close ia-close--big" th:href="@{/}" aria-label="닫기">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+    </a>
+  </header>
+  <main class="ia-signup-main">
+    <div class="ia-signup">
+      <ol class="ia-steps" data-ins-steps aria-label="가입 단계"></ol>
+      <span class="ia-kicker ia-kicker--center">강사 회원가입</span>
+      <h1 class="ia-title ia-title--center" data-ins-title>강사 계정 만들기</h1>
+      <p class="ia-sub ia-sub--center">이미 계정이 있나요? <a class="ia-link-strong" th:href="@{/instructor/login}">로그인</a></p>
+      <div data-ins-signup aria-live="polite"></div>
+    </div>
   </main>
+  <div class="ia-banner"><span class="ia-banner__tag">안내</span><span>강사 권한은 관리자 승인 후에 열려요</span></div>
 </div>
 <script th:src="@{/js/common.js}"></script>
 <script th:src="@{/js/instructor-signup.js}"></script>
