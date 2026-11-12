@@ -32,26 +32,6 @@ public class CashHistory {
     public static final String ADMIN_GIVE = "ADMIN_GIVE";
     public static final String ADMIN_TAKE = "ADMIN_TAKE";
 
-    /**
-     * 원인 종류 (source_type)의 옛 문자열 상수. 원인 종류는 {@link CashSource} enum 으로 옮겼다 (이슈 #287).
-     * 다른 도메인(housing 등)이 아직 이 상수를 쓰고 있어서 값(enum 이름과 같은 문자열)만 남겨 둔다.
-     * 모두 옮기면 마지막 정리 이슈(#301)에서 지운다.
-     */
-    @Deprecated
-    public static final String SOURCE_ATTENDANCE = "ATTENDANCE";
-    @Deprecated
-    public static final String SOURCE_COURSE_COMPLETE = "COURSE_COMPLETE";
-    @Deprecated
-    public static final String SOURCE_LEVEL_UP = "LEVEL_UP";
-    @Deprecated
-    public static final String SOURCE_SEASON_JOIN = "SEASON_JOIN";
-    @Deprecated
-    public static final String SOURCE_SUBSCRIPTION_DEPOSIT = "SUBSCRIPTION_DEPOSIT";
-    @Deprecated
-    public static final String SOURCE_ADMIN = "ADMIN";
-    @Deprecated
-    public static final String SOURCE_RANKING = "RANKING";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long cashHistoryId;

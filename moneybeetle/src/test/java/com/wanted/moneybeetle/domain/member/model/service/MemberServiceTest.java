@@ -478,7 +478,7 @@ class MemberServiceTest {
     @DisplayName("findNicknames: ID 여러 개를 한 번의 조회로 받아 ID → 닉네임 맵을 돌려준다 (N+1 방지)")
     void findNicknamesInOneQuery() {
         when(memberRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(
-                memberWithId(1L, "민지", Member.STATUS_ACTIVE), memberWithId(2L, "도현", Member.STATUS_ACTIVE)));
+                memberWithId(1L, "민지", MemberStatus.ACTIVE.name()), memberWithId(2L, "도현", MemberStatus.ACTIVE.name())));
 
         java.util.Map<Long, String> result = memberService.findNicknames(List.of(1L, 2L));
 
@@ -490,7 +490,7 @@ class MemberServiceTest {
     @Test
     @DisplayName("findNicknames: 없는 ID 는 결과에서 빠지고, null·중복 ID 는 걸러서 조회한다")
     void findNicknamesSkipsMissingNullAndDuplicates() {
-        when(memberRepository.findAllById(Set.of(1L, 99L))).thenReturn(List.of(memberWithId(1L, "민지", Member.STATUS_ACTIVE)));
+        when(memberRepository.findAllById(Set.of(1L, 99L))).thenReturn(List.of(memberWithId(1L, "민지", MemberStatus.ACTIVE.name())));
 
         java.util.Map<Long, String> result =
                 memberService.findNicknames(java.util.Arrays.asList(1L, null, 1L, 99L));
@@ -513,9 +513,9 @@ class MemberServiceTest {
     @DisplayName("findNicknames: 탈퇴한 회원은 닉네임 대신 '탈퇴한 사용자', 정지된 회원은 그대로 (DP-06)")
     void findNicknamesMasksWithdrawnMembers() {
         when(memberRepository.findAllById(Set.of(1L, 2L, 3L))).thenReturn(List.of(
-                memberWithId(1L, "민지", Member.STATUS_WITHDRAWN),
-                memberWithId(2L, "도현", Member.STATUS_SUSPENDED),
-                memberWithId(3L, "하린", Member.STATUS_ACTIVE)));
+                memberWithId(1L, "민지", MemberStatus.WITHDRAWN.name()),
+                memberWithId(2L, "도현", MemberStatus.SUSPENDED.name()),
+                memberWithId(3L, "하린", MemberStatus.ACTIVE.name())));
 
         java.util.Map<Long, String> result = memberService.findNicknames(List.of(1L, 2L, 3L));
 
@@ -527,7 +527,7 @@ class MemberServiceTest {
     @Test
     @DisplayName("findNicknames: 돌려준 맵은 수정할 수 없다")
     void findNicknamesResultIsUnmodifiable() {
-        when(memberRepository.findAllById(Set.of(1L))).thenReturn(List.of(memberWithId(1L, "민지", Member.STATUS_ACTIVE)));
+        when(memberRepository.findAllById(Set.of(1L))).thenReturn(List.of(memberWithId(1L, "민지", MemberStatus.ACTIVE.name())));
 
         java.util.Map<Long, String> result = memberService.findNicknames(List.of(1L));
 

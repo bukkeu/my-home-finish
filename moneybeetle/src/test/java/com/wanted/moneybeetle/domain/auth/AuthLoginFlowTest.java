@@ -95,7 +95,7 @@ class AuthLoginFlowTest {
         clock = new MutableClock(Instant.parse("2026-11-09T00:00:00Z"));
         memberRepository = mock(MemberRepository.class);
         instructorProfileRepository = mock(InstructorProfileRepository.class);
-        givenMember(Member.ROLE_MEMBER, Member.STATUS_ACTIVE);
+        givenMember(Member.ROLE_MEMBER, MemberStatus.ACTIVE.name());
 
         AuthService authService = new AuthService(
                 new MemberService(memberRepository, mock(TermsRepository.class),
@@ -295,12 +295,12 @@ class AuthLoginFlowTest {
     @Test
     @DisplayName("정지 계정은 403 ACCOUNT_SUSPENDED, 탈퇴 계정은 403 ACCOUNT_WITHDRAWN 이고 실패 횟수는 올리지 않는다")
     void suspendedAndWithdrawnAccounts() throws Exception {
-        givenMember(Member.ROLE_MEMBER, Member.STATUS_SUSPENDED);
+        givenMember(Member.ROLE_MEMBER, MemberStatus.SUSPENDED.name());
         Outcome suspended = login(EMAIL, PASSWORD);
         assertThat(suspended.status()).isEqualTo(403);
         assertThat(suspended.errorCode()).isEqualTo("ACCOUNT_SUSPENDED");
 
-        givenMember(Member.ROLE_MEMBER, Member.STATUS_WITHDRAWN);
+        givenMember(Member.ROLE_MEMBER, MemberStatus.WITHDRAWN.name());
         Outcome withdrawn = login(EMAIL, PASSWORD);
         assertThat(withdrawn.status()).isEqualTo(403);
         assertThat(withdrawn.errorCode()).isEqualTo("ACCOUNT_WITHDRAWN");
@@ -310,7 +310,7 @@ class AuthLoginFlowTest {
     @Test
     @DisplayName("승인된 강사는 INSTRUCTOR 권한, 승인 전·반려·정보 없는 강사는 MEMBER 권한으로 로그인된다 (SP-07)")
     void instructorNeedsApproval() throws Exception {
-        givenMember(Member.ROLE_INSTRUCTOR, Member.STATUS_ACTIVE);
+        givenMember(Member.ROLE_INSTRUCTOR, MemberStatus.ACTIVE.name());
 
         InstructorProfile approved = InstructorProfile.create(8L, "민지 강사", "청약");
         ReflectionTestUtils.setField(approved, "approvalStatus", InstructorProfile.APPROVED);

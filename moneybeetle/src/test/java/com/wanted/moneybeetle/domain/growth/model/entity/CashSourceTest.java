@@ -23,17 +23,4 @@ class CashSourceTest {
         assertThat(CashSource.ADMIN.getLabel()).isEqualTo("관리자 조정");
         assertThat(CashSource.RANKING.getLabel()).isEqualTo("시즌 랭킹 보상");
     }
-
-    @Test
-    @DisplayName("DB 에 저장되는 이름(name)은 옛 문자열 상수와 똑같다 (기존 데이터를 그대로 읽는다)")
-    @SuppressWarnings("deprecation")
-    void namesMatchLegacyConstants() {
-        assertThat(CashSource.ATTENDANCE.name()).isEqualTo(CashHistory.SOURCE_ATTENDANCE);
-        assertThat(CashSource.COURSE_COMPLETE.name()).isEqualTo(CashHistory.SOURCE_COURSE_COMPLETE);
-        assertThat(CashSource.LEVEL_UP.name()).isEqualTo(CashHistory.SOURCE_LEVEL_UP);
-        assertThat(CashSource.SEASON_JOIN.name()).isEqualTo(CashHistory.SOURCE_SEASON_JOIN);
-        assertThat(CashSource.SUBSCRIPTION_DEPOSIT.name()).isEqualTo(CashHistory.SOURCE_SUBSCRIPTION_DEPOSIT);
-        assertThat(CashSource.ADMIN.name()).isEqualTo(CashHistory.SOURCE_ADMIN);
-        assertThat(CashSource.RANKING.name()).isEqualTo(CashHistory.SOURCE_RANKING);
-    }
 }

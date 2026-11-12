@@ -107,7 +107,7 @@ class SocialLoginServiceTest {
     @Test
     @DisplayName("이미 연결된 정상 회원이면 로그인하고 로그인 기록을 남긴다")
     void existingMemberLogsIn() {
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_ACTIVE)));
+        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(MemberStatus.ACTIVE.name())));
         session.setAttribute(SocialLoginService.SESSION_KEY, profile);   // 이전에 가입하다 만 정보가 남아 있어도 지운다
 
         SocialLoginService.Result result = service.login(profile, session);
@@ -121,10 +121,10 @@ class SocialLoginServiceTest {
     @Test
     @DisplayName("연결된 회원이 탈퇴·정지 상태면 로그인하지 않고 각각 ACCOUNT_WITHDRAWN / ACCOUNT_SUSPENDED")
     void inactiveMemberIsBlocked() {
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_WITHDRAWN)));
+        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(MemberStatus.WITHDRAWN.name())));
         assertCode(() -> service.login(profile, session), MemberErrorCode.ACCOUNT_WITHDRAWN);
 
-        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(Member.STATUS_SUSPENDED)));
+        when(memberService.findLoginMemberBySocial("GOOGLE", "g-1")).thenReturn(Optional.of(loginMember(MemberStatus.SUSPENDED.name())));
         assertCode(() -> service.login(profile, session), MemberErrorCode.ACCOUNT_SUSPENDED);
 
         verify(authService, never()).recordLoginSuccess(any());
@@ -178,7 +178,7 @@ class SocialLoginServiceTest {
     void completeSignup() {
         session.setAttribute(SocialLoginService.SESSION_KEY, new SocialProfile("GOOGLE", "g-9", "minji@gmail.com", "민지"));
         SocialSignupDTO request = new SocialSignupDTO("민지", LocalDate.of(1999, 4, 12), "FEMALE", List.of(1L));
-        when(memberSignupService.signupSocial(request, "minji@gmail.com", "GOOGLE", "g-9")).thenReturn(loginMember(Member.STATUS_ACTIVE));
+        when(memberSignupService.signupSocial(request, "minji@gmail.com", "GOOGLE", "g-9")).thenReturn(loginMember(MemberStatus.ACTIVE.name()));
 
         LoginMemberDTO member = service.completeSignup(request, session);
 
