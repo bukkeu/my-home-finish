@@ -14,16 +14,11 @@
 
 /* ---------- 카드 (청사진 틀) ---------- */
 .mg .card { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.mg .blueprint { position: relative; border: 1px solid var(--color-divider); border-radius: 0; overflow: visible; }
-.mg .blueprint > .corner { position: absolute; width: 11px; height: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
-.mg .blueprint > .corner::before, .mg .blueprint > .corner::after { content: ""; position: absolute; background: currentColor; }
-.mg .blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
-.mg .blueprint > .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
-.mg .blueprint > .corner.tl { top: -6px; left: -6px; }
-.mg .blueprint > .corner.tr { top: -6px; right: -6px; }
-.mg .blueprint > .corner.bl { bottom: -6px; left: -6px; }
-.mg .blueprint > .corner.br { bottom: -6px; right: -6px; }
-.mg .card-kicker { color: var(--color-accent-700); font-size: 10px; letter-spacing: .1em; }
+.mg .blueprint { position: relative; border: 1.5px dashed var(--color-divider); border-radius: 16px; overflow: hidden; }
+/* 목업(UserMyPage 의 .blueprint>.corner{display:none}, .card.blueprint 점선·16px)과 같게 한다. 투명 배경은 목업이 .card 에 배경을 주지 않기 때문이고, 적립 카드(.mg-stat--in)의 연두 배경은 그대로 둔다 */
+.mg .blueprint:not(.mg-stat--in) { background: transparent; }
+.mg .blueprint > .corner { display: none; }
+.mg .card-kicker { color: var(--color-accent-700); font-size: 10px; font-weight: 600; letter-spacing: .1em; }
 .mg .card-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; line-height: 1.2; }
 
 /* ---------- 입력 ---------- */
@@ -90,7 +85,7 @@ select.mg-input { appearance: none; -webkit-appearance: none; padding-right: 36p
 .mg-empty { margin: 0; padding: 18px 0; color: var(--color-neutral-700); font-size: 14px; }
 
 /* ---------- 경험치 내역·레벨 표 ---------- */
-/* .mg .blueprint 가 overflow: visible 로 덮어쓰므로 같은 무게로 다시 지정한다. 좁은 화면에서 레벨 표만 가로로 스크롤되고 페이지는 넘치지 않는다 */
+/* .mg .blueprint 가 overflow: hidden 을 주므로 레벨 표 카드만 가로 스크롤을 다시 지정한다. 좁은 화면에서 레벨 표만 가로로 스크롤되고 페이지는 넘치지 않는다 */
 .mg .mg-levels { overflow-x: auto; display: block; }
 .mg-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .mg-table th, .mg-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-divider); text-align: left; white-space: nowrap; }
