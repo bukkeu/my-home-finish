@@ -264,6 +264,46 @@ class LoginHttpTest {
     }
 
     @Test
+    @DisplayName("remember-me 쿠키가 있는 브라우저에서 remember-me 없이 다시 로그인하면 이전 쿠키를 지운다 (세션이 끝난 뒤 이전 계정으로 돌아가지 않게)")
+    void loginWithoutRememberMeDeletesOldCookie() throws Exception {
+        Cookie oldCookie = loginRememberMe().getResponse().getCookie("remember-me");
+
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
+                        .param("email", EMAIL).param("password", PASSWORD).cookie(oldCookie)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertThat(rememberMeHeader(login)).isNotNull().contains("Max-Age=0");
+    }
+
+    @Test
+    @DisplayName("remember-me=true 로 다시 로그인하면 새 쿠키만 주고 지우지 않는다")
+    void loginWithRememberMeKeepsNewCookie() throws Exception {
+        Cookie oldCookie = loginRememberMe().getResponse().getCookie("remember-me");
+
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
+                        .param("email", EMAIL).param("password", PASSWORD).param("remember-me", "true").cookie(oldCookie)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertThat(login.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .filteredOn(header -> header.startsWith("remember-me="))
+                .singleElement().asString().contains("Max-Age=1209600");
+    }
+
+    @Test
+    @DisplayName("형식이 잘못된 remember-me 쿠키(예: JQ → '%')는 서버 오류가 아니라 로그인 안 됨(401)으로 끝나고 쿠키를 지운다")
+    void malformedCookieIsDeletedInsteadOfServerError() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/courses").cookie(new Cookie("remember-me", "JQ")))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+
+        assertThat(rememberMeHeader(result)).isNotNull().contains("Max-Age=0");
+    }
+
+    @Test
     @DisplayName("쿠키를 받은 뒤 정지된 계정은 쿠키가 있어도 로그인되지 않고 쿠키가 지워진다")
     void suspendedMemberCannotUseRememberMeCookie() throws Exception {
         Cookie cookie = loginRememberMe().getResponse().getCookie("remember-me");

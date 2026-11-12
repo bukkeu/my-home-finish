@@ -20,6 +20,8 @@ import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +36,8 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.rememberme.InvalidCookieException;
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 
 @Configuration                                 // ① 설정 클래스
@@ -160,11 +164,43 @@ public class SecurityConfig {
      * rememberMe 설정(DSL)에는 SameSite 를 정하는 메서드가 없어 서비스를 직접 만들어 넘긴다.
      */
     private static TokenBasedRememberMeServices rememberMeServices(String key, AuthService authService) {
-        TokenBasedRememberMeServices services = new TokenBasedRememberMeServices(key, authService);
+        TokenBasedRememberMeServices services = new RememberMeServices(key, authService);
         services.setParameter(REMEMBER_ME);                      // 요청 값 remember-me=true (on·yes·1 도 받는다)
         services.setCookieName(REMEMBER_ME);
         services.setTokenValiditySeconds(REMEMBER_ME_SECONDS);
         services.setCookieCustomizer(cookie -> cookie.setAttribute("SameSite", "Lax"));
         return services;
+    }
+
+    /**
+     * 기본 서비스에서 두 가지만 바꾼다 (#367 CodeRabbit 지적).
+     * 1) remember-me 없이 로그인하면 브라우저에 남은 이전 쿠키를 지운다. 로그아웃 없이 다른 계정으로 로그인한 뒤 세션이 끝나면
+     *    이전 계정의 쿠키로 다시 로그인되는 일을 막는다. remember-me=true 면 새 쿠키를 주므로 지우지 않는다.
+     * 2) 쿠키 값이 잘못돼 URL 디코딩이 실패하면(예: "%") 기본 서비스는 IllegalArgumentException 을 그대로 던져 서버 오류가 된다.
+     *    InvalidCookieException 으로 바꿔 다른 잘못된 쿠키처럼 로그인하지 않고 쿠키를 지우게 한다.
+     */
+    private static class RememberMeServices extends TokenBasedRememberMeServices {
+
+        RememberMeServices(String key, AuthService authService) {
+            super(key, authService);
+        }
+
+        @Override
+        public void loginSuccess(HttpServletRequest request, HttpServletResponse response,
+                                 Authentication successfulAuthentication) {
+            if (!rememberMeRequested(request, getParameter()) && extractRememberMeCookie(request) != null) {
+                cancelCookie(request, response);
+            }
+            super.loginSuccess(request, response, successfulAuthentication);
+        }
+
+        @Override
+        protected String[] decodeCookie(String cookieValue) throws InvalidCookieException {
+            try {
+                return super.decodeCookie(cookieValue);
+            } catch (IllegalArgumentException e) {
+                throw new InvalidCookieException("잘못된 로그인 상태 유지 쿠키");
+            }
+        }
     }
 }
