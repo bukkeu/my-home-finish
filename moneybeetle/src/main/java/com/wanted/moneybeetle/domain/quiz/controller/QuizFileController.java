@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /* comment.
 *   담당 : 서수영 (#368, quiz 도메인 담당 신아림이 나눠 준 작업)
-*   POST /api/v1/instructor/quiz-files/parse (API 150) - 퀴즈 문제 파일을 읽어 문항 목록을 돌려준다. 저장하지 않는다
+*   POST /api/v1/instructor/quiz-files/parse (API 153) - 퀴즈 문제 파일을 읽어 문항 목록을 돌려준다. 저장하지 않는다
 *   화면 : /instructor/course-create (테스트 퀴즈·퀴즈 "문제 파일 올리기")
 *   - 권한 : SecurityConfig 가 /api/v1/instructor/** 를 승인된 강사(INSTRUCTOR)만 허용. 데이터를 바꾸지 않지만 POST 라 CSRF 토큰이 필요하다
 *   - 요청 : multipart/form-data, file(csv·xlsx·txt, 1MB) + type(TEST | MAIN)
@@ -27,7 +27,7 @@ public class QuizFileController {
 
     private final QuizFileService quizFileService;
 
-    /* API 150 퀴즈 문제 파일 읽기 */
+    /* API 153 퀴즈 문제 파일 읽기 */
     @PostMapping("/parse")
     public ApiResponse<QuizSaveDTO> parse(@RequestParam(value = "file", required = false) MultipartFile file,
                                           @RequestParam QuizFileType type) {

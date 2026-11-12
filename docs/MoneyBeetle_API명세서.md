@@ -15,7 +15,7 @@
 
 - 화면은 Thymeleaf 서버 렌더링이고, 이 문서의 API는 화면 안의 `fetch`가 쓰는 JSON입니다 (1-5 참고).
 - 기준 문서: 요구사항 명세서, 정책 정의서, DB 설계. “관련” 칸의 ID는 요구사항·정책 번호입니다.
-- 총 **152개 API** (사용자 72, 강사 14, 관리자 66)
+- 총 **153개 API** (사용자 72, 강사 15, 관리자 66)
 - 초안입니다. 개발하면서 바뀐 내용은 이 문서에 바로 반영해 주세요.
 
 ---
@@ -29,7 +29,7 @@
 | Base URL | `/api/v1` (로컬 `http://localhost:8080/api/v1`) |
 | 데이터 형식 | `Content-Type: application/json; charset=UTF-8` (파일 업로드만 `multipart/form-data`) |
 | 인증 | 세션 쿠키(`JSESSIONID`). 30분 동안 요청이 없으면 만료 (DP-11) |
-| 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자 |
+| 권한 | 비회원 / 회원 / 강사 / 관리자. 서버 필터에서 매번 확인 (DP-14). `/api/v1/instructor/**`는 강사, `/api/v1/admin/**`는 관리자. 화면 주소도 같은 방식으로 `/user/**`는 학습자(MEMBER)만 들어가고, 강사·관리자로 열면 학습자 로그인 화면(`/login?next=원래 주소`)으로 보낸다 (#415) |
 | 해금 | 모의투자 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_TRADING`, 기본 Lv.8, 시즌과 무관), 모의 청약 API는 해금 레벨(운영 설정 `UNLOCK_LEVEL_HOUSING`, 기본 Lv.12) 미만이면 `403 LEVEL_LOCKED` (SP-24, #223) |
 | 시간 | 모든 날짜·시간은 KST, `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ss` (DP-42) |
 | 이름 규칙 | URI는 소문자 복수형 kebab-case(`/wrong-notes`), JSON 필드는 camelCase(`memberId`) |
@@ -190,10 +190,10 @@
 | --- | --- | --- | --- | --- | --- |
 | 47 | `GET` | `/api/v1/inquiries` | 문의 목록 | 회원 | LRN-09, SP-40 |
 | 48 | `POST` | `/api/v1/inquiries` | 문의 작성 | 회원 | LRN-09, DP-30, DP-21 |
-| 49 | `GET` | `/api/v1/inquiries/{inquiryId}` | 문의 상세 | 작성자·강사·관리자 | LRN-09, SP-40, DP-22 |
+| 49 | `GET` | `/api/v1/inquiries/{inquiryId}` | 문의 상세 | 작성자·강사(내 강의, 승인된 강사만 #410)·관리자 | LRN-09, SP-40, DP-22 |
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
-| 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의, 승인된 강사만 #410)·관리자 | TCH-09, LRN-09 |
 | 52-1 | `PATCH` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 수정 | 답글 작성자 | TCH-09 |
 | 52-2 | `DELETE` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 삭제 | 답글 작성자 | TCH-09 |
 | 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
@@ -242,7 +242,7 @@
 | 79 | `PUT` | `/api/v1/instructor/courses/{courseId}/test-quiz` | 테스트 퀴즈 저장 | 강사 | TCH-04 |
 | 80 | `PUT` | `/api/v1/instructor/courses/{courseId}/quiz` | 퀴즈 저장 | 강사 | TCH-05 |
 | 81 | `POST` | `/api/v1/instructor/courses/{courseId}/review-request` | 검수 요청 | 강사 | TCH-07, DP-34 |
-| 150 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
+| 153 | `POST` | `/api/v1/instructor/quiz-files/parse` | 퀴즈 문제 파일 읽기 (저장 안 함) | 강사 | TCH-04~05, DP-34 |
 | 82 | `GET` | `/api/v1/instructor/inquiries` | 내 강의 문의 | 강사 | TCH-08 |
 | 150 | `GET` | `/api/v1/instructor/quizzes` | 퀴즈 목록(강의별) | 강사 | TCH-04~05 |
 | 151 | `GET` | `/api/v1/instructor/summaries` | 요약글 목록(영상별) | 강사 | TCH-03 |
@@ -1204,7 +1204,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 | Method | `GET` |
 | 권한 | 회원 |
 | 관련 | LRN-01 |
-| 설명 | 카테고리(자본·부동산) → 소주제 트리. |
+| 설명 | 카테고리(자본·부동산) → 소주제 트리. `data`는 객체로 감싸지 않은 카테고리 배열이고, 소주제의 `children`은 빈 배열이다. |
 
 **Request**
 
@@ -1213,7 +1213,11 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 **Response**
 
 ```json
-{ "categories": [ { "categoryId": 1, "name": "자본", "children": [ { "categoryId": 11, "name": "월급 관리" }, { "categoryId": 12, "name": "ETF·분산 투자" } ] } ] }
+[
+  { "categoryId": 1, "name": "자본", "children": [
+      { "categoryId": 11, "name": "월급 관리", "children": [] },
+      { "categoryId": 12, "name": "ETF·분산 투자", "children": [] } ] }
+]
 ```
 
 #### 30. 강의 목록
@@ -1229,6 +1233,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 **Request**
 
 - Query: categoryId=12&page=0&size=20
+- `categoryId`는 **필수**다. 빠지면 `400 INVALID_INPUT`. `page`(기본 0)·`size`는 선택
 
 **Response**
 
@@ -1645,7 +1650,7 @@ Header: Idempotency-Key: 7c1e...
 { "inquiryId": 12 }
 ```
 
-**Error**: `INQUIRY_EMPTY`, `INQUIRY_TOO_LONG`, `INQUIRY_DAILY_LIMIT`, `FORBIDDEN_WORD`
+**Error**: `INVALID_INPUT`(400, 제목·내용이 비었거나 내용 1,000자 초과. 입력칸별 문구는 `error.fields`), `INQUIRY_DAILY_LIMIT`, `FORBIDDEN_WORD`
 
 #### 49. 문의 상세
 
@@ -2559,7 +2564,7 @@ Header: Idempotency-Key: 4d8e...
 
 **퀴즈 저장 방식** (API 79·80 공통, #31): 같은 순서의 기존 문항과 비교한다. 푼 기록(퀴즈 답안·오답노트)이 없는 문항은 그대로 고치고(ID 유지), 남으면 지운다. 푼 기록이 있는 문항은 문제·보기·정답이 바뀌거나 빠지면 고치거나 지우지 않고 **보관**(quiz_type `TEST_OLD`/`MAIN_OLD`)한 뒤 새 문항을 만든다 → 학습자의 오답노트·응시 결과는 수정 전 문제·보기를 그대로 보여 주고, 퀴즈·검수·편집 화면에는 새 문항만 보인다. 해설만 바뀌면 그대로 고친다. 모자란 문항은 새로 만든다.
 
-#### 150. 퀴즈 문제 파일 읽기
+#### 153. 퀴즈 문제 파일 읽기
 
 | 항목 | 내용 |
 | --- | --- |
@@ -4289,7 +4294,6 @@ email=admin@moneybeetle.kr&password=...
 | 학습 | `COURSE_NOT_PUBLIC` | 404 | 공개되지 않은 강의예요 |
 | 학습 | `QUIZ_LOCKED` | 403 | 영상을 모두 본 뒤에 퀴즈를 풀 수 있어요 |
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
-| 학습 | `INQUIRY_TOO_LONG` | 400 | 내용은 1,000자까지 쓸 수 있어요 |
 | 학습 | `INQUIRY_DAILY_LIMIT` | 429 | 오늘은 문의를 더 남길 수 없어요 |
 | 학습 | `INQUIRY_REPLY_HIDDEN` | 409 | 관리자가 숨긴 답변은 수정할 수 없어요 |
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
@@ -4329,7 +4333,7 @@ email=admin@moneybeetle.kr&password=...
 | 모의 청약 | `ALREADY_ANNOUNCED` | 409 | 이미 발표한 공고예요 |
 | 강사·관리자 | `TOO_MANY_LESSONS` | 400 | 영상은 3개까지 등록할 수 있어요 |
 | 강사·관리자 | `QUIZ_COUNT_INVALID` | 400 | 테스트 퀴즈는 5문제, 퀴즈는 5~15문제여야 해요 |
-| 강사·관리자 | `QUIZ_FILE_INVALID` | 400 | 퀴즈 문제 파일을 다시 확인해 주세요 (실제 문구는 줄 번호와 이유, 예: 3번째 줄: 정답은 O 또는 X 로 써 주세요. API 150) |
+| 강사·관리자 | `QUIZ_FILE_INVALID` | 400 | 퀴즈 문제 파일을 다시 확인해 주세요 (실제 문구는 줄 번호와 이유, 예: 3번째 줄: 정답은 O 또는 X 로 써 주세요. API 153) |
 | 강사·관리자 | `COURSE_HAS_LEARNERS` | 409 | 학습 기록이 있어 삭제할 수 없어요. 비공개로 바꿀까요? |
 | 강사·관리자 | `NEXT_TURN_NOT_READY` | 409 | 다음 턴에 가격이 비어 있는 종목이 N개 있어요 |
 | 강사·관리자 | `TURN_CONFLICT` | 409 | 다른 관리자가 이미 턴을 넘겼어요. 화면을 새로 고쳐 주세요 |
@@ -4344,6 +4348,15 @@ email=admin@moneybeetle.kr&password=...
 | 강사·관리자 | `BEFORE_ANNOUNCE_DATE` | 409 | 발표일 이후에 진행할 수 있어요 |
 | 강사·관리자 | `REASON_REQUIRED` | 400 | 사유를 입력해 주세요 |
 | 강사·관리자 | `INVALID_REWARD_RULE_AMOUNTS` | 400 | 이 보상 규칙은 지급할 수 없는 캐시 또는 경험치가 있습니다 |
+| 강사·관리자 | `REWARD_RULE_NOT_FOUND` | 404 | 사용 중인 보상 규칙이 없습니다 |
+| 강사·관리자 | `SETTING_VALUE_INVALID` | 400 | 설정 값 형식이 올바르지 않습니다 |
+| 강사·관리자 | `TERM_NOT_FOUND` | 404 | 사용 중인 경제 용어를 찾을 수 없어요 |
+| 강사·관리자 | `TERM_SELECTION_INVALID` | 400 | 서로 다른 용어 5개를 지정해 주세요 |
+| 강사·관리자 | `SCHEDULE_CONFLICT` | 409 | 다른 관리자가 같은 날짜를 수정하고 있어요. 잠시 뒤 다시 시도해 주세요 |
+| 성장 | `INVALID_HISTORY_TYPE` | 400 | 내역 종류는 EARN 또는 USE 만 쓸 수 있습니다 |
+| 성장 | `ALREADY_USED` | 409 | 이미 처리된 요청입니다 (같은 원인으로 캐시를 이미 썼을 때, 이중 차감 방지) |
+| 성장 | `REWARD_NOT_SUPPORTED` | 500 | 지원하지 않는 보상 설정입니다 (서버 설정 오류) |
+| 성장 | `LEVEL_POLICY_INVALID` | 500 | 레벨 정책 설정이 올바르지 않습니다 (서버 설정 오류) |
 
 ---
 

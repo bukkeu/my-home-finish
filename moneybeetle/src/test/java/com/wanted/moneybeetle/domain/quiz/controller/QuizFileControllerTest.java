@@ -35,7 +35,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 /* comment.
 *   담당 : 서수영 (#368)
-*   API 150 퀴즈 문제 파일 읽기 : 실제 SecurityConfig + 컨트롤러 + 서비스 + GlobalExceptionHandler 로 확인한다 (DB 없음)
+*   API 153 퀴즈 문제 파일 읽기 : 실제 SecurityConfig + 컨트롤러 + 서비스 + GlobalExceptionHandler 로 확인한다 (DB 없음)
 *   - 승인된 강사(INSTRUCTOR)만 / CSRF 토큰 필요 / 응답은 저장 API 요청과 같은 모양 / 파일·type 이 빠지면 500 이 아니라 400
 *  */
 @SpringBootTest(classes = {SecurityTestApp.class, QuizFileController.class, QuizFileService.class, GlobalExceptionHandler.class})

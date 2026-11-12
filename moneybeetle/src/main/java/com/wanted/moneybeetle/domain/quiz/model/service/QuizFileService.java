@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /* comment.
 *   담당 : 서수영 (#368, quiz 도메인 담당 신아림이 나눠 준 작업)
-*   퀴즈 문제 파일(CSV·엑셀·텍스트)을 읽어 문항 목록으로 돌려준다 (API 150, TCH-04·05)
+*   퀴즈 문제 파일(CSV·엑셀·텍스트)을 읽어 문항 목록으로 돌려준다 (API 153, TCH-04·05)
 *   - 저장하지 않는다. 화면이 결과를 보여 준 뒤 그대로 저장 API(79 테스트 퀴즈·80 퀴즈)로 보낸다 → 응답은 저장 요청과 같은 QuizSaveDTO
 *   - 흐름 : 파일 검사(있는지·1MB·확장자) → 표 읽기(QuizFileParser) → 머리글 확인 → 문항 수 확인 → 줄마다 문항으로 바꾸기
 *   - 틀리면 QUIZ_FILE_INVALID 이고, 문구에 몇 번째 줄이 왜 틀렸는지 담는다 (예: "3번째 줄: 정답은 O 또는 X 로 써 주세요").
@@ -35,7 +35,7 @@ public class QuizFileService {
     private static final int EXPLANATION_MAX_BYTES = 65_535;     // quiz_question.explanation (MySQL TEXT, UTF-8 바이트)
     private static final int CHOICE_COUNT = 4;
 
-    /** API 150 : 파일을 읽어 문항 목록을 돌려준다 (저장하지 않음) */
+    /** API 153 : 파일을 읽어 문항 목록을 돌려준다 (저장하지 않음) */
     public QuizSaveDTO parse(MultipartFile file, QuizFileType type) {
         String extension = checkFile(file);
         List<Line> lines = read(file, extension, type);   // 글자가 있는 줄만 (빈 줄은 QuizFileParser 가 담지 않는다)

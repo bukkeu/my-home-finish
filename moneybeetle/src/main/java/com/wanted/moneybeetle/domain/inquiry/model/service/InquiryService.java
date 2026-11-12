@@ -49,6 +49,8 @@ import java.util.stream.Collectors;
  *   API 47~52 문의 게시판. 볼 수 있는 사람: 작성자, 그 강의의 강사, 관리자 (SP-40)
  *   API 106~107 관리자 문의 게시판 관리(조회·숨김·해제, #38)
  *   API 52-1·52-2 답변 수정·삭제 (#370) : 답글을 쓴 본인만. 지우면 남은 답변(강사·관리자 답글)이 없을 때 문의를 다시 답변 대기로
+ *   강사로 보는 기준 (#410) : 그 강의의 담당자이면서 지금 승인된 강사. 권한을 회수당한 뒤 일반 회원으로 다시 로그인해도
+ *   강의 담당자 ID는 남아 있으므로, 회원 도메인(MemberService.isInstructorRevoked)으로 지금 권한을 함께 확인한다
  *  */
 @Service
 @RequiredArgsConstructor
@@ -84,6 +86,9 @@ public class InquiryService {
                                                           Long courseId, String status, Pageable pageable) {
         String statusFilter = InquiryStatus.filterOf(status);
         List<Long> myCourseIds = courseService.findCourseIdsByInstructor(memberId);
+        if (!myCourseIds.isEmpty() && memberService.isInstructorRevoked(memberId)) {
+            myCourseIds = List.of();                                    // 권한을 회수당한 강사는 자기 강의 문의를 더 보지 않는다 (#410)
+        }
         if (myCourseIds.isEmpty()) {
             myCourseIds = List.of(NO_COURSE);
         }
@@ -136,7 +141,7 @@ public class InquiryService {
     public InquiryDetailDTO getInquiry(Long memberId, boolean admin, Long inquiryId) {
         Inquiry inquiry = getInquiryOrThrow(inquiryId);
         Long instructorId = findInstructorId(inquiry);
-        boolean instructor = memberId.equals(instructorId);
+        boolean instructor = isCurrentInstructor(memberId, instructorId);
         if (!admin && !instructor && !inquiry.isWrittenBy(memberId)) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
@@ -193,7 +198,7 @@ public class InquiryService {
     @Transactional
     public Long createReply(Long memberId, boolean admin, Long inquiryId, InquiryReplyCreateDTO request) {
         Inquiry inquiry = getInquiryForUpdateOrThrow(inquiryId);   // 동시에 들어온 답변 삭제와 순서대로 (#370 리뷰)
-        boolean instructor = memberId.equals(findInstructorId(inquiry));
+        boolean instructor = isCurrentInstructor(memberId, findInstructorId(inquiry));
         boolean writer = inquiry.isWrittenBy(memberId);
         if (!admin && !instructor && !writer) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
@@ -302,6 +307,11 @@ public class InquiryService {
 
     private Long findInstructorId(Inquiry inquiry) {
         return inquiry.getCourseId() == null ? null : courseService.findInstructorId(inquiry.getCourseId());
+    }
+
+    /* 그 강의의 담당자이면서 지금 승인된 강사인가 (#410). 담당자가 아니면 회원 조회를 하지 않는다 */
+    private boolean isCurrentInstructor(Long memberId, Long instructorId) {
+        return memberId.equals(instructorId) && !memberService.isInstructorRevoked(memberId);
     }
 
     /* 답글 작성자 역할: 강의 강사 → INSTRUCTOR, 문의 작성자 → MEMBER, 그 외(답글 권한상 관리자뿐) → ADMIN */

@@ -156,7 +156,7 @@ flowchart LR
 **권한 (인가)**
 
 - 역할은 `MEMBER`, `INSTRUCTOR`, `ADMIN`을 회원 테이블에 둡니다. 강사는 승인 상태(대기·승인·반려)도 함께 가집니다.
-- 주소 단위로 막습니다(`SecurityConfig`): `/admin/**`·`/api/v1/admin/**`는 ADMIN, `/instructor/**`·`/api/v1/instructor/**`는 승인된 INSTRUCTOR, 모의투자·모의 청약은 로그인 + 레벨 조건(`@RequireLevel`). 권한 규칙은 위에서부터 검사하므로 좁은 규칙을 앞에 둡니다.
+- 주소 단위로 막습니다(`SecurityConfig`): `/admin/**`·`/api/v1/admin/**`는 ADMIN, `/instructor/**`·`/api/v1/instructor/**`는 승인된 INSTRUCTOR, 학습자 화면 `/user/**`는 MEMBER(승인 전 강사 포함. 강사·관리자로 열면 학습자 로그인 화면 `/login?next=원래 주소`로 보냄, #415), 모의투자·모의 청약은 로그인 + 레벨 조건(`@RequireLevel`). 권한 규칙은 위에서부터 검사하므로 좁은 규칙을 앞에 둡니다.
 - 화면의 블러·잠금 표시는 편의 기능일 뿐입니다. 레벨 해금은 서비스에서 DB 값으로 매번 확인합니다 (SP-24, NFR-09).
 - 본인 데이터(오답노트·캐시·거래·청약 내역)는 주소에 회원 ID를 받지 않고 세션의 회원 ID로만 조회합니다 (NFR-03).
 - 비공개 문의글과 강의 Q&A는 ‘작성자 또는 그 강의의 강사 또는 관리자’일 때만 내용을 돌려줍니다 (SP-40).
