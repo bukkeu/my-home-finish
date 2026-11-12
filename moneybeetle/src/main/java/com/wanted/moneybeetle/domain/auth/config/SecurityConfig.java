@@ -7,6 +7,7 @@ package com.wanted.moneybeetle.domain.auth.config;
 *   - URL 권한 : /api/v1/admin/** ADMIN, /api/v1/instructor/** INSTRUCTOR, 나머지 /api/v1/** 로그인
 *   - 경로는 도메인 단위로 미리 등록해 두고, 새 API 를 만들 때마다 고치지 않는다 (충돌 방지)
 *   - formLogin 성공/실패 핸들러 연결, OAuth2 로그인(구글)
+*   - 로그인 상태 유지(Remember Me, #367) : 로그인 요청에 remember-me=true 를 보내면 14일 동안 쿠키로 다시 로그인된다
 *  */
 
 import com.wanted.moneybeetle.domain.auth.handler.AdminAuthSuccessHandler;
@@ -15,10 +16,13 @@ import com.wanted.moneybeetle.domain.auth.handler.AuthLogoutSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.AuthSuccessHandler;
 import com.wanted.moneybeetle.domain.auth.handler.OAuth2FailHandler;
 import com.wanted.moneybeetle.domain.auth.handler.OAuth2SuccessHandler;
+import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
+import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,10 +34,16 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 
 @Configuration                                 // ① 설정 클래스
 @EnableWebSecurity                             // ② Security 설정을 켜는 어노테이션
 public class SecurityConfig {
+
+    /** 로그인 상태 유지 : 로그인 요청 값 이름과 쿠키 이름 (#367). 화면 체크박스의 name 과 같아야 한다 */
+    static final String REMEMBER_ME = "remember-me";
+    /** 로그인 상태 유지 기간 14일 (#367) */
+    static final int REMEMBER_ME_SECONDS = (int) Duration.ofDays(14).toSeconds();
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -79,7 +89,9 @@ public class SecurityConfig {
                                          MemberService memberService,
                                          ObjectProvider<ClientRegistrationRepository> clientRegistrations,
                                          OAuth2SuccessHandler oAuth2SuccessHandler,
-                                         OAuth2FailHandler oAuth2FailHandler) throws Exception {
+                                         OAuth2FailHandler oAuth2FailHandler,
+                                         AuthService authService,
+                                         @Value("${app.remember-me-key}") String rememberMeKey) throws Exception {
 
         // 로그인 한 번(잠금 확인 → 비밀번호 확인 → 성공·실패 기록)을 하나의 트랜잭션으로 묶는 인증 제공자 LoginAuthenticationProvider 는
         // 빈으로 등록돼 있어 Spring Security 가 인증 관리자에 자동으로 넣는다. 여기서 http.authenticationProvider 로 한 번 더 넣으면
@@ -109,9 +121,16 @@ public class SecurityConfig {
                     login.failureHandler(authFailHandler);
                     // 로그인 시 세션 ID 재발급(세션 고정 보호)은 Spring Security 기본값이라 따로 설정하지 않는다
                 })
+                // 로그인 상태 유지 (#367) : 로그인 요청에 remember-me=true 가 있으면 14일짜리 쿠키를 준다. 세션이 끝나도(브라우저 재시작·30분 만료)
+                // 다음 요청에서 쿠키로 다시 로그인된다. 쿠키로 로그인할 때도 AuthService(UserDetailsService)를 거치므로 정지·탈퇴·잠금 계정은
+                // 로그인되지 않고 쿠키가 지워진다. 비밀번호를 바꾸면 쿠키 서명이 맞지 않아 기존 쿠키는 쓸 수 없다
+                .rememberMe(rememberMe -> {
+                    rememberMe.key(rememberMeKey);                    // 쿠키 서명 키 : 환경변수 REMEMBER_ME_KEY (기본값 없음)
+                    rememberMe.rememberMeServices(rememberMeServices(rememberMeKey, authService));
+                })
                 .logout(logout -> {
                     logout.logoutUrl("/api/v1/auth/logout");           // ⑧
-                    logout.deleteCookies("JSESSIONID");
+                    logout.deleteCookies("JSESSIONID", REMEMBER_ME);   // 로그인 상태 유지 쿠키도 지운다 (#367)
                     logout.invalidateHttpSession(true); // ⑨
                     // fetch 요청은 204, 브라우저가 보낸 폼 요청은 "/"로 이동 (API 7)
                     logout.logoutSuccessHandler(authLogoutSuccessHandler);
@@ -134,5 +153,18 @@ public class SecurityConfig {
         }
 
         return http.build();
+    }
+
+    /**
+     * 로그인 상태 유지 쿠키를 만들고 읽는 서비스 (#367). 쿠키는 HttpOnly(기본값)이고 SameSite=Lax 를 붙인다.
+     * rememberMe 설정(DSL)에는 SameSite 를 정하는 메서드가 없어 서비스를 직접 만들어 넘긴다.
+     */
+    private static TokenBasedRememberMeServices rememberMeServices(String key, AuthService authService) {
+        TokenBasedRememberMeServices services = new TokenBasedRememberMeServices(key, authService);
+        services.setParameter(REMEMBER_ME);                      // 요청 값 remember-me=true (on·yes·1 도 받는다)
+        services.setCookieName(REMEMBER_ME);
+        services.setTokenValiditySeconds(REMEMBER_ME_SECONDS);
+        services.setCookieCustomizer(cookie -> cookie.setAttribute("SameSite", "Lax"));
+        return services;
     }
 }

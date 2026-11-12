@@ -17,6 +17,7 @@ import com.wanted.moneybeetle.domain.member.model.dao.MemberRepository;
 import com.wanted.moneybeetle.domain.member.model.dao.TermsRepository;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.member.model.entity.Member;
+import jakarta.servlet.http.Cookie;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,12 +30,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -202,5 +205,74 @@ class LoginHttpTest {
         mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).session(session).accept(MediaType.TEXT_HTML))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"));
+    }
+
+    /* 로그인 상태 유지 (#367) */
+
+    private MvcResult loginRememberMe() throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/login").with(csrf())
+                        .param("email", EMAIL).param("password", PASSWORD).param("remember-me", "true")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+    }
+
+    /** 응답의 Set-Cookie 중 remember-me 줄 (없으면 null) */
+    private static String rememberMeHeader(MvcResult result) {
+        return result.getResponse().getHeaders(HttpHeaders.SET_COOKIE).stream()
+                .filter(header -> header.startsWith("remember-me="))
+                .findFirst().orElse(null);
+    }
+
+    @Test
+    @DisplayName("remember-me=true 로 로그인하면 14일짜리 HttpOnly·SameSite=Lax 쿠키를 주고, 세션 없이 그 쿠키만으로 로그인된다")
+    void rememberMeCookieLogsInWithoutSession() throws Exception {
+        MvcResult login = loginRememberMe();
+
+        String header = rememberMeHeader(login);
+        assertThat(header).isNotNull()
+                .contains("Max-Age=1209600")      // 14일
+                .contains("HttpOnly");
+        // 가짜 응답은 SameSite 를 Set-Cookie 줄에 쓰지 않아 쿠키 속성으로 확인한다 (실제 서버(Tomcat)는 줄에 쓴다)
+        Cookie cookie = login.getResponse().getCookie("remember-me");
+        assertThat(cookie.getAttribute("SameSite")).isEqualTo("Lax");
+
+        // 브라우저를 다시 켠 것처럼 세션 없이 쿠키만 보낸다
+        mockMvc.perform(get("/api/v1/courses").cookie(cookie)).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("remember-me 를 보내지 않으면 쿠키를 주지 않는다 (지금처럼 세션 30분만)")
+    void noRememberMeCookieByDefault() throws Exception {
+        MvcResult login = loginForm(EMAIL, PASSWORD, new MockHttpSession()).andExpect(status().isOk()).andReturn();
+
+        assertThat(rememberMeHeader(login)).isNull();
+    }
+
+    @Test
+    @DisplayName("로그아웃하면 remember-me 쿠키를 지운다 (Max-Age=0)")
+    void logoutDeletesRememberMeCookie() throws Exception {
+        MvcResult login = loginRememberMe();
+        MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
+
+        MvcResult logout = mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).session(session)
+                        .cookie(login.getResponse().getCookie("remember-me")).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        assertThat(rememberMeHeader(logout)).isNotNull().contains("Max-Age=0");
+    }
+
+    @Test
+    @DisplayName("쿠키를 받은 뒤 정지된 계정은 쿠키가 있어도 로그인되지 않고 쿠키가 지워진다")
+    void suspendedMemberCannotUseRememberMeCookie() throws Exception {
+        Cookie cookie = loginRememberMe().getResponse().getCookie("remember-me");
+        member.suspend("테스트 정지");
+
+        MvcResult result = mockMvc.perform(get("/api/v1/courses").cookie(cookie))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+
+        assertThat(rememberMeHeader(result)).isNotNull().contains("Max-Age=0");
     }
 }

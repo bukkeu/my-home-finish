@@ -492,10 +492,12 @@
 POST /api/v1/auth/login
 Content-Type: application/x-www-form-urlencoded
 
-email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
+email=minji@gmail.com&password=beetle1234&next=/user/lectures/3&remember-me=true
 ```
 
 - `email`은 대소문자·앞뒤 공백을 구분하지 않는다. `next`는 선택이고, 로그인 뒤 이동할 사이트 안 경로(`/`로 시작)만 받는다.
+- `remember-me`는 선택이다(**로그인 상태 유지**, #367). `true`(체크박스 값 `on`도 받는다)면 성공 응답에 14일짜리 `remember-me` 쿠키(HttpOnly, SameSite=Lax)를 함께 준다. 세션이 끝나도(브라우저 재시작·30분 만료) 이 쿠키로 다음 요청에서 다시 로그인된다. 보내지 않으면 쿠키 없이 세션(30분)만 쓴다. 강사·학생 로그인이 같은 값을 쓴다(관리자 로그인 API 83에는 없다).
+- 쿠키로 다시 로그인할 때도 정지·탈퇴·잠금을 확인해 막고 쿠키를 지운다. 비밀번호를 바꾸면 기존 쿠키는 쓸 수 없다.
 - JSON 본문(`{"email": ...}`)은 읽지 않아 `LOGIN_FAILED` 로 응답한다.
 
 **Response**
@@ -525,7 +527,7 @@ email=minji@gmail.com&password=beetle1234&next=/user/lectures/3
 | Method | `POST` |
 | 권한 | 회원 |
 | 관련 | USR-06 |
-| 설명 | 세션을 끝낸다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
+| 설명 | 세션을 끝내고 로그인 상태 유지 쿠키(`remember-me`, #367)도 지운다. 로그인과 같이 Spring Security 가 처리하고 CSRF 토큰이 필요하다. |
 
 **Request**
 
