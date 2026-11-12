@@ -3615,7 +3615,7 @@ email=admin@moneybeetle.kr&password=...
 | Method | `PUT` |
 | 권한 | 관리자 |
 | 관련 | ADM-27, SP-60 |
-| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스 수정의 admin_log 기록은 로그인 관리자 번호(#6)가 생긴 뒤 연결 (#43) |
+| 설명 | 지난 턴(현재 턴 이하) 뉴스는 오타 수정만: 제목·본문·관리자 메모만 바꿀 수 있고, `turnNo`나 관련 분야·종목을 바꾸면 `PAST_TURN_NEWS_LOCKED`. 다음 턴 이후 뉴스는 턴·관련 분야·종목까지 바꿀 수 있지만 현재 턴 이하로 옮길 수는 없다. 지난 턴 뉴스를 고치면 로그인 관리자 번호로 admin_log 에 남긴다: action `NEWS_UPDATE`, targetType `NEWS`, targetId = 뉴스 번호, detail = 바뀌기 전후 `turnNo`·`title`·`content`·`adminMemo` (바뀐 값이 없으면 남기지 않음, 다음 턴 이후 뉴스 수정은 남기지 않음). 로그인 관리자 번호가 없으면 401 `UNAUTHORIZED` (#43, #340) |
 
 **Request**
 
@@ -3625,7 +3625,7 @@ email=admin@moneybeetle.kr&password=...
 
 - 204 No Content
 
-**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`
+**Error**: `PAST_TURN_NEWS_LOCKED`, `NOT_FOUND`, `UNAUTHORIZED`
 
 #### 134. 뉴스 삭제
 

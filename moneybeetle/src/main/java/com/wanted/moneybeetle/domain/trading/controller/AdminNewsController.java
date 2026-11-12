@@ -7,6 +7,7 @@ package com.wanted.moneybeetle.domain.trading.controller;
 *   분야·종목·가격표를 다루는 AdminMarketController 와 나눠 둔다 (#41·#42 PR 과 파일이 겹치지 않게)
 *  */
 
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
 import com.wanted.moneybeetle.domain.trading.model.dto.AdminNewsDTO;
 import com.wanted.moneybeetle.domain.trading.model.dto.NewsSaveDTO;
 import com.wanted.moneybeetle.domain.trading.model.service.NewsAdminService;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,11 +51,12 @@ public class AdminNewsController {
         return ApiResponse.success(Map.of("newsId", newsAdminService.createNews(seasonId, request)));
     }
 
-    // API 133 뉴스 수정 (204)
+    // API 133 뉴스 수정 (204). 지난 턴 뉴스 수정은 로그인 관리자 번호로 작업 기록을 남긴다 (#340)
     @PutMapping("/news/{newsId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void changeNews(@PathVariable Long newsId, @Valid @RequestBody NewsSaveDTO request) {
-        newsAdminService.changeNews(newsId, request);
+    public void changeNews(@PathVariable Long newsId, @Valid @RequestBody NewsSaveDTO request,
+            @AuthenticationPrincipal AuthDetails admin) {
+        newsAdminService.changeNews(newsId, request, admin == null ? null : admin.getMemberId());
     }
 
     // API 134 뉴스 삭제 (204)
