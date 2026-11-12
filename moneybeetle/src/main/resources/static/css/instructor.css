@@ -22,6 +22,27 @@
 .ins-auth__sub a { font-weight: 700; }
 .ins-auth__note { margin: 4px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--color-bg); font-size: 13px; line-height: 1.7; color: var(--color-neutral-700); }
 
+/* 강사 로그인 (#363) : 카드 안 크기·간격을 모두 같은 배수로 키워 비율은 그대로 두고, 바깥 여백은 줄인다. 가입 화면(같은 카드)은 바꾸지 않는다 */
+.ins-auth--login { padding: 16px; }
+/* 배수는 --ins-login-scale 하나로 정한다 (원래 값 × 배수). 모바일은 아래 미디어 쿼리에서 1.25 */
+.ins-auth__card--login { --ins-login-scale: 1.4; max-width: calc(420px * var(--ins-login-scale));
+  padding: calc(32px * var(--ins-login-scale)) calc(28px * var(--ins-login-scale)); gap: calc(12px * var(--ins-login-scale)); border-radius: calc(24px * var(--ins-login-scale)); }
+.ins-auth__card--login h1 { font-size: calc(26px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-auth__logo img { height: calc(32px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-kicker { font-size: calc(13px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-auth__sub { font-size: calc(14px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-auth__note { margin-top: calc(4px * var(--ins-login-scale)); padding: calc(12px * var(--ins-login-scale)) calc(14px * var(--ins-login-scale));
+  border-radius: calc(12px * var(--ins-login-scale)); font-size: calc(13px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-form { gap: calc(14px * var(--ins-login-scale)); margin-top: calc(8px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-field { gap: calc(6px * var(--ins-login-scale)); font-size: calc(13px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-input { height: calc(48px * var(--ins-login-scale)); border-radius: calc(12px * var(--ins-login-scale));
+  padding: 0 calc(14px * var(--ins-login-scale)); font-size: calc(15px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-pw .ins-input { padding-right: calc(72px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-pw__toggle { right: calc(8px * var(--ins-login-scale)); height: calc(34px * var(--ins-login-scale)); padding: 0 calc(10px * var(--ins-login-scale));
+  border-radius: calc(8px * var(--ins-login-scale)); font-size: calc(13px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-error { font-size: calc(13px * var(--ins-login-scale)); }
+.ins-auth__card--login .ins-submit { height: calc(50px * var(--ins-login-scale)); font-size: calc(16px * var(--ins-login-scale)); }
+
 .ins-form, .ins-stack { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .ins-stack { margin-top: 0; }
 .ins-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; }
@@ -130,6 +151,8 @@
 @media (max-width: 767px) {
   .ins-auth { padding: 16px; align-items: start; }
   .ins-auth__card { padding: 24px 18px; border-radius: 18px; }
+  .ins-auth--login { padding: 12px; }
+  .ins-auth__card--login { --ins-login-scale: 1.25; padding: 30px 22px; border-radius: 22px; }
   .ins-head h1 { font-size: 24px; }
   .ins-head .btn { width: 100%; }
   .ins-row__actions { width: 100%; justify-content: stretch; }
