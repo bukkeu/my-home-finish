@@ -685,6 +685,7 @@ Null 여부: **N** = NOT NULL, **Y** = NULL 허용
 | `member_id` | BIGINT | N | FK → member.member_id, UNIQUE(member_id, lesson_id) | - | 회원 |
 | `lesson_id` | BIGINT | N | FK → lesson.lesson_id, UNIQUE(member_id, lesson_id) | - | 영상 |
 | `watched_seconds` | INT | N | - | 0 | 본 시간(초) |
+| `position_seconds` | INT | N | - | 0 | 이 영상의 마지막 재생 위치(초). 영상별 이어보기에 쓴다 (#71, 기존 DB는 `sql/migration/2026-11-11_lesson_watch_position_seconds.sql`) |
 | `is_completed` | BOOLEAN | N | - | FALSE | 끝까지 시청 여부 |
 | `last_watched_at` | DATETIME | N | - | 현재 시각 | 마지막 시청 일시 |
 
