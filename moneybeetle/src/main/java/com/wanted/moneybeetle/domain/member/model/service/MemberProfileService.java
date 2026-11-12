@@ -9,6 +9,7 @@ import com.wanted.moneybeetle.domain.member.model.dto.MemberProfileDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.MyInfoDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.ProfileImageDTO;
 import com.wanted.moneybeetle.domain.member.model.dto.PublicProfileDTO;
+import com.wanted.moneybeetle.domain.trading.model.service.RankingService;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import com.wanted.moneybeetle.global.file.FileStorageService;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 *     학습 수는 course.CourseService 를 거쳐 받는다 (다른 도메인 Repository 는 쓰지 않는다).
 *   - growth.GrowthService 가 MemberService 를 쓰므로, MemberService 가 growth 를 부르면 서로 물려 버린다.
 *     그래서 여러 도메인 값을 모으는 일은 MemberService 가 아니라 이 클래스가 맡는다.
+*   - 공개 프로필의 랭킹 수상 내역은 trading.RankingService(findAwards) 를 거쳐 받는다 (#338).
 *   - 트랜잭션은 부르는 Service 메서드가 각각 연다. 이 클래스는 읽기와 파일 저장만 한다.
 *  */
 @Service
@@ -40,6 +42,8 @@ public class MemberProfileService {
     private final FileStorageService fileStorageService;
     /** 해금 레벨은 운영 설정(관리자 API 112)에서 읽는다 → 모의투자·모의 청약 API·화면과 같은 기준 (#238) */
     private final UnlockLevelProvider unlockLevelProvider;
+    /** 랭킹 수상 내역 (모의투자 도메인 Service, #338) */
+    private final RankingService rankingService;
 
     /** 내 정보 (API 13) */
     public MyInfoDTO getMyInfo(Long memberId) {
@@ -74,9 +78,12 @@ public class MemberProfileService {
         MemberProfileDTO profile = memberService.getActiveProfile(memberId);
         String title = growthService.loadLevelTable().titleOf(profile.level());
 
-        // TODO(trading 의 수상 내역 조회 메서드가 공개되면 연결): 지금은 빈 목록
+        // 랭킹 수상 내역은 모의투자 도메인이 최근 시즌부터 정렬해 준다 (#338)
+        List<PublicProfileDTO.Award> awards = rankingService.findAwards(profile.memberId()).stream()
+                .map(award -> new PublicProfileDTO.Award(award.seasonName(), award.rankingType(), award.rank()))
+                .toList();
         return new PublicProfileDTO(profile.memberId(), profile.nickname(), profile.profileImageUrl(),
-                profile.level(), title, List.of());
+                profile.level(), title, awards);
     }
 
     /**

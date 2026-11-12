@@ -15,6 +15,9 @@ public interface RankingAwardRepository extends JpaRepository<RankingAward, Long
     List<RankingAward> findByTradingSeasonIdAndRankingTypeAndMemberIdIn(Long tradingSeasonId, String rankingType,
             Collection<Long> memberIds);
 
+    /** 한 회원이 받은 모든 수상 (공개 프로필의 수상 내역 #338). 정렬은 시즌 시작일을 아는 Service 가 한다 */
+    List<RankingAward> findByMemberId(Long memberId);
+
     /** 이미 준 수상인지 (보상 지급을 여러 번 눌러도 한 번만 #46) */
     boolean existsByTradingSeasonIdAndMemberIdAndRankingType(Long tradingSeasonId, Long memberId, String rankingType);
 }
