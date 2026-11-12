@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+html,body{margin:0;min-height:100%;background:#F7FAF3;font-family:"Pretendard",system-ui,sans-serif;color:#263B1A}
+a{color:#263B1A}a:hover{color:#1B2B12}
+</style>
+</helmet>
+<div style="min-height:100vh;box-sizing:border-box;display:flex;flex-direction:column;padding:24px clamp(20px,3vw,56px) 48px;gap:24px">
+  <a href="Main.dc.html" style="align-self:flex-start;display:block"><img src="assets/logo.png" alt="Money Beetle" style="height:34px;width:auto;display:block"></a>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center">
+    <section style="width:100%;max-width:1100px;box-sizing:border-box;position:relative;overflow:hidden;border-radius:24px;background:linear-gradient(180deg,#F7FAF3 0%,#EAF7D8 100%);border:1.5px dashed #D5E1CC;padding:clamp(28px,4vw,56px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:24px;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <span style="align-self:flex-start;font-size:13px;font-weight:600;padding:5px 12px;border-radius:999px;background:#9fe870;color:#263B1A">오류 코드 404</span>
+        <span style="font-size:clamp(64px,9vw,120px);font-weight:800;line-height:1;letter-spacing:-0.04em;color:#263B1A">404</span>
+        <h1 style="margin:0;font-size:clamp(28px,3.4vw,42px);font-weight:800;line-height:1.25;letter-spacing:-0.035em;word-break:keep-all">페이지를 찾을 수 없어요</h1>
+        <p style="margin:0;font-size:clamp(15px,1.3vw,18px);line-height:1.65;color:#687161;word-break:keep-all">주소가 바뀌었거나 삭제된 페이지예요.<br>입력한 주소를 다시 확인해 주세요.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <a href="UserHome-vr2.dc.html" style="display:inline-flex;align-items:center;gap:8px;height:56px;padding:0 28px;border-radius:999px;background:#263B1A;color:#fff;font-weight:700;font-size:17px;text-decoration:none" style-hover="background:#355225">홈으로 가기</a>
+          <button onClick="{{ back }}" style="all:unset;cursor:pointer;display:inline-flex;align-items:center;height:56px;padding:0 28px;border-radius:999px;background:#EAF7D8;color:#263B1A;font-weight:700;font-size:17px" style-hover="background:#B9EF8E">이전 페이지</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;min-width:0">
+        <img src="assets/beetle-mascot.png" alt="머니비틀 캐릭터" style="width:min(100%,280px);height:auto;display:block">
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return { back: () => { if (history.length > 1) history.back(); else location.href = 'UserHome-vr2.dc.html'; } };
+  }
+}
+</script>
+</body>
+</html>
