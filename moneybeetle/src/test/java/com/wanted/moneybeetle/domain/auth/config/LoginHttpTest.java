@@ -294,6 +294,17 @@ class LoginHttpTest {
     }
 
     @Test
+    @DisplayName("관리자는 일반 로그인에서 remember-me=true 를 보내도 쿠키를 받지 않는다 (세션만)")
+    void adminDoesNotGetRememberMeCookie() throws Exception {
+        ReflectionTestUtils.setField(member, "role", Member.ROLE_ADMIN);   // 관리자 권한은 changeRole 로 줄 수 없어 직접 넣는다
+
+        MvcResult login = loginRememberMe();
+
+        assertThat(login.getResponse().getContentAsString()).contains("\"role\":\"ADMIN\"");
+        assertThat(rememberMeHeader(login)).isNull();
+    }
+
+    @Test
     @DisplayName("형식이 잘못된 remember-me 쿠키(예: JQ → '%')는 서버 오류가 아니라 로그인 안 됨(401)으로 끝나고 쿠키를 지운다")
     void malformedCookieIsDeletedInsteadOfServerError() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/courses").cookie(new Cookie("remember-me", "JQ")))

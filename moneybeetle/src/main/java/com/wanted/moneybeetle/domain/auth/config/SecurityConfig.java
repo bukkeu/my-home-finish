@@ -19,6 +19,8 @@ import com.wanted.moneybeetle.domain.auth.handler.OAuth2SuccessHandler;
 import com.wanted.moneybeetle.domain.auth.model.service.AuthService;
 import com.wanted.moneybeetle.domain.member.model.service.MemberService;
 import com.wanted.moneybeetle.domain.auth.model.dto.AdminLoginDetails;
+import com.wanted.moneybeetle.domain.auth.model.dto.AuthDetails;
+import com.wanted.moneybeetle.domain.member.model.entity.Member;
 import com.wanted.moneybeetle.global.security.SecurityErrorHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -173,9 +175,10 @@ public class SecurityConfig {
     }
 
     /**
-     * 기본 서비스에서 두 가지만 바꾼다 (#367 CodeRabbit 지적).
+     * 기본 서비스에서 세 가지만 바꾼다 (#367).
      * 1) remember-me 없이 로그인하면 브라우저에 남은 이전 쿠키를 지운다. 로그아웃 없이 다른 계정으로 로그인한 뒤 세션이 끝나면
      *    이전 계정의 쿠키로 다시 로그인되는 일을 막는다. remember-me=true 면 새 쿠키를 주므로 지우지 않는다.
+     *    관리자(ADMIN)는 일반 로그인(API 6)으로 들어와도 remember-me=true 를 무시하고 쿠키를 주지 않는다 (팀 결정, 노출 위험이 커서 세션 30분만)
      * 2) 쿠키 값이 잘못돼 URL 디코딩이 실패하면(예: "%") 기본 서비스는 IllegalArgumentException 을 그대로 던져 서버 오류가 된다.
      *    InvalidCookieException 으로 바꿔 다른 잘못된 쿠키처럼 로그인하지 않고 쿠키를 지우게 한다.
      */
@@ -188,10 +191,19 @@ public class SecurityConfig {
         @Override
         public void loginSuccess(HttpServletRequest request, HttpServletResponse response,
                                  Authentication successfulAuthentication) {
-            if (!rememberMeRequested(request, getParameter()) && extractRememberMeCookie(request) != null) {
-                cancelCookie(request, response);
+            boolean issue = rememberMeRequested(request, getParameter()) && !isAdmin(successfulAuthentication);
+            if (!issue) {
+                if (extractRememberMeCookie(request) != null) {
+                    cancelCookie(request, response);
+                }
+                return;
             }
             super.loginSuccess(request, response, successfulAuthentication);
+        }
+
+        private static boolean isAdmin(Authentication authentication) {
+            return authentication.getPrincipal() instanceof AuthDetails details
+                    && Member.ROLE_ADMIN.equals(details.getRole());
         }
 
         @Override
