@@ -73,7 +73,8 @@
 .ins-done .ins-submit { width: 100%; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 
 /* ---------- 대시보드 ---------- */
-.ins-page { display: flex; flex-direction: column; gap: 18px; max-width: 1120px; }
+/* 본문은 시안처럼 화면 너비에 꽉 찬다 (좌우 여백은 공통 .mb-main, #356) */
+.ins-page { display: flex; flex-direction: column; gap: 18px; }
 .ins-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ins-head h1 { margin: 2px 0 4px; font-size: 28px; letter-spacing: -0.03em; }
 .ins-desc { margin: 0; font-size: 14px; color: var(--color-neutral-700); }

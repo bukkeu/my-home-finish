@@ -2,7 +2,7 @@
 *   담당 : DBA ① 신아림 (#60, 강사 강의 만들기·고치기)
 *   InstructorCourseCreate.dc.html 의 인라인 스타일을 클래스로 옮겼다. 공통 강사 화면 스타일(instructor.css)과 함께 쓴다.
 *  */
-.cc-page { max-width: 880px; }
+/* .cc-page : 시안처럼 화면 너비에 꽉 차게 최대 너비를 두지 않는다 (#356). 화면 구분용 클래스로만 남긴다 */
 .cc-back { font-size: 14px; font-weight: 700; text-decoration: none; color: var(--color-text); }
 .cc-status { margin-right: 4px; }
 .cc-status--draft { background: #EEF0EC; }
