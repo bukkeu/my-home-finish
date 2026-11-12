@@ -66,7 +66,7 @@ reviews:
         - 의존 방향은 Controller → Service → Repository 한 방향이어야 한다. 거꾸로 의존하거나 계층을 건너뛰면 지적한다.
         [도메인 분리 · 협업]
         - 패키지는 com.wanted.moneybeetle.domain 아래 도메인(auth, member, inquiry, operation, course, quiz, growth, home, term, notification, housing, trading) 단위로 나누고, 공통 코드는 global에 둔다.
-        - 도메인 안의 구조는 controller / model/dao / model/dto / model/entity / model/service / exception 으로 통일한다. 다른 위치에 두면 지적한다.
+        - 도메인 안의 구조는 controller / model/dao / model/dto / model/entity / model/policy / model/service / exception 으로 통일한다. (model/policy 는 DB 조회·다른 도메인 정보가 필요한 비즈니스 규칙 Policy 와 입력 규칙 클래스의 위치이고, 필요한 도메인에만 둔다.) 다른 위치에 두면 지적한다.
         - 관리자·강사용 기능도 해당 도메인 안에 둔다(예: course.controller.AdminCourseController).
         - 다른 도메인의 Repository나 Entity를 직접 수정하는 코드는 지적하고, 그 도메인의 Service 메소드를 통해 요청하도록 안내한다.
         - 다음 공통 기능은 반드시 지정된 Service로만 처리한다. 직접 구현하거나 Repository를 쓰면 [필수]로 지적한다.

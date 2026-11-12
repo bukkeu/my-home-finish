@@ -29,7 +29,7 @@
 
 ## 코드 규칙 (요약)
 
-- **패키지는 기능(도메인)별**: `com.wanted.moneybeetle.domain.<도메인>/{controller, exception, model/{dao, dto, entity, service}}`, 공통은 `global`. 관리자·강사용 Controller·Service도 해당 도메인 안에 두고 `admin` 패키지를 따로 만들지 않는다.
+- **패키지는 기능(도메인)별**: `com.wanted.moneybeetle.domain.<도메인>/{controller, exception, model/{dao, dto, entity, policy, service}}`, 공통은 `global`. 관리자·강사용 Controller·Service도 해당 도메인 안에 두고 `admin` 패키지를 따로 만들지 않는다.
 - **요청 흐름**: Controller → Service → Repository(`model/dao`) → DB. Controller는 DTO만 다루고 `try-catch`와 업무 규칙을 두지 않는다. Controller가 Repository를 직접 부르지 않는다. 트랜잭션·Entity↔DTO 변환은 Service.
 - **Entity**: `@Setter`·`@Data` 금지, 값 변경은 `changeXxx()` 같은 이름 있는 메서드, 생성은 정적 팩토리(`create(...)`), 기본 생성자는 `protected`. 테이블이 기준(`ddl-auto: none`)이며 Entity가 테이블에 맞춘다. NULL 가능 컬럼은 래퍼 타입. 수정은 `save()` 대신 변경 감지.
 - **다른 도메인은 ID로 참조**: 다른 도메인의 Entity를 `@ManyToOne`으로 잇지 않는다. 다른 도메인의 Repository도 직접 쓰지 않고 그 도메인의 **Service 메서드만** 호출한다(`docs/MoneyBeetle_역할분담.md` §7 연동 약속).
