@@ -453,7 +453,9 @@ INSERT INTO notification (member_id, type, title, link_url, is_read, created_at)
 (5, 'COURSE_REJECTED', '강의 검수 결과: 반려됐어요', '/instructor/courses/17', 0, @seed_now - INTERVAL 1 HOUR);
 
 -- 모의투자 (#72, 이재성) ─ 프로토타입 moneybeetle-page/new1/Admin.jsx 기준
--- 시즌 1개(시즌 7, 2026-10-19 월 시작, 14일·12턴)를 5턴 진행 중 상태로 넣는다. 시즌 만든 관리자 = 1
+-- 시즌 1개(시즌 7, 2026-10-19 월 시작, 14일·12턴)를 1턴 진행 중 상태로 넣는다. 시즌 만든 관리자 = 1
+-- 1턴인 이유 (#412) : 참가는 1턴까지만 되므로(SP-51) 시드를 넣자마자 학습자가 참가·매수하는 시연을 할 수 있게 한다.
+--   (예전에는 5턴이라 참가가 마감돼, 시연 때마다 관리자가 새 시즌을 열어야 했다. 이미 시드를 넣은 DB 는 migration/2026-11-12_trading_season_turn1.sql)
 -- 주의: 날짜는 프로토타입 기준 고정값이라 오늘보다 과거일 수 있다. 현재 턴은 current_turn 으로만 판단하고 날짜와 비교하지 않는다
 -- 가격: 5턴 = 사용자 프로토타입(new1/App.jsx) 현재 가격·변동률, 1~4턴은 그 변동률이 나오게 seedPrices() 흐름을 비율로 맞춤,
 --       6턴은 seedPrices() 식, 7~12턴은 같은 식을 이어서 계산 (50원 단위, 5턴 변동률은 50원 단위라 ±0.1%p 차이가 날 수 있다)
@@ -530,15 +532,15 @@ INSERT INTO trade_reason (trade_reason_id, label, sort_order) VALUES
 
 -- 시즌: 이월 100%·상한 없음(정책 정의서 SP-63, #76 확정), 해금 Lv.8
 INSERT INTO trading_season (trading_season_id, name, start_date, end_date, status, current_turn, total_turns, unlock_level, carryover_rate, carryover_cap, created_by) VALUES
-(1, '시즌 7', '2026-10-19', '2026-11-01', 'RUNNING', 5, 12, 8, 100.00, NULL, 1);
+(1, '시즌 7', '2026-10-19', '2026-11-01', 'RUNNING', 1, 12, 8, 100.00, NULL, 1);
 
--- 턴 12개 (일요일 제외). 1~5턴은 진행 기록이 있다
+-- 턴 12개 (일요일 제외). 1턴만 진행 기록이 있다 (현재 턴 1, #412)
 INSERT INTO season_turn (trading_season_id, turn_no, trade_date, progressed_at, progressed_by) VALUES
 (1, 1, '2026-10-19', '2026-10-19 00:00:00', 1),
-(1, 2, '2026-10-20', '2026-10-20 00:00:00', 1),
-(1, 3, '2026-10-21', '2026-10-21 00:00:00', 1),
-(1, 4, '2026-10-22', '2026-10-22 00:00:00', 1),
-(1, 5, '2026-10-23', '2026-10-23 00:00:00', 1),
+(1, 2, '2026-10-20', NULL, NULL),
+(1, 3, '2026-10-21', NULL, NULL),
+(1, 4, '2026-10-22', NULL, NULL),
+(1, 5, '2026-10-23', NULL, NULL),
 (1, 6, '2026-10-24', NULL, NULL),
 (1, 7, '2026-10-26', NULL, NULL),
 (1, 8, '2026-10-27', NULL, NULL),
@@ -548,7 +550,7 @@ INSERT INTO season_turn (trading_season_id, turn_no, trade_date, progressed_at, 
 (1, 12, '2026-10-31', NULL, NULL);
 
 -- 턴별 가격 30종목 x 12턴. 변동률은 지난 턴 대비(%), 1턴은 NULL
--- 5턴(현재 턴) 가격·변동률은 사용자 프로토타입(new1/App.jsx 종목 목록)과 같다. 1~4턴은 그 변동률이 나오도록 맞췄다
+-- 5턴 가격·변동률은 사용자 프로토타입(new1/App.jsx 종목 목록)과 같다. 1~4턴은 그 변동률이 나오도록 맞췄다 (현재 턴은 1턴이라 1턴 가격부터 보인다, #412)
 INSERT INTO stock_price (trading_season_id, stock_id, turn_no, price, change_rate) VALUES
 (1, 1, 1, 92900, NULL),
 (1, 1, 2, 88250, -5.01),
