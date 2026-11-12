@@ -15,31 +15,32 @@
 .ins-auth { min-height: 100vh; display: grid; place-items: center; padding: 32px 16px; box-sizing: border-box; }
 .ins-auth__card { width: 100%; max-width: 420px; background: #fff; border: 1.5px dashed var(--color-divider); border-radius: 24px;
   padding: 32px 28px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
-.ins-auth__card--wide { max-width: 720px; }
+.ins-auth__card--wide { max-width: 840px; }
 
-/* 강사 가입(이메일 인증 → 강사 정보) 카드는 넓은 화면에서 작아 보여 크게 키운다. 강사 로그인 카드(420px)는 그대로 둔다 */
-.ins-auth__card--wide { padding: 44px 52px; gap: 16px; border-radius: 28px; }
-.ins-auth__card--wide .ins-auth__logo img { height: 40px; }
-.ins-auth__card--wide .ins-steps { margin: 12px 0 8px; gap: 10px; }
-.ins-auth__card--wide .ins-step { gap: 8px; font-size: 14px; }
-.ins-auth__card--wide .ins-step__no { width: 34px; height: 34px; font-size: 14px; }
-.ins-auth__card--wide .ins-kicker { font-size: 15px; }
-.ins-auth__card.ins-auth__card--wide h1 { font-size: 36px; }
-.ins-auth__card--wide .ins-auth__sub { font-size: 16px; }
-.ins-auth__card--wide .ins-auth__note, .ins-auth__card--wide .ins-info { padding: 14px 18px; font-size: 15px; }
-.ins-auth__card--wide .ins-form { gap: 18px; margin-top: 12px; }
-.ins-auth__card--wide .ins-stack { gap: 18px; }
-.ins-auth__card--wide .ins-field { gap: 8px; font-size: 15px; }
-.ins-auth__card--wide .ins-input { height: 56px; padding: 0 18px; border-radius: 14px; font-size: 17px; }
-.ins-auth__card--wide .ins-pw .ins-input { padding-right: 80px; }
-.ins-auth__card--wide .ins-pw__toggle { font-size: 14px; }
-.ins-auth__card--wide .ins-hint { font-size: 13px; }
-.ins-auth__card--wide .ins-error, .ins-auth__card--wide .ins-ok { font-size: 15px; }
+/* 강사 가입(이메일 인증 → 강사 정보) 카드는 넓은 화면에서 작아 보여 디자인(InstructorSignup.dc.html: 제목 46px·입력칸 68px) 크기로 키운다.
+   강사 로그인 카드(420px)는 그대로 둔다 */
+.ins-auth__card--wide { padding: 52px 64px; gap: 18px; border-radius: 32px; }
+.ins-auth__card--wide .ins-auth__logo img { height: 46px; }
+.ins-auth__card--wide .ins-steps { margin: 14px 0 10px; gap: 12px; }
+.ins-auth__card--wide .ins-step { gap: 10px; font-size: 16px; }
+.ins-auth__card--wide .ins-step__no { width: 40px; height: 40px; font-size: 16px; }
+.ins-auth__card--wide .ins-kicker { font-size: 16px; }
+.ins-auth__card.ins-auth__card--wide h1 { font-size: 46px; }
+.ins-auth__card--wide .ins-auth__sub { font-size: 19px; }
+.ins-auth__card--wide .ins-auth__note, .ins-auth__card--wide .ins-info { padding: 16px 20px; font-size: 17px; }
+.ins-auth__card--wide .ins-form { gap: 22px; margin-top: 14px; }
+.ins-auth__card--wide .ins-stack { gap: 22px; }
+.ins-auth__card--wide .ins-field { gap: 10px; font-size: 18px; }
+.ins-auth__card--wide .ins-input { height: 68px; padding: 0 24px; border-radius: 16px; font-size: 20px; }
+.ins-auth__card--wide .ins-pw .ins-input { padding-right: 96px; }
+.ins-auth__card--wide .ins-pw__toggle { font-size: 16px; }
+.ins-auth__card--wide .ins-hint { font-size: 15px; }
+.ins-auth__card--wide .ins-error, .ins-auth__card--wide .ins-ok { font-size: 17px; }
 .ins-auth__card--wide .btn, .ins-auth__card--wide .ins-submit, .ins-auth__card--wide .ins-actions .btn,
-.ins-auth__card--wide .ins-code .btn { height: 56px; font-size: 16px; padding: 0 22px; }
-.ins-auth__card--wide .ins-check { font-size: 16px; padding: 8px 0; }
-.ins-auth__card--wide .ins-check--all { padding: 14px 18px; }
-.ins-auth__card--wide .ins-check__mark { width: 24px; height: 24px; }
+.ins-auth__card--wide .ins-code .btn { height: 68px; font-size: 20px; padding: 0 28px; }
+.ins-auth__card--wide .ins-check { font-size: 18px; padding: 10px 0; }
+.ins-auth__card--wide .ins-check--all { padding: 16px 20px; }
+.ins-auth__card--wide .ins-check__mark { width: 28px; height: 28px; font-size: 14px; }
 .ins-auth__card h1 { margin: 0; font-size: 26px; letter-spacing: -0.03em; }
 .ins-auth__logo img { height: 32px; }
 .ins-auth__sub { margin: 0; font-size: 14px; color: var(--color-neutral-700); }
@@ -153,12 +154,16 @@
 @media (max-width: 767px) {
   .ins-auth { padding: 16px; align-items: start; }
   .ins-auth__card { padding: 24px 18px; border-radius: 18px; }
-  .ins-auth__card--wide { padding: 28px 20px; gap: 14px; }
-  .ins-auth__card.ins-auth__card--wide h1 { font-size: 28px; }
-  .ins-auth__card--wide .ins-input, .ins-auth__card--wide .btn, .ins-auth__card--wide .ins-submit,
-  .ins-auth__card--wide .ins-actions .btn, .ins-auth__card--wide .ins-code .btn { height: 52px; }
+  .ins-auth__card--wide { padding: 28px 20px; gap: 14px; border-radius: 20px; }
+  .ins-auth__card--wide .ins-auth__logo img { height: 36px; }
+  .ins-auth__card.ins-auth__card--wide h1 { font-size: 30px; }
+  .ins-auth__card--wide .ins-auth__sub, .ins-auth__card--wide .ins-field { font-size: 15px; }
+  .ins-auth__card--wide .ins-input { height: 56px; padding: 0 16px; font-size: 17px; }
+  .ins-auth__card--wide .btn, .ins-auth__card--wide .ins-submit,
+  .ins-auth__card--wide .ins-actions .btn, .ins-auth__card--wide .ins-code .btn { height: 56px; font-size: 17px; }
   .ins-auth__card--wide .ins-step { font-size: 12px; }
-  .ins-auth__card--wide .ins-step__no { width: 30px; height: 30px; }
+  .ins-auth__card--wide .ins-step__no { width: 32px; height: 32px; font-size: 14px; }
+  .ins-auth__card--wide .ins-hint { font-size: 13px; }
   .ins-head h1 { font-size: 24px; }
   .ins-head .btn { width: 100%; }
   .ins-row__actions { width: 100%; justify-content: stretch; }
