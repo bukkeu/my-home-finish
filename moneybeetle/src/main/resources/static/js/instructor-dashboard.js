@@ -3,8 +3,8 @@
 *   탭(사이드바 강사 메뉴와 같은 주소)
 *   - dashboard : 요약 숫자(전체 강의·검수 중·공개 중·답변 대기 문의), 바로가기, 최근 강의, 최근 문의
 *   - courses   : 내 강의 목록·검수 상태(API 72). 상태별 거르기, 검수 요청(API 81), 삭제(API 76), 수정은 강의 만들기 화면(#60)
-*   - qna       : 내 강의 문의(API 82) 목록·펼치기·답변 (inquiry-board.js 의 window.MBInquiry, 강사 모드)
-*   - mypage    : 내 강사 정보 요약 (API 13)
+*   - qna       : instructor-qna.js 가 그린다 (#360, window.MBIns.tabs.qna)
+*   - mypage    : instructor-mypage.js 가 그린다 (#360, window.MBIns.tabs.mypage)
 *   본인 강의와 그 강의의 문의만 보인다 (서버가 로그인한 강사 기준으로 거른다, TCH-06~08)
 *  */
 (function () {
@@ -104,8 +104,12 @@
 
   function start() {
     fill(root, h('div', { class: 'ins-state', text: '강사 센터를 불러오는 중이에요…' }));
-    if (TAB === 'qna') { drawQna(); return; }
-    if (TAB === 'mypage') { drawMypage(); return; }
+    var tab = window.MBIns && window.MBIns.tabs[TAB];   // Q&A·마이페이지는 따로 된 파일이 그린다 (#360)
+    if (tab) { tab(root); return; }
+    if (TAB === 'qna' || TAB === 'mypage') {   // 그 탭 파일을 못 불러왔으면 다른 화면을 대신 보여 주지 않는다
+      fill(root, h('div', { class: 'ins-state ins-state--error', role: 'alert', text: '화면을 불러오지 못했어요. 새로고침해 주세요.' }));
+      return;
+    }
     var jobs = TAB === 'dashboard' ? [loadCourses(), loadInbox()] : [loadCourses()];
     Promise.all(jobs).then(function () {
       if (TAB === 'courses') drawCourses(); else drawDashboard();
@@ -256,34 +260,6 @@
       ]),
       actions
     ]);
-  }
-
-  /* ---------- Q&A 관리 ---------- */
-
-  function drawQna() {
-    var board = h('div', { class: 'inq-board' });
-    fill(root, head('Q&A 관리', '내 강의에 달린 수강생 문의예요.'), board);
-    if (!window.MBInquiry) { fill(board, h('div', { class: 'ins-state', text: '문의 화면을 불러오지 못했어요.' })); return; }
-    var openId = Number(params.get('inquiryId')) || null;
-    window.MBInquiry.mount(board, { mode: 'instructor', openId: openId });
-  }
-
-  /* ---------- 마이페이지 ---------- */
-
-  function drawMypage() {
-    MB.api('/api/v1/members/me').then(function (me) {
-      fill(root,
-        head('마이페이지', '강사 계정 정보예요.'),
-        h('section', { class: 'ins-panel ins-me' }, [
-          h('span', { class: 'ins-me__avatar', 'aria-hidden': 'true', text: (me.nickname || '?').charAt(0) }),
-          h('div', {}, [
-            h('b', { class: 'ins-me__name', text: me.nickname + ' 강사' }),
-            h('p', { class: 'ins-meta', text: me.email || '' })
-          ])
-        ]),
-        h('p', { class: 'ins-meta', text: '비밀번호 변경과 탈퇴는 마이페이지 설정 화면에서 할 수 있어요.' })
-      );
-    }).catch(function (err) { fill(root, errorBox(err, drawMypage)); });
   }
 
   start();
