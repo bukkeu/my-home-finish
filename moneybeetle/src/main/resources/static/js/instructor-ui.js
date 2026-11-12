@@ -1,7 +1,7 @@
 /* comment.
 *   담당 : DBA ① 신아림 (#360, 강사 센터 공통 부품)
 *   강사 센터 탭 파일(instructor-mypage.js · instructor-qna.js)이 같이 쓰는 작은 도구 (window.MBIns)
-*   - h(tag, attrs, children) : 요소 만들기. 글자는 text 로만 넣는다 (사용자 글을 HTML 로 해석하지 않음)
+*   - h(tag, attrs, children) : 요소 만들기. 글자는 text 로만 넣는다 (사용자 글을 HTML 로 해석하지 않음). children 안의 배열은 펼친다
 *   - fill(el, ...)            : 자식 바꿔 넣기 (배열은 펼치고 null·false 는 건너뛴다)
 *   - toast(message)           : 화면 아래 가운데 알림 (원본 InstructorDashboard.dc.html 의 toast 모양)
 *   - confirm(message, onOk)   : 삭제 확인 창 (원본의 confirm 모양, Esc·바깥 클릭으로 닫기)
@@ -23,8 +23,9 @@
       else if (key.indexOf('on') === 0 && typeof v === 'function') el.addEventListener(key.slice(2), v);
       else el.setAttribute(key, v === true ? '' : v);
     });
-    (children || []).forEach(function (c) {
+    (children || []).forEach(function add(c) {
       if (c === null || c === undefined || c === false) return;
+      if (Array.isArray(c)) { c.forEach(add); return; }   // 목록(map 결과)은 펼쳐서 넣는다
       el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
     });
     return el;
