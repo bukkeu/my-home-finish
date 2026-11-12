@@ -5,6 +5,7 @@ USE money_beetle;
 -- 새로 DB 를 만드는 사람은 sample-data.sql 에 이미 들어 있으므로 이 파일을 실행할 필요가 없다.
 -- 이메일로 찾아서, 이미 있는 행은 건너뛴다 (다시 실행해도 결과가 같다).
 --   이 이메일로 직접 만든 회원이 이미 있으면 회원은 그대로 두고 비어 있는 통장·원장·학습 기록만 채운다.
+--   단, 그 회원의 레벨·경험치·캐시가 시드 값과 다르면 원장을 넣지 않고 멈춘다 (아래 안전장치).
 -- 한 트랜잭션이다 : 중간에 오류가 나면 COMMIT 대신 ROLLBACK 을 실행한다 (Workbench 는 "오류가 나면 멈춤"을 켜고 새 연결에서 실행).
 
 START TRANSACTION;
@@ -15,6 +16,19 @@ SELECT 'apart@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwt
 WHERE NOT EXISTS (SELECT 1 FROM member WHERE email = 'apart@moneybeetle.local');
 
 SET @mid = (SELECT member_id FROM member WHERE email = 'apart@moneybeetle.local');
+
+-- 안전장치 : 원장을 새로 넣어야 하는데 회원 값이 시드 값(Lv.12 · 경험치 2,450 · 캐시 1,200,000)과 다르면 여기서 멈춘다.
+--   원장(cash_history·exp_history)은 시드 값으로 넣으므로, 직접 만든 회원의 값이 다르면 회원 잔액과 원장이 어긋나기 때문이다.
+--   멈추면 일부러 "없는 테이블" 오류(apart_seed_member_differs_check_level_exp_cash)를 내서 아래 INSERT 와 COMMIT 이 실행되지 않는다.
+--   이때는 ROLLBACK 을 실행하고, 그 회원의 level·exp·cash 를 시드 값으로 고치거나 회원을 지운 뒤 다시 실행한다.
+--   원장이 이미 있으면(이 파일을 이미 실행했으면) 검사하지 않는다 : 그 뒤 납입 등으로 캐시가 바뀌어도 다시 실행할 수 있다.
+SET @differs = (SELECT (NOT EXISTS (SELECT 1 FROM cash_history WHERE member_id = @mid) AND cash <> 1200000)
+                    OR (NOT EXISTS (SELECT 1 FROM exp_history WHERE member_id = @mid) AND (level <> 12 OR exp <> 2450))
+                FROM member WHERE member_id = @mid);
+SET @sql = IF(@differs, 'SELECT 1 FROM apart_seed_member_differs_check_level_exp_cash', 'DO 0');
+PREPARE seed_guard FROM @sql;
+EXECUTE seed_guard;
+DEALLOCATE PREPARE seed_guard;
 
 -- 청약통장 (잔액 0, 0회차)
 INSERT INTO subscription_account (member_id)
