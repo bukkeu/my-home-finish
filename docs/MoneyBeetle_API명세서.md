@@ -192,6 +192,8 @@
 | 50 | `PATCH` | `/api/v1/inquiries/{inquiryId}` | 문의 수정 | 작성자 | LRN-09 |
 | 51 | `DELETE` | `/api/v1/inquiries/{inquiryId}` | 문의 삭제 | 작성자·관리자 | ADM-07 |
 | 52 | `POST` | `/api/v1/inquiries/{inquiryId}/replies` | 답글 작성 | 작성자·강사(내 강의)·관리자 | TCH-09, LRN-09 |
+| 52-1 | `PATCH` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 수정 | 답글 작성자 | TCH-09 |
+| 52-2 | `DELETE` | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` | 답글 삭제 | 답글 작성자 | TCH-09 |
 | 149 | `GET` | `/api/v1/members/me/inquiries` | 내가 쓴 문의 모음 (마이페이지) | 회원 | LRN-09 |
 
 ### 모의투자
@@ -1677,6 +1679,46 @@ Header: Idempotency-Key: 7c1e...
 
 **Error**: `FORBIDDEN`, `FORBIDDEN_WORD`
 
+#### 52-1. 답글 수정
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` |
+| Method | `PATCH` |
+| 권한 | 답글 작성자 |
+| 관련 | TCH-09 (화면설계 5.3.1 답변 수정) |
+| 설명 | 답글을 쓴 본인만 고칠 수 있다(다른 강사·관리자·문의 작성자는 `FORBIDDEN`). 내용은 답글 작성(API 52)과 같이 1~1,000자, 금칙어 검사. 관리자가 숨긴 답글은 고칠 수 없다(`INQUIRY_REPLY_HIDDEN`). 문의 상태는 바꾸지 않는다. 지워졌거나 그 문의의 답글이 아니면 `NOT_FOUND` (#370) |
+
+```json
+{ "content": "부모님과 함께 살면 포함돼요." }
+```
+
+**Response**
+
+```
+204 No Content
+```
+
+**Error**: `FORBIDDEN`, `NOT_FOUND`, `INQUIRY_REPLY_HIDDEN`, `FORBIDDEN_WORD`, `INVALID_INPUT`
+
+#### 52-2. 답글 삭제
+
+| 항목 | 내용 |
+| --- | --- |
+| Endpoint | `/api/v1/inquiries/{inquiryId}/replies/{replyId}` |
+| Method | `DELETE` |
+| 권한 | 답글 작성자 |
+| 관련 | TCH-09 (화면설계 5.3.1 답변 삭제), DH-01 |
+| 설명 | 답글을 쓴 본인만 지울 수 있다. 실제로 지우지 않고 `deleted_at`을 남긴다(문의 상세에서 빠짐). 강사·관리자 답글을 지워서 그 문의에 남은 답변(문의 작성자가 아닌 사람의 답글)이 없으면 문의 상태를 `WAITING`으로 되돌린다. 문의 작성자의 추가 댓글은 답변으로 세지 않는다. 지워졌거나 그 문의의 답글이 아니면 `NOT_FOUND` (#370) |
+
+**Response**
+
+```
+204 No Content
+```
+
+**Error**: `FORBIDDEN`, `NOT_FOUND`
+
 #### 149. 내가 쓴 문의 모음
 
 | 항목 | 내용 |
@@ -2492,7 +2534,7 @@ Header: Idempotency-Key: 4d8e...
 | Method | `GET` |
 | 권한 | 강사 |
 | 관련 | TCH-08 |
-| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount는 필터와 상관없이 내 강의 전체의 답변 대기 수. |
+| 설명 | 내 강의(삭제 제외)에 달린 문의. 답변 대기 글 먼저, 그다음 최신순. 삭제·숨긴 글 제외. courseId·status(WAITING·ANSWERED)는 선택. waitingCount·answeredCount는 필터와 상관없이 내 강의 전체의 답변 대기·답변 완료 수. 줄마다 writerNickname(질문한 학생 닉네임, 탈퇴 회원은 "탈퇴한 사용자")이 온다 (#370). |
 
 **Request**
 
@@ -2501,7 +2543,7 @@ Header: Idempotency-Key: 4d8e...
 **Response**
 
 ```json
-{ "waitingCount": 2, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
+{ "waitingCount": 2, "answeredCount": 5, "items": [ { "inquiryId": 3, "courseId": 7, "courseTitle": "청약통장 기초와 가점 계산", "title": "...", "writerNickname": "민지", "status": "WAITING", "createdAt": "2026-11-03T10:00:00" } ], "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 ```
 
 **Error**: `FORBIDDEN`(내 강의가 아닌 courseId)
@@ -4070,6 +4112,7 @@ email=admin@moneybeetle.kr&password=...
 | 학습 | `ALREADY_SCRAPPED` | 409 | 이미 스크랩한 강의예요 |
 | 학습 | `INQUIRY_TOO_LONG` | 400 | 내용은 1,000자까지 쓸 수 있어요 |
 | 학습 | `INQUIRY_DAILY_LIMIT` | 429 | 오늘은 문의를 더 남길 수 없어요 |
+| 학습 | `INQUIRY_REPLY_HIDDEN` | 409 | 관리자가 숨긴 답변은 수정할 수 없어요 |
 | 모의투자 | `NO_RUNNING_SEASON` | 404 | 다음 시즌을 준비 중이에요 |
 | 모의투자 | `ALREADY_JOINED` | 409 | 이미 이번 시즌에 참가했어요 |
 | 모의투자 | `JOIN_CLOSED` | 409 | 이번 시즌 참가는 마감됐어요 |

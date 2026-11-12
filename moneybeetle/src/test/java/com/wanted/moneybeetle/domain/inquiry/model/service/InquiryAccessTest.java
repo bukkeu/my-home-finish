@@ -65,6 +65,7 @@ class InquiryAccessTest {
         inquiry = Inquiry.create(WRITER, COURSE_ID, null, "부양가족에 부모님도 포함되나요?", "같이 안 살면요?");
         ReflectionTestUtils.setField(inquiry, "inquiryId", INQUIRY_ID);
         when(inquiryRepository.findByInquiryIdAndDeletedAtIsNull(INQUIRY_ID)).thenReturn(Optional.of(inquiry));
+        when(inquiryRepository.findActiveByIdForUpdate(INQUIRY_ID)).thenReturn(Optional.of(inquiry));   // 답글 작성은 잠그고 읽는다
         when(courseService.findInstructorId(COURSE_ID)).thenReturn(COURSE_INSTRUCTOR);
         when(memberService.findNicknames(anyCollection())).thenReturn(Map.of(WRITER, "민지", COURSE_INSTRUCTOR, "박서연"));
         when(inquiryReplyRepository.findByInquiryIdAndDeletedAtIsNullOrderByCreatedAtAscInquiryReplyIdAsc(INQUIRY_ID))
