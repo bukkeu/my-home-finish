@@ -33,7 +33,8 @@ class SecurityConfigTest {
     @RestController
     static class DummyController {
         @GetMapping({"/api/v1/auth/check-email", "/api/v1/admin/auth/login", "/api/v1/courses",
-                "/api/v1/admin/members", "/api/v1/instructor/courses", "/admin/dashboard", "/mypage",
+                "/api/v1/admin/members", "/api/v1/instructor/courses", "/api/v1/instructor/quizzes",
+                "/api/v1/instructor/summaries", "/admin/dashboard", "/mypage",
                 "/instructor/dashboard"})
         String ok() {
             return "ok";
@@ -92,6 +93,14 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
         mockMvc.perform(get("/api/v1/instructor/courses").with(as("MEMBER")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 일반_회원이_강사_센터_퀴즈_요약글_API를_부르면_403() throws Exception {   // #366
+        mockMvc.perform(get("/api/v1/instructor/quizzes").with(as("MEMBER"))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/instructor/summaries").with(as("MEMBER"))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/instructor/quizzes").with(as("INSTRUCTOR"))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/instructor/summaries").with(as("INSTRUCTOR"))).andExpect(status().isOk());
     }
 
     @Test

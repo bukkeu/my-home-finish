@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Collection;
 import java.util.Optional;
 
 import java.util.List;
@@ -17,6 +18,14 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     List<Lesson> findByCourseIdOrderBySortOrderAsc(Long courseId);
     long countByCourseId(Long courseId);
     Optional<Lesson> findByLessonIdAndCourseId(Long lessonId, Long courseId);
+
+    /* 강사 센터 요약글 목록 (API 151, #366): 이 강의들 중 요약글이 있는(비어 있지 않은) 영상을 최근 수정 순으로 한 번에 */
+    @Query("""
+            select l from Lesson l
+            where l.courseId in :courseIds and l.summary is not null and trim(l.summary) <> ''
+            order by l.updatedAt desc, l.lessonId desc
+            """)
+    List<Lesson> findWithSummaryByCourseIds(@Param("courseIds") Collection<Long> courseIds);
 
     /* 영상을 뺄 수 있는지 (API 78): 시청 기록이나 "마지막으로 본 영상"이 가리키면 지울 수 없다 (FK) */
     @Query(value = """

@@ -1,5 +1,6 @@
 package com.wanted.moneybeetle.domain.quiz.model.dao;
 
+import com.wanted.moneybeetle.domain.quiz.model.dto.CourseQuizStatDTO;
 import com.wanted.moneybeetle.domain.quiz.model.entity.QuizQuestion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +23,20 @@ public interface QuizQuestionRepository extends JpaRepository<QuizQuestion, Long
             order by q.quizType asc, q.sortOrder asc, q.quizQuestionId asc
             """)
     List<QuizQuestion> findByCourseIdOrderByQuizTypeAscSortOrderAscQuizQuestionIdAsc(@Param("courseId") Long courseId);
+
+    /* 강사 센터 퀴즈 목록 (API 150, #366): 강의마다 지금 쓰는 테스트 퀴즈·퀴즈 문항 수와 가장 늦게 바뀐 시각을 한 번에.
+     * 보관한 문항(TEST_OLD / MAIN_OLD)은 세지 않는다. 문항이 없는 강의는 행이 나오지 않는다 */
+    @Query("""
+            select new com.wanted.moneybeetle.domain.quiz.model.dto.CourseQuizStatDTO(
+                q.courseId,
+                count(case when q.quizType = 'TEST' then 1 end),
+                count(case when q.quizType = 'MAIN' then 1 end),
+                max(q.updatedAt))
+            from QuizQuestion q
+            where q.courseId in :courseIds and q.quizType in ('TEST', 'MAIN')
+            group by q.courseId
+            """)
+    List<CourseQuizStatDTO> findQuizStatsByCourseIds(@Param("courseIds") java.util.Collection<Long> courseIds);
 
     /* 검수 요청 조건 (API 81): 종류별 문항 수 */
     long countByCourseIdAndQuizType(Long courseId, String quizType);
