@@ -416,16 +416,18 @@
     file.addEventListener('change', function () {
       var f = file.files && file.files[0];
       if (!f) return;
+      // 새로 고를 때마다 번호를 올린다 (형식·크기 검사보다 먼저 : 거절된 파일을 골라도 그 전에 읽던 파일은 버린다)
+      var readId = l.readId = (l.readId || 0) + 1;
       l.error = '';
       if (!/\.mp4$/i.test(f.name) && f.type !== 'video/mp4') { l.error = 'mp4 파일만 올릴 수 있어요'; draw(); return; }
       if (f.size > 500 * 1024 * 1024) { l.error = '영상은 500MB 이하로 올려 주세요'; draw(); return; }
-      var readId = l.readId = (l.readId || 0) + 1;   // 길이를 읽는 동안 다른 파일을 고르면 늦게 끝난 앞 파일은 버린다
       readDuration(f).then(function (sec) {
         if (l.readId !== readId) return;
         if (sec < 1) throw { message: '영상 길이를 확인해 주세요' };
         l.file = f; l.fileName = f.name; l.durationSeconds = sec; l.minutes = String(Math.max(1, Math.round(sec / 60)));
         st.dirty.lessons = true;
-      }).catch(function (err) { if (l.readId === readId) l.error = errorText(err, '영상을 읽지 못했어요'); }).then(draw);
+      }).catch(function (err) { if (l.readId === readId) l.error = errorText(err, '영상을 읽지 못했어요'); })
+        .then(function () { if (l.readId === readId) draw(); });
     });
     var label = l.file ? l.fileName + ' · ' + minutesText(l.durationSeconds) + ' (저장할 때 올라가요)'
       : l.videoUrl ? '저장된 영상 · ' + minutesText(l.durationSeconds) + ' · 다른 파일로 바꾸기' : '영상 파일 선택 (MP4)';
