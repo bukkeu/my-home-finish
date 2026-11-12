@@ -100,7 +100,7 @@ public class CategoryPathService {
             scheduleReload();                                                  // 부른 쪽 스냅샷이 오래됐을 수 있어 한 번 더 읽는다
             return paths;
         }
-        if (current.revision() != revision.get()) {
+        if (isStale()) {
             scheduleReload();
         }
         return current.paths();
@@ -133,21 +133,30 @@ public class CategoryPathService {
         }
         try {
             reloadExecutor.execute(() -> {
-                boolean stillOld = false;
+                boolean reloaded = false;
                 try {
-                    stillOld = !reload();
+                    reload();
+                    reloaded = true;
                 } catch (RuntimeException e) {
                     log.warn("카테고리 이름을 다시 읽지 못했어요. 다음 요청 때 다시 읽어요", e);
                 } finally {
                     reloading.set(false);
                 }
-                if (stillOld) {
-                    scheduleReload();   // 읽는 동안 또 바뀌었다
+                // 읽는 동안, 또는 저장한 직후(아직 reloading 이던 때) 또 바뀌었으면 한 번 더 읽는다.
+                // 실패했으면 여기서 다시 시도하지 않고 다음 요청이 다시 맡긴다 (실패가 계속돼도 무한 반복하지 않는다)
+                if (reloaded && isStale()) {
+                    scheduleReload();
                 }
             });
         } catch (RejectedExecutionException e) {
             reloading.set(false);
         }
+    }
+
+    /* snapshot 이 없거나 지금 버전보다 오래됐는지 */
+    private boolean isStale() {
+        Snapshot current = snapshot;
+        return current == null || current.revision() != revision.get();
     }
 
     /* 새 트랜잭션에서 읽어 snapshot 을 바꾼다. 읽는 동안 버전이 바뀌어 버렸으면 false */

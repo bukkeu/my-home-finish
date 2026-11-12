@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -126,18 +127,45 @@ class CategoryPathServiceTest {
     }
 
     @Test
-    @DisplayName("관리자 변경이 커밋되기 전에는 그대로 쓰고, 커밋된 뒤에 다시 읽는다")
+    @DisplayName("관리자 변경이 커밋되기 전에는 그대로 쓰고, 커밋된 뒤에 다시 읽어 새 이름을 쓴다")
     void reloadsOnlyAfterCommit() {
+        Category renamed = category(Category.createCategory("집", 1), 1L);
+        when(categoryRepository.findAll()).thenReturn(categories, List.of(renamed));
         CategoryPathService service = immediate();
         service.warmUp();
 
         tx.executeWithoutResult(status -> {
             admin(service).delete(1L);
-            service.findCategoryPaths();
-            verify(categoryRepository, times(1)).findAll();   // 아직 커밋 전
+            assertThat(service.findCategoryPaths()).containsEntry(1L, "부동산");   // 아직 커밋 전 : 옛 이름
+            verify(categoryRepository, times(1)).findAll();
         });
 
-        verify(categoryRepository, times(2)).findAll();       // 커밋 뒤 다시 읽음
+        verify(categoryRepository, times(2)).findAll();                          // 커밋 뒤 다시 읽음
+        assertThat(service.findCategoryPaths()).containsEntry(1L, "집");          // 새 이름이 반영됨
+    }
+
+    @Test
+    @DisplayName("다시 읽어 저장한 직후(아직 다시 읽는 중으로 표시된 때) 또 바뀌어도 놓치지 않고 한 번 더 읽는다")
+    void changeRightAfterStoreIsNotMissed() {
+        Category renamed = category(Category.createCategory("집", 1), 1L);
+        when(categoryRepository.findAll()).thenReturn(categories, List.of(renamed));
+        AtomicBoolean changeOnce = new AtomicBoolean();
+        // 저장은 끝났지만 아직 reloading 이 풀리기 전에 관리자 변경이 커밋된 상황을 만든다
+        CategoryPathService service = new CategoryPathService(categoryRepository, tx.getTransactionManager(), Runnable::run) {
+            @Override
+            boolean reload() {
+                boolean stored = super.reload();
+                if (changeOnce.compareAndSet(false, true)) {
+                    markChanged();   // 이때는 다시 읽는 중이라 새로 예약되지 않는다
+                }
+                return stored;
+            }
+        };
+
+        service.markChanged();
+
+        verify(categoryRepository, times(2)).findAll();                  // 끝날 때 버전을 다시 보고 한 번 더 읽었다
+        assertThat(service.findCategoryPaths()).containsEntry(1L, "집");
     }
 
     @Test
