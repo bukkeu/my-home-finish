@@ -10,8 +10,10 @@ USE money_beetle;
 -- [DBA ①] 회원·인증·운영·강의·퀴즈 구역
 -- ---------------------------------------------------------------------
 
--- 회원: 1 관리자 / 2~6 강사 / 7~8 학습자 (7은 수강 이력 없음, 8은 이력 있음 용도)
+-- 회원: 1 관리자 / 2~6 강사 / 7~9 학습자 (7은 수강 이력 없음, 8은 이력 있음 용도)
 -- 8(민지)은 해금 확인용으로 Lv.8·경험치·캐시를 넣어 두었고, 같은 값의 원장(cash_history·exp_history)은 DBA ② 구역에 있다.
+-- 9(청약준비)는 모의 청약(해금 Lv.12, SP-24) 시연용 Lv.12 학습자다 (#337). 경험치 2,450 = 누적 Lv.12, 캐시 120만은 Lv.12 도달 무렵 기준(SP-14).
+--   같은 값의 원장(cash_history·exp_history)과 청약통장(잔액 0, 0회차)은 DBA ② 구역에 있다. 납입은 시연 때 직접 한다
 -- 1(관리자)의 Lv.20·경험치는 화면 확인용 값이라 원장이 없다 (관리자는 보상·원장 대상이 아니다)
 INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role, status, level, exp, cash) VALUES
 (1, 'admin@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '관리자', '1999-04-12', 'ADMIN', 'ACTIVE', 20, 6000, 0),
@@ -21,7 +23,8 @@ INSERT INTO member (member_id, email, password_hash, nickname, birth_date, role,
 (5, 'minjae@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '오민재', '1999-04-12', 'INSTRUCTOR', 'ACTIVE', 1, 0, 0),
 (6, 'harin@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '정하린', '1999-04-12', 'INSTRUCTOR', 'ACTIVE', 1, 0, 0),
 (7, 'newbie@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '새내기', '1999-04-12', 'MEMBER', 'ACTIVE', 1, 0, 0),
-(8, 'minji@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '민지', '1999-04-12', 'MEMBER', 'ACTIVE', 8, 1250, 12000);
+(8, 'minji@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '민지', '1999-04-12', 'MEMBER', 'ACTIVE', 8, 1250, 12000),
+(9, 'apart@moneybeetle.local', '$2a$10$OKNSjtlUahwwv0zo9TcB9u7sZPPxwoo6duhvwtELedHblmBpqkzoK', '청약준비', '1998-03-15', 'MEMBER', 'ACTIVE', 12, 2450, 1200000);
 
 -- 강사 정보: 모두 승인 상태 (승인 관리자 = 1)
 -- 시드 강사는 모두 강사 가입 신청(applied_at) 후 관리자 승인을 받은 것으로 둔다 (#37)
@@ -280,7 +283,8 @@ INSERT INTO quiz_choice (quiz_question_id, content, is_correct, sort_order) VALU
 -- 학습자 8(민지)의 학습 기록: 홈 '이어서 볼 강의'와 vr1/vr2 분기 확인용
 INSERT INTO learning_progress (member_id, course_id, status, last_lesson_id, last_position_seconds, completed_at) VALUES
 (8, 4, 'COMPLETED', NULL, 0, '2026-11-04 21:00:00'),
-(8, 15, 'IN_PROGRESS', NULL, 12, NULL);   -- 영상 2의 12초 지점 (샘플 영상 30초, #73)
+(8, 15, 'IN_PROGRESS', NULL, 12, NULL),   -- 영상 2의 12초 지점 (샘플 영상 30초, #73)
+(9, 15, 'COMPLETED', NULL, 0, '2026-11-05 21:00:00');   -- 9(청약준비) : 경험치 원장(강의 15 완료)과 맞춘 학습 완료 기록 (#337)
 UPDATE learning_progress lp
 JOIN lesson l ON l.course_id = lp.course_id AND l.sort_order = 2
 SET lp.last_lesson_id = l.lesson_id
@@ -291,7 +295,7 @@ INSERT INTO scrap (member_id, course_id) VALUES (8, 15), (8, 12);
 -- ---------------------------------------------------------------------
 -- [DBA ②] 성장·알림·경제 용어 구역 (DBA ②가 이 아래에 추가)
 -- 모의투자 시드는 이재성(#72), 청약 단지·공고 시드는 서수영(#74)이 파일 맨 아래에 자기 구역을 만들어 추가한다 (역할분담 §8)
--- 청약통장(subscription_account)은 회원가입 때 자동 개설되므로, 시드 회원 1~8의 통장도 이 구역에서 만든다
+-- 청약통장(subscription_account)은 회원가입 때 자동 개설되므로, 시드 회원 1~9의 통장도 이 구역에서 만든다
 -- ---------------------------------------------------------------------
 
 -- 레벨 정책 (이슈 #11 확정): 레벨 한 칸에 필요한 경험치는 고시원(Lv.1~3) 150 · 원룸(4~7) 200 · 투룸(8~11) 300 ·
@@ -334,16 +338,19 @@ INSERT INTO reward_rule (code, name, cash_amount, exp_amount, description, is_ac
 ('RANKING_RANK_3', '시즌 랭킹 3위 보상', 10000, 0, '순자산·수익률 랭킹 각각의 3위. 랭킹 공개 때 지급 (SP-64)', 1);
 
 -- 청약통장: 회원당 하나(member_id 유니크). 잔액·납입회차는 기본값 0
-INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8);
+INSERT INTO subscription_account (member_id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9);
 
--- 민지(8)의 원장: member.cash·exp 값과 내역이 맞게 한 줄씩 둔다 (SP-15, GRW-07).
+-- 민지(8)·청약준비(9, #337)의 원장: member.cash·exp 값과 내역이 맞게 한 줄씩 둔다 (SP-15, GRW-07).
 -- 아래 내역은 시드용으로 한 건에 묶은 것이라 실제 보상 규칙 지급이 아니어서 reward_rule_id 는 비워 둔다
 INSERT INTO cash_history (member_id, history_type, source_type, source_id, amount, balance_after, reason, admin_id) VALUES
-(8, 'ADMIN_GIVE', 'ADMIN', NULL, 12000, 12000, '시드 초기 지급 (로컬 개발용)', 1);
+(8, 'ADMIN_GIVE', 'ADMIN', NULL, 12000, 12000, '시드 초기 지급 (로컬 개발용)', 1),
+(9, 'ADMIN_GIVE', 'ADMIN', NULL, 1200000, 1200000, '시드 초기 지급 (로컬 개발용)', 1);
 
 -- 경험치 1,250 = 누적 Lv.8 (이슈 #11 기준). 시드에서는 완료한 강의 4 한 건으로 묶었다
+-- 경험치 2,450 = 누적 Lv.12. 9(청약준비)는 완료한 강의 15(청약통장 기초) 한 건으로 묶었다 (#337)
 INSERT INTO exp_history (member_id, source_type, source_id, amount, exp_after, level_after) VALUES
-(8, 'COURSE_COMPLETE', 4, 1250, 1250, 8);
+(8, 'COURSE_COMPLETE', 4, 1250, 1250, 8),
+(9, 'COURSE_COMPLETE', 15, 2450, 2450, 12);
 
 -- 경제 용어 (이슈 #75): 관리자 화면 프로토타입(moneybeetle-page/AdminDashboard.dc.html)의 용어 12개. 앞 5개는 홈 프로토타입(UserHome-vr2)의 "오늘의 경제 용어"와 같다.
 -- 용어는 UNIQUE 라서 같은 용어를 두 번 넣지 않는다. 번호 순서가 곧 등록 순서이고, 지정하지 않은 날의 자동 선정(SP-46)이 이 순서를 쓴다.
@@ -966,7 +973,7 @@ INSERT INTO news_tag (news_id, sector_id, stock_id) VALUES
 -- 월초·월말에도 네 단계가 실행한 달에 걸리도록, 모집 예정 단지는 공고일을 오늘로, 발표 완료 단지 하나는 발표일을 오늘로 둔다
 -- 공고일 = 신청 시작일로 둔다 (프로토타입은 게시일·마감일만 있음). 단, 모집 예정 단지는 오늘 공고·3일 뒤 신청 시작
 -- 프로토타입의 커트라인·단지 이미지는 테이블에 컬럼이 없어 넣지 않는다 (#48 에서 커트라인 대신 가점 순위 방식으로 확정, 이미지는 DB 설계 후)
--- 시드 회원 1~8의 청약통장은 위 [DBA ②] 구역에 이미 있다 (잔액 0, 0회차)
+-- 시드 회원 1~9의 청약통장은 위 [DBA ②] 구역에 이미 있다 (잔액 0, 0회차)
 INSERT INTO housing_complex (housing_complex_id, name, location, area_type, sale_price, supply_units, supply_type,
                              notice_date, apply_start_date, apply_end_date, announce_date,
                              status, computed_at, announced_at, created_by) VALUES
