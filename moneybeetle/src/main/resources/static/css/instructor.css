@@ -156,8 +156,14 @@
   .ins-auth__card { padding: 24px 18px; border-radius: 18px; }
   /* 모바일 강사 가입: 카드가 화면 전체를 채운다 (바깥 여백·테두리 없이 흰 화면, 내용은 세로 가운데) */
   .ins-auth:has(.ins-auth__card--wide) { padding: 0; align-items: stretch; }
-  .ins-auth__card.ins-auth__card--wide { max-width: none; min-height: 100vh; min-height: 100dvh; padding: 36px 22px 40px; gap: 16px;
-    border: 0; border-radius: 0; justify-content: center; }
+  .ins-auth__card.ins-auth__card--wide { max-width: none; min-height: 100vh; min-height: 100dvh; padding: 32px 22px 48px; gap: 12px;
+    border: 0; border-radius: 0; justify-content: flex-start; }
+  /* 로고·단계는 위에 두고, 제목·입력 묶음은 남은 높이의 가운데에 둔다 (한가운데에 몰리지 않게 위아래로 띄운다) */
+  .ins-auth__card--wide .ins-steps { margin: 28px 0 0; }
+  .ins-auth__card--wide .ins-kicker { margin-top: auto; padding-top: 24px; }
+  .ins-auth__card--wide [data-ins-signup] { margin: 16px 0 auto; padding-bottom: 24px; }
+  .ins-auth__card--wide .ins-form { gap: 24px; }
+  .ins-auth__card--wide .ins-stack { gap: 22px; }
   .ins-auth__card--wide .ins-auth__logo img { height: 36px; }
   .ins-auth__card.ins-auth__card--wide h1 { font-size: 32px; }
   .ins-auth__card--wide .ins-auth__sub, .ins-auth__card--wide .ins-field { font-size: 15px; }
