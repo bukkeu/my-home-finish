@@ -74,8 +74,15 @@
         var on = st.tab === t[0];
         return h('button', { type: 'button', role: 'tab', 'aria-selected': on ? 'true' : 'false', class: 'qa-tab' + (on ? ' is-on' : ''), onclick: function () {
           st.tab = t[0];
+          // 지금 연 문의가 새 탭에 없으면 첫 문의를 열고, 하나도 없으면 오른쪽을 비운다
+          var visible = filtered();
+          if (!visible.some(function (q) { return q.inquiryId === st.selId; })) {
+            st.selId = visible.length ? visible[0].inquiryId : null;
+            st.editing = false; st.draft = ''; st.error = '';
+          }
           drawTabs();
           drawList();
+          if (st.selId) openDetail(st.selId); else drawDetail();
         } }, [t[1], h('span', { class: 'qa-tab__n', text: String(n[t[0]]) })]);
       }));
     }
@@ -113,8 +120,13 @@
       return Promise.all([MB.api('/api/v1/inquiries/' + id), fetchAll(0, [])]).then(function (r) {
         st.details[id] = r[0];
         st.items = r[1];
-        st.editing = false; st.draft = ''; st.error = '';
-        drawAll();
+        drawTabs();
+        drawList();
+        // 그사이 다른 문의를 열어 답변을 쓰고 있으면 그 편집기와 초안은 건드리지 않는다
+        if (st.selId === id) {
+          st.editing = false; st.draft = ''; st.error = '';
+          drawDetail();
+        }
         if (message) I.toast(message);
       });
     }
@@ -148,9 +160,10 @@
             } }),
             h('button', { type: 'button', class: 'qa-btn qa-btn--danger', text: '답변 삭제', onclick: function () {
               I.confirm('등록한 답변을 삭제할까요?', function () {
-                MB.api('/api/v1/inquiries/' + q.inquiryId + '/replies/' + answer.replyId, { method: 'DELETE' })
-                  .then(function () { return reload(q.inquiryId, '답변을 삭제했어요'); })
-                  .catch(function (err) { I.toast(replyError(err, '답변을 삭제하지 못했어요')); });
+                MB.api('/api/v1/inquiries/' + q.inquiryId + '/replies/' + answer.replyId, { method: 'DELETE' }).then(function () {
+                  // 삭제는 끝났다. 다시 불러오기만 실패하면 삭제 실패로 안내하지 않는다
+                  reload(q.inquiryId, '답변을 삭제했어요').catch(function () { I.toast('답변을 삭제했어요. 화면을 새로고침해 주세요'); });
+                }, function (err) { I.toast(replyError(err, '답변을 삭제하지 못했어요')); });
               });
             } })
           ])
@@ -171,12 +184,15 @@
           var req = editing
             ? MB.api('/api/v1/inquiries/' + q.inquiryId + '/replies/' + answer.replyId, { method: 'PATCH', body: { content: text } })
             : MB.api('/api/v1/inquiries/' + q.inquiryId + '/replies', { method: 'POST', body: { content: text } });
-          req.then(function () { return reload(q.inquiryId, editing ? '답변을 수정했어요' : '답변을 등록했어요'); })
-            .catch(function (e) {
-              st.error = editing ? replyError(e, '답변을 저장하지 못했어요') : I.errorText(e, '답변을 저장하지 못했어요');
-              err.textContent = st.error;
-              save.disabled = false;
-            });
+          var done = editing ? '답변을 수정했어요' : '답변을 등록했어요';
+          req.then(function () {
+            // 저장은 끝났다. 다시 불러오기만 실패하면 저장 실패로 안내하지 않고, 버튼도 다시 켜지 않는다 (같은 답변을 또 등록하지 않게)
+            reload(q.inquiryId, done).catch(function () { I.toast(done + '. 화면을 새로고침해 주세요'); });
+          }, function (e) {
+            st.error = editing ? replyError(e, '답변을 저장하지 못했어요') : I.errorText(e, '답변을 저장하지 못했어요');
+            err.textContent = st.error;
+            save.disabled = false;
+          });
         });
         parts.push(h('div', { class: 'qa-editor' }, [
           h('label', { class: 'qa-editor__label', for: 'qa-answer', text: editing ? '답변 수정' : '답변 작성' }),

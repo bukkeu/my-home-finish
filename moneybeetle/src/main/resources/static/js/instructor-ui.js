@@ -77,7 +77,13 @@
       layer.remove();
       if (before && before.focus) before.focus();
     }
-    function onKey(e) { if (e.key === 'Escape') close(); }
+    function onKey(e) {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      // 창이 열린 동안 Tab · Shift+Tab 은 두 버튼 사이에서만 돈다 (배경 화면으로 나가지 않게)
+      if (e.shiftKey && document.activeElement !== ok) { e.preventDefault(); ok.focus(); }
+      else if (!e.shiftKey && document.activeElement !== cancel) { e.preventDefault(); cancel.focus(); }
+    }
     layer.addEventListener('click', function (e) { if (e.target === layer) close(); });
     cancel.addEventListener('click', close);
     ok.addEventListener('click', function () { close(); onOk(); });

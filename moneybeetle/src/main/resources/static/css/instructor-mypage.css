@@ -88,3 +88,5 @@
 .ins-confirm__ok:hover { background: #97201a; }
 .ins-confirm__cancel:focus-visible, .ins-confirm__ok:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .ins-toast, .ins-toast.is-on { transition: none; } }
+.mp-retry { all: unset; cursor: pointer; font-weight: 700; color: var(--color-text); text-decoration: underline; }
+.mp-retry:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }

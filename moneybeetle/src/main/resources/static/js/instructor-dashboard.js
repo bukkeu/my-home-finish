@@ -106,6 +106,10 @@
     fill(root, h('div', { class: 'ins-state', text: '강사 센터를 불러오는 중이에요…' }));
     var tab = window.MBIns && window.MBIns.tabs[TAB];   // Q&A·마이페이지는 따로 된 파일이 그린다 (#360)
     if (tab) { tab(root); return; }
+    if (TAB === 'qna' || TAB === 'mypage') {   // 그 탭 파일을 못 불러왔으면 다른 화면을 대신 보여 주지 않는다
+      fill(root, h('div', { class: 'ins-state ins-state--error', role: 'alert', text: '화면을 불러오지 못했어요. 새로고침해 주세요.' }));
+      return;
+    }
     var jobs = TAB === 'dashboard' ? [loadCourses(), loadInbox()] : [loadCourses()];
     Promise.all(jobs).then(function () {
       if (TAB === 'courses') drawCourses(); else drawDashboard();

@@ -6,7 +6,8 @@
 *     16 비밀번호 PATCH /api/v1/members/me/password
 *   - 강사 프로필 GET·PATCH /api/v1/instructor/profile (#365) : 이름 · 한 줄 소개 · 강사 소개 · 전문 분야
 *   - 숫자 : 72 내 강의, 82 내 강의 문의, 퀴즈·요약글 목록 GET /api/v1/instructor/quizzes·summaries (#366)
-*   - #365·#366 이 아직 없으면 그 값은 비워 두고(숫자는 '-') 나머지는 그대로 쓴다
+*   - #365·#366 이 아직 없으면(404·405) 그 값은 비워 두고(숫자는 '-') 나머지는 그대로 쓴다.
+*     강사 프로필 조회가 다른 이유로 실패하면 '준비 중'이 아니라 '불러오지 못했어요 · 다시 시도'를 보인다
 *  */
 (function () {
   var I = window.MBIns;
@@ -17,7 +18,7 @@
   var PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/;   // 서버 규칙(API 16)과 같다
 
   function optional(promise) {
-    return promise.then(function (v) { return { ok: true, value: v }; }, function () { return { ok: false, value: null }; });
+    return promise.then(function (v) { return { ok: true, value: v }; }, function (err) { return { ok: false, value: null, error: err }; });
   }
 
   function count(res, key) {
@@ -73,6 +74,8 @@
 
   function render(root, me, profileRes, stats) {
     var ready = profileRes.ok && profileRes.value;            // #365 강사 프로필 API 가 있으면 true
+    var status = profileRes.error && profileRes.error.status;
+    var unsupported = !ready && (status === 404 || status === 405);   // API 가 아직 없음 → '준비 중'
     var pf = {
       name: (ready && profileRes.value.displayName) || me.nickname || '',
       headline: (ready && profileRes.value.headline) || '',
@@ -161,7 +164,12 @@
       field('한 줄 소개', headIn),
       field('강사 소개', bioIn),
       h('div', { class: 'mp-field' }, [h('span', { class: 'mp-label', text: '전문 분야' }), chips]),
-      ready ? null : h('p', { class: 'mp-hint', text: '이름 · 한 줄 소개 · 강사 소개 · 전문 분야 저장은 준비 중이에요. 지금은 닉네임만 바꿀 수 있어요.' }),
+      ready ? null : unsupported
+        ? h('p', { class: 'mp-hint', text: '이름 · 한 줄 소개 · 강사 소개 · 전문 분야 저장은 준비 중이에요. 지금은 닉네임만 바꿀 수 있어요.' })
+        : h('p', { class: 'mp-hint mp-hint--retry' }, [
+          '강사 소개를 불러오지 못했어요. 지금은 닉네임만 바꿀 수 있어요. ',
+          h('button', { type: 'button', class: 'mp-retry', text: '다시 시도', onclick: function () { draw(root); } })
+        ]),
       h('div', { class: 'mp-foot' }, [pfErr, pfSave])
     ]);
 
@@ -171,11 +179,17 @@
       var next = { name: nameIn.value.trim(), nick: nickIn.value.trim(), headline: headIn.value.trim(), bio: bioIn.value.trim() };
       if (!next.nick || (ready && !next.name)) { pfErr.textContent = '이름과 닉네임을 입력해 주세요'; return; }
       if (ready && !pf.fields.length) { pfErr.textContent = '전문 분야를 하나 이상 선택해 주세요'; return; }
+      /* 닉네임(API 14)과 강사 프로필(#365)은 따로 저장한다. 하나가 실패해도 성공한 쪽은 카드에 바로 보이고, 실패한 쪽만 안내한다 */
       var jobs = [];
+      var failed = [];
       if (next.nick !== me.nickname) {
         jobs.push(MB.api('/api/v1/members/me', { method: 'PATCH', body: { nickname: next.nick } }).then(function (r) {
           me.nickname = (r && r.nickname) || next.nick;
           refreshHeader(me.nickname);
+          if (!ready) pf.name = me.nickname;
+          showCard();
+        }, function (err) {
+          failed.push('닉네임 : ' + I.errorText(err, '저장하지 못했어요'));   // NICKNAME_DUPLICATED · FORBIDDEN_WORD 등
         }));
       }
       if (ready) {
@@ -183,16 +197,17 @@
           pf.name = next.name;
           pf.headline = next.headline;
           pf.bio = next.bio;
+          showCard();
+        }, function (err) {
+          failed.push('강사 소개 : ' + I.errorText(err, '저장하지 못했어요'));
         }));
       }
       if (!jobs.length) { I.toast('바뀐 내용이 없어요'); return; }
       pfSave.disabled = true;
       Promise.all(jobs).then(function () {
-        if (!ready) pf.name = me.nickname;
-        showCard();
-        I.toast('프로필을 저장했어요');
-      }).catch(function (err) {
-        pfErr.textContent = I.errorText(err, '저장하지 못했어요');   // NICKNAME_DUPLICATED · FORBIDDEN_WORD 등
+        pfErr.textContent = failed.join(' / ');
+        if (!failed.length) I.toast('프로필을 저장했어요');
+        else if (failed.length < jobs.length) I.toast('일부만 저장했어요');
       }).finally(function () { pfSave.disabled = false; });
     });
 
@@ -231,6 +246,13 @@
     var logout = h('form', { method: 'post', action: '/api/v1/auth/logout', class: 'mp-logout' }, [
       h('button', { type: 'submit', class: 'mp-logout__btn', text: '로그아웃' })
     ]);
+    /* 연타로 로그아웃 POST 가 두 번 가지 않게 : 첫 제출은 그대로 보내고 버튼을 끈다 (제출이 끝난 뒤에 꺼야 버튼 값이 빠지지 않는다) */
+    var loggingOut = false;
+    logout.addEventListener('submit', function (e) {
+      if (loggingOut) { e.preventDefault(); return; }
+      loggingOut = true;
+      setTimeout(function () { logout.querySelector('button').disabled = true; }, 0);
+    });
     var token = document.querySelector('meta[name="_csrf"]');
     if (token) logout.appendChild(h('input', { type: 'hidden', name: '_csrf', value: token.content }));
 
