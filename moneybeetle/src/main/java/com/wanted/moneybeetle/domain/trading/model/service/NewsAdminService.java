@@ -8,10 +8,14 @@ package com.wanted.moneybeetle.domain.trading.model.service;
 *     삭제도 막는다 -> PAST_TURN_NEWS_LOCKED. 지난 턴에 새 뉴스를 넣거나 다음 턴 뉴스를 지난 턴으로 옮기는 것도 막는다
 *   - 관련 분야·종목은 등록할 때와 다음 턴 이후 뉴스를 고칠 때 통째로 바꾼다. 없는 번호면 404
 *   - 관리자 메모는 이 관리자 API 에만 나오고 사용자 뉴스 API(#24)에는 나오지 않는다
-*   - TODO(#6, operation AdminLogService) 지난 턴 뉴스 수정은 admin_log 에 남긴다 (DB설계 데이터 정책).
-*     admin_log.admin_id 가 NOT NULL 이라 로그인 관리자 번호와 AdminLogService 가 생긴 뒤 연결한다
+*   - 지난 턴 뉴스 수정은 admin_log 에 남긴다 (DB설계 DH-03 데이터 정책, #340) : NEWS_UPDATE / NEWS / 뉴스 번호,
+*     detail 에 바뀌기 전후 제목·본문·관리자 메모. 바뀐 값이 없으면 남기지 않는다. 같은 트랜잭션이라 수정이 되돌려지면 기록도 없다.
+*     다음 턴 이후 뉴스(아직 사용자에게 공개 전)의 등록·수정·삭제는 정책상 필수가 아니라 남기지 않는다
 *  */
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wanted.moneybeetle.domain.operation.model.service.AdminLogService;
 import com.wanted.moneybeetle.domain.trading.exception.TradingErrorCode;
 import com.wanted.moneybeetle.domain.trading.model.dao.NewsRepository;
 import com.wanted.moneybeetle.domain.trading.model.dao.NewsTagRepository;
@@ -28,6 +32,7 @@ import com.wanted.moneybeetle.domain.trading.model.entity.TradingSeason;
 import com.wanted.moneybeetle.global.exception.BusinessException;
 import com.wanted.moneybeetle.global.exception.CommonErrorCode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,11 +46,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class NewsAdminService {
 
+    static final String ACTION_NEWS_UPDATE = "NEWS_UPDATE";
+    static final String TARGET_TYPE_NEWS = "NEWS";
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private final TradingSeasonRepository seasonRepository;
     private final NewsRepository newsRepository;
     private final NewsTagRepository newsTagRepository;
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
+    private final AdminLogService adminLogService;                      // 관리자 작업 기록 (operation 도메인)
 
     /** API 131 뉴스 목록 : 시즌 전체 또는 한 턴, 턴 순서. 관리자 메모 포함 */
     public List<AdminNewsDTO> findNews(Long seasonId, Integer turnNo) {
@@ -92,9 +102,10 @@ public class NewsAdminService {
         return news.getNewsId();
     }
 
-    /** API 133 뉴스 수정 : 지난 턴 뉴스는 제목·본문·메모만 */
+    /** API 133 뉴스 수정 : 지난 턴 뉴스는 제목·본문·메모만, 고치면 관리자 작업 기록에 남긴다 */
     @Transactional
-    public void changeNews(Long newsId, NewsSaveDTO request) {
+    public void changeNews(Long newsId, NewsSaveDTO request, Long adminId) {
+        TradingAdminCheck.requireAdmin(adminId);
         LockedNews locked = lockNewsAndSeason(newsId);
         News news = locked.news();
         TradingSeason season = locked.season();
@@ -103,7 +114,12 @@ public class NewsAdminService {
             if (news.getTurnNo() != request.getTurnNo() || !sameTags(newsTagRepository.findByNewsId(newsId), request)) {
                 throw new BusinessException(TradingErrorCode.PAST_TURN_NEWS_LOCKED);
             }
+            Map<String, Object> before = snapshot(news);
             news.changeContent(request.getTitle(), request.getContent(), request.getAdminMemo());
+            Map<String, Object> after = snapshot(news);
+            if (!before.equals(after)) {
+                adminLogService.record(adminId, ACTION_NEWS_UPDATE, TARGET_TYPE_NEWS, newsId, toJson(before, after));
+            }
             return;
         }
 
@@ -125,6 +141,27 @@ public class NewsAdminService {
         }
         newsTagRepository.deleteByNewsId(newsId);
         newsRepository.delete(news);
+    }
+
+    /** 작업 기록에 남길 값 : 지난 턴 뉴스에서 고칠 수 있는 제목·본문·관리자 메모 (공개 턴은 바뀌지 않지만 찾기 쉽게 함께 둔다) */
+    private static Map<String, Object> snapshot(News news) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("turnNo", news.getTurnNo());
+        values.put("title", news.getTitle());
+        values.put("content", news.getContent());
+        values.put("adminMemo", news.getAdminMemo());
+        return values;
+    }
+
+    private static String toJson(Map<String, Object> before, Map<String, Object> after) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("before", before);
+        detail.put("after", after);
+        try {
+            return JSON.writeValueAsString(detail);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("작업 기록을 만들지 못했습니다.", e);
+        }
     }
 
     private TradingSeason getSeason(Long seasonId) {
